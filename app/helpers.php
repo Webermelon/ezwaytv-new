@@ -1311,7 +1311,21 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
         }
 
         try {
-            return Storage::disk($activeDisk)->temporaryUrl(
+            $disk = Storage::disk($activeDisk);
+
+            // Prefer the public URL if the disk exposes one (non-signed)
+            try {
+                $publicUrl = $disk->url($normalizedPath);
+            } catch (\Throwable $ex) {
+                $publicUrl = null;
+            }
+
+            if (!empty($publicUrl)) {
+                return $publicUrl;
+            }
+
+            // Fallback to a temporary (signed) URL when no public URL is available
+            return $disk->temporaryUrl(
                 $normalizedPath,
                 now()->addMinutes((int) env('DO_SPACES_SIGNED_URL_TTL', 60))
             );
