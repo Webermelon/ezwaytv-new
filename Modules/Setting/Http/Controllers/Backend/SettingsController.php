@@ -202,6 +202,11 @@ class SettingsController extends Controller
         return view('setting::backend.setting.section-pages.language-settings', compact('data', 'languages'));
     }
 
+    public function maintenance()
+    {
+        return view('setting::backend.setting.section-pages.maintenance');
+    }
+
     public function notificationConfiguration()
     {
         $fields = ['expiry_plan', 'upcoming', 'continue_watch'];

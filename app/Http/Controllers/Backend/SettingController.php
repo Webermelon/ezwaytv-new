@@ -121,6 +121,31 @@ class SettingController extends Controller
         }
     }
 
+    /**
+     * Enable frontend maintenance mode with optional template.
+     */
+    public function enableMaintenance(Request $request)
+    {
+        $template = $request->input('template');
+
+        Setting::add('frontend_maintenance_enabled', '1', 'bool');
+        if ($template) {
+            Setting::add('frontend_maintenance_template', $template, 'string');
+        }
+
+        return response()->json(['message' => __('Maintenance enabled'), 'status' => true], 200);
+    }
+
+    /**
+     * Disable frontend maintenance mode.
+     */
+    public function disableMaintenance()
+    {
+        Setting::add('frontend_maintenance_enabled', '0', 'bool');
+
+        return response()->json(['message' => __('Maintenance disabled'), 'status' => true], 200);
+    }
+
 
 
 

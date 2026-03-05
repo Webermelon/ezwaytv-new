@@ -48,6 +48,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
       Route::get('clear-cache', [SettingsController::class, 'clear_cache'])->name('clear-cache');
       Route::get('module-setting', [SettingsController::class, 'moduleSetting'])->name('module');
       Route::get('custom-code', [SettingsController::class, 'customCode'])->name('custom-code');
+      Route::get('maintenance', [SettingsController::class, 'maintenance'])->name('maintenance');
 
       Route::get('general-setting', [SettingsController::class, 'generalSetting'])->name('general');
       Route::get('invoice-setting', [SettingsController::class, 'invoiceSetting'])->name('invoice-setting');

@@ -75,6 +75,8 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
            // Route::post('setting-update', [SettingController::class, 'update'])->name('setting.update');
             Route::get('clear-cache', [SettingController::class, 'clear_cache'])->name('clear-cache');
             Route::post('verify-email', [SettingController::class, 'verify_email'])->name('verify-email');
+            Route::post('settings/enable-maintenance', [SettingController::class, 'enableMaintenance'])->name('settings.enable_maintenance');
+            Route::post('settings/disable-maintenance', [SettingController::class, 'disableMaintenance'])->name('settings.disable_maintenance');
         });
 
         /*
@@ -135,6 +137,9 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 
             });
         });
+        // General settings route (used by sidebar menu)
+        Route::get('setting/general-setting', [App\Http\Controllers\Backend\SettingController::class, 'index'])->name('settings.general');
+        
         Route::get('my-profile/{vue_capture?}', [UserController::class, 'myProfile'])->name('my-profile')->where('vue_capture', '^(?!storage).*$');
         Route::get('my-info', [UserController::class, 'authData'])->name('authData');
         Route::post('my-profile/change-password', [UserController::class, 'change_password'])->name('change_password');

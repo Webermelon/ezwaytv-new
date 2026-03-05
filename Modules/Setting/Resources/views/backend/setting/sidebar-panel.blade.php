@@ -39,6 +39,13 @@
                             </a>
                         </div>
                     @endhasPermission
+                    @hasPermission('setting_misc')
+                        <div class="mb-3 active-menu">
+                            <a id="link-maintenance" href="{{ route('backend.settings.maintenance') }}" class="btn btn-border {{ request()->routeIs('backend.settings.maintenance') ? 'active' : '' }}">
+                                <i class="fa-solid fa-tools"></i>{{ __('setting_sidebar.lbl_maintenance') }}
+                            </a>
+                        </div>
+                    @endhasPermission
                     @hasPermission('setting_mail')
                         <div class="mb-3 active-menu">
                             <a id="link-mail" href="{{ route('backend.settings.mail') }}" class="btn btn-border {{ request()->routeIs('backend.settings.mail') ? 'active' : '' }}">

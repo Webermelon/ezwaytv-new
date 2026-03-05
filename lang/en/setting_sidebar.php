@@ -35,4 +35,5 @@ return [
     'load_sample_data'=> 'Load Sample Data',
     'reset_database'=>'Reset Database',
     'lbl_seo' => 'SEO Settings',
+    'lbl_maintenance' => 'Maintenance Mode',
 ];
