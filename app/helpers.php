@@ -1336,6 +1336,15 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
 
     $fileName = basename((string) (parse_url($url, PHP_URL_PATH) ?: $url));
     $remotePath = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+    // If this is the generic default image, always return the local asset
+    // to avoid constructing cloud URLs for a local default placeholder.
+    if (
+        str_ends_with(strtolower($fileName), 'default-image.jpg') ||
+        str_contains(strtolower($url), 'default-image') ||
+        str_contains(strtolower($remotePath), 'default-image')
+    ) {
+        return asset('default-image/Default-Image.jpg');
+    }
     $bucket = (string) config("filesystems.disks.{$activeDisk}.bucket");
     $remotePathWithoutBucket = $remotePath;
     if ($bucket !== '' && str_starts_with($remotePathWithoutBucket, $bucket . '/')) {
