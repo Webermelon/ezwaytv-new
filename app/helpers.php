@@ -1335,8 +1335,7 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
     };
 
     $fileName = basename((string) (parse_url($url, PHP_URL_PATH) ?: $url));
-    $remotePath = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
-    // If this is the generic default image, always return the local asset
+    $remotePath = ltrim((string) parse_url($url, PHP_URL_PATH), '/'); // If this is the generic default image, always return the local asset
     // to avoid constructing cloud URLs for a local default placeholder.
     if (
         str_ends_with(strtolower($fileName), 'default-image.jpg') ||
