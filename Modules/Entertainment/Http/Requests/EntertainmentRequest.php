@@ -76,6 +76,9 @@ class EntertainmentRequest extends FormRequest
     public function rules()
     {
         $id = request()->id;
+        // Determine if this is an update (edit) request
+        $isUpdate = !empty($id) || !empty($this->route('entertainment')) || !empty($this->route('id')) || !empty($this->input('id'));
+
         $rules = [
             'name' => ['required',Rule::unique('entertainments', 'name')->ignore($id)],
             'trailer_url_type' => ['required'],
@@ -86,13 +89,13 @@ class EntertainmentRequest extends FormRequest
             'actors' => ['required'],
             'directors' => ['required'],
             'IMDb_rating' => 'nullable|numeric|min:1|max:10',
-            'description' => ['required', 'string'],
+            'description' => $isUpdate ? ['nullable', 'string'] : ['required', 'string'],
         ];
 
         $movieAccess = $this->input('movie_access');
         
-        // Release date is only required when NOT pay-per-view
-        if ($movieAccess !== 'pay-per-view') {
+        // Release date is only required when NOT pay-per-view and on create
+        if ($movieAccess !== 'pay-per-view' && !$isUpdate) {
             $rules['release_date'] = ['required'];
         }
         $trailerUrlType = $this->input('trailer_url_type');
@@ -138,8 +141,13 @@ class EntertainmentRequest extends FormRequest
         }
 
         if ($this->input('type') == 'movie') {
-            $rules['duration'] = 'required';
-            $rules['video_upload_type'] = 'required';
+            if ($isUpdate) {
+                $rules['duration'] = 'nullable';
+                $rules['video_upload_type'] = 'nullable';
+            } else {
+                $rules['duration'] = 'required';
+                $rules['video_upload_type'] = 'required';
+            }
         }
 
         // Validate quality-wise video URLs based on video_quality_type

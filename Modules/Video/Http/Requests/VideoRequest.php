@@ -18,6 +18,9 @@ class VideoRequest extends FormRequest
         }
         $videoId = $videoId ?: $id;
 
+        // Determine if this is an update (edit) request
+        $isUpdate = !empty($videoId) || !empty($id) || !empty($this->input('id'));
+
         $rules = [
             'name' => [
                 'required',
@@ -27,12 +30,19 @@ class VideoRequest extends FormRequest
                     ->whereNull('deleted_at')
                     ->ignore($videoId)
             ],
-            'duration' => ['required'],
-            'release_date' => ['required'],
             'access' => 'required',
-            'description' => 'required|string',
             'video_upload_type' => 'required',
         ];
+
+        if ($isUpdate) {
+            $rules['duration'] = ['nullable'];
+            $rules['release_date'] = ['nullable'];
+            $rules['description'] = 'nullable|string';
+        } else {
+            $rules['duration'] = ['required'];
+            $rules['release_date'] = ['required'];
+            $rules['description'] = 'required|string';
+        }
 
 
         $trailerUrlType = $this->input('trailer_url_type');

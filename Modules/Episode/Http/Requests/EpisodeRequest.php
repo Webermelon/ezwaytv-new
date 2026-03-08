@@ -12,28 +12,43 @@ class EpisodeRequest extends FormRequest
 {
    public function rules()
     {
-        $id = request()->id;
-        $seasonId = $this->input('season_id');
-        $rules = [
-            'name' => ['required', Rule::unique('episodes', 'name')->ignore($id)],
-            'entertainment_id'=> ['required'],
-            'content_rating'=>'required|string',
-            'description' => 'required|string',
-            'access' => 'required',
-            'IMDb_rating' => 'nullable|numeric|min:1|max:10',
-            'season_id'=> ['required'],
-            'episode_number' => [
-                'nullable',
-                'numeric',
-                'min:1',
-                Rule::unique('episodes', 'episode_number')
-                    ->where('season_id', $seasonId)
-                    ->ignore($id)
-            ],
-            'duration'=> ['required'],
-            'video_upload_type' => ['required'],
-            'trailer_url_type' => ['required'],
-        ];
+            $id = request()->id;
+            $seasonId = $this->input('season_id');
+
+            // Determine if this is an update (edit) request
+            $episodeId = $this->route('episode');
+            if (is_array($episodeId)) {
+                $episodeId = $episodeId['id'] ?? null;
+            }
+            $isUpdate = !empty($episodeId) || !empty($id) || !empty($this->input('id'));
+
+            $rules = [
+                'name' => ['required', Rule::unique('episodes', 'name')->ignore($id)],
+                'entertainment_id'=> ['required'],
+                'content_rating'=>'required|string',
+                'access' => 'required',
+                'IMDb_rating' => 'nullable|numeric|min:1|max:10',
+                'season_id'=> ['required'],
+                'episode_number' => [
+                    'nullable',
+                    'numeric',
+                    'min:1',
+                    Rule::unique('episodes', 'episode_number')
+                        ->where('season_id', $seasonId)
+                        ->ignore($id)
+                ],
+                'video_upload_type' => ['required'],
+                'trailer_url_type' => ['required'],
+            ];
+
+            // Make description/duration optional on update
+            if ($isUpdate) {
+                $rules['description'] = ['nullable', 'string'];
+                $rules['duration'] = ['nullable'];
+            } else {
+                $rules['description'] = ['required', 'string'];
+                $rules['duration'] = ['required'];
+            }
         $movieAccess = $this->input('access');
 
         $trailerUrlType = $this->input('trailer_url_type');
@@ -147,13 +162,21 @@ class EpisodeRequest extends FormRequest
 
         if ($movieAccess == 'paid') {
             $rules['plan_id'] = 'required';
-            $rules['release_date'] = 'required';
+            if (!$isUpdate) {
+                $rules['release_date'] = 'required';
+            } else {
+                $rules['release_date'] = ['nullable'];
+            }
         } elseif ($movieAccess == 'pay-per-view') {
             $rules['price'] = 'required|numeric';
             $rules['available_for'] = 'required|integer|min:1';
         } else {
             // For 'free' access
-            $rules['release_date'] = 'required';
+            if (!$isUpdate) {
+                $rules['release_date'] = 'required';
+            } else {
+                $rules['release_date'] = ['nullable'];
+            }
         }
 
         if ($this->has('enable_seo') && $this->enable_seo == 1) {

@@ -173,12 +173,12 @@
                         </div>
                         <div class="col-lg-12">
                             <div class="d-flex align-items-center justify-content-between mb-2">
-                                {{ html()->label(__('movie.lbl_description') . '<span class="text-danger"> *</span>', 'description')->class('form-label mb-0') }}
+                                {{ html()->label(__('movie.lbl_description'), 'description')->class('form-label mb-0') }}
                                 <span class="text-primary cursor-pointer" id="GenrateDescription"><i class="ph ph-info"
                                         data-bs-toggle="tooltip" title="{{ __('messages.chatgpt_info') }}"></i>
                                     {{ __('messages.lbl_chatgpt') }}</span>
                             </div>
-                            {{ html()->textarea('description', $data->description)->class('form-control')->id('description')->placeholder(__('placeholder.lbl_movie_description'))->attribute('required', 'required') }}
+                            {{ html()->textarea('description', $data->description)->class('form-control')->id('description')->placeholder(__('placeholder.lbl_movie_description')) }}
                             @error('description')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -364,8 +364,8 @@
                 <div class="card-body">
                     <div class="row gy-3">
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', $data->duration)->placeholder(__('movie.lbl_duration'))->class('form-control  min-datetimepicker-time')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_duration'), 'duration')->class('form-label') }}
+                            {{ html()->time('duration')->attribute('value', $data->duration)->placeholder(__('movie.lbl_duration'))->class('form-control  min-datetimepicker-time') }}
                             @error('time')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -396,8 +396,8 @@
                             <div class="invalid-feedback" id="imdb-error">{{ __('messages.imdb_rating_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_release_date'), 'release_date')->class('form-label') }}
+                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
