@@ -322,7 +322,7 @@ class FrontendController extends Controller
 
                 $responseData['popular_language'] = [
                     'name' => $this->translateTabName($settings['enjoy-in-your-native-tongue']['name'] ?? ''),
-                    'data' => $popular_language,
+                    // 'data' => $popular_language,
                 ];
             }
 
