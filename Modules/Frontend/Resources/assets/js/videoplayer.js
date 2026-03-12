@@ -458,8 +458,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const entertainmentId = isEpisode ? contentId : entertainmentIdAttr;
 
       if (entertainmentId && ['movie', 'tvshow', 'video', 'episode'].includes(isEpisode ? 'episode' : typeOfContent)) {
+         console.log(baseUrl) ;
         await fetch(`${baseUrl}/api/save-entertainment-views`, {
           method: 'POST',
+          credentials: 'same-origin',
           headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
@@ -726,13 +728,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
-    fetch(`${baseUrl}/api/continuewatch-list`)
-      .then((response) => response.json())
+    fetch(`${baseUrl}/api/continuewatch-list`, { credentials: 'same-origin' })
+      .then((response) => {
+        if (!response.ok) {
+          console.warn('Continuewatch-list request failed with status', response.status)
+          return { data: [] }
+        }
+        return response.json()
+      })
       .then(async (data) => {
 
         const entertainmentId = button.getAttribute('data-entertainment-id')
         const entertainmentType = button.getAttribute('data-entertainment-type')
-        const matchingVideo = data.data.find((item) => item.entertainment_id === parseInt(entertainmentId) && item.entertainment_type === entertainmentType)
+        const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+        const matchingVideo = list.find((item) => item.entertainment_id === parseInt(entertainmentId) && item.entertainment_type === entertainmentType)
         let lastWatchedTime = 0
         if (matchingVideo && matchingVideo.total_watched_time) {
           lastWatchedTime = timeStringToSeconds(matchingVideo.total_watched_time)
@@ -1176,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     fetch(`${baseUrl}/api/save-continuewatch`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-TOKEN': csrfToken
