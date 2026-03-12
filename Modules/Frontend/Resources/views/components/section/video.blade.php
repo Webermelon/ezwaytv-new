@@ -6,19 +6,8 @@
             $showViewAll = false;
             $viewAllRoute = route('videos');
 
-            // Map slug to content list route
-            if (!empty($slug) && $slug === 'popular_video') {
-                $viewAllRoute = route('content.list', ['type' => 'most-watched-videos']);
-                // For most-watched videos, show View All only if we have 9+ items
-                $showViewAll = count($data) >= 9;
-            } elseif (!empty($slug)) {
-                // Custom video sections
-                $viewAllRoute = route('custom-section', ['slug' => $slug]);
-                $showViewAll = count($data) > 9;
-            } else {
-                // Other video sections: show View All when at least one item exists
-                $showViewAll = count($data) > 0;
-            }
+            // Always use /videos URL for this section
+            $showViewAll = count($data) > 0;
         @endphp
 
         @if ($showViewAll)
