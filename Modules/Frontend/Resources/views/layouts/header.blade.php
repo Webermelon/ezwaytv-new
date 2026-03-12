@@ -315,7 +315,7 @@
                                         </ul>
                                     </li>
                                 @endif
-                                <li class="nav-item dropdown dropdown-download-wrapper">
+                                <!-- <li class="nav-item dropdown dropdown-download-wrapper">
                                     <button class="btn btn-dark gap-3 p-2" data-bs-toggle="dropdown"
                                         aria-haspopup="true" aria-expanded="false">
                                         <i class="ph ph-download-simple fs-5"></i>
@@ -438,8 +438,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                </li>
-                                <li class="nav-item dropdown dropdown-language-wrapper">
+                                </li> -->
+                                <!-- <li class="nav-item dropdown dropdown-language-wrapper">
                                     <button class="btn btn-dark gap-3 px-3 dropdown-toggle" data-bs-toggle="dropdown"
                                         aria-haspopup="true" aria-expanded="false">
                                         <img src="{{ asset('flags/' . App::getLocale() . '.png') }}" alt="flag"
@@ -463,7 +463,7 @@
                                             </a>
                                         @endforeach
                                     </div>
-                                </li>
+                                </li> -->
 
 
                                 @if (auth()->check() && auth()->user()->user_type == 'user' && !getCurrentProfileSession('is_child_profile'))
