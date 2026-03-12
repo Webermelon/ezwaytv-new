@@ -191,9 +191,9 @@
                 selectedCategories = [];
                 selectedGenreIds = [];
             }
-            // Default select Movie and TV Show if nothing stored
+            // Default select Video if nothing stored
             if (!Array.isArray(selectedCategories) || selectedCategories.length === 0) {
-                selectedCategories = ['movie', 'tvshow'];
+                selectedCategories = ['video'];
             }
             if (!Array.isArray(selectedGenreIds)) {
                 selectedGenreIds = [];
