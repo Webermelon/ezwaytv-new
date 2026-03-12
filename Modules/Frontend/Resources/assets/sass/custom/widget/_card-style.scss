@@ -36,8 +36,9 @@
         border-radius: var(--bs-border-radius);
       }
       img {
-        mix-blend-mode: overlay;
-        aspect-ratio: 2/2.8;
+        mix-blend-mode: normal;
+        aspect-ratio: 4/3;
+        object-fit: cover;
         border-radius: var(--bs-border-radius);
       }
       .product-new {

@@ -1,8 +1,8 @@
 @foreach ($values as $data)
     <div class="slick-item">
-        <div class="iq-card card-hover entainment-slick-card hover-card-container" data-movie-id="{{ $data['id'] }}"
-            data-movie-data="{{ json_encode($data) }}" onmouseenter="openHoverModal(this)"
-            data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}" onmouseleave="closeHoverModal(this)">
+        <div class="iq-card card-hover entainment-slick-card" data-movie-id="{{ $data['id'] }}"
+            data-movie-data="{{ json_encode($data) }}"
+            data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}">
             <div class="block-images position-relative w-100">
 
                 @if (isset($is_search) && $is_search == 1)
@@ -35,6 +35,41 @@
                         </button>
                     @endif
 
+                </div>
+
+                <div class="card-description with-transition">
+                    <div class="position-relative w-100">
+                        <ul class="genres-list ps-0 mb-2 d-flex align-items-center gap-5">
+                            @foreach (collect($data['genres'] ?? [])->slice(0, 2) as $gener)
+                                <li class="small">{{ $gener['name'] ?? ($gener->resource->genre->name ?? '--') }}</li>
+                            @endforeach
+                        </ul>
+
+                        <h5 class="iq-title text-capitalize line-count-1">{{ $data['name'] ?? '--' }}</h5>
+
+                        <div class="d-flex align-items-center gap-3">
+                            @if (!empty($data['duration']))
+                                <div class="movie-time d-flex align-items-center gap-1 font-size-14">
+                                    <i class="ph ph-clock"></i>
+                                    {{ formatDuration($data['duration']) ?? '--' }}
+                                </div>
+                            @endif
+                            @if (!empty($data['language']))
+                                <div class="movie-language d-flex align-items-center gap-1 font-size-14">
+                                    <i class="ph ph-translate"></i>
+                                    <small>{{ ucfirst($data['language']) }}</small>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 mt-3">
+                            <div class="flex-grow-1">
+                                <a href="{{ route('video-details', ['id' => $data['slug']]) }}" class="btn btn-primary w-100">
+                                    {{ __('frontend.watch_now') }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>

@@ -137,7 +137,7 @@ function slickGeneral(isRTL) {
         {
           breakpoint: 768, // screen size below 768
           settings: {
-            slidesToShow: slider.data("items-mobile-sm"),
+            slidesToShow: 1,
             swipeToSlide: true, // allow free swipe on small screens
             touchMove: true,
             draggable: true,
@@ -148,7 +148,7 @@ function slickGeneral(isRTL) {
         {
           breakpoint: 576, // screen size below 576
           settings: {
-            slidesToShow: slider.data("items-mobile"),
+            slidesToShow: 1,
             swipeToSlide: true, // allow free swipe on extra small screens
             touchMove: true,
             draggable: true,

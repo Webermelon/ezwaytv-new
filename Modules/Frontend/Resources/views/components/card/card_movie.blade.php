@@ -1,9 +1,9 @@
 @foreach ($values as $value)
     <div class="slick-item">
-        <div class="iq-card card-hover entainment-slick-card hover-card-container" data-movie-id="{{ $value['id'] }}"
+        <div class="iq-card card-hover entainment-slick-card" data-movie-id="{{ $value['id'] }}"
             data-movie-data="{{ json_encode($value) }}" data-trailer-url="{{ $value['trailer_url'] ?? '' }}"
-            data-trailer-type="{{ $value['trailer_url_type'] ?? '' }}" onmouseenter="openHoverModal(this)"
-            onmouseleave="closeHoverModal(this)" data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}">
+            data-trailer-type="{{ $value['trailer_url_type'] ?? '' }}"
+            data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}">
 
             <div class="block-images position-relative w-100">
                 @php
@@ -44,6 +44,44 @@
                             {{ $value['imdb_rating'] }}
                         </span>
                     @endif
+                </div>
+
+                <div class="card-description with-transition">
+                    <div class="position-relative w-100">
+                        <ul class="genres-list ps-0 mb-2 d-flex align-items-center gap-5">
+                            @foreach (collect($value['genres'] ?? [])->slice(0, 2) as $gener)
+                                <li class="small">{{ $gener['name'] ?? ($gener->resource->genre->name ?? '--') }}</li>
+                            @endforeach
+                        </ul>
+
+                        <h5 class="iq-title text-capitalize line-count-1">{{ $value['name'] ?? '--' }}</h5>
+
+                        <div class="d-flex align-items-center gap-3">
+                            @if (!empty($value['duration']))
+                                <div class="movie-time d-flex align-items-center gap-1 font-size-14">
+                                    <i class="ph ph-clock"></i>
+                                    {{ formatDuration($value['duration']) ?? '--' }}
+                                </div>
+                            @endif
+                            @if (!empty($value['language']))
+                                <div class="movie-language d-flex align-items-center gap-1 font-size-14">
+                                    <i class="ph ph-translate"></i>
+                                    <small>{{ ucfirst($value['language']) }}</small>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 mt-3">
+                            <div class="flex-grow-1">
+                                <a href="{{ $isComingSoon && ($value['type'] ?? 'movie') == 'movie'
+                                    ? route('comming-soon-details', ['id' => $value['id']])
+                                    : route('movie-details', ['id' => $value['slug']]) }}"
+                                    class="btn btn-primary w-100">
+                                    {{ __('frontend.watch_now') }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>
