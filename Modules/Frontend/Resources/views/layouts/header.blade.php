@@ -17,7 +17,7 @@
                 <div class="d-flex gap-3 gap-xl-0 align-items-center">
                     <button type="button" data-bs-toggle="offcanvas" data-bs-target="#navbar_main"
                         aria-controls="navbar_main" class="d-xl-none btn btn-primary rounded-pill toggle-rounded-btn">
-                        <i class="ph ph-arrow-right"></i>
+                        <i class="ph ph-arrow-left"></i>
                     </button>
                     @include('frontend::components.partials.logo')
                 </div>
