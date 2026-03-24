@@ -78,6 +78,17 @@ document.addEventListener('DOMContentLoaded', function () {
     techOrder: ['vimeo', 'youtube', 'html5', 'hls', 'embed'],
     autoplay: false,
     controls: true,
+    muted: true,
+    playsinline: true,
+    html5: {
+      vhs: {
+        overrideNative: !(videojs.browser.IS_SAFARI || videojs.browser.IS_IOS),
+        handleManifestRedirects: true,
+      },
+      nativeVideoTracks: videojs.browser.IS_SAFARI || videojs.browser.IS_IOS,
+      nativeAudioTracks: videojs.browser.IS_SAFARI || videojs.browser.IS_IOS,
+      nativeTextTracks: videojs.browser.IS_SAFARI || videojs.browser.IS_IOS,
+    },
     controlBar: {
       subsCapsButton: {
         textTrackSettings: false // Disable "captions settings"
@@ -314,16 +325,6 @@ document.addEventListener('DOMContentLoaded', function () {
         videoEl.setAttribute('playsinline', '');
         videoEl.setAttribute('webkit-playsinline', '');
         videoEl.setAttribute('preload', 'metadata');
-        // Extra repaint: toggle display to force layer redraw on Safari
-        const prevDisplay = videoEl.style.display;
-        videoEl.style.display = 'none';
-        void videoEl.offsetHeight;
-        videoEl.style.display = prevDisplay || 'block';
-        // Safari repaint workaround to redraw the video layer
-        const prevTransform = videoEl.style.transform;
-        videoEl.style.transform = 'translateZ(0)';
-        void videoEl.offsetHeight; // force reflow
-        videoEl.style.transform = prevTransform;
       }
       // Hide big play overlay if it lingers
       const bigPlay = player?.el()?.querySelector('.vjs-big-play-button');
@@ -1358,12 +1359,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const videoEl = document.getElementById('videoPlayer');
     const vimeoContainer = document.getElementById('vimeoContainer');
     const vimeoIframe = document.getElementById('vimeoIframe');
-    if (videoEl) videoEl.style.display = '';
-    if (vimeoIframe) vimeoIframe.style.display = 'none';
-    if (vimeoContainer) vimeoContainer.style.display = 'none';
-
-    // Always hide both players first
-    if (videoEl) videoEl.style.display = 'none';
+    // Only hide the video element for embed/vimeo platforms; hiding it on iOS
+    // destroys the native video compositing layer and causes a blank screen.
+    const isEmbedPlatform = platform === 'embed' || platform === 'embedded' || platform === 'vimeo';
+    if (isEmbedPlatform && videoEl) videoEl.style.display = 'none';
     if (vimeoIframe) vimeoIframe.style.display = 'none';
     if (vimeoContainer) vimeoContainer.style.display = 'none';
     if (platform === 'youtube') {
@@ -1372,7 +1371,12 @@ document.addEventListener('DOMContentLoaded', function () {
         src: `https://www.youtube.com/watch?v=${videoId}&autoplay=1`
       });
     } else if (platform === 'hls') {
-      player.src({ type: 'application/x-mpegURL', src: url });
+      // Use 'application/vnd.apple.mpegurl' on iOS so Safari triggers native HLS;
+      // other browsers handle 'application/x-mpegURL' via VHS/hls.js
+      const hlsMime = videojs.browser.IS_IOS
+        ? 'application/vnd.apple.mpegurl'
+        : 'application/x-mpegURL';
+      player.src({ type: hlsMime, src: url });
 
       if (adTagUrl) {
         // ✅ Initialize IMA Ads only here (non-YouTube)

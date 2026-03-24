@@ -17,7 +17,7 @@
 
         <div class="video-player">
             <video id="videoPlayer" class="video-js vjs-default-skin vjs-ima" controls width="560" height="315" muted
-                poster="{{ $thumbnail_image }}" data-setup='{"muted": true}' data-type="{{ $type }}"
+                poster="{{ $thumbnail_image }}" data-type="{{ $type }}"
                 content-video-type="{{ $content_video_type }}"
                 data-continue-watch="{{ isset($continue_watch) && $continue_watch ? 'true' : 'false' }}"
                 data-movie-access="{{ $dataAccess ?? '' }}" data-plan-id="{{ $plan_id ?? '' }}"

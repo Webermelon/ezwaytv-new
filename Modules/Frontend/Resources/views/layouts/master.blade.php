@@ -489,7 +489,7 @@
                 const video = document.createElement('video');
                 video.src = src;
                 video.autoplay = false;
-                video.muted = true;
+                video.muted = false;
                 video.loop = true;
                 video.playsInline = true;
                 video.preload = 'metadata';
