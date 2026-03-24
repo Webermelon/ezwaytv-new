@@ -197,8 +197,12 @@ class PagesController extends Controller
 
         $currentLang = app()->getLocale();
 
-        $page->description = GoogleTranslate::trans($page->description, $currentLang);
-        $page->name = GoogleTranslate::trans($page->name, $currentLang);
+        try {
+            $page->description = GoogleTranslate::trans($page->description, $currentLang);
+            $page->name = GoogleTranslate::trans($page->name, $currentLang);
+        } catch (\Throwable $e) {
+            // Fall back to original content if translation fails (e.g. text too long, rate limit)
+        }
 
         // Pass the page data to the view
         return view('page::backend.pages.show', compact('page'));
