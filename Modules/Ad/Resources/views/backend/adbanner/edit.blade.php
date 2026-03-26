@@ -106,5 +106,21 @@
 
     {{ html()->form()->close() }}
 
-    @include('components.media-modal', ['page_type' => 'image'])
+    @include('components.media-modal', ['page_type' => 'ads'])
 @endsection
+
+@push('after-scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('exampleModal');
+    if (!modal) return;
+    modal.addEventListener('shown.bs.modal', function() {
+        if (typeof FileManager !== 'undefined' && FileManager.navigation && FileManager.navigation.openFolder) {
+            setTimeout(function() {
+                FileManager.navigation.openFolder('ads/image');
+            }, 150);
+        }
+    });
+});
+</script>
+@endpush
