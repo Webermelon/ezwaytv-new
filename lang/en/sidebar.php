@@ -57,5 +57,7 @@ return [
     'ads_manager' => 'Ads Manager',
     'vast_ads_settings' => 'VAST Ads',
     'custom_ads_settings' => 'Custom Ads',
+    'ad_banner_slides' => 'Banner Ad Slider',
+    'ad_banner_slider_settings' => 'Slider Settings',
     'onboarding' => 'Onboarding',
 ];

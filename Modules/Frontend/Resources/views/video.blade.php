@@ -166,6 +166,9 @@
     @endif
 
     <!-- Rest of your existing content -->
+    {{-- Ad Banner Slider --}}
+    @include('frontend::components.section.ad_banner_slider', ['placement' => 'video'])
+
     <div class="list-page">
 
         <div class="movie-lists section-spacing-bottom px-0">

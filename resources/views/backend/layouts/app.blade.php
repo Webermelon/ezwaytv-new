@@ -727,6 +727,21 @@
                 }
             })
         @endif
+        @if (\Session::get('success'))
+            Swal.fire({
+                title: 'Success',
+                text: '{{ session()->get('success') }}',
+                icon: "success",
+                timer: 3000,
+                showConfirmButton: false,
+                showClass: {
+                    popup: 'animate__animated animate__zoomIn'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__zoomOut'
+                }
+            })
+        @endif
 
         // dark and light mode code
         const theme_mode = sessionStorage.getItem('theme_mode')

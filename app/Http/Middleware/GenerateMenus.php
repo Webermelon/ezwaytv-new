@@ -213,6 +213,24 @@ class GenerateMenus
                 'order' => 2,
             ]);
 
+            $this->childMain($adsManager, [
+                'title' => __('sidebar.ad_banner_slides'),
+                'active' => ['app/adbannersides','app/adbannersides/*'],
+                'route' => 'backend.adbannersides.index',
+                'icon' => 'ph ph-images',
+                'permission' => ['view_ads'],
+                'order' => 3,
+            ]);
+
+            $this->childMain($adsManager, [
+                'title' => __('sidebar.ad_banner_slider_settings'),
+                'active' => ['app/adbannersides/settings'],
+                'route' => 'backend.adbannersides.settings',
+                'icon' => 'ph ph-sliders',
+                'permission' => ['view_ads'],
+                'order' => 4,
+            ]);
+
 
             $permissionsToCheck = ['view_subscription', 'view_plans', 'view_planlimitation'];
 

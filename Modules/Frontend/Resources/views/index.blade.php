@@ -74,6 +74,9 @@
                     </div>
                 @endif
 
+                {{-- Ad Banner Slider --}}
+                @include('frontend::components.section.ad_banner_slider', ['placement' => 'home'])
+
                 <div id="latest-moive-section" class="section-wraper scroll-section section-hidden">
                     @if (isset($cachedResult['latest_movie']['data']) && count($cachedResult['latest_movie']['data']) > 0)
                         @include('frontend::components.section.entertainment', [

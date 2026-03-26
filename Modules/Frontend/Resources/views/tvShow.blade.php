@@ -185,6 +185,9 @@
             @endif
         </div>
     @endif
+    {{-- Ad Banner Slider --}}
+    @include('frontend::components.section.ad_banner_slider', ['placement' => 'tvshow'])
+
     <div class="list-page">
         <div class="movie-lists section-spacing-bottom">
             <div class="container-fluid">

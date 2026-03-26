@@ -25,6 +25,7 @@
             'content_video_type' => 'video',
         ])
     </div>
+
     <div id="detail-section">
         <div class="detail-page-info section-spacing">
             <div class="container-fluid">
@@ -73,6 +74,10 @@
             </div>
         </div>
     </div>
+
+    {{-- Ad Banner Slider: shown under channel title/description --}}
+    @include('frontend::components.section.ad_banner_slider', ['placement' => 'livetv'])
+
     <div class="section-spacing-bottom">
         <div class="container-fluid">
             @if (!empty($suggestions))

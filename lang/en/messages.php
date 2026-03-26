@@ -2133,4 +2133,25 @@ return [
     'episode_plan_must_be_same_or_higher_than_tvshow_plan' => 'Episode plan must be the same as or higher than the TV show plan.',
     'permission_denied' => 'Permission denied',
 
+    // Ad Banner Slides
+    'lbl_ad_banner_slide'   => 'Banner Ad Slide',
+    'lbl_ad_banner_slides'  => 'Banner Ad Slides',
+    'lbl_banner_image'      => 'Banner Image',
+    'lbl_placements'        => 'Show On Pages',
+    'lbl_placements_hint'   => 'Select one or more pages where this banner will appear.',
+    'lbl_all_pages'         => 'All Pages',
+    'lbl_link_url'          => 'Click URL (optional)',
+    'lbl_order'             => 'Sort Order',
+    'advertisement'         => 'Advertisement',
+    'lbl_image'             => 'Image',
+    'lbl_title'             => 'Title',
+    'lbl_banner_image_hint' => 'Recommended size: 800 × 300 px (ratio 8:3)',
+    'lbl_banner_slider_settings'   => 'Banner Slider Settings',
+    'lbl_slider_interval'          => 'Autoplay Interval',
+    'lbl_slider_interval_hint'     => 'Time in milliseconds each slide is shown before switching.',
+    'lbl_slide_direction'          => 'Slide Direction',
+    'lbl_slide_direction_hint'     => 'Which direction the slides animate when transitioning.',
+    'lbl_slide_ltr'                => 'Left → Right (default)',
+    'lbl_slide_rtl'                => 'Right → Left',
+
 ];

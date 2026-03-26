@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Ad\Http\Controllers\Backend\AdsController;
 use Modules\Ad\Http\Controllers\Backend\VastAdsSettingController;
 use Modules\Ad\Http\Controllers\Backend\CustomAdsSettingController;
+use Modules\Ad\Http\Controllers\Backend\AdBannerSlideController;
 
 
 /*
@@ -81,6 +82,18 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
 
     });
     Route::resource("customads", CustomAdsSettingController::class);
+
+    // Ad Banner Slides
+    Route::group(['prefix' => 'adbannersides', 'as' => 'adbannersides.'], function () {
+        Route::get('index_data', [AdBannerSlideController::class, 'index_data'])->name('index_data');
+        Route::post('bulk-action', [AdBannerSlideController::class, 'bulk_action'])->name('bulk_action');
+        Route::post('update-status/{id}', [AdBannerSlideController::class, 'update_status'])->name('update_status');
+        Route::post('restore/{id}', [AdBannerSlideController::class, 'restore'])->name('restore');
+        Route::delete('force-delete/{id}', [AdBannerSlideController::class, 'forceDelete'])->name('force_delete');
+        Route::get('settings', [AdBannerSlideController::class, 'settings'])->name('settings');
+        Route::post('settings', [AdBannerSlideController::class, 'saveSettings'])->name('save_settings');
+    });
+    Route::resource('adbannersides', AdBannerSlideController::class)->except(['show']);
 });
 
 

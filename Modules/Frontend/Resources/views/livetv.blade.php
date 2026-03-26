@@ -21,6 +21,8 @@
 
 
 
+    {{-- Ad Banner Slider removed — shown on player page (livetvDetail) instead --}}
+
     <div class="container-fluid padding-right-0">
         <div class="overflow-hidden">
             <div id="more-infinity-section">
