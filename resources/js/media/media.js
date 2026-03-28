@@ -316,8 +316,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (remainingFiles.length > 0) {
         document.getElementById('file_url_media').removeAttribute('required');
         document.getElementById('file_url_media-error').style.display = 'none';
+        // Send only file names (Mode B) — files are already assembled on server via chunk upload.
+        // Do NOT re-send the raw file bytes (Mode A) as that exhausts PHP memory for large files.
         for (var i = 0; i < remainingFiles.length; i++) {
-          formData.append('file_url[]', remainingFiles[i].file);
+          formData.append('file_names[]', remainingFiles[i].file.name);
         }
 
         // Add type value to FormData
@@ -925,9 +927,10 @@ if (document.getElementById('file_url_media')) {
 
 function uploadChunk(file, index, start, end, chunkSize, uploadedFiles, progressBar) { // Added progressBar parameter
   var chunk = file.slice(start, end);
+  var chunkIndex = Math.floor(start / chunkSize); // chunk position, not file array index
   var formData = new FormData();
   formData.append('file_chunk', chunk);
-  formData.append('index', index);
+  formData.append('index', chunkIndex);
   formData.append('total_chunks', Math.ceil(file.size / chunkSize));
   formData.append('file_name', file.name);
 

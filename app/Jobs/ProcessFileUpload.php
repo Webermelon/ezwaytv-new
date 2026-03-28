@@ -64,7 +64,7 @@ class ProcessFileUpload implements ShouldQueue
 
 
 
-            $file = Storage::get($this->filePath);
+            $file = Storage::readStream($this->filePath);
 
             if ($this->diskType === 'local') {
 
@@ -78,7 +78,7 @@ class ProcessFileUpload implements ShouldQueue
                     File::makeDirectory($absoluteDirectoryPath, 0775, true, true);
                 }
 
-                Storage::disk('local')->put($folderPath, $file);
+                Storage::disk('local')->writeStream($folderPath, $file);
 
                 $fullPath = storage_path('app/' . $folderPath);
                 if (file_exists($fullPath)) {
@@ -91,7 +91,7 @@ class ProcessFileUpload implements ShouldQueue
                 }
             } else {
                 $folderPath =  $this->page_type . '/' . $this->fileType . '/' . $this->filemanager->file_name;
-                Storage::disk($this->diskType)->put($folderPath, $file);
+                Storage::disk($this->diskType)->writeStream($folderPath, $file);
             }
 
             $this->filemanager->save();
