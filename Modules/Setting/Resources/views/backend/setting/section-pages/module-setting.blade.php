@@ -102,6 +102,26 @@
             </div>
         </div>
 
+        {{-- Show Categories in Menu --}}
+        <div class="form-group border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label m-0" for="show_categories_menu">Show Categories in Menu</label>
+                @if($isDemoAdmin)
+                    @php $showCatMenuStatus = old('show_categories_menu', $settings['show_categories_menu'] ?? 0); @endphp
+                    <span class="badge {{ $showCatMenuStatus == 1 ? 'bg-success-subtle' : 'bg-danger-subtle' }}">
+                        {{ $showCatMenuStatus == 1 ? __('messages.active') : __('messages.inactive') }}
+                    </span>
+                    <input type="hidden" value="{{ $showCatMenuStatus }}" name="show_categories_menu">
+                @else
+                    <input type="hidden" value="0" name="show_categories_menu">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="show_categories_menu" id="show_categories_menu"
+                            type="checkbox" {{ old('show_categories_menu', $settings['show_categories_menu'] ?? 0) == 1 ? 'checked' : '' }} />
+                    </div>
+                @endif
+            </div>
+        </div>
+
         @if (auth()->user()->user_type == 'admin')
             <!-- Demo Login Section -->
             <div class="form-group border-bottom pb-3">

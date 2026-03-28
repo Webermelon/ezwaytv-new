@@ -105,6 +105,12 @@ class VideosController extends Controller
             $videoList->where('is_restricted', $request->is_restricted);
         }
 
+        if (!empty($request->category_slug)) {
+            $videoList->whereHas('categories', function ($q) use ($request) {
+                $q->where('slug', $request->category_slug)->where('status', 1);
+            });
+        }
+
         if (!empty(getCurrentProfileSession('is_child_profile'))) {
             $videoList->where('is_restricted', 0);
         }

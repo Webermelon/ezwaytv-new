@@ -307,6 +307,17 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'show_categories_menu',
+                'label' => 'Show Categories in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show a Categories dropdown in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'enable_tmdb_api',
                 'label' => 'Import Data From TMDB',
                 'rules' => 'boolean',

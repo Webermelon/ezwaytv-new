@@ -208,6 +208,7 @@ return [
         App\Providers\ConfigServiceProvider::class,
         App\Providers\CurrencyServiceProvider::class,
         Modules\Genres\Providers\RouteServiceProvider::class,
+        Modules\Categories\Providers\RouteServiceProvider::class,
         Modules\CastCrew\Providers\RouteServiceProvider::class,
         Modules\Entertainment\Providers\RouteServiceProvider::class,
         Modules\Season\Providers\RouteServiceProvider::class,

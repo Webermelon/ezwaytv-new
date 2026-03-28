@@ -85,6 +85,24 @@
         </a>
       </li>
       @endif 
+      @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
+      @if($navCategories->count() && isenablemodule('show_categories_menu'))
+      <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs('videos.by-category') ? 'active text-primary' : '' }}" href="#">
+          <span class="item-name">Categories</span>
+        </a>
+        <ul class="sub-menu list-unstyled">
+          @foreach($navCategories as $navCat)
+          <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('videos.by-category') && request()->route('slug') === $navCat->slug ? 'active text-primary' : '' }}"
+               href="{{ route('videos.by-category', $navCat->slug) }}">
+              <span class="item-name">{{ $navCat->name }}</span>
+            </a>
+          </li>
+          @endforeach
+        </ul>
+      </li>
+      @endif
        <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('livetv') ? 'active text-primary' : '' }}" target="_blank"  href="https://ppv.ezway.tv/">
           <span class="item-name" style="text-transform: none;">eZWay PPV</span>

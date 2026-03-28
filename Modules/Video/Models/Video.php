@@ -14,6 +14,7 @@ use Modules\Entertainment\Models\Watchlist;
 use Modules\Entertainment\Models\UserReminder;
 use Modules\Entertainment\Models\EntertainmentDownload;
 use Modules\Entertainment\Models\Review;
+use Modules\Categories\Models\Category;
 class Video extends BaseModel
 {
 
@@ -193,6 +194,16 @@ class Video extends BaseModel
     public function clips()
     {
         return $this->hasMany(Clip::class, 'content_id', 'id');
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(
+            Category::class,
+            'video_category_mapping',
+            'video_id',
+            'category_id'
+        )->withTimestamps();
     }
 
         public static function get_popular_videos($videoIdsArray)

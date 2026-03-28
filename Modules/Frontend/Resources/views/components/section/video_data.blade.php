@@ -278,6 +278,15 @@
                             @endforeach
                         </span>
                     @endif
+                    @if (isset($data['categories']) && count($data['categories']) > 0)
+                        <span class="text-white-50 small ms-2">
+                            @foreach ($data['categories'] as $key => $cat)
+                                {{ is_array($cat) ? $cat['name'] : $cat->name }}@if (!$loop->last)
+                                    &bull;
+                                @endif
+                            @endforeach
+                        </span>
+                    @endif
                 </div>
                 <button class="custom-close-btn btn btn-primary" data-bs-dismiss="modal">
                     <i class="ph ph-x"></i>
@@ -387,6 +396,15 @@
                         <span class="text-white-50 small">
                             @foreach ($data['genres'] as $key => $genre)
                                 {{ is_array($genre) ? $genre['name'] : $genre->name }}@if (!$loop->last)
+                                    &bull;
+                                @endif
+                            @endforeach
+                        </span>
+                    @endif
+                    @if (isset($data['categories']) && count($data['categories']) > 0)
+                        <span class="text-white-50 small ms-2">
+                            @foreach ($data['categories'] as $key => $cat)
+                                {{ is_array($cat) ? $cat['name'] : $cat->name }}@if (!$loop->last)
                                     &bull;
                                 @endif
                             @endforeach

@@ -11,6 +11,7 @@ use Modules\Entertainment\Models\Like;
 use Modules\Entertainment\Models\EntertainmentDownload;
 use Modules\Video\Models\Video;
 use Modules\Video\Transformers\VideoDetailResource;
+use Modules\Categories\Models\Category;
 use Illuminate\Support\Facades\Crypt;
 use Modules\Banner\Models\Banner;
 use Modules\Banner\Transformers\Backend\SliderResourceV3;
@@ -37,6 +38,13 @@ class VideoController extends Controller
         })->values()->all();
 
         return view('frontend::video', compact('sliders'));
+    }
+
+    public function videosByCategory(Request $request, string $slug)
+    {
+        $category = Category::where('slug', $slug)->where('status', 1)->firstOrFail();
+        $categories = Category::where('status', 1)->orderBy('name')->get();
+        return view('frontend::videos_by_category', compact('category', 'categories'));
     }
 
     public function videoDetails(Request $request, string $id)
@@ -69,6 +77,7 @@ class VideoController extends Controller
                     'VideoStreamContentMappings',
                     'plan',
                     'clips',
+                    'categories',
                 ])
                 ->where('slug','=', $id)
                 ->first();

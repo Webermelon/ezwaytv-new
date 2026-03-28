@@ -361,6 +361,16 @@
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>
+                        @if(isset($categories) && $categories->count())
+                        <div class="col-md-6 col-lg-4">
+                            {{ html()->label('Categories', 'category_ids')->class('form-label') }}
+                            <select name="category_ids[]" id="category_ids" class="form-control select2" multiple="multiple" data-placeholder="Select categories...">
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}" {{ in_array($cat->id, old('category_ids', [])) ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>

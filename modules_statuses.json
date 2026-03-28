@@ -1,6 +1,7 @@
 {
     "CastCrew": true,
     "Genres": true,
+    "Categories": true,
     "Video": true,
     "Constant": true,
     "Subscriptions": true,

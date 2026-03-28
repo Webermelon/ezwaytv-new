@@ -74,7 +74,7 @@ class SettingsController extends Controller
      */
     public function moduleSetting()
     {
-        $fields = ['movie', 'tvshow', 'livetv', 'video', 'demo_login', 'enable_tmdb_api', 'tmdb_api_key'];
+        $fields = ['movie', 'tvshow', 'livetv', 'video', 'show_categories_menu', 'demo_login', 'enable_tmdb_api', 'tmdb_api_key'];
         $settings = $this->fieldsData($fields);
 
         return view('setting::backend.setting.section-pages.module-setting', compact('settings'));

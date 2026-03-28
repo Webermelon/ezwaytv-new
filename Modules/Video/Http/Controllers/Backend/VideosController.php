@@ -17,6 +17,7 @@ use App\Services\ChatGTPService;
 use Modules\Entertainment\Models\Subtitle;
 use Illuminate\Support\Facades\Storage;
 use Modules\NotificationTemplate\Jobs\SendBulkNotification;
+use Modules\Categories\Models\Category;
 
 class VideosController extends Controller
 {
@@ -141,7 +142,8 @@ class VideosController extends Controller
         $mediaUrls = getMediaUrls();
         $assets = ['textarea'];
         $page_type='video';
-        return view('video::backend.video.create', compact('subtitle_language','upload_url_type','assets', 'plan', 'video_quality', 'module_title', 'mediaUrls', 'movie_language','download_url_type','page_type'));
+        $categories = Category::where('status', 1)->orderBy('name')->get();
+        return view('video::backend.video.create', compact('subtitle_language','upload_url_type','assets', 'plan', 'video_quality', 'module_title', 'mediaUrls', 'movie_language','download_url_type','page_type','categories'));
     }
 
     public function store(VideoRequest $request)
@@ -400,6 +402,10 @@ class VideosController extends Controller
 
     $message = trans('messages.create_form_video', ['type' => 'Video']);
 
+    // Sync categories
+    $categoryIds = $request->input('category_ids', []);
+    $video->categories()->sync($categoryIds);
+
     // Check if request is AJAX
     if ($request->ajax()) {
         return response()->json([
@@ -470,6 +476,8 @@ class VideosController extends Controller
                     ->get();
 
         $page_type='video';
+        $categories = Category::where('status', 1)->orderBy('name')->get();
+        $selectedCategoryIds = $data->categories->pluck('id')->toArray();
 
         return view('video::backend.video.edit', compact(
             'data',
@@ -483,7 +491,9 @@ class VideosController extends Controller
             'seo',
             'clips',
             'download_url_type',
-            'page_type'
+            'page_type',
+            'categories',
+            'selectedCategoryIds'
         ));
     }
 
@@ -809,6 +819,10 @@ class VideosController extends Controller
     }
 
     $message = trans('messages.update_form_video');
+
+    // Sync categories
+    $categoryIds = $request->input('category_ids', []);
+    $data->categories()->sync($categoryIds);
 
     // Check if request is AJAX
     if ($request->ajax()) {

@@ -97,6 +97,7 @@ Route::get('/tv-shows', [TvShowController::class, 'tvShowList'])->middleware('ch
 Route::get('/tvshow-details/{id}', [TvShowController::class, 'tvshowDetail'])->middleware('checkModule')->name('tvshow-details');
 Route::get('/episode-details/{id}', [TvShowController::class, 'episodeDetail'])->middleware('checkModule')->name('episode-details');
 Route::get('/videos', [VideoController::class, 'videoList'])->middleware('checkModule')->name('videos');
+Route::get('/videos/category/{slug}', [VideoController::class, 'videosByCategory'])->middleware('checkModule')->name('videos.by-category');
 Route::get('/video-details/{id}', [VideoController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
 Route::get('/pay-per-view', [PerviewPaymentController::class, 'peyPerView'])->name('pay-per-view');
 Route::get('/content/{type}', [FrontendController::class, 'contentList'])->middleware('checkModule')->name('content.list');

@@ -112,6 +112,7 @@ class VideoDetailResource extends JsonResource
             'is_clips_enabled' => $this->enable_clips,
             'bunny_video_url' => $this->bunny_video_url,
             'clips' => ClipResource::collection(($this->clips ?? collect())->where('content_type', 'video')->values()),
+            'categories' => ($this->relationLoaded('categories') ? $this->categories : collect())->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'slug' => $c->slug])->values(),
         ];
     }
 }
