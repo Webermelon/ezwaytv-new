@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Video\Http\Controllers\Backend\VideosController;
+use Modules\Video\Http\Controllers\Backend\CreatorChannelAdminController;
 
 
 
@@ -53,6 +54,17 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
 
     });
     Route::resource("videos", VideosController::class);
+
+  /*
+   * Creator Channels – admin management
+   */
+  Route::prefix('creator-channels')->as('creator-channels.')->group(function () {
+    Route::get('/', [CreatorChannelAdminController::class, 'index'])->name('index');
+    Route::get('{id}', [CreatorChannelAdminController::class, 'show'])->name('show');
+    Route::post('{id}/toggle-status', [CreatorChannelAdminController::class, 'toggleStatus'])->name('toggle-status');
+    Route::delete('{id}', [CreatorChannelAdminController::class, 'destroy'])->name('destroy');
+    Route::post('{id}/restore', [CreatorChannelAdminController::class, 'restore'])->name('restore');
+  });
 
 });
 

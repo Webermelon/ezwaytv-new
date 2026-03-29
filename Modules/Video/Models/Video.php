@@ -25,6 +25,7 @@ class Video extends BaseModel
         'name',
         'slug',
         'type',
+        'creator_channel_id',
         'description',
         'poster_url',
         'short_desc',
@@ -130,6 +131,11 @@ class Video extends BaseModel
     public function VideoStreamContentMappings()
     {
         return $this->hasMany(VideoStreamContentMapping::class,'video_id','id');
+    }
+
+    public function creatorChannel()
+    {
+        return $this->belongsTo(CreatorChannel::class, 'creator_channel_id', 'id');
     }
 
     public function plan()
