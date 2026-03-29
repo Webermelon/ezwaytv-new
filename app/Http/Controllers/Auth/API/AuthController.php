@@ -529,19 +529,33 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         }
 
 
-        // try {
+        try {
             $response = Password::sendResetLink($request->only('email'));
 
             return $response === Password::RESET_LINK_SENT
                 ? ApiResponse::success(null, __($response), 200)
                 : ApiResponse::error(__($response), 400);
-        // } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('API forgot password mail send failed: ' . $e->getMessage());
 
-        //     return response()->json([
-        //         'message' => 'There was an issue sending the email. Please check your SMTP configuration.',
-        //         'status' => false
-        //     ], 500);
-        // }
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('email_logs')) {
+                    \App\Models\EmailLog::create([
+                        'mailer' => config('mail.default'),
+                        'from_email' => config('mail.from.address'),
+                        'to_emails' => (string) $request->email,
+                        'subject' => 'Password Reset',
+                        'mailable_class' => 'ForgotPassword',
+                        'status' => 'failed',
+                        'payload' => $e->getMessage(),
+                        'sent_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $ignored) {
+            }
+
+            return ApiResponse::error('There was an issue sending the reset email. Please check SMTP configuration.', 500);
+        }
     }
 
 

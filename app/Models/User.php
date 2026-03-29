@@ -240,6 +240,30 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
             'email' => $this->getEmailForPasswordReset(),
         ], false));
 
+        // Always record that a password-reset email was triggered,
+        // even if SMTP/queue delivery fails later.
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('email_logs')) {
+                \App\Models\EmailLog::create([
+                    'mailer' => config('mail.default'),
+                    'from_email' => config('mail.from.address'),
+                    'to_emails' => (string) $this->getEmailForPasswordReset(),
+                    'subject' => 'Password Reset',
+                    'mailable_class' => 'forget_email_password',
+                    'status' => 'queued',
+                    'body' => '<p>Password reset was requested.</p><p>Reset link: <a href="' . e($url) . '">' . e($url) . '</a></p>',
+                    'payload' => json_encode([
+                        'notification_type' => 'forget_email_password',
+                        'reset_link' => $url,
+                        'reset_url' => $url,
+                        'email' => (string) $this->getEmailForPasswordReset(),
+                    ]),
+                    'sent_at' => now(),
+                ]);
+            }
+        } catch (\Throwable $ignored) {
+        }
+
         $data = [
             'notification_type' => 'forget_email_password',
             'user_id' => $this->id,

@@ -10,6 +10,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Backend\EmailLogController;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Backend\MobileSettingController;
@@ -148,6 +149,8 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 
 
         Route::resource("mobile-setting", MobileSettingController::class);
+        Route::get('email-logs', [EmailLogController::class, 'index'])->name('email-logs.index');
+        Route::get('email-logs/{id}', [EmailLogController::class, 'show'])->name('email-logs.show');
         Route::group(['prefix' => 'mobile-setting', 'as' => 'mobile-setting.'], function () {
             Route::get('get-dropdown-value/{id}', [MobileSettingController::class, 'getDropdownValue'])->name('get-dropdown-value');
 

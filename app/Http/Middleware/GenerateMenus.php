@@ -431,6 +431,15 @@ class GenerateMenus
                     'order' => 0,
                 ]);
 
+                $this->childMain($notification, [
+                    'icon' => 'ph ph-envelope-open',
+                    'title' => __('Email Logs'),
+                    'route' => 'backend.email-logs.index',
+                    'shortTitle' => 'EL',
+                    'active' => ['app/email-logs'],
+                    'order' => 0,
+                ]);
+
 
 
             $this->mainRoute($menu, [
@@ -439,6 +448,14 @@ class GenerateMenus
                 'route' => 'backend.settings.general',
                 'active' => 'app/setting/general-setting',
                 // 'permission' => ['view_setting'],
+                'order' => 0,
+            ]);
+
+            $this->mainRoute($menu, [
+                'icon' => 'ph ph-envelope-open',
+                'title' => __('Email Logs'),
+                'route' => 'backend.email-logs.index',
+                'active' => ['app/email-logs', 'app/email-logs/*'],
                 'order' => 0,
             ]);
 
