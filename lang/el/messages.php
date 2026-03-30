@@ -693,7 +693,7 @@ return [
   'enter_coupon_code' => 'Εισαγάγετε τον κωδικό κουπονιού',
   'apply_coupon' => 'Εφαρμογή κουπονιού',
   'customer_id' => 'Αριθμός πελάτη',
-  'cast_crew' => 'Ηθοποιοί/Πλήρωμα',
+  'cast_crew' => '',
   'birth_date' => 'Ημερομηνία γέννησης',
   'subscription_expiry' => 'Λήξη συνδρομής',
   'invoice' => 'Τιμολόγιο',

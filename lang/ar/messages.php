@@ -760,7 +760,7 @@ return [
   'enter_coupon_code' => 'أدخل رمز القسيمة',
   'apply_coupon' => 'تطبيق القسيمة',
   'customer_id' => 'معرّف العميل',
-  'cast_crew' => 'طاقم التمثيل',
+  'cast_crew' => '',
   'birth_date' => 'تاريخ الميلاد',
   'subscription_expiry' => 'انتهاء الاشتراك',
   'invoice' => 'فاتورة',

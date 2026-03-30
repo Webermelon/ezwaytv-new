@@ -689,7 +689,7 @@ return [
   'enter_coupon_code' => 'Entrez le code promo',
   'apply_coupon' => 'Appliquer le coupon',
   'customer_id' => 'ID client',
-  'cast_crew' => 'Casting/Équipe',
+  'cast_crew' => '',
   'birth_date' => 'Date de naissance',
   'subscription_expiry' => 'Expiration de l’abonnement',
   'invoice' => 'Facture',

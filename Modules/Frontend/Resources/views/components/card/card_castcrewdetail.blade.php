@@ -47,41 +47,61 @@
                     <h6 class="mb-0 fw-semibold font-size-16 heading-color">{{ $data['designation'] }}</h6>
                 </div>
             </div>
+            @if(!empty($data['dob']))
             <div class="d-inline-flex align-items-center gap-3 border-bottom py-3 flex-grow-1">
                 <i class="ph ph-cake"></i>
                 <div class="">
                     <h6 class="desc-title">{{__('messages.birth_date')}}</h6>
-                    <h6 class="mb-0 fw-semibold font-size-16 heading-color">{{  $data['dob'] ? formatDate($data['dob']) : '-' }}</h6>
+                    <h6 class="mb-0 fw-semibold font-size-16 heading-color">{{ formatDate($data['dob']) }}</h6>
                 </div>
             </div>
+            @endif
+
+            @if(!empty($data['place_of_birth']))
             <div class="d-inline-flex align-items-center gap-3 border-bottom py-3 flex-grow-1">
                 <i class="ph ph-map-pin-area"></i>
                 <div class="">
                     <h6 class="desc-title">{{__('messages.birth_place')}}</h6>
-                    <h6 class="mb-0 fw-semibold font-size-16 heading-color">{{  $data['place_of_birth'] ? $data['place_of_birth'] : '-'  }}</h6>
+                    <h6 class="mb-0 fw-semibold font-size-16 heading-color">{{ $data['place_of_birth'] }}</h6>
                 </div>
             </div>
+            @endif
         </div>
         <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 gy-3 mt-5">
+                @php
+                    $mc = intval($movieCount ?? 0);
+                    $tc = intval($tvshowCount ?? 0);
+                    $hasAny = $mc > 0 || $tc > 0;
+                @endphp
+
+                @if($mc > 0)
                 <div class="col">
                     <div class="counter-card">
-                        <h3 class="counter-title">{{$movieCount ?? 0}}</h3>
+                        <h3 class="counter-title">{{$mc}}</h3>
                         <p class="m-0 text-uppercase">{{__('messages.movie')}}</p>
                     </div>
                 </div>
+                @endif
+
+                @if($tc > 0)
                 <div class="col">
                     <div class="counter-card">
-                        <h3 class="counter-title">{{$tvshowCount ?? 0}}</h3>
+                        <h3 class="counter-title">{{$tc}}</h3>
                         <p class="m-0 text-uppercase">{{__('messages.tvshow')}}</p>
                     </div>
                 </div>
+                @endif
+
+                @if($hasAny && isset($averageRating) && $averageRating)
                 <div class="col">
                     <div class="counter-card">
-                        <h3 class="counter-title">{{ $averageRating ? round($averageRating, 1) : 0 }}</h3>
+                        <h3 class="counter-title">{{ round($averageRating, 1) }}</h3>
                         <p class="m-0 text-uppercase">{{__('messages.average_rating')}}</p>
                     </div>
                 </div>
-            @if($topGenres)
+                @endif
+
+            @if($hasAny && $topGenres)
                 <div class="col">
                     <div class="counter-card">
                         <h3 class="counter-title text-wrap">{{ $topGenres ?? null }}</h3>

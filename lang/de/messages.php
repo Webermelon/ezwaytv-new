@@ -689,7 +689,7 @@ return [
   'enter_coupon_code' => 'Gutscheincode eingeben',
   'apply_coupon' => 'Gutschein anwenden',
   'customer_id' => 'Kundennummer',
-  'cast_crew' => 'Besetzung/Team',
+  'cast_crew' => '',
   'birth_date' => 'Geburtsdatum',
   'subscription_expiry' => 'Ablauf des Abonnements',
   'invoice' => 'Rechnung',

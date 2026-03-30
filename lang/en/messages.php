@@ -890,7 +890,7 @@ return [
     'enter_coupon_code' => 'Enter coupon code',
     'apply_coupon' => 'Apply Coupon',
     'customer_id' => 'Customer ID',
-    'cast_crew' => 'Cast/Crew',
+    'cast_crew' => '',
     'birth_date' => 'Birth Date',
     'subscription_expiry' => 'Subscription Expiry',
     'invoice' => 'Invoice',

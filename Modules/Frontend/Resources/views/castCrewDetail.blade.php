@@ -19,7 +19,7 @@
     </div>
 
 
-    @if ($more_items != null)
+    @if ($more_items && $more_items->count() > 0)
         <div class="section-spacing px-0">
             <div class="container-fluid">
                 <div class="d-flex align-items-center justify-content-between my-3">
