@@ -67,8 +67,8 @@
                 </div>
                 <div class="col-md-12 col-lg-4">
                     <div class="mb-3">
-                        {{ html()->label(__('castcrew.lbl_dob') . '<span class="text-danger">*</span>', 'dob')->class('form-label') }}
-                        {{ html()->date('dob', $cast->dob)->class('form-control datetimepicker')->id('dob')->placeholder(__('placeholder.lbl_user_date_of_birth'))->attribute('required', 'required') }}
+                            {{ html()->label(__('castcrew.lbl_dob'), 'dob')->class('form-label') }}
+                            {{ html()->date('dob', $cast->dob)->class('form-control datetimepicker')->id('dob')->placeholder(__('placeholder.lbl_user_date_of_birth')) }}
                         @error('dob')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -88,8 +88,8 @@
                         @enderror
                     </div>
                     <div>
-                        {{ html()->label(__('castcrew.lbl_birth_place') . '<span class="text-danger">*</span>', 'name')->class('form-label') }}
-                        {{ html()->text('place_of_birth', $cast->place_of_birth)->class('form-control')->id('place_of_birth')->placeholder(__('placeholder.lbl_cast_place_of_birth'))->attribute('required', 'required') }}
+                            {{ html()->label(__('castcrew.lbl_birth_place'), 'name')->class('form-label') }}
+                            {{ html()->text('place_of_birth', $cast->place_of_birth)->class('form-control')->id('place_of_birth')->placeholder(__('placeholder.lbl_cast_place_of_birth')) }}
                         @error('place_of_birth')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -99,12 +99,12 @@
                 <div class="col-md-12">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2 flex-wrap">
-                            {{ html()->label(__('castcrew.lbl_bio') . ' <span class="text-danger">*</span>', 'bio')->class('form-label mb-0') }}
+                                {{ html()->label(__('castcrew.lbl_bio'), 'bio')->class('form-label mb-0') }}
                             <span class="text-primary cursor-pointer" id="GenrateshortDescription"><i class="ph ph-info"
                                     data-bs-toggle="tooltip" title="{{ __('messages.chatgpt_info') }}"></i>
                                 {{ __('messages.lbl_chatgpt') }}</span>
                         </div>
-                        {{ html()->textarea('bio', $cast->bio)->class('form-control')->id('bio')->placeholder(__('placeholder.lbl_cast_bio'))->rows('6')->attribute('required', 'required') }}
+                            {{ html()->textarea('bio', $cast->bio)->class('form-control')->id('bio')->placeholder(__('placeholder.lbl_cast_bio'))->rows('6') }}
                         @error('bio')
                             <span class="text-danger">{{ $message }}</span>
                         @enderror

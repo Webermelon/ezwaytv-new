@@ -16,10 +16,8 @@ class CastCrewRequest extends FormRequest
 
         $rules = [
             'name' => ['required'],
-            'bio' => ['required'],
             'type' => ['required'],
-            'dob' => ['required'],
-            'place_of_birth' => ['required'],
+            // Make bio, dob, and place_of_birth optional per request
         
         ];
 
@@ -36,10 +34,8 @@ class CastCrewRequest extends FormRequest
     {
         return [
             'name.required' => 'Name is required.',
-            'bio.required' =>'Bio is required',
             'type.required' =>'Type is required',
-            'dob.required' =>'Date Of Birth is required',
-            'place_of_birth.required'=>'Place Of Birth required'
+            // Optional: no validation messages for bio, dob, place_of_birth
 
         ];
     }
