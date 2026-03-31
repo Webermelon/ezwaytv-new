@@ -41,10 +41,23 @@ class SliderResourceV3 extends JsonResource
             $data = $data->toArray($request);
         }
 
+        // Decide which banner image to serve based on device type
+        $deviceType = function_exists('getDeviceType') ? getDeviceType($request) : null;
+
+        if ($deviceType === 'tv') {
+            $bannerImage = $this->poster_tv_url ?: $this->file_url ?: $this->poster_url;
+        } elseif ($deviceType === 'mobile') {
+            // For mobile web, prefer app banner (poster_url) since sizes match
+            $bannerImage = $this->poster_url ?: $this->file_url ?: $this->poster_tv_url;
+        } else {
+            // desktop and fallback
+            $bannerImage = $this->file_url ?: $this->poster_url ?: $this->poster_tv_url;
+        }
+
         return [
             'id' => $this->id,
             'title' => $this->name,
-            'file_url' => setBaseUrlWithFileName($this->file_url, 'image', 'banner'),
+            'file_url' => setBaseUrlWithFileName($bannerImage, 'image', 'banner'),
             'type' => $this->type,
 
             'data' => $data,
