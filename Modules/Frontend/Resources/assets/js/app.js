@@ -185,6 +185,11 @@ function slickBanner(isRTL) {
 
     addSliderSpacing(slideSpacing);
 
+    // ensure correct sizing after init and when images/styles finish loading
+    bannerSlider.on('init', function() {
+      try { bannerSlider.slick('setPosition'); } catch (e) {}
+    });
+
     bannerSlider.slick({
       fade: true,
       slidesToShow: 1,
@@ -199,6 +204,10 @@ function slickBanner(isRTL) {
       prevArrow: "<span class='slick-arrow-prev'><i class='ph ph-caret-left'></i></span>",
       nextArrow: "<span class='slick-arrow-next'><i class='ph ph-caret-right'></i></span>",
       rtl: isRTL,
+    });
+    // some environments initialize before images/styles loaded; set position on window load too
+    jQuery(window).on('load', function() {
+      try { bannerSlider.slick('setPosition'); } catch (e) {}
     });
   })
 }
