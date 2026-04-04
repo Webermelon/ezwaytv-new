@@ -22,6 +22,11 @@
         return sid;
     }
 
+    function getCsrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
     function post(endpoint, data) {
         return fetch(BASE_URL + endpoint, {
             method: 'POST',
@@ -29,6 +34,7 @@
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': getCsrfToken(),
             },
             credentials: 'same-origin',
             body: JSON.stringify(Object.assign({ session_id: getSessionId() }, data)),

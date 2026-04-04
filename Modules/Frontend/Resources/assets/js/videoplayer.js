@@ -272,6 +272,11 @@ document.addEventListener('DOMContentLoaded', function () {
   var currentCategoryId = videoEl.getAttribute('data-category-id') || '';
   var contentVideoType = videoEl.getAttribute('content-video-type') || '';
 
+  // Track page view immediately on load
+  if (contentId && contentType && typeof window.EzStats !== 'undefined') {
+    window.EzStats.trackView({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
+  }
+
   const access = document.querySelector('#videoPlayer').getAttribute('data-movie-access');
   const continueWatch = document.querySelector('#videoPlayer').getAttribute('data-continue-watch') === 'true';
   const videotype = document.querySelector('#videoPlayer').getAttribute('data-contentType');
@@ -341,6 +346,16 @@ document.addEventListener('DOMContentLoaded', function () {
   player.on('play', () => {
     if (!isIOS()) return;
     setTimeout(clearPosterForIOS, 150);
+  });
+
+  // Track play events – fires once per distinct source load, not on every resume
+  var _ezPlayTracked = false;
+  player.on('loadstart', function () { _ezPlayTracked = false; });
+  player.on('play', function () {
+    if (!_ezPlayTracked && contentId && contentType && typeof window.EzStats !== 'undefined') {
+      _ezPlayTracked = true;
+      window.EzStats.trackPlay({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
+    }
   });
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content')

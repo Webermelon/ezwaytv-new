@@ -217,7 +217,12 @@ class StatisticsController extends Controller
             $platform = 'tv';
         }
 
-        return compact('deviceType', 'browser', 'os', 'platform');
+        return [
+            'device_type' => $deviceType,
+            'browser'     => $browser,
+            'os'          => $os,
+            'platform'    => $platform,
+        ];
     }
 
     private function resolveCountry(string $ip): ?string
