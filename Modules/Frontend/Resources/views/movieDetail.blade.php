@@ -188,3 +188,9 @@
         </div>
     </div>
 @endsection
+
+@push('ezstats-meta')
+<script>
+    window._ezPageMeta = { content_type: 'movie', content_id: {{ (int)($data['id'] ?? 0) }} };
+</script>
+@endpush

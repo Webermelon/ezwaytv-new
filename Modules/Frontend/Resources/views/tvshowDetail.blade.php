@@ -185,3 +185,9 @@
 
 
 @endsection
+
+@push('ezstats-meta')
+<script>
+    window._ezPageMeta = { content_type: 'tvshow', content_id: {{ (int)($data['id'] ?? 0) }} };
+</script>
+@endpush

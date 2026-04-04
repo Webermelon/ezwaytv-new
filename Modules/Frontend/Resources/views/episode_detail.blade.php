@@ -307,3 +307,9 @@
         });
     </script>
 @endsection
+
+@push('ezstats-meta')
+<script>
+    window._ezPageMeta = { content_type: 'episode', content_id: {{ (int)($data['id'] ?? 0) }} };
+</script>
+@endpush

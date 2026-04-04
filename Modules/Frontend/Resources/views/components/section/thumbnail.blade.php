@@ -61,7 +61,6 @@
     </div>
 </div>
 <!-- Include Video.js script if not already -->
-<script src="{{ asset('js/ezstats.js') }}"></script>
 <script src="{{ mix('js/videoplayer.min.js') }}"></script>
 <script>
     var isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};

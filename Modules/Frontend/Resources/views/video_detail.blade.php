@@ -166,3 +166,9 @@
                     });
     </script>
 @endpush
+
+@push('ezstats-meta')
+<script>
+    window._ezPageMeta = { content_type: 'video', content_id: {{ (int)($data['id'] ?? 0) }} };
+</script>
+@endpush

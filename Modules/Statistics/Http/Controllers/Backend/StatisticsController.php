@@ -72,13 +72,14 @@ class StatisticsController extends Controller
         }
 
         return response()->json([
-            'total_views'     => number_format($totalPlays),         // plays = the "views" metric users expect
-            'total_plays'     => number_format($totalPlays),
-            'page_views'      => number_format($totalPageViews),
-            'unique_visitors' => number_format($uniqueVisitors > 0 ? $uniqueVisitors : $uniqueViewers),
-            'watch_hours'     => number_format($watchHours, 1),
-            'views_change'    => $prevPlays > 0 ? round((($totalPlays - $prevPlays) / $prevPlays) * 100, 1) : null,
-            'plays_change'    => $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
+            'total_views'      => number_format($totalPlays),
+            'total_plays'      => number_format($totalPlays),
+            'page_views'       => number_format($totalPageViews),
+            'unique_visitors'  => number_format($uniqueVisitors > 0 ? $uniqueVisitors : $uniqueViewers),
+            'watch_hours'      => number_format($watchHours, 1),
+            'views_change'     => $prevPlays > 0 ? round((($totalPlays - $prevPlays) / $prevPlays) * 100, 1) : null,
+            'plays_change'     => $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
+            'page_views_change'=> $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
         ]);
     }
 
@@ -170,10 +171,12 @@ class StatisticsController extends Controller
         }
 
         $results = $rows->map(function ($row) {
+            [$name, $url] = $this->resolveContentInfo($row->content_type, $row->content_id);
             return [
                 'content_type' => $row->content_type,
                 'content_id'   => $row->content_id,
-                'name'         => $this->resolveContentName($row->content_type, $row->content_id),
+                'name'         => $name,
+                'url'          => $url,
                 'total'        => $row->total,
             ];
         });
@@ -345,6 +348,91 @@ class StatisticsController extends Controller
     }
 
     /**
+     * AJAX: Individual page-view records (for detail table).
+     */
+    public function pageViews(Request $request)
+    {
+        $period = $request->input('period', 'week');
+        $limit  = min((int) $request->input('limit', 50), 200);
+        $offset = (int) $request->input('offset', 0);
+        [$startDate, $endDate] = $this->resolvePeriod($period);
+
+        $rows = DB::table('stat_page_views as pv')
+            ->leftJoin('users as u', 'u.id', '=', 'pv.user_id')
+            ->select([
+                'pv.id', 'pv.content_type', 'pv.content_id',
+                'pv.page_name', 'pv.route_name', 'pv.page_url',
+                'pv.device_type', 'pv.browser', 'pv.os', 'pv.platform',
+                'pv.country_code', 'pv.ip_address', 'pv.view_date', 'pv.created_at',
+                DB::raw("COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))), ''), u.username, u.email) as user_name"),
+                'u.email as user_email',
+            ])
+            ->when($startDate, fn($q) => $q->where('pv.view_date', '>=', $startDate))
+            ->when($endDate,   fn($q) => $q->where('pv.view_date', '<=', $endDate))
+            ->orderByDesc('pv.created_at')
+            ->limit($limit)->offset($offset)
+            ->get();
+
+        $total = DB::table('stat_page_views')
+            ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
+            ->when($endDate,   fn($q) => $q->where('view_date', '<=', $endDate))
+            ->count();
+
+        $rows = $rows->map(function ($row) {
+            $row->content_name = ($row->content_id && $row->content_type)
+                ? $this->resolveContentName($row->content_type, (int) $row->content_id)
+                : null;
+            return $row;
+        });
+
+        return response()->json(compact('rows', 'total'));
+    }
+
+    /**
+     * AJAX: Individual play-event records (for detail table).
+     */
+    public function playEvents(Request $request)
+    {
+        $period = $request->input('period', 'week');
+        $limit  = min((int) $request->input('limit', 50), 200);
+        $offset = (int) $request->input('offset', 0);
+        [$startDate, $endDate] = $this->resolvePeriod($period);
+
+        $rows = DB::table('stat_play_events as pe')
+            ->leftJoin('users as u', 'u.id', '=', 'pe.user_id')
+            ->select([
+                'pe.id', 'pe.content_type', 'pe.content_id',
+                'pe.device_type', 'pe.platform', 'pe.country_code',
+                'pe.ip_address', 'pe.watch_seconds', 'pe.quality',
+                'pe.play_date', 'pe.created_at',
+                DB::raw("COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))), ''), u.username, u.email) as user_name"),
+                'u.email as user_email',
+            ])
+            ->when($startDate, fn($q) => $q->where('pe.play_date', '>=', $startDate))
+            ->when($endDate,   fn($q) => $q->where('pe.play_date', '<=', $endDate))
+            ->orderByDesc('pe.created_at')
+            ->limit($limit)->offset($offset)
+            ->get();
+
+        $total = DB::table('stat_play_events')
+            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
+            ->when($endDate,   fn($q) => $q->where('play_date', '<=', $endDate))
+            ->count();
+
+        $rows = $rows->map(function ($row) {
+            $row->content_name = ($row->content_id && $row->content_type)
+                ? $this->resolveContentName($row->content_type, (int) $row->content_id)
+                : null;
+            $row->watch_time = $row->watch_seconds > 0
+                ? gmdate('H:i:s', $row->watch_seconds)
+                : '—';
+            return $row;
+        });
+
+        return response()->json(compact('rows', 'total'));
+    }
+
+    /**
      * Statistics settings page.
      */
     public function settings()
@@ -435,8 +523,15 @@ class StatisticsController extends Controller
 
     private function resolveContentName(string $contentType, int $contentId): string
     {
+        return $this->resolveContentInfo($contentType, $contentId)[0];
+    }
+
+    private function resolveContentInfo(string $contentType, int $contentId): array
+    {
         $tableMap = [
             'video'         => 'videos',
+            'movie'         => 'entertainments',
+            'tvshow'        => 'entertainments',
             'entertainment' => 'entertainments',
             'episode'       => 'episodes',
             'livetv'        => 'live_tv_channels',
@@ -445,10 +540,33 @@ class StatisticsController extends Controller
 
         $table = $tableMap[$contentType] ?? null;
         if (!$table) {
-            return "#{$contentId}";
+            return ["#{$contentId}", null];
         }
 
-        $row = DB::table($table)->where('id', $contentId)->first(['name']);
-        return $row->name ?? "#{$contentId}";
+        $row = DB::table($table)->where('id', $contentId)->first(['name', 'slug', 'type']);
+        if (!$row) {
+            return ["#{$contentId}", null];
+        }
+
+        $name = $row->name ?? "#{$contentId}";
+        $slug = $row->slug ?? $contentId;
+        $type = $row->type ?? $contentType;
+
+        $url = match ($contentType) {
+            'video'         => url('/video-details/' . $slug),
+            'episode'       => url('/episode-details/' . $slug),
+            'livetv',
+            'livetvchannel' => url('/livetv-details/' . $contentId),
+            'movie'         => url('/movie-details/' . $slug),
+            'tvshow'        => url('/tvshow-details/' . $slug),
+            'entertainment' => match ($type) {
+                'movie'  => url('/movie-details/' . $slug),
+                'tvshow' => url('/tvshow-details/' . $slug),
+                default  => url('/movie-details/' . $slug),
+            },
+            default => null,
+        };
+
+        return [$name, $url];
     }
 }

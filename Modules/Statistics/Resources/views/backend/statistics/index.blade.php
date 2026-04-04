@@ -86,19 +86,9 @@
 
 {{-- ── Stat Cards ────────────────────────────────────── --}}
 <div class="row g-3 mb-4" id="statCards">
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl">
         <div class="stat-card h-100">
             <div class="stat-icon" style="background:rgba(99,102,241,.2); color:#818cf8;">
-                <i class="ph ph-eye"></i>
-            </div>
-            <div class="stat-value" id="val-views">—</div>
-            <div class="stat-label">Total Views</div>
-            <span class="stat-change neutral" id="chg-views" style="display:none"></span>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card h-100">
-            <div class="stat-icon" style="background:rgba(236,72,153,.2); color:#f472b6;">
                 <i class="ph ph-play-circle"></i>
             </div>
             <div class="stat-value" id="val-plays">—</div>
@@ -106,7 +96,17 @@
             <span class="stat-change neutral" id="chg-plays" style="display:none"></span>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl">
+        <div class="stat-card h-100">
+            <div class="stat-icon" style="background:rgba(236,72,153,.2); color:#f472b6;">
+                <i class="ph ph-eye"></i>
+            </div>
+            <div class="stat-value" id="val-pageviews">—</div>
+            <div class="stat-label">Page Views</div>
+            <span class="stat-change neutral" id="chg-pageviews" style="display:none"></span>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl">
         <div class="stat-card h-100">
             <div class="stat-icon" style="background:rgba(20,184,166,.2); color:#2dd4bf;">
                 <i class="ph ph-users"></i>
@@ -115,13 +115,23 @@
             <div class="stat-label">Unique Visitors</div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
+    <div class="col-sm-6 col-xl">
         <div class="stat-card h-100">
             <div class="stat-icon" style="background:rgba(245,158,11,.2); color:#fbbf24;">
                 <i class="ph ph-clock"></i>
             </div>
             <div class="stat-value" id="val-hours">—</div>
             <div class="stat-label">Watch Hours</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl">
+        <div class="stat-card h-100">
+            <div class="stat-icon" style="background:rgba(16,185,129,.2); color:#34d399;">
+                <i class="ph ph-chart-line"></i>
+            </div>
+            <div class="stat-value" id="val-views">—</div>
+            <div class="stat-label">Total Views</div>
+            <span class="stat-change neutral" id="chg-views" style="display:none"></span>
         </div>
     </div>
 </div>
@@ -220,7 +230,7 @@
 </div>
 
 {{-- ── Top Users Table ───────────────────────────────── --}}
-<div class="row g-3 mb-5">
+<div class="row g-3 mb-4">
     <div class="col-12">
         <div class="chart-card">
             <h6 class="mb-3 fw-semibold">Top Viewers</h6>
@@ -238,6 +248,77 @@
                         <tr><td colspan="4" class="text-center py-4 text-muted">Loading…</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ── Individual Page Visits ────────────────────────── --}}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <h6 class="mb-0 fw-semibold"><i class="ph ph-browsers me-1"></i>Individual Page Visits</h6>
+                <span class="text-muted small" id="pvTotal"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table stat-table mb-0" style="font-size:.84rem">
+                    <thead>
+                        <tr>
+                            <th>Page / Content</th>
+                            <th>Route</th>
+                            <th>User</th>
+                            <th>Device</th>
+                            <th>Browser / OS</th>
+                            <th>Country</th>
+                            <th>Date &amp; Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pvBody">
+                        <tr><td colspan="7" class="text-center py-4 text-muted">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <button class="btn btn-sm btn-outline-secondary" id="pvPrev" disabled>‹ Prev</button>
+                <span class="text-muted small" id="pvPage"></span>
+                <button class="btn btn-sm btn-outline-secondary" id="pvNext">Next ›</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ── Individual Play Events ────────────────────────── --}}
+<div class="row g-3 mb-5">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <h6 class="mb-0 fw-semibold"><i class="ph ph-play-circle me-1"></i>Individual Play Events</h6>
+                <span class="text-muted small" id="peTotal"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table stat-table mb-0" style="font-size:.84rem">
+                    <thead>
+                        <tr>
+                            <th>Content</th>
+                            <th>Type</th>
+                            <th>User</th>
+                            <th>Device</th>
+                            <th>Platform</th>
+                            <th>Watch Time</th>
+                            <th>Country</th>
+                            <th>Date &amp; Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="peBody">
+                        <tr><td colspan="8" class="text-center py-4 text-muted">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <button class="btn btn-sm btn-outline-secondary" id="pePrev" disabled>‹ Prev</button>
+                <span class="text-muted small" id="pePage"></span>
+                <button class="btn btn-sm btn-outline-secondary" id="peNext">Next ›</button>
             </div>
         </div>
     </div>
@@ -323,10 +404,11 @@
     function loadOverview() {
         const period = getPeriod();
         fetchJson(`${base}/overview`, { period }).then(data => {
-            document.getElementById('val-views').textContent    = data.total_views;
-            document.getElementById('val-plays').textContent    = data.total_plays;
-            document.getElementById('val-visitors').textContent = data.unique_visitors;
-            document.getElementById('val-hours').textContent    = data.watch_hours + ' h';
+            document.getElementById('val-plays').textContent     = data.total_plays;
+            document.getElementById('val-pageviews').textContent = data.page_views;
+            document.getElementById('val-visitors').textContent  = data.unique_visitors;
+            document.getElementById('val-hours').textContent     = data.watch_hours + ' h';
+            document.getElementById('val-views').textContent     = data.total_views;
 
             const setChange = (elId, val) => {
                 if (val === null) return;
@@ -338,8 +420,9 @@
                 el.style.display = 'inline-flex';
             };
 
-            setChange('chg-views', data.views_change);
-            setChange('chg-plays', data.plays_change);
+            setChange('chg-views',     data.views_change);
+            setChange('chg-plays',     data.plays_change);
+            setChange('chg-pageviews', data.page_views_change);
         });
     }
 
@@ -442,9 +525,12 @@
             }
             tbody.innerHTML = data.map((row, i) => {
                 const rankClass = i === 0 ? 'badge-1' : i === 1 ? 'badge-2' : i === 2 ? 'badge-3' : 'badge-n';
+                const nameHtml = row.url
+                    ? `<a href="${escHtml(row.url)}" target="_blank" class="text-decoration-none fw-medium">${escHtml(row.name)}</a>`
+                    : `<span class="fw-medium">${escHtml(row.name)}</span>`;
                 return `<tr>
                     <td><span class="rank-badge ${rankClass}">${i + 1}</span></td>
-                    <td class="fw-medium">${escHtml(row.name)}</td>
+                    <td>${nameHtml}</td>
                     <td><span class="type-pill ${escHtml(row.content_type)}">${escHtml(row.content_type)}</span></td>
                     <td class="text-end fw-bold">${Number(row.total).toLocaleString()}</td>
                 </tr>`;
@@ -484,8 +570,98 @@
         return d.innerHTML;
     }
 
+    // ── Page Views Detail Table ───────────────────────────
+    const PV_LIMIT = 50;
+    let pvOffset = 0, pvTotal = 0;
+
+    function loadPageViews() {
+        const period = getPeriod();
+        const tbody  = document.getElementById('pvBody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr>';
+
+        fetchJson(`${base}/page-views`, { period, limit: PV_LIMIT, offset: pvOffset }).then(data => {
+            pvTotal = data.total;
+            document.getElementById('pvTotal').textContent = `${pvTotal.toLocaleString()} total records`;
+            const page = Math.floor(pvOffset / PV_LIMIT) + 1;
+            const pages = Math.ceil(pvTotal / PV_LIMIT) || 1;
+            document.getElementById('pvPage').textContent = `Page ${page} of ${pages}`;
+            document.getElementById('pvPrev').disabled = pvOffset === 0;
+            document.getElementById('pvNext').disabled = pvOffset + PV_LIMIT >= pvTotal;
+
+            if (!data.rows.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No data for this period</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.rows.map(row => {
+                const pageLabel = row.page_name || row.page_url || row.route_name || '—';
+                const contentLabel = row.content_name ? `<span class="text-muted small">${escHtml(row.content_type)}: ${escHtml(row.content_name)}</span>` : '';
+                const user = row.user_name ? `<div>${escHtml(row.user_name)}</div><div class="text-muted small">${escHtml(row.user_email || '')}</div>` : `<span class="text-muted">Guest</span>`;
+                const device = `${escHtml(row.device_type || '—')}`;
+                const browserOs = `${escHtml(row.browser || '—')} / ${escHtml(row.os || '—')}`;
+                const dt = row.created_at ? row.created_at.replace('T', ' ').substring(0, 16) : row.view_date;
+                return `<tr>
+                    <td><div class="fw-medium">${escHtml(pageLabel)}</div>${contentLabel}</td>
+                    <td><code class="small">${escHtml(row.route_name || '—')}</code></td>
+                    <td>${user}</td>
+                    <td><span class="type-pill ${escHtml(row.device_type || '')}">${device}</span></td>
+                    <td>${browserOs}</td>
+                    <td>${escHtml(row.country_code || '—')}</td>
+                    <td class="text-nowrap">${escHtml(dt)}</td>
+                </tr>`;
+            }).join('');
+        });
+    }
+
+    document.getElementById('pvPrev').addEventListener('click', () => { pvOffset = Math.max(0, pvOffset - PV_LIMIT); loadPageViews(); });
+    document.getElementById('pvNext').addEventListener('click', () => { if (pvOffset + PV_LIMIT < pvTotal) { pvOffset += PV_LIMIT; loadPageViews(); } });
+
+    // ── Play Events Detail Table ──────────────────────────
+    const PE_LIMIT = 50;
+    let peOffset = 0, peTotal = 0;
+
+    function loadPlayEvents() {
+        const period = getPeriod();
+        const tbody  = document.getElementById('peBody');
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
+
+        fetchJson(`${base}/play-events`, { period, limit: PE_LIMIT, offset: peOffset }).then(data => {
+            peTotal = data.total;
+            document.getElementById('peTotal').textContent = `${peTotal.toLocaleString()} total records`;
+            const page = Math.floor(peOffset / PE_LIMIT) + 1;
+            const pages = Math.ceil(peTotal / PE_LIMIT) || 1;
+            document.getElementById('pePage').textContent = `Page ${page} of ${pages}`;
+            document.getElementById('pePrev').disabled = peOffset === 0;
+            document.getElementById('peNext').disabled = peOffset + PE_LIMIT >= peTotal;
+
+            if (!data.rows.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">No data for this period</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.rows.map(row => {
+                const contentLabel = row.content_name || `#${row.content_id}`;
+                const user = row.user_name ? `<div>${escHtml(row.user_name)}</div><div class="text-muted small">${escHtml(row.user_email || '')}</div>` : `<span class="text-muted">Guest</span>`;
+                const dt = row.created_at ? row.created_at.replace('T', ' ').substring(0, 16) : row.play_date;
+                return `<tr>
+                    <td class="fw-medium">${escHtml(contentLabel)}</td>
+                    <td><span class="type-pill ${escHtml(row.content_type || '')}">${escHtml(row.content_type || '—')}</span></td>
+                    <td>${user}</td>
+                    <td>${escHtml(row.device_type || '—')}</td>
+                    <td>${escHtml(row.platform || '—')}</td>
+                    <td>${escHtml(row.watch_time || '—')}</td>
+                    <td>${escHtml(row.country_code || '—')}</td>
+                    <td class="text-nowrap">${escHtml(dt)}</td>
+                </tr>`;
+            }).join('');
+        });
+    }
+
+    document.getElementById('pePrev').addEventListener('click', () => { peOffset = Math.max(0, peOffset - PE_LIMIT); loadPlayEvents(); });
+    document.getElementById('peNext').addEventListener('click', () => { if (peOffset + PE_LIMIT < peTotal) { peOffset += PE_LIMIT; loadPlayEvents(); } });
+
     // ── Load All ──────────────────────────────────────────
     function loadAll() {
+        pvOffset = 0;
+        peOffset = 0;
         loadOverview();
         loadMainChart();
         loadDeviceChart();
@@ -494,6 +670,8 @@
         loadCountriesChart();
         loadTopContent();
         loadTopUsers();
+        loadPageViews();
+        loadPlayEvents();
     }
 
     // ── Event Listeners ───────────────────────────────────

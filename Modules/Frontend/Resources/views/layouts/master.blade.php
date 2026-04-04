@@ -405,6 +405,27 @@
     <script src="{{ asset('js/script.js') }}" defer></script>
     @stack('after-scripts')
 
+    {{-- EzStats: global page-view tracker --}}
+    <script src="{{ asset('js/ezstats.js') }}"></script>
+    <script>
+        (function () {
+            var routeName = @json(Route::currentRouteName() ?? 'unknown');
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof window.EzStats === 'undefined') return;
+                // _ezPageMeta may be set by detail pages via @push('ezstats-meta')
+                var meta = window._ezPageMeta || {};
+                var pageTitle = document.title || routeName;
+                window.EzStats.trackView(Object.assign({
+                    page_name: pageTitle,
+                    route_name: routeName,
+                    page_url: window.location.href,
+                    referrer: document.referrer || '',
+                }, meta));
+            });
+        })();
+    </script>
+    @stack('ezstats-meta')
+
     {{-- Custom JS from admin settings (wrapped in <script> like auth/guest layouts) --}}
     <script>
         {!! setting('custom_js_block') !!}

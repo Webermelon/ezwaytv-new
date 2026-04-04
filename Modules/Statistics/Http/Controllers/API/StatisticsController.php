@@ -53,6 +53,8 @@ class StatisticsController extends Controller
             'platform'     => $request->input('platform', $ua['platform']),
             'referrer'     => $request->input('referrer'),
             'page_url'     => $request->input('page_url'),
+            'page_name'    => $request->input('page_name'),
+            'route_name'   => $request->input('route_name'),
             'session_id'   => $request->input('session_id'),
             'view_date'    => now()->toDateString(),
         ]);

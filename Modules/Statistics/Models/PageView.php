@@ -24,6 +24,8 @@ class PageView extends Model
         'platform',
         'referrer',
         'page_url',
+        'page_name',
+        'route_name',
         'session_id',
         'view_date',
     ];
