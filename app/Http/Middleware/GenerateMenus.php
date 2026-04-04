@@ -507,6 +507,17 @@ class GenerateMenus
                 'order' => 0,
             ]);
 
+            if (auth()->user()->hasRole('admin') || auth()->user()->hasRole('demo_admin')) {
+                $this->staticMenu($menu, ['title' => 'Analytics', 'order' => 0]);
+                $this->mainRoute($menu, [
+                    'icon' => 'ph ph-chart-bar',
+                    'title' => 'Statistics',
+                    'route' => 'backend.statistics.index',
+                    'active' => ['app/statistics', 'app/statistics/*'],
+                    'order' => 0,
+                ]);
+            }
+
 
 
 

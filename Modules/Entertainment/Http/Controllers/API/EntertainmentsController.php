@@ -2134,6 +2134,43 @@ class EntertainmentsController extends Controller
             $message = __('movie.already_added');
         }
 
+        // Also record in stat_play_events for richer analytics (device/platform/country breakdown)
+        try {
+            $ip = $request->header('X-Forwarded-For') ?? $request->ip();
+            $ip = trim(explode(',', $ip)[0]);
+            $ua = $request->userAgent() ?? '';
+
+            $deviceType = 'mobile';
+            if (preg_match('/TV|SmartTV|SMART-TV|Tizen|WebOS|HbbTV/i', $ua)) {
+                $deviceType = 'tv';
+            } elseif (preg_match('/Tablet|iPad/i', $ua)) {
+                $deviceType = 'tablet';
+            }
+
+            $platform = 'android';
+            if (preg_match('/Darwin|CFNetwork/i', $ua)) {
+                $platform = 'ios';
+            } elseif ($deviceType === 'tv') {
+                $platform = 'tv';
+            } elseif (preg_match('/Mozilla|Chrome|Safari/i', $ua) && !preg_match('/Mobile/i', $ua)) {
+                $platform = 'web';
+            }
+
+            \Modules\Statistics\Models\PlayEvent::create([
+                'content_type' => 'entertainment',
+                'content_id'   => $request->entertainment_id,
+                'user_id'      => $user->id,
+                'ip_address'   => $ip,
+                'device_type'  => $deviceType,
+                'platform'     => $platform,
+                'watch_seconds' => 0,
+                'play_date'    => now()->toDateString(),
+            ]);
+        } catch (\Throwable $e) {
+            // Never break the original request due to stats failure
+            \Log::warning('Statistics hook failed: ' . $e->getMessage());
+        }
+
         return ApiResponse::success(null, $message, 200);
     }
     public function deleteReminder(Request $request)

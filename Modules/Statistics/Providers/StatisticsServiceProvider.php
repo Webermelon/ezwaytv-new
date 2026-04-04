@@ -1,0 +1,78 @@
+<?php
+
+namespace Modules\Statistics\Providers;
+
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\ServiceProvider;
+
+class StatisticsServiceProvider extends ServiceProvider
+{
+    protected $moduleName = 'Statistics';
+    protected $moduleNameLower = 'statistics';
+
+    public function boot()
+    {
+        $this->registerTranslations();
+        $this->registerConfig();
+        $this->registerViews();
+        $this->loadMigrationsFrom(base_path('Modules/Statistics/database/migrations'));
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Modules\Statistics\Console\PruneStatisticsCommand::class,
+            ]);
+        }
+    }
+
+    public function register()
+    {
+        $this->app->register(RouteServiceProvider::class);
+    }
+
+    protected function registerConfig()
+    {
+        $this->publishes([
+            base_path('Modules/Statistics/Config/config.php') => config_path($this->moduleNameLower . '.php'),
+        ], 'config');
+        $this->mergeConfigFrom(base_path('Modules/Statistics/Config/config.php'), $this->moduleNameLower);
+    }
+
+    public function registerViews()
+    {
+        $viewPath = resource_path('views/modules/' . $this->moduleNameLower);
+        $sourcePath = base_path('Modules/Statistics/Resources/views');
+
+        $this->publishes([
+            $sourcePath => $viewPath,
+        ], ['views', $this->moduleNameLower . '-module-views']);
+
+        $this->loadViewsFrom(array_merge($this->getPublishableViewPaths(), [$sourcePath]), $this->moduleNameLower);
+    }
+
+    public function registerTranslations()
+    {
+        $langPath = resource_path('lang/modules/' . $this->moduleNameLower);
+
+        if (is_dir($langPath)) {
+            $this->loadTranslationsFrom($langPath, $this->moduleNameLower);
+        } else {
+            $this->loadTranslationsFrom(base_path('Modules/Statistics/lang'), $this->moduleNameLower);
+        }
+    }
+
+    public function provides()
+    {
+        return [];
+    }
+
+    private function getPublishableViewPaths(): array
+    {
+        $paths = [];
+        foreach (Config::get('view.paths') as $path) {
+            if (is_dir($path . '/modules/' . $this->moduleNameLower)) {
+                $paths[] = $path . '/modules/' . $this->moduleNameLower;
+            }
+        }
+        return $paths;
+    }
+}

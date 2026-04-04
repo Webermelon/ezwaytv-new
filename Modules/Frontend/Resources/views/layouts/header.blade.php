@@ -1014,6 +1014,7 @@
 
             fetch(apiUrl, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                         'Authorization': 'Bearer ' + window.userApiToken

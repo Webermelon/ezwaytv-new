@@ -30,6 +30,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('reminder:notify')->dailyAt('10:00')->description('Send upcoming content reminders');
         $schedule->command('continuewatch:notify')->dailyAt('11:00')->description('Send continue watching reminders');
         $schedule->command('streamit:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
+        $schedule->command('statistics:prune')->weeklyOn(0, '02:00')->description('Prune old statistics records');
 
         $schedule->call(function () {
             \App\Models\Device::whereNotNull('session_id')

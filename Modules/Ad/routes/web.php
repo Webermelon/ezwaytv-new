@@ -43,7 +43,6 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
       Route::get("index_list", [AdsController::class, 'index_list'])->name("index_list");
       Route::get("index_data", [AdsController::class, 'index_data'])->name("index_data");
       Route::get('export', [AdsController::class, 'export'])->name('export');
-      Route::get('ads/{' . 'ads' . '}/edit', [AdsController::class, 'edit'])->name('edit');
       Route::post('bulk-action', [AdsController::class, 'bulk_action'])->name('bulk_action');
       Route::post('restore/{id}', [AdsController::class, 'restore'])->name('restore');
       Route::delete('force-delete/{id}', [AdsController::class, 'forceDelete'])->name('force_delete');
@@ -54,7 +53,6 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
       Route::get("index_list", [VastAdsSettingController::class, 'index_list'])->name("index_list");
       Route::get("index_data", [VastAdsSettingController::class, 'index_data'])->name("index_data");
       Route::get('export', [VastAdsSettingController::class, 'export'])->name('export');
-      Route::get('ads/{' . 'ads' . '}/edit', [VastAdsSettingController::class, 'edit'])->name('edit');
       Route::post('bulk-action', [VastAdsSettingController::class, 'bulk_action'])->name('bulk_action');
       Route::post('restore/{id}', [VastAdsSettingController::class, 'restore'])->name('restore');
       Route::delete('force-delete/{id}', [VastAdsSettingController::class, 'forceDelete'])->name('force_delete');
@@ -71,7 +69,6 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
       Route::get("index_list", [CustomAdsSettingController::class, 'index_list'])->name("index_list");
       Route::get("index_data", [CustomAdsSettingController::class, 'index_data'])->name("index_data");
       Route::get('export', [CustomAdsSettingController::class, 'export'])->name('export');
-      Route::get('ads/{' . 'ads' . '}/edit', [CustomAdsSettingController::class, 'edit'])->name('edit');
       Route::post('bulk-action', [CustomAdsSettingController::class, 'bulk_action'])->name('bulk_action');
       Route::post('restore/{id}', [CustomAdsSettingController::class, 'restore'])->name('restore');
       Route::delete('force-delete/{id}', [CustomAdsSettingController::class, 'forceDelete'])->name('force_delete');

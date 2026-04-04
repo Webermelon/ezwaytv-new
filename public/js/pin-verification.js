@@ -248,6 +248,7 @@ class PinVerification {
         const response = await fetch(`${baseUrl}/api/verify-pin`, {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Authorization': 'Bearer ' + window.userApiToken
@@ -284,6 +285,7 @@ switchProfile(id, skipRedirect = false, formData = null) {
     return fetch(apiUrl, {
         method: 'POST',
         body: formData,
+        credentials: 'same-origin',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             'Authorization': 'Bearer ' + window.userApiToken

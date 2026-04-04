@@ -25,5 +25,6 @@
     "Coupon": true,
     "Ad": true,
     "SEO": true,
-    "Onboarding": true
+    "Onboarding": true,
+    "Statistics": true
 }
