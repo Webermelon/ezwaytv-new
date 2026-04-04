@@ -349,8 +349,12 @@
     function fetchJson(url, params = {}) {
         const qs = new URLSearchParams(params).toString();
         return fetch(`${url}?${qs}`, {
+            credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-        }).then(r => r.json());
+        }).then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).catch(err => { console.error('fetchJson error', url, err); return null; });
     }
 
     // ── ApexCharts base config ────────────────────────────
@@ -580,6 +584,7 @@
         tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr>';
 
         fetchJson(`${base}/page-views`, { period, limit: PV_LIMIT, offset: pvOffset }).then(data => {
+            if (!data) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-danger">Failed to load data</td></tr>'; return; }
             pvTotal = data.total;
             document.getElementById('pvTotal').textContent = `${pvTotal.toLocaleString()} total records`;
             const page = Math.floor(pvOffset / PV_LIMIT) + 1;
@@ -625,6 +630,7 @@
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-muted">Loading…</td></tr>';
 
         fetchJson(`${base}/play-events`, { period, limit: PE_LIMIT, offset: peOffset }).then(data => {
+            if (!data) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3 text-danger">Failed to load data</td></tr>'; return; }
             peTotal = data.total;
             document.getElementById('peTotal').textContent = `${peTotal.toLocaleString()} total records`;
             const page = Math.floor(peOffset / PE_LIMIT) + 1;

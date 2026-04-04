@@ -534,8 +534,8 @@ class StatisticsController extends Controller
             'tvshow'        => 'entertainments',
             'entertainment' => 'entertainments',
             'episode'       => 'episodes',
-            'livetv'        => 'live_tv_channels',
-            'livetvchannel' => 'live_tv_channels',
+            'livetv'        => 'live_tv_channel',
+            'livetvchannel' => 'live_tv_channel',
         ];
 
         $table = $tableMap[$contentType] ?? null;
@@ -543,7 +543,11 @@ class StatisticsController extends Controller
             return ["#{$contentId}", null];
         }
 
-        $row = DB::table($table)->where('id', $contentId)->first(['name', 'slug', 'type']);
+        $columns = in_array($contentType, ['livetv', 'livetvchannel'])
+            ? ['name', 'slug']
+            : ['name', 'slug', 'type'];
+
+        $row = DB::table($table)->where('id', $contentId)->first($columns);
         if (!$row) {
             return ["#{$contentId}", null];
         }
