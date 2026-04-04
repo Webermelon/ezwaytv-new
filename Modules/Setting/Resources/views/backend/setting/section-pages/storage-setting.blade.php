@@ -226,6 +226,44 @@
             </div>
         </div>
 
+        <div class="form-group border-top pt-3">
+            <h5 class="mb-3">Media Compression</h5>
+            <div class="row gy-3">
+                <div class="col-md-4">
+                    <label class="form-label">Enable Compression</label>
+                    <input type="hidden" value="0" name="media_compress_enable">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="media_compress_enable" id="media_compress_enable"
+                            type="checkbox" {{ old('media_compress_enable', $settings['media_compress_enable'] ?? 0) == 1 ? 'checked' : '' }} />
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Image Quality (1-100)</label>
+                    <input type="number" name="media_compress_image_quality" class="form-control" min="1" max="100"
+                        value="{{ old('media_compress_image_quality', $settings['media_compress_image_quality'] ?? 75) }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Video CRF (18-35)</label>
+                    <input type="number" name="media_compress_video_crf" class="form-control" min="18" max="35"
+                        value="{{ old('media_compress_video_crf', $settings['media_compress_video_crf'] ?? 23) }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Video Preset</label>
+                    <input type="text" name="media_compress_video_preset" class="form-control"
+                        value="{{ old('media_compress_video_preset', $settings['media_compress_video_preset'] ?? 'slow') }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Audio Bitrate (e.g. 128k)</label>
+                    <input type="text" name="media_compress_audio_bitrate" class="form-control"
+                        value="{{ old('media_compress_audio_bitrate', $settings['media_compress_audio_bitrate'] ?? '128k') }}">
+                </div>
+            </div>
+        </div>
+
         <div class="text-end">
             <button type="submit" id="submit-button" class="btn btn-primary">{{ __('messages.save') }}</button>
         </div>

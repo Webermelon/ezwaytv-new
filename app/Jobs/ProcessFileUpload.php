@@ -38,6 +38,102 @@ class ProcessFileUpload implements ShouldQueue
     }
 
     /**
+     * Attempt to compress an image using ffmpeg if available.
+     * Returns path to processed file on success, or null on failure/no-op.
+     */
+    private function compressImage(string $inputPath)
+    {
+        if (!file_exists($inputPath)) {
+            return null;
+        }
+
+        if (!function_exists('shell_exec')) {
+            return null;
+        }
+
+        $ffmpeg = trim(shell_exec('command -v ffmpeg'));
+        if (empty($ffmpeg)) {
+            return null;
+        }
+
+        $quality = intval(env('MEDIA_COMPRESS_IMAGE_QUALITY', 75));
+        $ext = strtolower(pathinfo($inputPath, PATHINFO_EXTENSION));
+        $outputExt = $ext;
+        // prefer jpg for widest compression unless original is webp
+        if (!in_array($ext, ['jpg','jpeg','webp'])) {
+            $outputExt = 'jpg';
+        }
+
+        $outputPath = storage_path('app/temp/processed_' . uniqid() . '.' . $outputExt);
+
+        // Build ffmpeg command to re-encode image
+        // Use libwebp for webp outputs, otherwise use mjpeg/jpeg encoder
+        if ($outputExt === 'webp') {
+            $cmd = sprintf('%s -y -i %s -qscale %d %s 2>&1', escapeshellcmd($ffmpeg), escapeshellarg($inputPath), max(10, min(100, $quality)), escapeshellarg($outputPath));
+        } else {
+            // re-encode to JPEG with quality
+            $q = max(2, min(31, (int)(31 - ($quality / 100 * 29))));
+            $cmd = sprintf('%s -y -i %s -q:v %d %s 2>&1', escapeshellcmd($ffmpeg), escapeshellarg($inputPath), $q, escapeshellarg($outputPath));
+        }
+
+        @unlink($outputPath);
+        $output = shell_exec($cmd);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 0) {
+            // only use processed if smaller
+            if (filesize($outputPath) < filesize($inputPath)) {
+                return $outputPath;
+            }
+            @unlink($outputPath);
+        }
+
+        return null;
+    }
+
+    /**
+     * Attempt to compress a video using ffmpeg if available.
+     * Returns path to processed file on success, or null on failure/no-op.
+     */
+    private function compressVideo(string $inputPath)
+    {
+        if (!file_exists($inputPath)) {
+            return null;
+        }
+
+        if (!function_exists('shell_exec')) {
+            return null;
+        }
+
+        $ffmpeg = trim(shell_exec('command -v ffmpeg'));
+        if (empty($ffmpeg)) {
+            return null;
+        }
+
+        $crf = intval(env('MEDIA_COMPRESS_VIDEO_CRF', 23));
+        $preset = env('MEDIA_COMPRESS_VIDEO_PRESET', 'slow');
+        $audioBitrate = env('MEDIA_COMPRESS_AUDIO_BITRATE', '128k');
+
+        $ext = strtolower(pathinfo($inputPath, PATHINFO_EXTENSION));
+        $outputPath = storage_path('app/temp/processed_' . uniqid() . '.' . $ext);
+
+        // Transcode using x264 and aac
+        $cmd = sprintf('%s -y -i %s -c:v libx264 -preset %s -crf %d -c:a aac -b:a %s %s 2>&1', escapeshellcmd($ffmpeg), escapeshellarg($inputPath), escapeshellarg($preset), $crf, escapeshellarg($audioBitrate), escapeshellarg($outputPath));
+
+        @unlink($outputPath);
+        $output = shell_exec($cmd);
+
+        if (file_exists($outputPath) && filesize($outputPath) > 0) {
+            // use processed only if appreciably smaller (or always if you prefer)
+            if (filesize($outputPath) < filesize($inputPath) * 0.98) {
+                return $outputPath;
+            }
+            @unlink($outputPath);
+        }
+
+        return null;
+    }
+
+    /**
      * Execute the job.
      */
     public function handle()
@@ -64,7 +160,29 @@ class ProcessFileUpload implements ShouldQueue
 
 
 
-            $file = Storage::readStream($this->filePath);
+            $localSourcePath = storage_path('app/' . $this->filePath);
+
+            // Optionally compress images/videos when enabled via admin setting or env
+            $processedPath = null;
+            $compressEnabled = setting('media_compress_enable', env('MEDIA_COMPRESS_ENABLE', false));
+            if ($compressEnabled && in_array($this->fileType, ['image', 'video'])) {
+                if ($this->fileType === 'image') {
+                    $quality = intval(setting('media_compress_image_quality', env('MEDIA_COMPRESS_IMAGE_QUALITY', 75)));
+                    putenv('MEDIA_COMPRESS_IMAGE_QUALITY=' . $quality);
+                    $processedPath = $this->compressImage($localSourcePath);
+                } else {
+                    $crf = intval(setting('media_compress_video_crf', env('MEDIA_COMPRESS_VIDEO_CRF', 23)));
+                    $preset = setting('media_compress_video_preset', env('MEDIA_COMPRESS_VIDEO_PRESET', 'slow'));
+                    $audioBitrate = setting('media_compress_audio_bitrate', env('MEDIA_COMPRESS_AUDIO_BITRATE', '128k'));
+                    putenv('MEDIA_COMPRESS_VIDEO_CRF=' . $crf);
+                    putenv('MEDIA_COMPRESS_VIDEO_PRESET=' . $preset);
+                    putenv('MEDIA_COMPRESS_AUDIO_BITRATE=' . $audioBitrate);
+                    $processedPath = $this->compressVideo($localSourcePath);
+                }
+            }
+
+            $fileToStreamPath = $processedPath ?: $localSourcePath;
+            $file = fopen($fileToStreamPath, 'rb');
 
             if ($this->diskType === 'local') {
 
@@ -99,6 +217,11 @@ class ProcessFileUpload implements ShouldQueue
             // Delete the unique file (with ID)
             if (Storage::exists($this->filePath)){
                 $deleted = Storage::disk('local')->delete($this->filePath);
+            }
+
+            // remove processed temp file if exists
+            if (!empty($processedPath) && file_exists($processedPath) && $processedPath !== $localSourcePath) {
+                @unlink($processedPath);
             }
 
             // Also delete original filename if it exists in temp/uploads
