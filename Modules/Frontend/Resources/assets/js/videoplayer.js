@@ -350,12 +350,143 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Track play events – fires once per distinct source load, not on every resume
   var _ezPlayTracked = false;
-  player.on('loadstart', function () { _ezPlayTracked = false; });
-  player.on('play', function () {
-    if (!_ezPlayTracked && contentId && contentType && typeof window.EzStats !== 'undefined' && window.EZSTATS_CONFIG && window.EZSTATS_CONFIG.track_play_events === true) {
-      _ezPlayTracked = true;
-      window.EzStats.trackPlay({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
+  var _ezPlayId = null;
+  var _ezWatchSeconds = 0;
+  var _ezLastSentSeconds = 0;
+  var _ezLastPosition = null;
+  var _ezHeartbeatSec = 15;
+
+  function _ezCanTrackPlay() {
+    return !!(contentId && contentType && typeof window.EzStats !== 'undefined' && window.EZSTATS_CONFIG && window.EZSTATS_CONFIG.track_play_events === true);
+  }
+
+  function _ezCanTrackWatch() {
+    return _ezCanTrackPlay() && (!window.EZSTATS_CONFIG || window.EZSTATS_CONFIG.track_watch_time !== false);
+  }
+
+  function _ezInAdMode() {
+    try {
+      return !!(player.ads && typeof player.ads.isInAdMode === 'function' && player.ads.isInAdMode());
+    } catch (_) {
+      return false;
     }
+  }
+
+  function _ezSendWatchUpdate(playId, seconds) {
+    if (!playId || !seconds || seconds <= 0) return;
+
+    // Prefer global helper, but keep a direct fallback for stale/cached ezstats.js files.
+    if (window.EzStats && typeof window.EzStats.updateWatchTime === 'function') {
+      window.EzStats.updateWatchTime(playId, seconds);
+      return;
+    }
+
+    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrf = tokenMeta ? tokenMeta.getAttribute('content') : '';
+
+    fetch((window.location.origin || '') + '/api/statistics/update-watch-time', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': csrf,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ play_id: playId, watch_seconds: seconds }),
+    }).catch(() => null);
+  }
+
+  function _ezFlushWatch(force) {
+    if (!_ezCanTrackWatch() || !_ezPlayId) return;
+    const seconds = Math.floor(_ezWatchSeconds);
+    if (seconds <= 0 || seconds <= _ezLastSentSeconds) return;
+    if (!force && (seconds - _ezLastSentSeconds) < _ezHeartbeatSec) return;
+
+    _ezLastSentSeconds = seconds;
+    _ezSendWatchUpdate(_ezPlayId, seconds);
+  }
+
+  function _ezResetPlayState() {
+    _ezPlayTracked = false;
+    _ezPlayId = null;
+    _ezWatchSeconds = 0;
+    _ezLastSentSeconds = 0;
+    _ezLastPosition = null;
+  }
+
+  player.on('loadstart', function () {
+    _ezFlushWatch(true);
+    _ezResetPlayState();
+  });
+  player.on('play', function () {
+    if (!_ezPlayTracked && _ezCanTrackPlay()) {
+      _ezPlayTracked = true;
+      window.EzStats.trackPlay({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId })
+        .then(function (res) {
+          if (res && res.play_id) {
+            _ezPlayId = res.play_id;
+          }
+        })
+        .catch(function () {
+          _ezPlayTracked = false;
+        });
+    }
+
+    if (_ezLastPosition === null) {
+      const t = Number(player.currentTime());
+      _ezLastPosition = Number.isFinite(t) ? t : 0;
+    }
+  });
+
+  player.on('timeupdate', function () {
+    if (!_ezCanTrackWatch() || !_ezPlayTracked || _ezInAdMode() || player.paused()) return;
+
+    const current = Number(player.currentTime());
+    if (!Number.isFinite(current)) return;
+
+    if (_ezLastPosition === null) {
+      _ezLastPosition = current;
+      return;
+    }
+
+    let delta = current - _ezLastPosition;
+    _ezLastPosition = current;
+
+    // Ignore reverse seeks/invalid jumps and clamp large seeks to avoid inflated watch time.
+    if (!Number.isFinite(delta) || delta <= 0) return;
+    if (delta > 10) {
+      delta = 1;
+    }
+
+    _ezWatchSeconds += delta;
+    _ezFlushWatch(false);
+  });
+
+  player.on('seeked', function () {
+    const t = Number(player.currentTime());
+    _ezLastPosition = Number.isFinite(t) ? t : _ezLastPosition;
+  });
+
+  player.on('pause', function () {
+    _ezFlushWatch(true);
+    _ezLastPosition = null;
+  });
+
+  player.on('ended', function () {
+    _ezFlushWatch(true);
+    _ezLastPosition = null;
+  });
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      _ezFlushWatch(true);
+      _ezLastPosition = null;
+    }
+  });
+
+  window.addEventListener('beforeunload', function () {
+    _ezFlushWatch(true);
   });
 
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content')

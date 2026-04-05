@@ -411,6 +411,7 @@
         window.EZSTATS_CONFIG = {
             track_page_views: {{ \Modules\Statistics\Models\StatSetting::get('track_page_views', '1') === '1' ? 'true' : 'false' }},
             track_play_events: {{ \Modules\Statistics\Models\StatSetting::get('track_play_events', '1') === '1' ? 'true' : 'false' }},
+            track_watch_time: {{ \Modules\Statistics\Models\StatSetting::get('track_watch_time', '1') === '1' ? 'true' : 'false' }},
         };
     </script>
     <script>

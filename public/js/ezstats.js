@@ -68,6 +68,18 @@
         },
 
         /**
+         * Update watch time for a tracked play event.
+         * @param {number} playId
+         * @param {number} watchSeconds
+         */
+        updateWatchTime: function (playId, watchSeconds) {
+            if (!playId || !watchSeconds || watchSeconds <= 0) {
+                return Promise.resolve(null);
+            }
+            return post('update-watch-time', { play_id: playId, watch_seconds: watchSeconds });
+        },
+
+        /**
          * Start watch-time heartbeat for a play event.
          * @param {number} playId      - returned by trackPlay
          * @param {number} intervalSec - how often to report (default 30)
@@ -79,7 +91,7 @@
 
             const timer = setInterval(function () {
                 watchSeconds += intervalSec;
-                post('update-watch-time', { play_id: playId, watch_seconds: watchSeconds });
+                EzStats.updateWatchTime(playId, watchSeconds);
             }, intervalSec * 1000);
 
             return function stop() { clearInterval(timer); };
