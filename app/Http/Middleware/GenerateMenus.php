@@ -518,6 +518,25 @@ class GenerateMenus
                 ]);
             }
 
+            if (auth()->user()->hasRole('admin')) {
+                // Menu: show both entries but both point to the unified booster page
+                $this->mainRoute($menu, [
+                    'icon' => 'ph ph-gear',
+                    'title' => 'Stats Booster',
+                    'route' => 'backend.statistics.booster_settings',
+                    'active' => ['app/statistics/booster-settings', 'app/statistics/booster-settings/*'],
+                    'order' => 0,
+                ]);
+
+                $this->mainRoute($menu, [
+                    'icon' => 'ph ph-rocket-launch',
+                    'title' => 'Content Booster',
+                    'route' => 'backend.statistics.booster',
+                    'active' => ['app/statistics/booster', 'app/statistics/booster/*'],
+                    'order' => 0,
+                ]);
+            }
+
 
 
 

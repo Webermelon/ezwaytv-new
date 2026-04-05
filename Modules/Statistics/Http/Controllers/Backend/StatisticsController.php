@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Modules\Statistics\Models\PlayEvent;
 use Modules\Statistics\Models\StatSetting;
+use Modules\Statistics\Models\ContentBoost;
 
 class StatisticsController extends Controller
 {
@@ -76,6 +77,12 @@ class StatisticsController extends Controller
                 ->whereBetween('view_date', [$prevStart, $prevEnd])->count();
         }
 
+        // ── Boost (admin-only display multiplier) ──────────
+        $totalPlays     = $this->applyBoost($totalPlays,     'plays');
+        $totalPageViews = $this->applyBoost($totalPageViews, 'views');
+        $uniqueViewers  = $this->applyBoost($uniqueViewers,  'visitors');
+        $uniqueVisitors = $this->applyBoost($uniqueVisitors, 'visitors');
+
         return response()->json([
             'total_views'      => number_format($totalPlays),
             'total_plays'      => number_format($totalPlays),
@@ -85,6 +92,9 @@ class StatisticsController extends Controller
             'views_change'     => $prevPlays > 0 ? round((($totalPlays - $prevPlays) / $prevPlays) * 100, 1) : null,
             'plays_change'     => $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
             'page_views_change'=> $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
+            'boost_active'     => (float)(StatSetting::get('boost_multiplier', 1)) != 1.0
+                                  || (int)(StatSetting::get('boost_fixed_plays', 0)) > 0
+                                  || (int)(StatSetting::get('boost_fixed_views', 0)) > 0,
         ]);
     }
 
@@ -190,16 +200,44 @@ class StatisticsController extends Controller
 
         $results = $rows->map(function ($row) {
             [$name, $url] = $this->resolveContentInfo($row->content_type, $row->content_id);
+
+            // Apply per-content boost if exists (additive: real + sum of all boosts)
+            $boostSum = ContentBoost::where('content_type', $row->content_type)
+                ->where('content_id', $row->content_id)
+                ->sum('boost_plays');
+            $total = (int) $row->total + (int) $boostSum;
+
             return [
                 'content_type' => $row->content_type,
                 'content_id'   => $row->content_id,
                 'name'         => $name,
                 'url'          => $url,
-                'total'        => $row->total,
+                'total'        => $total,
             ];
-        });
+        })->keyBy(fn($r) => $r['content_type'] . '_' . $r['content_id']);
 
-        return response()->json($results);
+        // Inject boosted items that have no real play data at all (e.g. Live TV never in ev/sp)
+        $allBoosts = ContentBoost::selectRaw('content_type, content_id, SUM(boost_plays) as total_plays')
+            ->when($contentType !== 'all', fn($q) => $q->where('content_type', $contentType))
+            ->groupBy('content_type', 'content_id')
+            ->having('total_plays', '>', 0)
+            ->get();
+
+        foreach ($allBoosts as $boost) {
+            $key = $boost->content_type . '_' . $boost->content_id;
+            if (!$results->has($key)) {
+                [$name, $url] = $this->resolveContentInfo($boost->content_type, $boost->content_id);
+                $results->put($key, [
+                    'content_type' => $boost->content_type,
+                    'content_id'   => $boost->content_id,
+                    'name'         => $name ?: ($boost->content_name ?? "#{$boost->content_id}"),
+                    'url'          => $url,
+                    'total'        => (int) $boost->total_plays,
+                ]);
+            }
+        }
+
+        return response()->json($results->sortByDesc('total')->values()->take($limit));
     }
 
     /**
@@ -506,6 +544,23 @@ class StatisticsController extends Controller
     }
 
     /**
+     * Slim admin-only Stats Booster page (only the enable/multiplier/fixed fields).
+     */
+    public function boosterSettings()
+    {
+        $module_title  = 'Stats Booster';
+        $module_name   = 'statistics';
+        $module_icon   = 'ph ph-rocket-launch';
+        $module_action = 'Stats Booster';
+
+        $settings = StatSetting::all()->pluck('value', 'key');
+
+        return view('statistics::backend.statistics.booster_settings', compact(
+            'module_title', 'module_name', 'module_icon', 'module_action', 'settings'
+        ));
+    }
+
+    /**
      * Save statistics settings.
      */
     public function saveSettings(Request $request)
@@ -527,10 +582,40 @@ class StatisticsController extends Controller
             }
         }
 
+        // Boost settings (admin-only)
+        if (auth()->user()->hasRole('admin')) {
+            StatSetting::set('boost_enabled',      $request->has('boost_enabled') ? '1' : '0');
+            StatSetting::set('boost_multiplier',   max(1, min(100, (float) $request->input('boost_multiplier', 1))));
+            StatSetting::set('boost_fixed_plays',  max(0, (int) $request->input('boost_fixed_plays', 0)));
+            StatSetting::set('boost_fixed_views',  max(0, (int) $request->input('boost_fixed_views', 0)));
+            StatSetting::set('boost_fixed_visitors', max(0, (int) $request->input('boost_fixed_visitors', 0)));
+        }
+
         return redirect()->route('backend.statistics.settings')->with('success', 'Statistics settings saved.');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    /**
+     * Apply admin boost (multiplier + fixed add) to a stat number.
+     * Returns the raw integer — only works when boost is enabled.
+     */
+    private function applyBoost(int $value, string $metric): int
+    {
+        if (StatSetting::get('boost_enabled', '0') !== '1') {
+            return $value;
+        }
+
+        $multiplier = max(1, (float) StatSetting::get('boost_multiplier', 1));
+        $fixed = match ($metric) {
+            'plays'    => (int) StatSetting::get('boost_fixed_plays', 0),
+            'views'    => (int) StatSetting::get('boost_fixed_views', 0),
+            'visitors' => (int) StatSetting::get('boost_fixed_visitors', 0),
+            default    => 0,
+        };
+
+        return (int) round($value * $multiplier) + $fixed;
+    }
 
     /**
      * Unified plays query: entertainment_views UNION stat_play_events.
