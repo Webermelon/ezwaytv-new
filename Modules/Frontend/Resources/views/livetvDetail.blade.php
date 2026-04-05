@@ -36,6 +36,7 @@
                                 <span class="badge bg-primary mb-2">{{ $data['category'] }}</span>
                             @endif
                             <h4>{{ $data['name'] }}</h4>
+                            @include('frontend::components.section.content_stats')
                             <p class="font-size-14 js-episode-desc">
                                 <span class="js-desc-text">{!! Str::limit(strip_tags($data['description']), 300) !!}</span>
                                 @if(strlen(strip_tags($data['description'])) > 300)

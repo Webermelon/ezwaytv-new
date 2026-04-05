@@ -1,7 +1,7 @@
 <div class="d-flex gap-2 align-items-center justify-content-end">
   @if(!$data->trashed())
       
-       <a  class="copy-url btn btn-success-subtle btn-sm fs-4" data-bs-toggle="tooltip" title="{{__('messages.copy')}}" href="{{ route('backend.copyurl',$data->slug) }}" onclick="copyURL(event)"> <i class="ph ph-clipboard align-middle"></i></a>
+  <a  class="copy-url btn btn-success-subtle btn-sm fs-4" data-bs-toggle="tooltip" title="{{__('messages.copy')}}" href="{{ $data->public_url }}" onclick="copyURL(event)"> <i class="ph ph-clipboard align-middle"></i></a>
        @hasPermission('edit_page')
        <a  class="btn btn-warning-subtle btn-sm fs-4" data-bs-toggle="tooltip" title="{{__('messages.edit')}}" href="{{ route('backend.pages.edit', $data->id) }}"> <i class="ph ph-pencil-simple-line align-middle"></i></a>
        @endhasPermission

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\Statistics\Models\PageView;
 use Modules\Statistics\Models\PlayEvent;
 use Modules\Statistics\Models\StatSetting;
+use Modules\Statistics\Models\ContentBoost;
 
 class StatisticsController extends Controller
 {
@@ -248,5 +249,59 @@ class StatisticsController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * GET /api/statistics/content-stats?content_type=video&content_id=123
+     * Public: returns real plays/views and summed boost totals and display flags.
+     */
+    public function contentStats(Request $request)
+    {
+        $type = $request->input('content_type');
+        $id   = (int) $request->input('content_id');
+
+        if (!$type || !$id) {
+            return response()->json(['error' => 'Missing params'], 422);
+        }
+
+        // Real counts
+        $realPlays = \DB::table('entertainment_views')
+            ->when($type === 'entertainment' || $type === 'video', fn($q) => $q->where('entertainment_id', $id))
+            ->when($type !== 'entertainment' && $type !== 'video', fn($q) => $q->where('entertainment_id', $id))
+            ->whereNull('deleted_at')
+            ->count();
+
+        $realPlays += \DB::table('stat_play_events')
+            ->where('content_type', $type)
+            ->where('content_id', $id)
+            ->count();
+
+        $realViews = \DB::table('stat_page_views')
+            ->where('content_type', $type)
+            ->where('content_id', $id)
+            ->count();
+
+        // Boost sums
+        $boostPlays = (int) ContentBoost::where('content_type', $type)->where('content_id', $id)->sum('boost_plays');
+        $boostViews = (int) ContentBoost::where('content_type', $type)->where('content_id', $id)->sum('boost_views');
+
+        // Display flags
+        $showPageViews = StatSetting::get('show_page_views', '1') === '1';
+        $showPlayerPlays = StatSetting::get('show_player_plays', '1') === '1';
+        $showViewsFrontend = StatSetting::get('show_views_frontend', '1') === '1';
+        $showPlaysFrontend = StatSetting::get('show_plays_frontend', '1') === '1';
+
+        return response()->json([
+            'real_plays' => (int) $realPlays,
+            'real_views' => (int) $realViews,
+            'boost_plays' => $boostPlays,
+            'boost_views' => $boostViews,
+            'total_plays' => (int)($realPlays + $boostPlays),
+            'total_views' => (int)($realViews + $boostViews),
+            'show_page_views' => $showPageViews,
+            'show_player_plays' => $showPlayerPlays,
+            'show_views_frontend' => $showViewsFrontend,
+            'show_plays_frontend' => $showPlaysFrontend,
+        ]);
     }
 }

@@ -10,6 +10,7 @@ use Modules\Page\Http\Requests\PageRequest;
 use App\Traits\ModuleTrait;
 use Stichoza\GoogleTranslate\GoogleTranslate;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 class PagesController extends Controller
 {
     protected string $exportClass = '\App\Exports\PageExport';
@@ -132,7 +133,7 @@ class PagesController extends Controller
 
     public function page(string $slug)
     {
-        $data = Page::where('slug', $slug)->first();
+        $data = Page::where('slug', $slug)->firstOrFail();
         $navs = Page::all();
         $module_action = 'Show';
         return view('page::backend.pages.page', array_merge(compact('data', 'navs', 'module_action'), ['noLayout' => true]));
@@ -140,8 +141,7 @@ class PagesController extends Controller
 
     public function store(PageRequest $request)
     {
-        $data = $request->all();
-        $page = Page::create($data);
+        Page::create($this->preparePageData($request));
 
         Cache::forget('footer_data');
 
@@ -178,10 +178,11 @@ class PagesController extends Controller
      */
     public function update(PageRequest $request, Page $page)
     {
-        $requestData = $request->all();
+        $requestData = $this->preparePageData($request);
         $protectedSlugs = ['privacy-policy', 'terms-conditions'];
         if (in_array($page->slug, $protectedSlugs)) {
             unset($requestData['status']);
+            unset($requestData['slug']);
         }
         $page->update($requestData);
 
@@ -192,20 +193,32 @@ class PagesController extends Controller
     }
     public function show(string $slug, Request $request)
     {
-        // Find the page by slug
         $page = Page::where('slug', $slug)->firstOrFail();
 
         $currentLang = app()->getLocale();
 
         try {
-            $page->description = GoogleTranslate::trans($page->description, $currentLang);
             $page->name = GoogleTranslate::trans($page->name, $currentLang);
+
+            if ($page->content_type === 'landing' && filled($page->description)) {
+                $page->description = GoogleTranslate::trans($page->description, $currentLang);
+            }
         } catch (\Throwable $e) {
-            // Fall back to original content if translation fails (e.g. text too long, rate limit)
         }
 
-        // Pass the page data to the view
         return view('page::backend.pages.show', compact('page'));
+    }
+
+    public function redirectLegacyPageUrl(string $slug)
+    {
+        return redirect()->route('page.show', ['slug' => $slug], 301);
+    }
+
+    public function redirectLegacySlug(string $slug)
+    {
+        $page = Page::where('slug', $slug)->firstOrFail();
+
+        return redirect()->route('page.show', ['slug' => $page->slug], 301);
     }
     /**
      * Remove the specified resource from storage.
@@ -242,5 +255,16 @@ class PagesController extends Controller
         Cache::forget('footer_data');
         $message = trans('messages.permanent_delete_form_pages', ['form' => 'Page']);
         return response()->json(['message' => $message, 'status' => true], 200);
+    }
+
+    protected function preparePageData(PageRequest $request): array
+    {
+        $data = $request->validated();
+        $data['slug'] = Str::slug($data['slug']);
+        $data['status'] = (int) $request->boolean('status');
+        $data['description'] = $data['content_type'] === 'landing' ? ($data['description'] ?? '') : '';
+        $data['embed_code'] = $data['content_type'] === 'embed' ? ($data['embed_code'] ?? '') : null;
+
+        return $data;
     }
 }

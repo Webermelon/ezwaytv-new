@@ -169,7 +169,7 @@
 
                                 @foreach ($get_pages as $page)
                                     <li class="nav-item"><a class="nav-link"
-                                            href="{{ route('backend.copyurl', $page->slug) }}">{{ $page->name }}</a>
+                                            href="{{ $page->public_url }}">{{ $page->name }}</a>
                                     </li>
                                 @endforeach
                             </ul>

@@ -8,4 +8,5 @@ Route::prefix('statistics')->group(function () {
     Route::post('track-view',        [StatisticsController::class, 'trackView']);
     Route::post('track-play',        [StatisticsController::class, 'trackPlay']);
     Route::post('update-watch-time', [StatisticsController::class, 'updateWatchTime']);
+    Route::get('content-stats',      [StatisticsController::class, 'contentStats']);
 });

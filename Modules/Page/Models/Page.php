@@ -12,8 +12,11 @@ class Page extends BaseModel
     use HasFactory;
     use SoftDeletes;
 
+    public const CONTENT_TYPE_LANDING = 'landing';
+    public const CONTENT_TYPE_EMBED = 'embed';
+
     protected $table = 'pages';
-    protected $fillable = ['name', 'description', 'status', 'slug'];
+    protected $fillable = ['name', 'description', 'status', 'slug', 'content_type', 'embed_code'];
 
     const CUSTOM_FIELD_MODEL = 'Modules\Page\Models\Page';
 
@@ -24,13 +27,19 @@ class Page extends BaseModel
      */
 
 
-    protected $appends = ['feature_image'];
+    protected $appends = ['feature_image', 'public_url'];
 
     protected function getFeatureImageAttribute()
     {
         $media = $this->getFirstMediaUrl('feature_image');
         return isset($media) && ! empty($media) ? $media : 'https://dummyimage.com/600x300/cfcfcf/000000.png';
     }
+
+    protected function getPublicUrlAttribute(): string
+    {
+        return route('page.show', ['slug' => $this->slug]);
+    }
+
     protected static function newFactory()
     {
         // return \Modules\Page\database\factories\PageFactory::new();
@@ -41,18 +50,21 @@ class Page extends BaseModel
         parent::boot();
 
         static::saving(function ($page) {
-            if (empty($page->slug)) {
+            $slug = Str::slug($page->slug ?: $page->name);
+
+            if (empty($slug)) {
                 $slug = Str::slug($page->name);
-                $originalSlug = $slug;
-                $count = 1;
-
-
-                while (self::where('slug', $slug)->exists()) {
-                    $slug = $originalSlug . '-' . $count++;
-                }
-
-                $page->slug = $slug;
             }
+
+            $originalSlug = $slug;
+            $count = 1;
+
+            while (self::where('slug', $slug)->where('id', '!=', $page->id)->exists()) {
+                $slug = $originalSlug . '-' . $count++;
+            }
+
+            $page->slug = $slug;
+            $page->content_type = $page->content_type ?: self::CONTENT_TYPE_LANDING;
         });
     }
     public static function getValueBySlug($slug)

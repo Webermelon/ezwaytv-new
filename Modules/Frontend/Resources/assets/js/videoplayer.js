@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var contentVideoType = videoEl.getAttribute('content-video-type') || '';
 
   // Track page view immediately on load
-  if (contentId && contentType && typeof window.EzStats !== 'undefined') {
+  if (contentId && contentType && typeof window.EzStats !== 'undefined' && window.EZSTATS_CONFIG && window.EZSTATS_CONFIG.track_page_views === true) {
     window.EzStats.trackView({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
   }
 
@@ -352,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var _ezPlayTracked = false;
   player.on('loadstart', function () { _ezPlayTracked = false; });
   player.on('play', function () {
-    if (!_ezPlayTracked && contentId && contentType && typeof window.EzStats !== 'undefined') {
+    if (!_ezPlayTracked && contentId && contentType && typeof window.EzStats !== 'undefined' && window.EZSTATS_CONFIG && window.EZSTATS_CONFIG.track_play_events === true) {
       _ezPlayTracked = true;
       window.EzStats.trackPlay({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
     }

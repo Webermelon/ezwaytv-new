@@ -149,6 +149,7 @@
                         </div>
                     @endif
                     <h4>{{ $data['name'] }}</h4>
+                    @include('frontend::components.section.content_stats')
                     @if ($data['content_rating'])
                         <p class="font-size-14">
                             <span class="fw-medium">{{ $data['content_rating'] }}</span>

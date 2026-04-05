@@ -15,7 +15,7 @@ class PageResource extends JsonResource
             'id'   => $this->id,
             'slug' => $this->slug,
             'name' => $this->name,
-            'url'  => route('backend.copyurl', ['slug' =>  $this->slug])
+            'url'  => $this->public_url,
         ];
     }
 }

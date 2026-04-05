@@ -18,7 +18,7 @@
 
     <form action="{{ route('backend.statistics.settings.save') }}" method="POST">
         @csrf
-        <div class="card border-0 mb-3" style="background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.25); border-radius:12px;">
+        <input type="hidden" name="_form" value="boost"> border:1px solid rgba(220,38,38,0.25); border-radius:12px;">
             <div class="card-body">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <i class="ph ph-rocket-launch text-danger fs-5"></i>

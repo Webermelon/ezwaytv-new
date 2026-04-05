@@ -22,8 +22,8 @@ use Modules\Page\Http\Controllers\Backend\PagesController;
 * --------------------------------------------------------------------
 */
 
-Route::get('page/{slug}', [PagesController::class,'page'])->name('backend.copyurl');
-Route::get('/{slug}', [PagesController::class, 'show'])->name('page.show');
+Route::get('pages/{slug}', [PagesController::class, 'show'])->name('page.show');
+Route::get('page/{slug}', [PagesController::class, 'redirectLegacyPageUrl'])->name('page.legacy.copy');
 Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','admin']], function () {
     /*
     * These routes need view-backend permission
@@ -52,3 +52,5 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
 
     Route::resource("pages", PagesController::class);
 });
+
+Route::get('/{slug}', [PagesController::class, 'redirectLegacySlug'])->name('page.legacy.slug');

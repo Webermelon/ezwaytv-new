@@ -77,11 +77,29 @@ class StatisticsController extends Controller
                 ->whereBetween('view_date', [$prevStart, $prevEnd])->count();
         }
 
-        // ── Boost (admin-only display multiplier) ──────────
+        // Include per-content boosts into totals (stacked boosts)
+        $boostPlaysSum = (int) ContentBoost::sum('boost_plays');
+        $boostViewsSum = (int) ContentBoost::sum('boost_views');
+
+        $totalPlays     = $totalPlays + $boostPlaysSum;
+        $totalPageViews = $totalPageViews + $boostViewsSum;
+
+        // ── Boost (admin-only global multiplier/fixed) ─────
         $totalPlays     = $this->applyBoost($totalPlays,     'plays');
         $totalPageViews = $this->applyBoost($totalPageViews, 'views');
         $uniqueViewers  = $this->applyBoost($uniqueViewers,  'visitors');
         $uniqueVisitors = $this->applyBoost($uniqueVisitors, 'visitors');
+
+        // Respect display toggles (admin-controlled)
+        $showPageViews = \Modules\Statistics\Models\StatSetting::get('show_page_views', '1') === '1';
+        $showPlayerPlays = \Modules\Statistics\Models\StatSetting::get('show_player_plays', '1') === '1';
+
+        if (!$showPageViews) {
+            $totalPageViews = 0;
+        }
+        if (!$showPlayerPlays) {
+            $totalPlays = 0;
+        }
 
         return response()->json([
             'total_views'      => number_format($totalPlays),
@@ -565,25 +583,30 @@ class StatisticsController extends Controller
      */
     public function saveSettings(Request $request)
     {
-        $keys = [
-            'track_page_views', 'track_play_events', 'track_watch_time',
-            'track_guests', 'exclude_bots', 'retention_days',
-            'heartbeat_interval', 'exclude_ips',
-        ];
+        $form = $request->input('_form', 'main');
 
-        foreach ($keys as $key) {
-            if ($request->has($key)) {
-                StatSetting::set($key, $request->input($key));
-            } else {
-                $checkboxKeys = ['track_page_views', 'track_play_events', 'track_watch_time', 'track_guests', 'exclude_bots'];
-                if (in_array($key, $checkboxKeys)) {
-                    StatSetting::set($key, '0');
+        // Only process tracking/general keys from the main settings form
+        if ($form === 'main') {
+            $keys = [
+                'track_page_views', 'track_play_events', 'track_watch_time',
+                'track_guests', 'exclude_bots', 'retention_days',
+                'heartbeat_interval', 'exclude_ips',
+            ];
+
+            foreach ($keys as $key) {
+                if ($request->has($key)) {
+                    StatSetting::set($key, $request->input($key));
+                } else {
+                    $checkboxKeys = ['track_page_views', 'track_play_events', 'track_watch_time', 'track_guests', 'exclude_bots'];
+                    if (in_array($key, $checkboxKeys)) {
+                        StatSetting::set($key, '0');
+                    }
                 }
             }
         }
 
-        // Boost settings (admin-only)
-        if (auth()->user()->hasRole('admin')) {
+        // Boost settings (admin-only, boost form only)
+        if ($form === 'boost' && auth()->user()->hasRole('admin')) {
             StatSetting::set('boost_enabled',      $request->has('boost_enabled') ? '1' : '0');
             StatSetting::set('boost_multiplier',   max(1, min(100, (float) $request->input('boost_multiplier', 1))));
             StatSetting::set('boost_fixed_plays',  max(0, (int) $request->input('boost_fixed_plays', 0)));
@@ -591,7 +614,19 @@ class StatisticsController extends Controller
             StatSetting::set('boost_fixed_visitors', max(0, (int) $request->input('boost_fixed_visitors', 0)));
         }
 
-        return redirect()->route('backend.statistics.settings')->with('success', 'Statistics settings saved.');
+        // Display controls (admin-only, main form only)
+        if ($form === 'main' && auth()->user()->hasRole('admin')) {
+            StatSetting::set('show_page_views', $request->has('show_page_views') ? '1' : '0');
+            StatSetting::set('show_player_plays', $request->has('show_player_plays') ? '1' : '0');
+            StatSetting::set('show_views_frontend', $request->has('show_views_frontend') ? '1' : '0');
+            StatSetting::set('show_plays_frontend', $request->has('show_plays_frontend') ? '1' : '0');
+        }
+
+        $redirect = $form === 'boost'
+            ? redirect()->back()->with('success', 'Boost settings saved.')
+            : redirect()->route('backend.statistics.settings')->with('success', 'Statistics settings saved.');
+
+        return $redirect;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

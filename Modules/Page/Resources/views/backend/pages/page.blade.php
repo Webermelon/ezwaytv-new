@@ -28,8 +28,11 @@
 
         <div class="card">
             <div class="card-body">
-
-                {!! $data->description !!}
+                @if ($data->content_type === \Modules\Page\Models\Page::CONTENT_TYPE_EMBED)
+                    {!! $data->embed_code !!}
+                @else
+                    {!! $data->description !!}
+                @endif
 
             </div>
         </div>

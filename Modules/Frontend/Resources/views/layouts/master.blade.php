@@ -408,10 +408,17 @@
     {{-- EzStats: global page-view tracker --}}
     <script src="{{ asset('js/ezstats.js') }}"></script>
     <script>
+        window.EZSTATS_CONFIG = {
+            track_page_views: {{ \Modules\Statistics\Models\StatSetting::get('track_page_views', '1') === '1' ? 'true' : 'false' }},
+            track_play_events: {{ \Modules\Statistics\Models\StatSetting::get('track_play_events', '1') === '1' ? 'true' : 'false' }},
+        };
+    </script>
+    <script>
         (function () {
             var routeName = @json(Route::currentRouteName() ?? 'unknown');
             document.addEventListener('DOMContentLoaded', function () {
                 if (typeof window.EzStats === 'undefined') return;
+                if (!window.EZSTATS_CONFIG || window.EZSTATS_CONFIG.track_page_views !== true) return;
                 // _ezPageMeta may be set by detail pages via @push('ezstats-meta')
                 var meta = window._ezPageMeta || {};
                 var pageTitle = document.title || routeName;
