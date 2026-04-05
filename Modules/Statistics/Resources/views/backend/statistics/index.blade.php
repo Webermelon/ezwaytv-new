@@ -336,6 +336,7 @@
 @endsection
 
 @push('after-scripts')
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
 (() => {
     'use strict';
@@ -575,7 +576,7 @@
     }
 
     // ── Page Views Detail Table ───────────────────────────
-    const PV_LIMIT = 50;
+    const PV_LIMIT = 10;
     let pvOffset = 0, pvTotal = 0;
 
     function loadPageViews() {
@@ -621,7 +622,7 @@
     document.getElementById('pvNext').addEventListener('click', () => { if (pvOffset + PV_LIMIT < pvTotal) { pvOffset += PV_LIMIT; loadPageViews(); } });
 
     // ── Play Events Detail Table ──────────────────────────
-    const PE_LIMIT = 50;
+    const PE_LIMIT = 10;
     let peOffset = 0, peTotal = 0;
 
     function loadPlayEvents() {

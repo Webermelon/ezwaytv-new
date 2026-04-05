@@ -43,10 +43,15 @@ class StatisticsController extends Controller
         $period = $request->input('period', 'week');
         [$startDate, $endDate] = $this->resolvePeriod($period);
 
-        // Total plays = entertainment_views + stat_play_events (Union for dedup across sources)
-        $totalPlays    = $this->playsQuery($startDate, $endDate)->count();
-        $uniqueViewers = $this->playsQuery($startDate, $endDate)->distinct('user_id')->count('user_id');
-        $watchSeconds  = $this->statPlaysQuery($startDate, null)->sum('watch_seconds');
+        // Total plays = whichever source has more records for the period
+        // stat_play_events is populated going forward; entertainment_views has historical data
+        $evCount       = $this->playsQuery($startDate, $endDate)->count();
+        $spCount       = $this->statPlaysQuery($startDate, $endDate)->count();
+        $totalPlays    = max($evCount, $spCount);
+        $evViewers     = $this->playsQuery($startDate, $endDate)->distinct('user_id')->count('user_id');
+        $spViewers     = $this->statPlaysQuery($startDate, $endDate)->distinct('user_id')->count('user_id');
+        $uniqueViewers = max($evViewers, $spViewers);
+        $watchSeconds  = $this->statPlaysQuery($startDate, $endDate)->sum('watch_seconds');
         $watchHours    = round($watchSeconds / 3600, 1);
 
         // Content views (stat_page_views, web/app tracking)
@@ -97,13 +102,26 @@ class StatisticsController extends Controller
         $playData     = [];
 
         if ($type !== 'plays') {
-            // Page views over time
-            $rows = DB::table('stat_page_views')
+            // Page views from stat_page_views
+            $pvRows = DB::table('stat_page_views')
                 ->selectRaw("DATE_FORMAT(view_date, '{$groupFormat}') as label, COUNT(*) as total")
                 ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
                 ->groupBy('label')->orderBy('label')
                 ->pluck('total', 'label')->toArray();
-            $viewData = $rows;
+
+            // Also include entertainment_views as content views (primary data source)
+            $evViewRows = DB::table('entertainment_views')
+                ->selectRaw("DATE_FORMAT(DATE(created_at), '{$groupFormat}') as label, COUNT(*) as total")
+                ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+                ->whereNull('deleted_at')
+                ->groupBy('label')->orderBy('label')
+                ->pluck('total', 'label')->toArray();
+
+            foreach ($evViewRows as $label => $count) {
+                $pvRows[$label] = ($pvRows[$label] ?? 0) + $count;
+            }
+            ksort($pvRows);
+            $viewData = $pvRows;
         }
 
         if ($type !== 'views') {
@@ -192,19 +210,27 @@ class StatisticsController extends Controller
         $period = $request->input('period', 'month');
         [$startDate] = $this->resolvePeriod($period);
 
-        $data = DB::table('stat_play_events')
+        $spData = DB::table('stat_play_events')
             ->selectRaw('COALESCE(device_type, "unknown") as device, COUNT(*) as total')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
             ->groupBy('device')
             ->orderByDesc('total')
-            ->get();
+            ->pluck('total', 'device')->toArray();
 
-        if ($data->isEmpty()) {
-            // Fallback: show "no breakdown yet" placeholder
+        // Merge entertainment_views (no device info → count as 'web')
+        $evCount = DB::table('entertainment_views')
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->whereNull('deleted_at')->count();
+        if ($evCount > 0) {
+            $spData['web'] = ($spData['web'] ?? 0) + $evCount;
+        }
+
+        arsort($spData);
+        if (empty($spData)) {
             return response()->json(['labels' => ['No data yet'], 'values' => [1]]);
         }
 
-        return response()->json(['labels' => $data->pluck('device'), 'values' => $data->pluck('total')]);
+        return response()->json(['labels' => array_keys($spData), 'values' => array_values($spData)]);
     }
 
     /**
@@ -216,19 +242,29 @@ class StatisticsController extends Controller
         $limit  = min((int) $request->input('limit', 10), 50);
         [$startDate] = $this->resolvePeriod($period);
 
-        $data = DB::table('stat_play_events')
+        $spData = DB::table('stat_play_events')
             ->selectRaw('COALESCE(country_code, "Unknown") as country, COUNT(*) as total')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
             ->groupBy('country')
             ->orderByDesc('total')
-            ->limit($limit)
-            ->get();
+            ->pluck('total', 'country')->toArray();
 
-        if ($data->isEmpty()) {
+        // Merge entertainment_views without country info as 'Unknown'
+        $evCount = DB::table('entertainment_views')
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->whereNull('deleted_at')->count();
+        if ($evCount > 0) {
+            $spData['Unknown'] = ($spData['Unknown'] ?? 0) + $evCount;
+        }
+
+        arsort($spData);
+        $spData = array_slice($spData, 0, $limit, true);
+
+        if (empty($spData)) {
             return response()->json(['labels' => ['No data yet'], 'values' => [1]]);
         }
 
-        return response()->json(['labels' => $data->pluck('country'), 'values' => $data->pluck('total')]);
+        return response()->json(['labels' => array_keys($spData), 'values' => array_values($spData)]);
     }
 
     /**
@@ -239,18 +275,27 @@ class StatisticsController extends Controller
         $period = $request->input('period', 'month');
         [$startDate] = $this->resolvePeriod($period);
 
-        $data = DB::table('stat_play_events')
+        $spData = DB::table('stat_play_events')
             ->selectRaw('COALESCE(platform, "web") as platform, COUNT(*) as total')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
             ->groupBy('platform')
             ->orderByDesc('total')
-            ->get();
+            ->pluck('total', 'platform')->toArray();
 
-        if ($data->isEmpty()) {
+        // Merge entertainment_views without platform info as 'web'
+        $evCount = DB::table('entertainment_views')
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->whereNull('deleted_at')->count();
+        if ($evCount > 0) {
+            $spData['web'] = ($spData['web'] ?? 0) + $evCount;
+        }
+
+        arsort($spData);
+        if (empty($spData)) {
             return response()->json(['labels' => ['No data yet'], 'values' => [1]]);
         }
 
-        return response()->json(['labels' => $data->pluck('platform'), 'values' => $data->pluck('total')]);
+        return response()->json(['labels' => array_keys($spData), 'values' => array_values($spData)]);
     }
 
     /**
@@ -262,7 +307,7 @@ class StatisticsController extends Controller
         $limit  = min((int) $request->input('limit', 10), 50);
         [$startDate] = $this->resolvePeriod($period);
 
-        $data = DB::table('stat_page_views')
+        $pvData = DB::table('stat_page_views')
             ->selectRaw("
                 CASE
                     WHEN referrer IS NULL OR referrer = '' THEN 'Direct'
@@ -279,14 +324,24 @@ class StatisticsController extends Controller
             ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
             ->groupBy('source')
             ->orderByDesc('total')
-            ->limit($limit)
-            ->get();
+            ->pluck('total', 'source')->toArray();
 
-        if ($data->isEmpty()) {
+        // entertainment_views represent direct app plays (no referrer data)
+        $evCount = DB::table('entertainment_views')
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->whereNull('deleted_at')->count();
+        if ($evCount > 0) {
+            $pvData['Direct'] = ($pvData['Direct'] ?? 0) + $evCount;
+        }
+
+        arsort($pvData);
+        $pvData = array_slice($pvData, 0, $limit, true);
+
+        if (empty($pvData)) {
             return response()->json(['labels' => ['No data yet'], 'values' => [1]]);
         }
 
-        return response()->json(['labels' => $data->pluck('source'), 'values' => $data->pluck('total')]);
+        return response()->json(['labels' => array_keys($pvData), 'values' => array_values($pvData)]);
     }
 
     /**
@@ -361,7 +416,8 @@ class StatisticsController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'pv.user_id')
             ->select([
                 'pv.id', 'pv.content_type', 'pv.content_id',
-                'pv.page_name', 'pv.route_name', 'pv.page_url',
+                'pv.page_url',
+                DB::raw('NULL as page_name'), DB::raw('NULL as route_name'),
                 'pv.device_type', 'pv.browser', 'pv.os', 'pv.platform',
                 'pv.country_code', 'pv.ip_address', 'pv.view_date', 'pv.created_at',
                 DB::raw("COALESCE(NULLIF(TRIM(CONCAT(COALESCE(u.first_name,''),' ',COALESCE(u.last_name,''))), ''), u.username, u.email) as user_name"),
@@ -530,9 +586,9 @@ class StatisticsController extends Controller
     {
         $tableMap = [
             'video'         => 'videos',
-            'movie'         => 'entertainments',
-            'tvshow'        => 'entertainments',
-            'entertainment' => 'entertainments',
+            'movie'         => 'videos',
+            'tvshow'        => 'videos',
+            'entertainment' => 'videos',  // entertainment_views.entertainment_id → videos.id
             'episode'       => 'episodes',
             'livetv'        => 'live_tv_channel',
             'livetvchannel' => 'live_tv_channel',
