@@ -34,16 +34,18 @@
                     <div class="dropdown dropdown-user-wrapper">
                         @if (auth()->check())
 
-                            @if (auth()->user()->user_type == 'user' && auth()->user()->is_subscribe == 0)
-                                <button class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn"
-                                    onclick="window.location.href='{{ route('subscriptionPlan') }}'">
-                                    {{ __('frontend.subscribe') }}
-                                </button>
-                            @else
-                                <button class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn"
-                                    onclick="window.location.href='{{ route('subscriptionPlan') }}'">
-                                    {{ __('frontend.upgrade') }}
-                                </button>
+                            @if (isenablemodule('show_subscribe_button'))
+                                @if (auth()->user()->user_type == 'user' && auth()->user()->is_subscribe == 0)
+                                    <button class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn"
+                                        onclick="window.location.href='{{ route('subscriptionPlan') }}'">
+                                        {{ __('frontend.subscribe') }}
+                                    </button>
+                                @else
+                                    <button class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn"
+                                        onclick="window.location.href='{{ route('subscriptionPlan') }}'">
+                                        {{ __('frontend.upgrade') }}
+                                    </button>
+                                @endif
                             @endif
 
                             <a class="dropdown-toggle-item dropdown-user ms-3" href="#" id="navbarDropdown"

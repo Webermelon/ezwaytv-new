@@ -464,39 +464,39 @@
                                         @endforeach
                                     </div>
                                 </li> -->
-
-
-                                @if (auth()->check() && auth()->user()->user_type == 'user' && !getCurrentProfileSession('is_child_profile'))
-                                    <li class="nav-item">
-                                        @if (auth()->user()->is_subscribe == 0)
-                                            <button
-                                                class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
-                                                onclick="window.location.href='{{ route('subscriptionPlan') }}'">
-                                                <span class="d-flex align-items-center gap-2">
-                                                    <i class="ph-fill ph-crown-simple"></i>
-                                                    {{ __('frontend.subscribe') }}
-                                                </span>
-                                            </button>
-                                        @else
-                                            <button
-                                                class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
-                                                onclick="window.location.href='{{ route('subscriptionPlan') }}'">
-                                                <span class="d-flex align-items-center gap-2">
-                                                    <i class="ph-fill ph-crown-simple"></i>
-                                                    {{ __('frontend.upgrade') }}
-                                                    <span>
-                                            </button>
-                                        @endif
-                                    </li>
-                                @elseif(!auth()->check())
-                                    <button
-                                        class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
-                                        onclick="window.location.href='{{ route('subscriptionPlan') }}'">
-                                        <span class="d-flex align-items-center gap-2">
-                                            <i class="ph-fill ph-crown-simple"></i>
-                                            {{ __('frontend.subscribe') }}
-                                        </span>
-                                    </button>
+                                @if (isenablemodule('show_subscribe_button'))
+                                    @if (auth()->check() && auth()->user()->user_type == 'user' && !getCurrentProfileSession('is_child_profile'))
+                                        <li class="nav-item">
+                                            @if (auth()->user()->is_subscribe == 0)
+                                                <button
+                                                    class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
+                                                    onclick="window.location.href='{{ route('subscriptionPlan') }}'">
+                                                    <span class="d-flex align-items-center gap-2">
+                                                        <i class="ph-fill ph-crown-simple"></i>
+                                                        {{ __('frontend.subscribe') }}
+                                                    </span>
+                                                </button>
+                                            @else
+                                                <button
+                                                    class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
+                                                    onclick="window.location.href='{{ route('subscriptionPlan') }}'">
+                                                    <span class="d-flex align-items-center gap-2">
+                                                        <i class="ph-fill ph-crown-simple"></i>
+                                                        {{ __('frontend.upgrade') }}
+                                                        <span>
+                                                </button>
+                                            @endif
+                                        </li>
+                                    @elseif(!auth()->check())
+                                        <button
+                                            class="btn btn-warning-subtle font-size-14 text-uppercase subscribe-btn px-3"
+                                            onclick="window.location.href='{{ route('subscriptionPlan') }}'">
+                                            <span class="d-flex align-items-center gap-2">
+                                                <i class="ph-fill ph-crown-simple"></i>
+                                                {{ __('frontend.subscribe') }}
+                                            </span>
+                                        </button>
+                                    @endif
                                 @endif
                                 @php
                                     $currentProfile = getCurrentProfileSession();

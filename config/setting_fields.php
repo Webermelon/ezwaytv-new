@@ -318,6 +318,17 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'show_subscribe_button',
+                'label' => 'Show Subscribe Button in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Subscribe/Upgrade button in the frontend header menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'enable_tmdb_api',
                 'label' => 'Import Data From TMDB',
                 'rules' => 'boolean',

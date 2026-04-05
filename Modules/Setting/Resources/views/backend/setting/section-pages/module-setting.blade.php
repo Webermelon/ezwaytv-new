@@ -122,6 +122,26 @@
             </div>
         </div>
 
+        {{-- Show Subscribe Button in Menu --}}
+        <div class="form-group border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label m-0" for="show_subscribe_button">Show Subscribe Button in Menu</label>
+                @if($isDemoAdmin)
+                    @php $showSubscribeButtonStatus = old('show_subscribe_button', $settings['show_subscribe_button'] ?? 1); @endphp
+                    <span class="badge {{ $showSubscribeButtonStatus == 1 ? 'bg-success-subtle' : 'bg-danger-subtle' }}">
+                        {{ $showSubscribeButtonStatus == 1 ? __('messages.active') : __('messages.inactive') }}
+                    </span>
+                    <input type="hidden" value="{{ $showSubscribeButtonStatus }}" name="show_subscribe_button">
+                @else
+                    <input type="hidden" value="0" name="show_subscribe_button">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="show_subscribe_button" id="show_subscribe_button"
+                            type="checkbox" {{ old('show_subscribe_button', $settings['show_subscribe_button'] ?? 1) == 1 ? 'checked' : '' }} />
+                    </div>
+                @endif
+            </div>
+        </div>
+
         @if (auth()->user()->user_type == 'admin')
             <!-- Demo Login Section -->
             <div class="form-group border-bottom pb-3">
