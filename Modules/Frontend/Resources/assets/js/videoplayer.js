@@ -594,35 +594,44 @@ document.addEventListener('DOMContentLoaded', function () {
   //   }
   // }
   async function saveEntertainmentView(button) {
-    try {
-      const typeOfContent = button?.getAttribute('data-entertainment-type');
-      const profileId = button?.getAttribute('data-profile-id');
-      const episodeId = button?.getAttribute('data-episode-id');
-      const contentId = button?.getAttribute('data-contentid');
-      const entertainmentIdAttr = button?.getAttribute('data-entertainment-id');
+      try {
+      const isUserAuthenticated = (typeof window !== 'undefined' && window.isAuthenticated === true);
+      if (!isUserAuthenticated) {
+          console.warn('User not authenticated, skipping saveEntertainmentView API call.');
+          return;
+        }
+        const typeOfContent = button?.getAttribute('data-entertainment-type');
+        const profileId = button?.getAttribute('data-profile-id');
+        const episodeId = button?.getAttribute('data-episode-id');
+        const contentId = button?.getAttribute('data-contentid');
+        const entertainmentIdAttr = button?.getAttribute('data-entertainment-id');
 
-      const isEpisode = typeOfContent === 'episode' || (episodeId && contentId && contentId !== entertainmentIdAttr);
-      const entertainmentId = isEpisode ? contentId : entertainmentIdAttr;
+        const isEpisode = typeOfContent === 'episode' || (episodeId && contentId && contentId !== entertainmentIdAttr);
+        const entertainmentId = isEpisode ? contentId : entertainmentIdAttr;
 
-      if (entertainmentId && ['movie', 'tvshow', 'video', 'episode'].includes(isEpisode ? 'episode' : typeOfContent)) {
-         console.log(baseUrl) ;
-        await fetch(`${baseUrl}/api/save-entertainment-views`, {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-          },
-          body: JSON.stringify({
-            entertainment_id: entertainmentId,
-            profile_id: profileId,
-          })
-        });
+        if (entertainmentId && ['movie', 'tvshow', 'video', 'episode'].includes(isEpisode ? 'episode' : typeOfContent)) {
+          const response = await fetch(`${baseUrl}/api/save-entertainment-views`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+              entertainment_id: entertainmentId,
+              profile_id: profileId,
+            })
+          });
+
+          if (response.status === 401 || response.status === 419) {
+            window.isAuthenticated = false;
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error saving entertainment view:', error);
       }
-    } catch (error) {
-      console.error('Error saving entertainment view:', error);
     }
-  }
 
   async function checkAuthenticationAndDeviceSupport() {
     const isDeviceSupported = await CheckDeviceType()
@@ -875,42 +884,56 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
-    fetch(`${baseUrl}/api/continuewatch-list`, { credentials: 'same-origin' })
-      .then((response) => {
-        if (!response.ok) {
-          console.warn('Continuewatch-list request failed with status', response.status)
-          return { data: [] }
-        }
-        return response.json()
-      })
-      .then(async (data) => {
-
-        const entertainmentId = button.getAttribute('data-entertainment-id')
-        const entertainmentType = button.getAttribute('data-entertainment-type')
-        const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
-        const matchingVideo = list.find((item) => item.entertainment_id === parseInt(entertainmentId) && item.entertainment_type === entertainmentType)
-        let lastWatchedTime = 0
-        if (matchingVideo && matchingVideo.total_watched_time) {
-          lastWatchedTime = timeStringToSeconds(matchingVideo.total_watched_time)
-        }
-        if (accessType === 'paid') {
-          const plan_id = button.getAttribute('data-plan-id');
-          let canPlay = plan_id ? await CheckSubscription(plan_id) : false;
-
-          if (!canPlay) {
-            player.pause()
-            isPopupShown = true // Mark that popup was shown
-            $('#DeviceSupport').modal('show') // Show device support modal if not supported
-            return // Stop further execution
+    const isUserAuthenticated = (typeof window !== 'undefined' && window.isAuthenticated === true);
+    if (isUserAuthenticated) {
+      fetch(`${baseUrl}/api/continuewatch-list`, { credentials: 'same-origin' })
+        .then((response) => {
+          if (response.status === 401 || response.status === 419) {
+            window.isAuthenticated = false
+            return { data: [] }
           }
-        }
-        if (accessType === 'free' || accessType === 'pay-per-view') {
-          playVideo(player, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
-        } else {
-          handleSubscription(button, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
-        }
-      })
-      .catch((error) => console.error('Error fetching continue watch:', error))
+          if (!response.ok) {
+            console.warn('Continuewatch-list request failed with status', response.status)
+            return { data: [] }
+          }
+          return response.json()
+        })
+        .then(async (data) => {
+          const entertainmentId = button.getAttribute('data-entertainment-id')
+          const entertainmentType = button.getAttribute('data-entertainment-type')
+          const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+          const matchingVideo = list.find((item) => item.entertainment_id === parseInt(entertainmentId) && item.entertainment_type === entertainmentType)
+          let lastWatchedTime = 0
+          if (matchingVideo && matchingVideo.total_watched_time) {
+            lastWatchedTime = timeStringToSeconds(matchingVideo.total_watched_time)
+          }
+          if (accessType === 'paid') {
+            const plan_id = button.getAttribute('data-plan-id');
+            let canPlay = plan_id ? await CheckSubscription(plan_id) : false;
+
+            if (!canPlay) {
+              player.pause()
+              isPopupShown = true // Mark that popup was shown
+              $('#DeviceSupport').modal('show') // Show device support modal if not supported
+              return // Stop further execution
+            }
+          }
+          if (accessType === 'free' || accessType === 'pay-per-view') {
+            playVideo(player, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
+          } else {
+            handleSubscription(button, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
+          }
+        })
+        .catch((error) => console.error('Error fetching continue watch:', error))
+    } else {
+      // Not authenticated, skip fetching continuewatch-list and just play video if allowed
+      let lastWatchedTime = 0;
+      if (accessType === 'free' || accessType === 'pay-per-view') {
+        playVideo(player, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
+      } else {
+        handleSubscription(button, videoUrl, qualityOptions, lastWatchedTime, subtitleInfo)
+      }
+    }
 
     isWatchHistorySaved = false // Reset flag
   }

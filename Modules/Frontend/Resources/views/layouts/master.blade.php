@@ -9,6 +9,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="baseUrl" content="{{ url('/') }}" />
+    <script>
+        window.isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
+    </script>
     @php
         $faviconUrl = GetSettingValue('favicon')
             ? setBaseUrlWithFileName(GetSettingValue('favicon'), 'image', 'logos')
