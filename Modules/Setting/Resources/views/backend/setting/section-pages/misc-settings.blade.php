@@ -76,6 +76,23 @@
                             <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+                    <div class="col-12">
+                        <div class="border rounded-4 p-3 d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                            <div>
+                                <h5 class="mb-1">Global Live TV Chat</h5>
+                                <p class="mb-0 text-muted">Turn chat on or off for the entire site. Channel-level chat still respects each channel's own setting.</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch m-0">
+                                    {{ html()->hidden('live_tv_chat_enabled', 0) }}
+                                    {{ html()->checkbox('live_tv_chat_enabled', old('live_tv_chat_enabled', $settings['live_tv_chat_enabled'] ?? 1), 1)->class('form-check-input')->id('live_tv_chat_enabled') }}
+                                </div>
+                                <a href="{{ route('backend.settings.live-chat-logs.index') }}" class="btn btn-dark">
+                                    <i class="ph ph-chats-circle align-middle"></i> Manage Chat Logs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Setting\Http\Controllers\Backend\SettingsController;
+use Modules\LiveTV\Http\Controllers\Backend\LiveTvChatLogController;
 
 
 
@@ -61,6 +62,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
       Route::get('payment-method', [SettingsController::class, 'paymentMethod'])->name('payment-method');
       Route::get('language-settings', [SettingsController::class, 'languageSettings'])->name('language-settings');
       Route::get('misc-setting', [SettingsController::class, 'miscSetting'])->name('misc'); // Define the missing route for 'misc' setting
+      Route::get('live-chat-logs', [LiveTvChatLogController::class, 'index'])->name('live-chat-logs.index');
+      Route::delete('live-chat-logs/{id}', [LiveTvChatLogController::class, 'destroy'])->name('live-chat-logs.destroy');
       Route::get('other-settings', [SettingsController::class, 'otherSettings'])->name('other-settings');
       Route::get('notification-configuration', [SettingsController::class, 'notificationConfiguration'])->name('notification-configuration');
       Route::get('storage-settings', [SettingsController::class, 'storageSettings'])->name('storage-settings');

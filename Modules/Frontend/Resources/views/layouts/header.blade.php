@@ -522,7 +522,7 @@
                                             @php
                                                 $avatarUrl = $currentProfile && $currentProfile->avatar 
                                                     ? setBaseUrlWithFileName($currentProfile->avatar) 
-                                                    : setBaseUrlWithFileName(auth()->user()->file_url);
+                                                    : setBaseUrlWithFileName(auth()->user()->file_url, 'image', 'users');
                                                 $timestamp = $currentProfile && $currentProfile->updated_at 
                                                     ? strtotime($currentProfile->updated_at) 
                                                     : strtotime(auth()->user()->updated_at);
@@ -580,9 +580,9 @@
                                                             )->get();
                                                         @endphp
                                                         @forelse($userProfiles as $profile)
+                                                            @if (!$profile->is_child_profile)
                                                             <div class="profile-item d-flex align-items-center gap-3 mb-2 p-2 rounded bg-dark {{ $currentProfile && $currentProfile->id == $profile->id ? 'active' : '' }}"
-                                                                style="cursor: pointer;"
-                                                                onclick="SelectProfile11({{ $profile->id }})">
+                                                                style="cursor: pointer;">
                                                                 <div class="profile-avatar">
                                                                     @php
                                                                         $profileAvatarUrl = $profile->avatar ? setBaseUrlWithFileName($profile->avatar) : asset('images/avatar.webp');
@@ -603,7 +603,8 @@
                                                                             {{ __('frontend.kids_profile') }}</div>
                                                                     @endif
                                                                 </div>
-                                                            </div>
+                                                                </div>
+                                                            @endif
                                                         @empty
                                                             <div class="text-center text-muted font-size-14">
                                                                 {{ __('frontend.no_profiles_found') }}</div>
@@ -719,18 +720,7 @@
                                         </a>
                                     </li> --}}
 
-                                    @if ($isChildProfile == 0)
-                                        <li>
-                                            <a href="{{ route('profile-management') }}"
-                                                class="link-body-emphasis font-size-14">
-                                                <span class="d-flex align-items-center justify-content-between gap-3">
-                                                    <span
-                                                        class="fw-medium">{{ __('messages.profile_management') }}</span>
-                                                    <i class="ph ph-caret-right"></i>
-                                                </span>
-                                            </a>
-                                        </li>
-                                    @endif
+                                    {{-- Profile management removed per request. --}}
                                     {{-- <li>
                                         <a href="{{ route('subscriptionPlan') }}"
                                             class="link-body-emphasis font-size-14">

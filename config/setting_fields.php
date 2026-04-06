@@ -118,6 +118,16 @@ return [
                 'datatype' => 'misc',
             ],
             [
+                'type' => 'checkbox',
+                'data' => 'boolean',
+                'name' => 'live_tv_chat_enabled',
+                'label' => 'Enable Live TV Chat',
+                'rules' => 'nullable|boolean',
+                'class' => '',
+                'value' => '1',
+                'datatype' => 'misc',
+            ],
+            [
                 'type' => 'file', // input fields type
                 'data' => 'string', // data type, string, int, boolean
                 'name' => 'logo', // unique name for field

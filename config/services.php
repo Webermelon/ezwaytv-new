@@ -58,6 +58,11 @@ return [
         'private_key' => env('APPLE_PRIVATE_KEY'),
     ],
 
+    'wordpress_sso' => [
+        'secret' => env('WORDPRESS_SSO_SECRET'),
+        'issuer' => env('WORDPRESS_SSO_ISSUER', env('NETWORK_WP_SITEURL')),
+    ],
+
 
 
 ];

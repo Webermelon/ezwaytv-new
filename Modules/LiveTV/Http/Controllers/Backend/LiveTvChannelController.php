@@ -15,6 +15,7 @@ use Modules\LiveTV\Models\LiveTvCategory;
 use Modules\LiveTV\Http\Requests\TvChannelRequest;
 use Modules\LiveTV\Models\TvChannelStreamContentMapping;
 use Modules\LiveTV\Services\LiveTvChannelService;
+use Illuminate\Support\Facades\Schema;
 
 
 class LiveTvChannelController extends Controller
@@ -222,6 +223,11 @@ class LiveTvChannelController extends Controller
     public function store(TvChannelRequest $request)
     {
         $data = $request->all();
+        if ($this->supportsLiveChatSetting()) {
+            $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+        } else {
+            unset($data['enable_live_chat']);
+        }
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
@@ -243,7 +249,7 @@ class LiveTvChannelController extends Controller
      */
     public function show(int $id)
     {
-        return view('livetv::show');
+        return redirect()->route('backend.tv-channel.edit', $id);
     }
 
     /**
@@ -274,6 +280,11 @@ class LiveTvChannelController extends Controller
     public function update(TvChannelRequest $request, $id): RedirectResponse
     {
         $data = $request->all();
+        if ($this->supportsLiveChatSetting()) {
+            $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+        } else {
+            unset($data['enable_live_chat']);
+        }
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
@@ -312,6 +323,11 @@ class LiveTvChannelController extends Controller
 
         $message = trans('messages.update_form_livetv', ['form' => 'Tv Channel']);
         return redirect()->route('backend.tv-channel.index')->with('success', $message);
+    }
+
+    private function supportsLiveChatSetting(): bool
+    {
+        return Schema::hasColumn('live_tv_channel', 'enable_live_chat');
     }
 
     /**

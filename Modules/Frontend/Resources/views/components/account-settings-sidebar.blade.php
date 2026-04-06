@@ -7,12 +7,7 @@
                     <h6 class="m-0">{{ __('frontend.account_settings') }}</h6>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('security-control') ? 'active' : '' }} p-3 text-center" href="{{ route('security-control') }}">
-                    <i class="ph ph-shield-check"></i>
-                    <h6 class="m-0">{{ __('frontend.parental_controls') }}</h6>
-                </a>
-            </li>
+            {{-- Parental controls removed per request. --}}
         @endif
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('watchList') ? 'active' : '' }} p-3 text-center" href="{{ route('watchList') }}">

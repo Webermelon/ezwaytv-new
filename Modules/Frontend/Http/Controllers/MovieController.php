@@ -12,6 +12,7 @@ use Modules\Entertainment\Models\Watchlist;
 use Illuminate\Support\Facades\Cache;
 use Modules\LiveTV\Models\LiveTvCategory;
 use Modules\LiveTV\Models\LiveTvChannel;
+use Modules\LiveTV\Models\LiveTvChatMessage;
 use Modules\LiveTV\Transformers\LiveTvCategoryResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
@@ -291,9 +292,49 @@ public function moviesListBylanguage(string $language)
             $data['server_url'] = Crypt::encryptString($livetv->TvChannelStreamContentMappings['server_url']);
         }
 
+        $chatMessages = [];
+        $chatEnabled = ((int) (GetSettingValue('live_tv_chat_enabled') ?? 1) === 1) && ! empty($data['enable_live_chat']);
 
+        if ($chatEnabled) {
+            $chatMessages = LiveTvChatMessage::query()
+                ->where('live_tv_channel_id', $livetv->id)
+                ->latest('id')
+                ->take(50)
+                ->get()
+                ->reverse()
+                ->values()
+                ->map(function (LiveTvChatMessage $message) {
+                    return [
+                        'id' => $message->id,
+                        'guest_name' => $message->guest_name,
+                        'message' => $message->message,
+                        'time' => optional($message->created_at)->diffForHumans(),
+                        'created_at' => optional($message->created_at)->toIso8601String(),
+                    ];
+                })
+                ->all();
+        }
 
-        return view('frontend::livetvDetail', compact('data', 'suggestions'));
+            $data['enable_live_chat'] = $chatEnabled;
+            $chatGuestName = null;
+            $chatIdentityType = auth()->check() ? 'user' : 'guest';
+            $chatCanChangeName = ! auth()->check();
+
+            if (auth()->check()) {
+                $chatGuestName = trim((string) auth()->user()->full_name) ?: ('User ' . auth()->id());
+            } else {
+                $cookiePayload = request()->cookie('livetv_chat_identity');
+                $identity = is_string($cookiePayload) ? json_decode($cookiePayload, true) : null;
+                $cookieName = trim((string) ($identity['display_name'] ?? ''));
+
+                if ($cookieName !== '') {
+                    $chatGuestName = $cookieName;
+                } elseif ($chatEnabled) {
+                    $chatGuestName = 'Anonymous';
+                }
+            }
+
+            return view('frontend::livetvDetail', compact('data', 'suggestions', 'chatMessages', 'chatGuestName', 'chatIdentityType', 'chatCanChangeName'));
     }
 
     public function livetvChannelsList(Request $request, $id)

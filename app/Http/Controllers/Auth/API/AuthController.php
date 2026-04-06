@@ -32,6 +32,7 @@ use Spatie\Image\Image;
 use Exception;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -676,9 +677,44 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         } else {
 
             $folderPath = 'streamit-laravel/' .  $filename ;
-            Storage::disk( $activeDisk )->put($folderPath, file_get_contents($file));
-            $baseUrl = env('DO_SPACES_URL');
-            $file_url = $baseUrl . '/' . $folderPath;
+            try {
+                // Use the uploaded file real path to read contents; this avoids passing the UploadedFile object
+                // directly to file_get_contents which can lead to empty uploads on some PHP setups.
+                $contents = is_string($file) ? file_get_contents($file) : file_get_contents($file->getRealPath());
+            } catch (\Throwable $e) {
+                $contents = null;
+            }
+
+            if ($contents !== null && $contents !== false) {
+                // For cloud disks (DigitalOcean Spaces) ensure object is uploaded with public visibility
+                try {
+                    Storage::disk($activeDisk)->put($folderPath, $contents, 'public');
+                } catch (\Throwable $e) {
+                    // fallback to plain put
+                    Storage::disk($activeDisk)->put($folderPath, $contents);
+                }
+            } else {
+                // Fallback: try streaming the file using putFileAs which respects visibility
+                try {
+                    if (method_exists(Storage::disk($activeDisk), 'putFileAs')) {
+                        Storage::disk($activeDisk)->putFileAs('', $file->getRealPath() ? new \Illuminate\Http\UploadedFile($file->getRealPath(), $filename) : $file, $folderPath, 'public');
+                    } else {
+                        $stream = fopen($file->getRealPath(), 'r');
+                        Storage::disk($activeDisk)->put($folderPath, $stream);
+                        if (is_resource($stream)) fclose($stream);
+                    }
+                } catch (\Throwable $e) {
+                    // Last resort: do nothing and leave original URL
+                }
+            }
+
+            // Derive public URL via Storage when possible to ensure correct host and path
+            try {
+                $file_url = Storage::disk($activeDisk)->url($folderPath);
+            } catch (\Throwable $e) {
+                $baseUrl = env('DO_SPACES_URL');
+                $file_url = rtrim($baseUrl, '/') . '/' . ltrim($folderPath, '/');
+            }
         }
 
             $data['file_url']=extractFileNameFromUrl($file_url,'users');
@@ -728,30 +764,30 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
         return ApiResponse::success($user, __('messages.user_details_successfull'), 200);
     }
     private function stripExif($file)
-{
-    try {
-        if (!str_starts_with($file->getMimeType(), 'image/')) {
+    {
+        try {
+            if (!str_starts_with($file->getMimeType(), 'image/')) {
+                return $file;
+            }
+
+            $tempPath = sys_get_temp_dir() . '/' . uniqid('clean_') . '_' . $file->getClientOriginalName();
+
+            Image::load($file->getRealPath())
+                ->optimize()
+                ->save($tempPath);
+            return new \Illuminate\Http\UploadedFile(
+                $tempPath,
+                $file->getClientOriginalName(),
+                $file->getMimeType(),
+                null,
+                true
+            );
+
+        } catch (\Throwable $e) {
+            \Log::warning("Could not strip EXIF: " . $e->getMessage());
             return $file;
         }
-
-        $tempPath = sys_get_temp_dir() . '/' . uniqid('clean_') . '_' . $file->getClientOriginalName();
-
-        Image::load($file->getRealPath())
-            ->optimize()
-            ->save($tempPath);
-        return new \Illuminate\Http\UploadedFile(
-            $tempPath,
-            $file->getClientOriginalName(),
-            $file->getMimeType(),
-            null,
-            true
-        );
-
-    } catch (\Exception $e) {
-        \Log::warning("Could not strip EXIF: " . $e->getMessage());
-        return $file;
     }
-}
 
     public function deleteAccount(Request $request)
     {

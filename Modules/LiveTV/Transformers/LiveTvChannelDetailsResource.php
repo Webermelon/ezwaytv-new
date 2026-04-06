@@ -39,6 +39,7 @@ class LiveTvChannelDetailsResource extends JsonResource
             'plans' => PlanResource::collection($plans),
             'more_items' => LiveTvChannelResourceV3::collection($moreItems),
             'status' => $this->status,
+            'enable_live_chat' => (bool) $this->enable_live_chat,
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url, 'image', 'livetv'),
             'thumbnail_image' => $this->thumb_url != null ? setBaseUrlWithFileName($this->thumb_url, 'image', 'livetv') : setBaseUrlWithFileName($this->poster_url, 'image', 'livetv'),
         ];

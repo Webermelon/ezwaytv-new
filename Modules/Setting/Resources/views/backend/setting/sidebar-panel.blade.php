@@ -27,7 +27,7 @@
                     @endhasPermission
                     @hasPermission('setting_misc')
                         <div class="mb-3 active-menu">
-                            <a id="link-misc" href="{{ route('backend.settings.misc') }}" class="btn btn-border {{ request()->routeIs('backend.settings.misc') ? 'active' : '' }}">
+                            <a id="link-misc" href="{{ route('backend.settings.misc') }}" class="btn btn-border {{ request()->routeIs('backend.settings.misc') || request()->routeIs('backend.settings.live-chat-logs.*') ? 'active' : '' }}">
                                 <i class="fa-solid fa-screwdriver-wrench"></i>{{ __('setting_sidebar.lbl_misc_setting') }}
                             </a>
                         </div>

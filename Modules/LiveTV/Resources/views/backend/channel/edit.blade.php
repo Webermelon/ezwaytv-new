@@ -223,6 +223,17 @@
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
                             </div>
+                            <div class="col-md-6 col-lg-4">
+                                {{ html()->label('Live Chat', 'enable_live_chat')->class('form-label') }}
+                                <div class="d-flex justify-content-between align-items-center form-control">
+                                    {{ html()->label('Enable live chat beside player', 'enable_live_chat')->class('form-label mb-0 text-body') }}
+                                    <div class="form-check form-switch">
+                                        {{ html()->hidden('enable_live_chat', 0) }}
+                                        {{ html()->checkbox('enable_live_chat', old('enable_live_chat', $data->enable_live_chat), 1)->class('form-check-input')->id('enable_live_chat') }}
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-1">Messages stay attached to this channel even if chat is later disabled.</small>
+                            </div>
                         </div>
                     </div>
                 </div>

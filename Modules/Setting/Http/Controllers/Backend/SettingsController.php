@@ -441,7 +441,7 @@ class SettingsController extends Controller
             }
             $timeFormatList = $data;
 
-        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds'];
+        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled'];
         $settings = $this->fieldsData($fields);
         return view('setting::backend.setting.section-pages.misc-settings', compact('settings', 'languages', 'timezones','dateFormat','timeFormatList'));
     }

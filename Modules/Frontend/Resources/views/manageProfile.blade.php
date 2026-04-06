@@ -13,8 +13,8 @@
             <div class="profile-card-lists">
                 <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-6 gy-4 justify-content-center">
                     @foreach ($userProfile as $profile)
-                        <div class="col">
-                            <div class="profile-card is-edit" onclick="SelectProfile11({{ $profile->id }})"
+                            <div class="col">
+                            <div class="profile-card is-edit"
                                 data-profile-id="{{ $profile->id }}" data-is-child="{{ $profile->is_child_profile }}">
                                 <div class="profile-card-image">
                                     <img src="{{ $profile->avatar ?? asset('images/default-profile.png') }}"
@@ -26,11 +26,7 @@
                     @endforeach
                 </div>
             </div>
-            @if (getCurrentProfileSession('is_child_profile') == 0)
-            <div class="text-center mt-5">
-                <a href="{{ route('profile-management') }}" class="btn btn-dark py-3 h4 m-0 fw-normal">{{ __('messages.lbl_manage_profile') }}</a>
-            </div>
-            @endif
+            {{-- Manage Profiles UI removed per request. --}}
         </div>
     </div>
     <!-- </div> -->

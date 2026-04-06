@@ -219,7 +219,6 @@
                                                     <div class="card bg-body profil-card {{ $class }}">
                                                         <div class="card-body rounded text-center">
                                                             <div class="profile-card-image"
-                                                                onclick="SelectProfile11({{ $profile['id'] }})"
                                                                 style="cursor: pointer">
                                                                 <div class="profile-kids-bagde">
                                                                     <img id="profile_image_{{ $profile['id'] }}"
@@ -1022,7 +1021,7 @@
                                         <div class="col" >
                                             <div class="card bg-body profil-card">
                                                 <div class="card-body  rounded text-center">
-                                                    <div class="profile-card-image" onclick="SelectProfile11(${profile.id})" style="cursor: pointer">
+                                                            <div class="profile-card-image" style="cursor: pointer">
                                                         <div class="profile-kids-bagde">
                                                             <img id="profile_image_${profile.id}" src="${profile.avatar}?v=${timestamp}" alt="profile-image">
                                                             <span class="kids-badge">${is_child_profile}</span>

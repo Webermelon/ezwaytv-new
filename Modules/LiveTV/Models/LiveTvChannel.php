@@ -6,6 +6,7 @@ use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\LiveTV\Models\TvChannelStreamContentMapping;
 use Modules\Subscriptions\Models\Plan;
+use Modules\LiveTV\Models\LiveTvChatMessage;
 
 class LiveTvChannel extends BaseModel
 {
@@ -17,7 +18,12 @@ class LiveTvChannel extends BaseModel
      */
     protected $table = 'live_tv_channel';
     protected $fillable = [
-        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url'
+        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url','enable_live_chat'
+    ];
+
+    protected $casts = [
+        'status' => 'boolean',
+        'enable_live_chat' => 'boolean',
     ];
     // protected $appends = ['poster_url'];
 
@@ -82,6 +88,11 @@ class LiveTvChannel extends BaseModel
     public function plan()
     {
         return $this->hasOne(Plan::class, 'id', 'plan_id');
+    }
+
+    public function chatMessages()
+    {
+        return $this->hasMany(LiveTvChatMessage::class, 'live_tv_channel_id');
     }
 
     public static function get_top_channel($channelIdsArray)

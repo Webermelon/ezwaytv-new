@@ -4,8 +4,10 @@ use Illuminate\Support\Facades\Route;
 use Modules\Frontend\Http\Controllers\MovieController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use Modules\Frontend\Http\Controllers\PaymentController;
+use Modules\Frontend\Http\Controllers\LiveTvChatController;
 use Modules\Frontend\Http\Controllers\Auth\AuthController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
+use Modules\Frontend\Http\Controllers\Auth\WordPressSsoController;
 use App\Http\Controllers\LanguageController;
 use Modules\Frontend\Http\Controllers\TvShowController;
 use Modules\Frontend\Http\Controllers\CastCrewController;
@@ -55,6 +57,7 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 
 Route::get('language/{language}', [LanguageController::class, 'switch'])->name('frontend.language.switch');
 Route::get('/login-page', [AuthController::class, 'login'])->name('login-page');
+Route::get('/sso/wp/login', [WordPressSsoController::class, 'login'])->name('wordpress-sso.login');
 Route::post('/store-user', [AuthController::class, 'store'])->name('store-user');
 Route::get('/register', [AuthController::class, 'registration'])->name('register-page');
 Route::get('/forget-password', [AuthController::class, 'forgetpassword'])->name('forget-password');
@@ -109,6 +112,9 @@ Route::get('/comingsoon', [MovieController::class, 'comingSoonList'])->name('com
 Route::get('/livetv', [MovieController::class, 'livetvList'])->middleware('checkModule')->name('livetv');
 Route::get('/livetv-details/{id}', [MovieController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
 Route::get('/livetv-channels/{id}', [MovieController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
+Route::get('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'index'])->middleware('checkModule')->name('livetv-chat.messages');
+Route::post('/livetv-chat/{channelId}/session', [LiveTvChatController::class, 'storeGuest'])->middleware('checkModule')->name('livetv-chat.session');
+Route::post('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'storeMessage'])->middleware('checkModule')->name('livetv-chat.store');
 
 
 
@@ -145,7 +151,8 @@ Route::group(['middleware' => ['user']], function () {
     Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');
     Route::get('/account-setting', [FrontendController::class, 'accountSetting'])->name('accountSetting');
-    Route::get('/profile-management', [FrontendController::class, 'profileManagement'])->name('profile-management');
+    // Profile management removed per request. Route disabled.
+    // Route::get('/profile-management', [FrontendController::class, 'profileManagement'])->name('profile-management');
     Route::delete('/profile/delete/{profile}', [UserController::class, 'destroy'])->name('profile.destroy');
     Route::post('/device-logout', [FrontendController::class, 'deviceLogout'])->name('device-logout');
     Route::get('/subscription-payment', [FrontendController::class, 'subscriptPayment'])->name('subscription-payment');

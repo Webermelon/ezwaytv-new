@@ -16,6 +16,8 @@
                             <div class="text-center auth-heading">
                                 @php
                                     $logo = GetSettingValue('dark_logo')  ? setBaseUrlWithFileName(GetSettingValue('dark_logo'),'image','logos') : asset('img/logo/dark_logo.png');
+                                    $networkLoginUrl = rtrim((string) config('services.wordpress_sso.issuer', ''), '/');
+                                    $networkLoginUrl = $networkLoginUrl !== '' ? $networkLoginUrl . '?site=ezwaytvott' : null;
                                 @endphp
 
                                 <a href="{{ route('user.login') }}" class="d-inline-block">
@@ -70,6 +72,11 @@
                                     <button type="submit" id="login-button" class="btn btn-primary w-100">
                                         {{ __('frontend.sign_in') }}
                                     </button>
+                                    @if ($networkLoginUrl)
+                                        <a href="{{ $networkLoginUrl }}" class="btn btn-outline-light w-100 mt-3">
+                                            Continue With Network Account
+                                        </a>
+                                    @endif
                                     <p class="mt-2 mb-0 fw-normal">{{ __('frontend.not_have_account') }}
                                         <a href="{{ route('register-page') }}"
                                             class="ms-1 btn btn-link">{{ __('frontend.sign_up') }}</a>
