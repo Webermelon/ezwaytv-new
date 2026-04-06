@@ -142,6 +142,26 @@
             </div>
         </div>
 
+        {{-- Show Login Button in Navbar --}}
+        <div class="form-group border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label m-0" for="show_login_button">Show Login Button in Navbar</label>
+                @if($isDemoAdmin)
+                    @php $showLoginBtnStatus = old('show_login_button', $settings['show_login_button'] ?? 1); @endphp
+                    <span class="badge {{ $showLoginBtnStatus == 1 ? 'bg-success-subtle' : 'bg-danger-subtle' }}">
+                        {{ $showLoginBtnStatus == 1 ? __('messages.active') : __('messages.inactive') }}
+                    </span>
+                    <input type="hidden" value="{{ $showLoginBtnStatus }}" name="show_login_button">
+                @else
+                    <input type="hidden" value="0" name="show_login_button">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="show_login_button" id="show_login_button"
+                            type="checkbox" {{ old('show_login_button', $settings['show_login_button'] ?? 1) == 1 ? 'checked' : '' }} />
+                    </div>
+                @endif
+            </div>
+        </div>
+
         @if (auth()->user()->user_type == 'admin')
             <!-- Demo Login Section -->
             <div class="form-group border-bottom pb-3">

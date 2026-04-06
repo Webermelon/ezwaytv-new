@@ -339,6 +339,17 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'show_login_button',
+                'label' => 'Show Login Button in Navbar',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Toggle whether the Login button appears in the frontend header.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'enable_tmdb_api',
                 'label' => 'Import Data From TMDB',
                 'rules' => 'boolean',

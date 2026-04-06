@@ -768,11 +768,13 @@
 
                         </li>
                     @else
-                        <li class="nav-item">
-                            <a href="{{ route('login') }}" class="btn btn-primary font-size-14 login-btn">
-                                {{ __('frontend.login') }}
-                            </a>
-                        </li>
+                        @if (setting('show_login_button', 1) == 1)
+                            <li class="nav-item">
+                                <a href="{{ route('login') }}" class="btn btn-primary font-size-14 login-btn">
+                                    {{ __('frontend.login') }}
+                                </a>
+                            </li>
+                        @endif
                         @endif
                         </ul>
                     </div>
