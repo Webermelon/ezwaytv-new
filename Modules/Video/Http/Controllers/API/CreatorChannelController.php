@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Modules\Subscriptions\Models\Subscription;
@@ -69,7 +70,8 @@ class CreatorChannelController extends Controller
         $sanitized  = str_replace([' ', '-', '.', '%20'], '_', $baseName);
         $uniqueName = $sanitized . '_' . uniqid() . '.' . $ext;
 
-        $activeDisk = env('ACTIVE_STORAGE', 'local');
+        $activeDisk = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
+        $activeDisk = config("filesystems.disks.{$activeDisk}") ? $activeDisk : 'local';
 
         if ($activeDisk === 'local') {
             $dir  = 'public/creator/image';
@@ -79,7 +81,11 @@ class CreatorChannelController extends Controller
                 File::makeDirectory(storage_path('app/' . $dir), 0775, true, true);
             }
 
-            Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+            $stored = Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
+
+            if (!$stored) {
+                throw new \RuntimeException('Failed to store image on local disk.');
+            }
 
             $fullPath = storage_path('app/' . $path);
             if (file_exists($fullPath)) {
@@ -87,7 +93,57 @@ class CreatorChannelController extends Controller
             }
         } else {
             $path = 'creator/image/' . $uniqueName;
-            Storage::disk($activeDisk)->put($path, file_get_contents($file->getRealPath()));
+            $stored = Storage::disk($activeDisk)->put($path, file_get_contents($file->getRealPath()));
+
+            if ($stored) {
+                // Keep a local mirror so folder-based listings still show uploaded files.
+                $localDir = 'public/creator/image';
+                $localPath = $localDir . '/' . $uniqueName;
+
+                try {
+                    if (!Storage::disk('local')->exists($localDir)) {
+                        File::makeDirectory(storage_path('app/' . $localDir), 0775, true, true);
+                    }
+
+                    Storage::disk('local')->put($localPath, file_get_contents($file->getRealPath()));
+
+                    $fullPath = storage_path('app/' . $localPath);
+                    if (file_exists($fullPath)) {
+                        chmod($fullPath, 0664);
+                    }
+                } catch (\Throwable $mirrorError) {
+                    Log::warning('Creator channel image local mirror failed.', [
+                        'disk' => $activeDisk,
+                        'remote_path' => $path,
+                        'local_path' => $localPath,
+                        'error' => $mirrorError->getMessage(),
+                    ]);
+                }
+            } else {
+                // Fallback to local disk to prevent silent data loss.
+                Log::warning('Creator channel image upload failed on remote disk, falling back to local.', [
+                    'disk' => $activeDisk,
+                    'path' => $path,
+                ]);
+
+                $localDir = 'public/creator/image';
+                $localPath = $localDir . '/' . $uniqueName;
+
+                if (!Storage::disk('local')->exists($localDir)) {
+                    File::makeDirectory(storage_path('app/' . $localDir), 0775, true, true);
+                }
+
+                $localStored = Storage::disk('local')->put($localPath, file_get_contents($file->getRealPath()));
+
+                if (!$localStored) {
+                    throw new \RuntimeException('Failed to store image on both remote and local disks.');
+                }
+
+                $fullPath = storage_path('app/' . $localPath);
+                if (file_exists($fullPath)) {
+                    chmod($fullPath, 0664);
+                }
+            }
         }
 
         return $uniqueName;

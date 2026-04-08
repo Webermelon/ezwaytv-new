@@ -235,7 +235,10 @@
             abortController: null,
             infiniteInitDone: false,
             ioObserver: null,
-            originalContents: []
+            originalContents: [],
+            autoOpenFolder: new URLSearchParams(window.location.search).get('open_folder'),
+            pendingSelectFile: new URLSearchParams(window.location.search).get('select_file'),
+            autoOpenedFromQuery: false
         },
         // Track last applied search to avoid redundant renders
         lastSearchTerm: '',
@@ -559,7 +562,7 @@
                 } else if (is_video) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${name}">
                                 <video class="img-fluid object-fit-cover" preload="metadata" controlsList="nodownload" controls>
                                     <source src="${media_url}" type="video/mp4">
                                 </video>
@@ -573,7 +576,7 @@
                 } else if (is_image) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${name}">
                                 <img class="img-fluid object-fit-cover" src="${media_url}" loading="lazy" decoding="async" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${name}', '${media_url}', 'image', '${FileManager.utils.getFolderFromUrl(media_url)}')">
                                     <i class="ph ph-trash"></i>
@@ -667,6 +670,39 @@
                 }
                 // After rendering, ensure save button reflects current selection (likely none)
                 FileManager.dom.updateSaveButtonState();
+                FileManager.applyPendingUploadedSelection();
+            }
+        },
+
+        applyPendingUploadedSelection: () => {
+            const fileName = FileManager.state.pendingSelectFile;
+            if (!fileName) return;
+
+            const escaped = (window.CSS && typeof CSS.escape === 'function')
+                ? CSS.escape(fileName)
+                : fileName.replace(/"/g, '\\"');
+
+            const tile = document.querySelector(`#mediaLibraryContent .iq-media-images[data-file-name="${escaped}"]`);
+            if (!tile) {
+                if (!FileManager.state.isLoading && FileManager.state.nextOffset !== null && FileManager.state.nextOffset !== undefined) {
+                    FileManager.loadMoreContents();
+                }
+                return;
+            }
+
+            tile.classList.add('selected');
+            tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            FileManager.dom.updateSaveButtonState();
+
+            FileManager.state.pendingSelectFile = null;
+
+            if (window.history && window.history.replaceState) {
+                const params = new URLSearchParams(window.location.search);
+                params.delete('open_folder');
+                params.delete('select_file');
+                const query = params.toString();
+                const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
+                window.history.replaceState({}, document.title, cleanUrl);
             }
         },
 
@@ -1010,6 +1046,12 @@
         // Disable save by default until a media item is selected
         const btn = document.getElementById('mediaSubmitButton');
         if (btn) btn.disabled = true;
+
+        if (FileManager.state.autoOpenFolder && !FileManager.state.autoOpenedFromQuery) {
+            FileManager.state.autoOpenedFromQuery = true;
+            FileManager.navigation.openFolder(FileManager.state.autoOpenFolder);
+        }
+
         // Toggle selection on media tiles (ignore delete button clicks)
         const grid = document.getElementById('mediaLibraryContent');
         if (grid) {

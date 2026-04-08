@@ -89,8 +89,16 @@ class FilemanagersController extends Controller
   {
 
     $page_type = $request->input('page_type');
+        $normalizedPageType = $page_type;
+        if ($normalizedPageType === 'season') {
+            $normalizedPageType = 'tvshow/season';
+        } elseif ($normalizedPageType === 'episode') {
+            $normalizedPageType = 'tvshow/episode';
+        }
 
     $jobs = [];
+        $syncProcessedCount = 0;
+        $redirectFolder = null;
 
     // Mode A: direct file post (fallback)
     if ($request->hasFile('file_url')) {
@@ -111,10 +119,19 @@ class FilemanagersController extends Controller
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
             ]);
-            $diskType = env('ACTIVE_STORAGE', 'local');
+            if ($redirectFolder === null) {
+                $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
+                $redirectFolder = trim($normalizedPageType . '/' . $targetType, '/');
+            }
+            $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('file uploaded', ['file' => $uniqueFileName]);
-            $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
-            $jobs[] = $job;
+            if ($fileType === 'image') {
+                ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
+                $syncProcessedCount++;
+            } else {
+                $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
+                $jobs[] = $job;
+            }
         }
     }
     // Mode B: chunk upload already assembled; receive only file names
@@ -131,10 +148,19 @@ class FilemanagersController extends Controller
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
             ]);
-            $diskType = env('ACTIVE_STORAGE', 'local');
+            if ($redirectFolder === null) {
+                $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
+                $redirectFolder = trim($normalizedPageType . '/' . $targetType, '/');
+            }
+            $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('queued assembled temp', ['file' => $originalName]);
-            $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
-            $jobs[] = $job;
+            if ($fileType === 'image') {
+                ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
+                $syncProcessedCount++;
+            } else {
+                $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
+                $jobs[] = $job;
+            }
         }
     }
 
@@ -155,12 +181,16 @@ class FilemanagersController extends Controller
         // }
         // Log::info('jobs dispatched synchronously', ['count' => count($jobs)]);
 
-    } else {
+    } elseif ($syncProcessedCount === 0) {
         Log::warning('no jobs queued for upload');
     }
     $message = trans('filemanager.file_added');
+    $redirectParams = [];
+    if (!empty($redirectFolder)) {
+        $redirectParams['open_folder'] = $redirectFolder;
+    }
 
-    return redirect()->route('backend.media-library.index')->with('success', $message);
+    return redirect()->route('backend.media-library.index', $redirectParams)->with('success', $message);
 }
 
 

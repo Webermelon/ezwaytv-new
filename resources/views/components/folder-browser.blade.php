@@ -138,6 +138,10 @@
     let fbAbortController;
     let fbInfiniteInitDone = false;
     let fbIoObserver = null;
+    const fbQuery = new URLSearchParams(window.location.search);
+    const fbAutoOpenFolder = fbQuery.get('open_folder');
+    let fbPendingSelectFile = fbQuery.get('select_file');
+    let fbAutoOpenedFromQuery = false;
 
     function openFolder(folderName) {
         cleanupFbInfiniteScroll();
@@ -363,7 +367,7 @@
                     const videoUrl = item.media_url;
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
                                 <video class="img-fluid object-fit-cover media-thumb-10" preload="metadata" controlsList="nodownload" controls>
                                     <source src="${videoUrl}" type="video/mp4">
                                 </video>
@@ -380,7 +384,7 @@
                     const imageUrl = item.media_url;
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
                                 <img class="img-fluid object-fit-cover media-thumb-10" src="${imageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${imageUrl}', 'image', '${item.name}', getFolderFromUrl('${imageUrl}'))">
                                     <i class="ph ph-trash"></i>
@@ -464,6 +468,44 @@
             fbIoObserver.disconnect();
             fbIoObserver = null;
         }
+
+        applyPendingUploadedSelection();
+    }
+
+    function applyPendingUploadedSelection() {
+        if (!fbPendingSelectFile) return;
+
+        const escaped = (window.CSS && typeof CSS.escape === 'function')
+            ? CSS.escape(fbPendingSelectFile)
+            : fbPendingSelectFile.replace(/"/g, '\\"');
+
+        const tile = document.querySelector(`#mediaLibraryContent_folder_browser .iq-media-images[data-file-name="${escaped}"]`);
+        if (!tile) {
+            if (fbNextOffset !== null && fbNextOffset !== undefined && !fbIsLoading) {
+                loadMoreFolderContents();
+            }
+            return;
+        }
+
+        tile.classList.add('selected');
+        tile.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const saveBtn = document.getElementById('mediaSubmitButton');
+        if (saveBtn) {
+            saveBtn.classList.remove('d-none');
+            saveBtn.disabled = false;
+        }
+
+        fbPendingSelectFile = null;
+
+        if (window.history && window.history.replaceState) {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('open_folder');
+            params.delete('select_file');
+            const query = params.toString();
+            const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ''}`;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
     }
 
     // Cached file type mappings for better performance
@@ -544,6 +586,11 @@
         var saveBtn = document.getElementById('mediaSubmitButton');
         if (saveBtn) {
             saveBtn.classList.add('d-none');
+        }
+
+        if (fbAutoOpenFolder && !fbAutoOpenedFromQuery) {
+            fbAutoOpenedFromQuery = true;
+            openFolder(fbAutoOpenFolder);
         }
     });
 
@@ -654,7 +701,7 @@
                     const videoUrl = item.media_url;
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class=" position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
                                 <video class="img-fluid object-fit-cover media-thumb-10" preload="metadata" controlsList="nodownload" controls>
                                     <source src="${videoUrl}" type="video/mp4">
                                 </video>
@@ -670,7 +717,7 @@
                     const imageUrl = item.media_url;
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class=" position-relative">
+                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
                                 <img class="img-fluid object-fit-cover media-thumb-10" src="${imageUrl}" loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${imageUrl}', 'image', '${item.name}', getFolderFromUrl('${imageUrl}'))">
                                     <i class="ph ph-trash"></i>
