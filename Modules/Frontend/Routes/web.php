@@ -5,6 +5,7 @@ use Modules\Frontend\Http\Controllers\MovieController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use Modules\Frontend\Http\Controllers\PaymentController;
 use Modules\Frontend\Http\Controllers\LiveTvChatController;
+use Modules\Frontend\Http\Controllers\LiveTvController;
 use Modules\Frontend\Http\Controllers\Auth\AuthController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use Modules\Frontend\Http\Controllers\Auth\WordPressSsoController;
@@ -109,9 +110,9 @@ Route::get('/comming-soon-details/{id}', [EntertainmentsController::class, 'comm
 
 
 Route::get('/comingsoon', [MovieController::class, 'comingSoonList'])->name('comingsoon');
-Route::get('/livetv', [MovieController::class, 'livetvList'])->middleware('checkModule')->name('livetv');
-Route::get('/livetv-details/{id}', [MovieController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
-Route::get('/livetv-channels/{id}', [MovieController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
+Route::get('/livetv', [LiveTvController::class, 'livetvList'])->middleware('checkModule')->name('livetv');
+Route::get('/livetv-details/{id}', [LiveTvController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
+Route::get('/livetv-channels/{id}', [LiveTvController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
 Route::get('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'index'])->middleware('checkModule')->name('livetv-chat.messages');
 Route::post('/livetv-chat/{channelId}/session', [LiveTvChatController::class, 'storeGuest'])->middleware('checkModule')->name('livetv-chat.session');
 Route::post('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'storeMessage'])->middleware('checkModule')->name('livetv-chat.store');
