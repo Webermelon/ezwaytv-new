@@ -489,8 +489,9 @@
             fetchFolderContents: async (folderName, offset = 0) => {
                 // Add cache-busting parameter to ensure fresh data
                 const timestamp = new Date().getTime();
+                const sortParam = encodeURIComponent(FileManager.state.sort || window.fbFolderSort || 'modified_desc');
                 const url =
-                    `${FileManager.config.baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(folderName)}&limit=${FileManager.config.pageLimit}&offset=${offset}&_t=${timestamp}`;
+                    `${FileManager.config.baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(folderName)}&limit=${FileManager.config.pageLimit}&offset=${offset}&sort=${sortParam}&_t=${timestamp}`;
 
                 const response = await fetch(url, {
                     method: 'GET',
@@ -709,6 +710,8 @@
         // Core functions
         loadFolderContents: async (folderName) => {
             FileManager.dom.showLoading();
+            // Ensure sort state is in sync with global folder sort (set by folder-browser)
+            FileManager.state.sort = FileManager.state.sort || window.fbFolderSort || 'modified_desc';
 
             // Abort previous request
             if (FileManager.state.abortController) {

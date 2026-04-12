@@ -13,6 +13,17 @@
         <div class="d-flex align-items-center justify-content-between">
             <h3 class="mb-0" id="current-folder-name"></h3>
             <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <select id="folderSortSelect" class="form-select form-select-sm">
+                        <option value="modified_desc">{{ (__('frontend.sort_newest') !== 'frontend.sort_newest') ? __('frontend.sort_newest') : 'Newest' }}</option>
+                        <option value="modified_asc">{{ (__('frontend.sort_oldest') !== 'frontend.sort_oldest') ? __('frontend.sort_oldest') : 'Oldest' }}</option>
+                        <option value="name_asc">{{ (__('frontend.sort_name_asc') !== 'frontend.sort_name_asc') ? __('frontend.sort_name_asc') : 'Name A→Z' }}</option>
+                        <option value="name_desc">{{ (__('frontend.sort_name_desc') !== 'frontend.sort_name_desc') ? __('frontend.sort_name_desc') : 'Name Z→A' }}</option>
+                    </select>
+                    <button type="button" id="folderRefreshBtn" class="btn btn-outline-secondary btn-sm" title="Refresh">
+                        <i class="ph ph-arrow-clockwise"></i>
+                    </button>
+                </div>
                 <div class="mb-0" id="search-bar-container" style="display: none;">
                     <div class="input-group">
                         <span class="input-group-text pe-1">
@@ -142,6 +153,8 @@
     const fbAutoOpenFolder = fbQuery.get('open_folder');
     let fbPendingSelectFile = fbQuery.get('select_file');
     let fbAutoOpenedFromQuery = false;
+    // default sort used before DOMContentLoaded wires the select
+    window.fbFolderSort = window.fbFolderSort || 'modified_desc';
 
     function openFolder(folderName) {
         cleanupFbInfiniteScroll();
@@ -226,7 +239,8 @@
         fbAbortController = new AbortController();
         fbIsLoading = true;
 
-        fetch(`${baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(folderName)}&limit=${fbPageLimit}&offset=0`, {
+        var sortParam = window.fbFolderSort || 'modified_desc';
+        fetch(`${baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(folderName)}&limit=${fbPageLimit}&offset=0&sort=${encodeURIComponent(sortParam)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -267,7 +281,8 @@
         showFbInfiniteScrollLoader(true);
         fbIsLoading = true;
 
-        fetch(`${baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(fbCurrentFolder)}&limit=${fbPageLimit}&offset=${fbNextOffset}`, {
+        var sortParam = window.fbFolderSort || 'modified_desc';
+        fetch(`${baseUrl}/app/media-library/get-folder-contents?folder=${encodeURIComponent(fbCurrentFolder)}&limit=${fbPageLimit}&offset=${fbNextOffset}&sort=${encodeURIComponent(sortParam)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -581,11 +596,37 @@
         })();
     }
 
-    // Hide save button on initial load; defer infinite scroll init until contents render
+    // Hide save button on initial load; set up UI handlers
     document.addEventListener('DOMContentLoaded', function() {
         var saveBtn = document.getElementById('mediaSubmitButton');
         if (saveBtn) {
             saveBtn.classList.add('d-none');
+        }
+
+        // sort select handler
+        var sortSelect = document.getElementById('folderSortSelect');
+        if (sortSelect) {
+            // initialize global state
+            window.fbFolderSort = window.fbFolderSort || sortSelect.value || 'modified_desc';
+            sortSelect.value = window.fbFolderSort;
+            sortSelect.addEventListener('change', function() {
+                window.fbFolderSort = this.value;
+                if (fbCurrentFolder) {
+                    fbNextOffset = 0;
+                    loadFolderContents(fbCurrentFolder);
+                }
+            });
+        }
+
+        // refresh button handler
+        var refreshBtn = document.getElementById('folderRefreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                if (fbCurrentFolder) {
+                    fbNextOffset = 0;
+                    loadFolderContents(fbCurrentFolder);
+                }
+            });
         }
 
         if (fbAutoOpenFolder && !fbAutoOpenedFromQuery) {

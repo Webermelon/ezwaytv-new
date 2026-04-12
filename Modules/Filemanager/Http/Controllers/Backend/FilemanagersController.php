@@ -468,12 +468,63 @@ private function getFileType($extension)
                 }
             }
 
-            // Sort items by modification time (newest first) so newly uploaded files appear first
-            usort($allItems, function($a, $b) {
-                $timeA = $a['modified'] ?? 0;
-                $timeB = $b['modified'] ?? 0;
-                return $timeB <=> $timeA; // Descending order (newest first)
-            });
+            // Sorting: support sort param from frontend
+            $sort = $request->get('sort', 'modified_desc');
+            if ($sort === 'modified_desc') {
+                usort($allItems, function($a, $b) {
+                    $timeA = $a['modified'] ?? 0;
+                    $timeB = $b['modified'] ?? 0;
+                    if ($timeA === $timeB) {
+                        // tie-break: directories first, then name (reverse for desc)
+                        if (($a['is_dir'] ?? false) !== ($b['is_dir'] ?? false)) {
+                            return ($a['is_dir'] ?? false) ? -1 : 1;
+                        }
+                        return strcasecmp($b['name'] ?? '', $a['name'] ?? '');
+                    }
+                    return $timeB <=> $timeA;
+                });
+            } elseif ($sort === 'modified_asc') {
+                usort($allItems, function($a, $b) {
+                    $timeA = $a['modified'] ?? 0;
+                    $timeB = $b['modified'] ?? 0;
+                    if ($timeA === $timeB) {
+                        // tie-break: directories first, then name (normal for asc)
+                        if (($a['is_dir'] ?? false) !== ($b['is_dir'] ?? false)) {
+                            return ($a['is_dir'] ?? false) ? -1 : 1;
+                        }
+                        return strcasecmp($a['name'] ?? '', $b['name'] ?? '');
+                    }
+                    return $timeA <=> $timeB;
+                });
+            } elseif ($sort === 'name_asc') {
+                usort($allItems, function($a, $b) {
+                    // directories first, then name A->Z
+                    if (($a['is_dir'] ?? false) !== ($b['is_dir'] ?? false)) {
+                        return ($a['is_dir'] ?? false) ? -1 : 1;
+                    }
+                    return strcasecmp($a['name'] ?? '', $b['name'] ?? '');
+                });
+            } elseif ($sort === 'name_desc') {
+                usort($allItems, function($a, $b) {
+                    if (($a['is_dir'] ?? false) !== ($b['is_dir'] ?? false)) {
+                        return ($a['is_dir'] ?? false) ? -1 : 1;
+                    }
+                    return strcasecmp($b['name'] ?? '', $a['name'] ?? '');
+                });
+            } else {
+                // fallback to newest first with deterministic tie-break
+                usort($allItems, function($a, $b) {
+                    $timeA = $a['modified'] ?? 0;
+                    $timeB = $b['modified'] ?? 0;
+                    if ($timeA === $timeB) {
+                        if (($a['is_dir'] ?? false) !== ($b['is_dir'] ?? false)) {
+                            return ($a['is_dir'] ?? false) ? -1 : 1;
+                        }
+                        return strcasecmp($a['name'] ?? '', $b['name'] ?? '');
+                    }
+                    return $timeB <=> $timeA;
+                });
+            }
 
             // Apply pagination
             $totalItems = count($allItems);
