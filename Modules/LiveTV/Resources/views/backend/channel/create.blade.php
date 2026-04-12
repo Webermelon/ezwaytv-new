@@ -160,7 +160,7 @@
                             <div class="col-md-6 col-lg-4 d-none" id="type_url">
                                 {{ html()->label(__('movie.lbl_stream_type') . '<span class="text-danger">*</span>', 'stream_type')->class('form-label') }}
                                 {{ html()->select('stream_type', $url->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''), old('stream_type', ''))->class('form-control select2')->id('stream_type')->disabled(false) }}
-                                @error('stream_type')
+                            @error('stream_type')
                                     <span class="text-primary">{{ $message }}</span>
                                 @enderror
                                 <div class="invalid-feedback" id="name-error">Stream Type field is required</div>
@@ -184,6 +184,8 @@
                             <div class="col-md-6 col-lg-4 d-none" id="server_url_section">
                                 {{ html()->label(__('movie.server_url') . '<span class="text-danger">*</span>', 'server_url')->class('form-label') }}
                                 {{ html()->text('server_url')->placeholder(__('movie.server_url'))->class('form-control')->id('server_url') }}
+                                <small class="text-muted d-block mt-2">Schedule API Key (optional)</small>
+                                {{ html()->text('api_key')->placeholder('API Key')->class('form-control mt-1')->id('api_key') }}
                                 @error('server_url')
                                     <span class="text-primary">{{ $message }}</span>
                                 @enderror

@@ -26,6 +26,8 @@
                         'content_type' => 'livetv',
                         'content_id' => $data['id'],
                         'content_video_type' => 'video',
+                        'schedules' => $data['schedules'] ?? [],
+                        'schedules_api_key' => $data['schedules_api_key'] ?? null,
                     ])
                 </div>
                 @if (!empty($data['enable_live_chat']))

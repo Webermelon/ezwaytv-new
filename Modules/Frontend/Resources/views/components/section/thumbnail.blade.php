@@ -57,6 +57,34 @@
                     <button id="customAdCloseBtn">&times;</button>
                 </div>
             </div>
+
+            <!-- Live TV Schedule: mini Now/Next + hidden full panel -->
+            <div id="livetv-schedule-mini" class="livetv-schedule-mini" aria-hidden="false">
+                <div class="livetv-schedule-mini__now">
+                    <div class="livetv-schedule-mini__label">Now</div>
+                    <div class="livetv-schedule-mini__title" id="livetv-schedule-current-title">-</div>
+                    <div class="livetv-schedule-mini__time" id="livetv-schedule-current-time">-</div>
+                </div>
+                <div class="livetv-schedule-mini__next">
+                    <div class="livetv-schedule-mini__label">Next</div>
+                    <div class="livetv-schedule-mini__title" id="livetv-schedule-next-title">-</div>
+                    <div class="livetv-schedule-mini__time" id="livetv-schedule-next-time">-</div>
+                </div>
+                <!-- Schedule toggle hidden for now; only show Now/Next mini bar -->
+            </div>
+
+            <div id="livetv-schedule-panel" class="livetv-schedule" style="display:none;" aria-hidden="true">
+                <button id="livetv-schedule-close" class="livetv-schedule__close" aria-label="Close schedule">&times;</button>
+                <div class="livetv-schedule__current">
+                    <div class="livetv-schedule__label">Now</div>
+                    <div class="livetv-schedule__title" id="livetv-schedule-panel-current-title">-</div>
+                    <div class="livetv-schedule__time" id="livetv-schedule-panel-current-time">-</div>
+                </div>
+                <div id="livetv-schedule-loading" style="display:none;color:#9aa3ad;font-size:12px;margin-bottom:6px;">Loading schedule…</div>
+                <div class="livetv-schedule__upcoming" id="livetv-schedule-upcoming">
+                    <!-- upcoming items injected here -->
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -134,6 +162,313 @@
         z-index: 2;
     }
 </style>
+<style>
+    /* Schedule overlay */
+    .livetv-schedule {
+        /* place the schedule under the player in normal flow */
+        position: relative;
+        width: 100%;
+        max-width: 900px;
+        max-height: 60vh;
+        background: rgba(0,0,0,0.85);
+        color: #fff;
+        border-radius: 12px;
+        padding: 12px;
+        margin: 12px auto 0;
+        z-index: 2;
+        overflow: auto;
+        font-size: 13px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .livetv-schedule__label { font-size: 11px; color: #9aa3ad; }
+    .livetv-schedule__current { margin-bottom: 10px; }
+    .livetv-schedule__title { font-weight: 600; margin-top: 4px; }
+    .livetv-schedule__time { color: #9aa3ad; font-size: 12px; }
+    .livetv-schedule__upcoming { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; }
+    .livetv-schedule__item { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.03); }
+    .livetv-schedule__item:last-child { border-bottom: none; }
+    .livetv-schedule__item.current { background: rgba(63, 132, 255, 0.08); }
+
+    .livetv-schedule__close {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+
+    /* Mini bar */
+    .livetv-schedule-mini {
+        /* mini bar sits below the player, inline with schedule panel */
+        position: relative;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 8px;
+        z-index: 3;
+        justify-content: flex-end;
+    }
+    .livetv-schedule-mini__now, .livetv-schedule-mini__next {
+        background: rgba(0,0,0,0.6);
+        padding: 8px 10px;
+        border-radius: 8px;
+        color: #fff;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: auto; /* shrink to content */
+        max-width: 400px; /* cap at 400px */
+        box-sizing: border-box;
+    }
+    .livetv-schedule-mini__label { font-size: 11px; color: #9aa3ad; }
+    .livetv-schedule-mini__title { font-weight:600; margin-top:4px; max-width:100%; overflow:hidden; white-space:nowrap; display:block; }
+    .livetv-schedule-mini__time { color:#9aa3ad; font-size:12px; }
+    .livetv-schedule-toggle {
+        background: rgba(255,255,255,0.06);
+        color: #fff;
+        border: none;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+
+    /* Marquee (duplicate-track technique) */
+    .marquee-clip { display:inline-block; vertical-align:top; overflow:hidden; }
+    .marquee-track { display:inline-block; white-space:nowrap; }
+    .marquee-track .marquee-item { display:inline-block; padding-right:40px; }
+    .marquee-active .marquee-track { animation: marquee-scroll linear infinite; }
+    @keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+
+<script>
+    (function(){
+        try {
+            var schedules = @json($schedules ?? []);
+        } catch(e) {
+            var schedules = [];
+        }
+        // schedules_api_key passed from server when channel mapping has an api key
+        try {
+            var schedulesApiKey = @json($schedules_api_key ?? null);
+        } catch(e) {
+            var schedulesApiKey = null;
+        }
+
+        // Normalize if backend accidentally provided the full URL instead of the raw key.
+        try{
+            if(schedulesApiKey && /https?:\/\//.test(schedulesApiKey)){
+                try{
+                    var parts = schedulesApiKey.split('/');
+                    var last = parts[parts.length-1] || '';
+                    // if URL ended with an encoded value, decode it
+                    schedulesApiKey = decodeURIComponent(last);
+                }catch(e){}
+            }
+        }catch(e){}
+
+        function fmtTime(iso){
+            try{
+                // Parse ISO (expected UTC) and display in viewer's local timezone
+                var d = new Date(iso);
+                return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName: 'short'});
+            }catch(e){
+                return iso;
+            }
+        }
+
+        function fmtDateTime(iso){
+            try{
+                var d = new Date(iso);
+                return d.toLocaleString([], {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', timeZoneName: 'short'});
+            }catch(e){
+                return iso;
+            }
+        }
+
+        function renderSchedules(){
+            var now = new Date();
+            // update mini bar current/next
+            var miniCurTitle = document.getElementById('livetv-schedule-current-title');
+            var miniCurTime = document.getElementById('livetv-schedule-current-time');
+            var miniNextTitle = document.getElementById('livetv-schedule-next-title');
+            var miniNextTime = document.getElementById('livetv-schedule-next-time');
+
+            var panelCurTitle = document.getElementById('livetv-schedule-panel-current-title');
+            var panelCurTime = document.getElementById('livetv-schedule-panel-current-time');
+            var upcoming = document.getElementById('livetv-schedule-upcoming');
+            if(!miniCurTitle || !miniCurTime || !miniNextTitle || !miniNextTime || !panelCurTitle || !panelCurTime || !upcoming) return;
+
+            upcoming.innerHTML = '';
+
+            var currentFound = null;
+            var nextFound = null;
+
+            schedules.sort(function(a,b){ return new Date(a.start_at) - new Date(b.start_at); });
+
+            schedules.forEach(function(s){
+                var start = s.start_at ? new Date(s.start_at) : null;
+                var end = s.end_at ? new Date(s.end_at) : null;
+
+                var item = document.createElement('div');
+                item.className = 'livetv-schedule__item';
+                var title = document.createElement('div'); title.textContent = s.title || '-';
+                var time = document.createElement('div'); time.className = 'livetv-schedule__time';
+                time.textContent = (start ? fmtTime(start) : '-') + ' — ' + (end ? fmtTime(end) : '-');
+
+                // find current
+                if(!currentFound && start && end && now >= start && now <= end){
+                    currentFound = s;
+                    item.className += ' current';
+                }
+
+                // find next (first start > now)
+                if(!nextFound && start && now < start){
+                    nextFound = s;
+                }
+
+                item.appendChild(title);
+                item.appendChild(time);
+                upcoming.appendChild(item);
+            });
+
+            // populate mini and panel current
+            var displayCurrent = currentFound || schedules[0] || null;
+            var displayNext = nextFound || (schedules.length > 1 ? schedules[1] : null);
+
+            // helper: set title with marquee if overflow
+            function setTitleWithMarquee(containerEl, text){
+                if(!containerEl) return;
+                containerEl.innerHTML = '';
+                var clip = document.createElement('span'); clip.className='marquee-clip';
+                var track = document.createElement('span'); track.className='marquee-track';
+                var item1 = document.createElement('span'); item1.className='marquee-item'; item1.textContent = text || '-';
+                // append only single item initially; duplicate only when overflow is detected
+                track.appendChild(item1);
+                // ensure clip fills the available container width so overflow detection works
+                clip.style.display = 'inline-block';
+                clip.style.width = '100%';
+                clip.style.boxSizing = 'border-box';
+                clip.appendChild(track);
+                containerEl.appendChild(clip);
+                // after render, detect overflow and enable animation
+                requestAnimationFrame(function(){
+                    try{
+                        var clipW = clip.clientWidth;
+                        var itemW = item1.scrollWidth;
+                        // if single item wider than clip, enable marquee by duplicating the item
+                        if(itemW > clipW + 6){
+                            // append duplicate if not already present
+                            if(track.children.length < 2){
+                                var item2 = document.createElement('span'); item2.className='marquee-item'; item2.textContent = text || '-';
+                                track.appendChild(item2);
+                            }
+                            // set duration proportional to single item length
+                            var duration = Math.max(6, Math.min(40, Math.round(itemW/30)));
+                            // ensure track contains two copies and is wide enough
+                            track.style.display = 'inline-block';
+                            track.style.width = (itemW * 2) + 'px';
+                            // explicit animation: use existing keyframes which animate -50% (half the track)
+                            track.style.animationName = 'marquee-scroll';
+                            track.style.animationTimingFunction = 'linear';
+                            track.style.animationIterationCount = 'infinite';
+                            track.style.animationDuration = duration + 's';
+                            // play normal so text moves right-to-left
+                            track.style.animationDirection = 'normal';
+                            containerEl.classList.add('marquee-active');
+                        } else {
+                            // remove duplicate if exists
+                            if(track.children.length > 1){
+                                while(track.children.length > 1) track.removeChild(track.lastChild);
+                            }
+                            containerEl.classList.remove('marquee-active');
+                            track.style.animationName = '';
+                            track.style.animationDuration = '';
+                            track.style.animationDirection = '';
+                            track.style.width = '';
+                        }
+                    }catch(e){}
+                });
+            }
+
+            setTitleWithMarquee(miniCurTitle, displayCurrent ? displayCurrent.title || '-' : '-');
+            miniCurTime.textContent = displayCurrent ? ((displayCurrent.start_at?fmtTime(new Date(displayCurrent.start_at)):'-') + ' — ' + (displayCurrent.end_at?fmtTime(new Date(displayCurrent.end_at)):'-')) : '-';
+
+            // panel current can reuse plain text but allow marquee as well
+            setTitleWithMarquee(panelCurTitle, displayCurrent ? displayCurrent.title || '-' : '-');
+            panelCurTime.textContent = displayCurrent && displayCurrent.start_at ? fmtDateTime(displayCurrent.start_at) + (displayCurrent.end_at ? ' — ' + fmtDateTime(displayCurrent.end_at) : '') : miniCurTime.textContent;
+
+            setTitleWithMarquee(miniNextTitle, displayNext ? displayNext.title || '-' : '-');
+            miniNextTime.textContent = displayNext ? ((displayNext.start_at?fmtTime(new Date(displayNext.start_at)):'-') + ' — ' + (displayNext.end_at?fmtTime(new Date(displayNext.end_at)):'-')) : '-';
+        }
+
+        // render once on load and refresh every 30s to update 'Now' highlight
+        document.addEventListener('DOMContentLoaded', function(){
+            var loadingEl = document.getElementById('livetv-schedule-loading');
+            var miniBar = document.getElementById('livetv-schedule-mini');
+            var panel = document.getElementById('livetv-schedule-panel');
+
+            // If no schedules API key for this channel, hide Now/Next UI entirely
+            if(!schedulesApiKey){
+                if(miniBar) miniBar.style.display = 'none';
+                if(panel) panel.style.display = 'none';
+                return;
+            }
+
+            // When API key exists: ignore embedded local schedules and fetch external feed
+            schedules = [];
+            if(loadingEl) loadingEl.style.display = 'block';
+            fetch('https://stream.ezway.tv/api/public/schedules/' + encodeURIComponent(schedulesApiKey))
+                .then(function(r){ return r.json(); })
+                .then(function(json){
+                    if(json && json.schedules && Array.isArray(json.schedules)){
+                        function normalizeIso(ts){
+                            if(!ts) return null;
+                            if(/T.*(Z|[+\-]\d{2}:?\d{2})$/.test(ts)) return ts;
+                            if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)){
+                                return ts.replace(' ', 'T') + 'Z';
+                            }
+                            if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(ts)){
+                                return ts + 'Z';
+                            }
+                            return ts;
+                        }
+                        schedules = json.schedules.map(function(it){
+                            return {
+                                id: it.id,
+                                title: (it.media && it.media.title) ? it.media.title : (it.title || '-'),
+                                start_at: normalizeIso(it.start_time || it.start_at),
+                                end_at: normalizeIso(it.end_time || it.end_at),
+                                meta: it.meta || null
+                            };
+                        });
+                    }
+                })
+                .catch(function(){
+                    // on fetch error, hide Now/Next UI to avoid showing stale local schedules
+                    if(miniBar) miniBar.style.display = 'none';
+                    if(panel) panel.style.display = 'none';
+                })
+                .finally(function(){ if(loadingEl) loadingEl.style.display = 'none'; renderSchedules(); setInterval(renderSchedules, 30000); });
+
+            // Close button inside panel to 'untoggle'
+            var closeBtn = document.getElementById('livetv-schedule-close');
+            if(closeBtn && panel){
+                closeBtn.addEventListener('click', function(){
+                    panel.style.display = 'none';
+                    panel.setAttribute('aria-hidden','true');
+                    if(miniBar) miniBar.style.display = 'flex';
+                    try{ miniBar && miniBar.focus(); }catch(e){}
+                });
+            }
+        });
+    })();
+</script>
 <style>
     /* Hide ALL IMA Skip Elements */
     .ima-skip-container,

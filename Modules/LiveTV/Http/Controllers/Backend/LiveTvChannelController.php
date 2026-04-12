@@ -275,6 +275,17 @@ class LiveTvChannelController extends Controller
     }
 
     /**
+     * Show schedules management page for a channel
+     */
+    public function schedules(int $id)
+    {
+        $data = LiveTvChannel::withTrashed()->findOrFail($id);
+        $data->poster_url = setBaseUrlWithFileName($data->poster_url, 'image', 'livetv');
+        $module_title = __('livetv.channel_schedules');
+        return view('livetv::backend.channel.schedules', compact('data','module_title'));
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(TvChannelRequest $request, $id): RedirectResponse
@@ -315,7 +326,8 @@ class LiveTvChannelController extends Controller
                 'stream_type' => $data['stream_type'],
                 'embedded' => $data['embedded'],
                 'server_url' => $data['server_url'],
-                'server_url1' => $data['server_url1'],
+                'server_url1' => $data['server_url1'] ?? null,
+                'api_key' => $data['api_key'] ?? null,
             ]);
         }
 

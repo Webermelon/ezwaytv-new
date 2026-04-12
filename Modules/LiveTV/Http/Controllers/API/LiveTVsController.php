@@ -408,6 +408,93 @@ class LiveTVsController extends Controller
                         $sliderData[] = $livetvChannel;
                     }
                 }
+
+                /**
+                 * Get schedules for a channel
+                 */
+                public function channelSchedules(Request $request)
+                {
+                    $channelId = $request->channel_id;
+                    $channel = LiveTvChannel::with('schedules')->find($channelId);
+                    if (!$channel) {
+                        return ApiResponse::error(null, __('livetv.channel_not_found'), 404);
+                    }
+
+                    return ApiResponse::success($channel->schedules->map(function($s){
+                        return [
+                            'id' => $s->id,
+                            'title' => $s->title,
+                            'start_at' => optional($s->start_at)->toIso8601String(),
+                            'end_at' => optional($s->end_at)->toIso8601String(),
+                            'meta' => $s->meta ? json_decode($s->meta, true) : null,
+                        ];
+                    }), __('livetv.channel_schedules'), 200);
+                }
+
+                public function storeChannelSchedule(Request $request)
+                {
+                    $request->validate([
+                        'channel_id' => 'required|integer|exists:live_tv_channel,id',
+                        'title' => 'nullable|string',
+                        'start_at' => 'required|date',
+                        'end_at' => 'nullable|date',
+                    ]);
+
+                        // Determine timezone from channel if available, otherwise fall back to app timezone
+                        $channel = \Modules\LiveTV\Models\LiveTvChannel::find($request->channel_id);
+                        $tz = $channel && !empty($channel->timezone) ? $channel->timezone : config('app.timezone', 'UTC');
+                        $start = $request->start_at ? \Carbon\Carbon::parse($request->start_at, $tz)->setTimezone('UTC') : null;
+                        $end = $request->end_at ? \Carbon\Carbon::parse($request->end_at, $tz)->setTimezone('UTC') : null;
+
+                        $schedule = \Modules\LiveTV\Models\ChannelSchedule::create([
+                            'live_tv_channel_id' => $request->channel_id,
+                            'title' => $request->title,
+                            'start_at' => $start,
+                            'end_at' => $end,
+                            'meta' => $request->meta ? json_encode($request->meta) : null,
+                        ]);
+
+                    return ApiResponse::success($schedule, __('livetv.schedule_created'), 201);
+                }
+
+                public function updateChannelSchedule(Request $request, $id)
+                {
+                    $schedule = \Modules\LiveTV\Models\ChannelSchedule::find($id);
+                    if (!$schedule) {
+                        return ApiResponse::error(null, __('livetv.schedule_not_found'), 404);
+                    }
+
+                    $request->validate([
+                        'title' => 'nullable|string',
+                        'start_at' => 'nullable|date',
+                        'end_at' => 'nullable|date',
+                    ]);
+
+                    // If provided, parse provided datetimes using the channel timezone (if set) and store UTC
+                    $channel = \Modules\LiveTV\Models\LiveTvChannel::find($schedule->live_tv_channel_id);
+                    $tz = $channel && !empty($channel->timezone) ? $channel->timezone : config('app.timezone', 'UTC');
+                    $start = $request->start_at ? \Carbon\Carbon::parse($request->start_at, $tz)->setTimezone('UTC') : ($request->has('start_at') ? null : $schedule->start_at);
+                    $end = $request->end_at ? \Carbon\Carbon::parse($request->end_at, $tz)->setTimezone('UTC') : ($request->has('end_at') ? null : $schedule->end_at);
+
+                    $schedule->update([
+                        'title' => $request->title ?? $schedule->title,
+                        'start_at' => $start,
+                        'end_at' => $end,
+                        'meta' => $request->meta ? json_encode($request->meta) : $schedule->meta,
+                    ]);
+
+                    return ApiResponse::success($schedule, __('livetv.schedule_updated'), 200);
+                }
+
+                public function deleteChannelSchedule($id)
+                {
+                    $schedule = \Modules\LiveTV\Models\ChannelSchedule::find($id);
+                    if (!$schedule) {
+                        return ApiResponse::error(null, __('livetv.schedule_not_found'), 404);
+                    }
+                    $schedule->delete();
+                    return ApiResponse::success(null, __('livetv.schedule_deleted'), 200);
+                }
                 
                 $responseData['slider'] = LiveTvChannelResourceV3::collection(collect($sliderData));
             } else {

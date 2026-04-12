@@ -24,6 +24,7 @@ class TvChannelStreamContentMapping extends BaseModel
         'embedded',
         'server_url',
         'server_url1',
+        'api_key',
     ];
 
     

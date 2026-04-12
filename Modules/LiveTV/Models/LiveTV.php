@@ -4,6 +4,7 @@ namespace Modules\LiveTV\Models;
 
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Modules\LiveTV\Models\Schedule;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LiveTV extends BaseModel
@@ -13,6 +14,11 @@ class LiveTV extends BaseModel
 
     protected $table = 'livetvs';
     protected $fillable=['name'];
+    
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class, 'livetv_id');
+    }
     const CUSTOM_FIELD_MODEL = 'Modules\LiveTV\Models\LiveTV';
 
     /**
@@ -34,3 +40,4 @@ class LiveTV extends BaseModel
         return \Modules\LiveTV\database\factories\LiveTVFactory::new();
     }
 }
+

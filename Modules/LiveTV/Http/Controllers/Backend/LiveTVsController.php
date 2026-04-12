@@ -106,6 +106,18 @@ class LiveTVsController extends Controller
         $data = $request->all();
         $livetv = LiveTV::create($data);
 
+        // handle schedules if provided
+        if ($request->has('schedules') && is_array($request->schedules)) {
+            foreach ($request->schedules as $s) {
+                $livetv->schedules()->create([
+                    'title' => $s['title'] ?? null,
+                    'start_at' => $s['start_at'] ?? null,
+                    'end_at' => $s['end_at'] ?? null,
+                    'meta' => isset($s['meta']) ? json_encode($s['meta']) : null,
+                ]);
+            }
+        }
+
         return redirect()->route('backend.livetvs.index', $livetv->id)->with('success', 'Livetv added successfully!');
 
     }
@@ -134,6 +146,31 @@ class LiveTVsController extends Controller
     {
         $requestData = $request->all();
         $livetv->update($requestData);
+
+        // sync schedules: replace existing schedules with provided ones
+        if ($request->has('schedules') && is_array($request->schedules)) {
+            // delete schedules not present
+            $incomingIds = array_filter(array_map(fn($s) => $s['id'] ?? null, $request->schedules));
+            $livetv->schedules()->whereNotIn('id', $incomingIds)->delete();
+
+            foreach ($request->schedules as $s) {
+                if (!empty($s['id'])) {
+                    $livetv->schedules()->where('id', $s['id'])->update([
+                        'title' => $s['title'] ?? null,
+                        'start_at' => $s['start_at'] ?? null,
+                        'end_at' => $s['end_at'] ?? null,
+                        'meta' => isset($s['meta']) ? json_encode($s['meta']) : null,
+                    ]);
+                } else {
+                    $livetv->schedules()->create([
+                        'title' => $s['title'] ?? null,
+                        'start_at' => $s['start_at'] ?? null,
+                        'end_at' => $s['end_at'] ?? null,
+                        'meta' => isset($s['meta']) ? json_encode($s['meta']) : null,
+                    ]);
+                }
+            }
+        }
 
         return redirect()->route('backend.livetvs.index', $livetv->id)->with('success', 'LiveTV updated Successfully!');
     }

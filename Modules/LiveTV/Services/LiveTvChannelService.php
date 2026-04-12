@@ -62,6 +62,7 @@ class LiveTvChannelService
                 'embedded' => $data['embedded'],
                 'server_url' => $data['server_url'],
                 'server_url1' => $data['server_url1'],
+                'api_key' => $request->input('api_key') ?? null,
             ];
 
             TvChannelStreamContentMapping::create($mappingstream);

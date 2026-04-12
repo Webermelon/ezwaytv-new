@@ -95,6 +95,11 @@ class LiveTvChannel extends BaseModel
         return $this->hasMany(LiveTvChatMessage::class, 'live_tv_channel_id');
     }
 
+    public function schedules()
+    {
+        return $this->hasMany(ChannelSchedule::class, 'live_tv_channel_id');
+    }
+
     public static function get_top_channel($channelIdsArray)
     {
         $channelIdsArray = is_array($channelIdsArray) ? $channelIdsArray : (array) $channelIdsArray;

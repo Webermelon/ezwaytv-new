@@ -42,6 +42,42 @@ class LiveTvChannelDetailsResource extends JsonResource
             'enable_live_chat' => (bool) $this->enable_live_chat,
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url, 'image', 'livetv'),
             'thumbnail_image' => $this->thumb_url != null ? setBaseUrlWithFileName($this->thumb_url, 'image', 'livetv') : setBaseUrlWithFileName($this->poster_url, 'image', 'livetv'),
+            'schedules' => $this->whenLoaded('schedules') ? $this->schedules->map(function($s){
+                return [
+                    'id' => $s->id,
+                    'title' => $s->title,
+                    'start_at' => optional($s->start_at)->toIso8601String(),
+                    'end_at' => optional($s->end_at)->toIso8601String(),
+                    'meta' => $s->meta ? json_decode($s->meta, true) : null,
+                ];
+            })->toArray() : $this->schedules()->orderBy('start_at')->get()->map(function($s){
+                return [
+                    'id' => $s->id,
+                    'title' => $s->title,
+                    'start_at' => optional($s->start_at)->toIso8601String(),
+                    'end_at' => optional($s->end_at)->toIso8601String(),
+                    'meta' => $s->meta ? json_decode($s->meta, true) : null,
+                ];
+            })->toArray(),
+            // expose api key (if present) so frontend can fetch external schedules
+            'schedules_api_key' => (function(){
+                $mapping = optional($this->TvChannelStreamContentMappings);
+                $key = $mapping->api_key ?? null;
+                if(empty($key)){
+                    $candidates = [
+                        $mapping->server_url ?? null,
+                        $mapping->server_url1 ?? null,
+                    ];
+                    foreach($candidates as $url){
+                        if(empty($url)) continue;
+                        if(preg_match('/([a-f0-9]{32})/i', $url, $m)){
+                            $key = $m[1];
+                            break;
+                        }
+                    }
+                }
+                return $key ?? null;
+            })(),
         ];
     }
 }

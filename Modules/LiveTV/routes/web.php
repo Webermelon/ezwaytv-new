@@ -62,6 +62,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     Route::resource('tv-category', LiveTvCatgeoryController::class);
 
     Route::group(['prefix' => 'tv-channel', 'as' => 'tv-channel.'],function () {
+      Route::get('{id}/schedules', [LiveTvChannelController::class, 'schedules'])->name('schedules');
       Route::get("index_list", [LiveTvChannelController::class, 'index_list'])->name("index_list");
       Route::get("index_data", [LiveTvChannelController::class, 'index_data'])->name("index_data");
       Route::get('export', [LiveTvChannelController::class, 'export'])->name('export');
