@@ -188,13 +188,8 @@ public function destroy(UserMultiProfile $profile)
 
     public function manageProfile()
 {
-    $user = Auth::user();
-
-    $Profile = UserMultiProfile::where('user_id', $user->id)->get();
-    $profileCount = $Profile->count();
-    $userProfile = UserMultiProfileResource::collection($Profile);
-
-    return view('frontend::manageProfile', compact('user', 'userProfile', 'profileCount'));
+    // Redirect to account settings instead of showing manage profile page
+    return redirect()->route('accountSetting');
 }
 
 public function changePassword()

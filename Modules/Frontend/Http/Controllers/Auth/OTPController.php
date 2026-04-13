@@ -132,7 +132,7 @@ class OTPController extends Controller
             $flag = 1;
         }
 
-        return response()->json(['is_user_exists' => $flag, 'url' => route('manage-profile')]);
+        return response()->json(['is_user_exists' => $flag, 'url' => route('user.login')]);
     }
 
     /**

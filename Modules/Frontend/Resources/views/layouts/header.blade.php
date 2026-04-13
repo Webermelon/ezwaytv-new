@@ -570,48 +570,6 @@
                                                 @endif
                                             </div>
 
-                                            @if ($isChildProfile == 0)
-                                                <div class="profile-list-section mb-4">
-                                                    <div class="profiles-container">
-                                                        @php
-                                                            $userProfiles = \App\Models\UserMultiProfile::where(
-                                                                'user_id',
-                                                                auth()->id(),
-                                                            )->get();
-                                                        @endphp
-                                                        @forelse($userProfiles as $profile)
-                                                            @if (!$profile->is_child_profile)
-                                                            <div class="profile-item d-flex align-items-center gap-3 mb-2 p-2 rounded bg-dark {{ $currentProfile && $currentProfile->id == $profile->id ? 'active' : '' }}"
-                                                                style="cursor: pointer;">
-                                                                <div class="profile-avatar">
-                                                                    @php
-                                                                        $profileAvatarUrl = $profile->avatar ? setBaseUrlWithFileName($profile->avatar) : asset('images/avatar.webp');
-                                                                        $profileTimestamp = $profile->updated_at ? strtotime($profile->updated_at) : time();
-                                                                    @endphp
-                                                                    <img src="{{ $profileAvatarUrl }}?v={{ $profileTimestamp }}"
-                                                                        class="img-fluid rounded profile-dropdown-avatar"
-                                                                        style="width: 35px; height: 35px; object-fit: cover;"
-                                                                        alt="{{ $profile->name }}"
-                                                                        data-profile-id="{{ $profile->id }}">
-                                                                </div>
-                                                                <div class="profile-info">
-                                                                    <div class="profile-name text-white font-size-14">
-                                                                        {{ $profile->name }}</div>
-                                                                    @if ($profile->is_child_profile)
-                                                                        <div
-                                                                            class="profile-type text-muted font-size-12">
-                                                                            {{ __('frontend.kids_profile') }}</div>
-                                                                    @endif
-                                                                </div>
-                                                                </div>
-                                                            @endif
-                                                        @empty
-                                                            <div class="text-center text-muted font-size-14">
-                                                                {{ __('frontend.no_profiles_found') }}</div>
-                                                        @endforelse
-                                                    </div>
-                                                </div>
-                                            @endif
                                             <ul class="d-flex flex-column gap-3 list-inline m-0 p-0">
                                                 {{-- <li>
                                                     <a href="{{ route('watchList') }}"

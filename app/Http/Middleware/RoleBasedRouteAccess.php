@@ -39,28 +39,29 @@ class RoleBasedRouteAccess
             return redirect()->route('user.login');
         }
 
-        if ($user->hasRole('user')) {
-            $routeName = $request->route() ? $request->route()->getName() : null;
-            if ($routeName && in_array($routeName, ['manage-profile', 'profile-management'])) {
-                return $next($request);
-            }
-            
-            if (str_contains($path, 'manage-profile') || str_contains($path, 'profile-management')) {
-                return $next($request);
-            }
-            
-            $currentProfile = getCurrentProfileSession();
-            
-            if (!$currentProfile) {
-                $profileCount = \App\Models\UserMultiProfile::where('user_id', $user->id)->count();
-                
-                if ($profileCount > 0) {
-                    return redirect()->route('manage-profile');
-                } else {
-                    return redirect()->route('profile-management');
-                }
-            }
-        }
+        // Removed forced profile redirect - users can access the site freely
+        // if ($user->hasRole('user')) {
+        //     $routeName = $request->route() ? $request->route()->getName() : null;
+        //     if ($routeName && in_array($routeName, ['manage-profile', 'profile-management'])) {
+        //         return $next($request);
+        //     }
+        //     
+        //     if (str_contains($path, 'manage-profile') || str_contains($path, 'profile-management')) {
+        //         return $next($request);
+        //     }
+        //     
+        //     $currentProfile = getCurrentProfileSession();
+        //     
+        //     if (!$currentProfile) {
+        //         $profileCount = \App\Models\UserMultiProfile::where('user_id', $user->id)->count();
+        //         
+        //         if ($profileCount > 0) {
+        //             return redirect()->route('manage-profile');
+        //         } else {
+        //             return redirect()->route('profile-management');
+        //         }
+        //     }
+        // }
 
         return $next($request);
     }

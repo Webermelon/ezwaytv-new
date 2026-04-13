@@ -243,7 +243,7 @@ if (registerForm) {
                     window.successSnackbar(t('register_success', 'Register successfully!'));
                 }
                 setTimeout(() => {
-                    window.location.href = `${baseUrl}/manage-profile`;
+                    window.location.href = `${baseUrl}/`;
                 }, 1000);
             } else {
                 errorMessage.textContent = loginData.message || t('login_after_register_failed', 'Login after registration failed.');
@@ -401,7 +401,7 @@ if (loginForm) {
                 window.successSnackbar(t('login_success', 'Login successfully!'));
             }
             setTimeout(() => {
-                window.location.href = `${baseUrl}/manage-profile`;
+                window.location.href = `${baseUrl}/`;
             }, 1000);
         } catch (error) {
             console.error('Login error:', error);
