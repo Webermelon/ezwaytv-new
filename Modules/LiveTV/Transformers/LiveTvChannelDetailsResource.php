@@ -60,24 +60,8 @@ class LiveTvChannelDetailsResource extends JsonResource
                 ];
             })->toArray(),
             // expose api key (if present) so frontend can fetch external schedules
-            'schedules_api_key' => (function(){
-                $mapping = optional($this->TvChannelStreamContentMappings);
-                $key = $mapping->api_key ?? null;
-                if(empty($key)){
-                    $candidates = [
-                        $mapping->server_url ?? null,
-                        $mapping->server_url1 ?? null,
-                    ];
-                    foreach($candidates as $url){
-                        if(empty($url)) continue;
-                        if(preg_match('/([a-f0-9]{32})/i', $url, $m)){
-                            $key = $m[1];
-                            break;
-                        }
-                    }
-                }
-                return $key ?? null;
-            })(),
+            // NOTE: do NOT extract tokens from server_url — only use the explicit api_key field.
+            'schedules_api_key' => optional($this->TvChannelStreamContentMappings)->api_key ?? null,
         ];
     }
 }
