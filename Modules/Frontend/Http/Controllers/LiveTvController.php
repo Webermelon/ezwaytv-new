@@ -119,6 +119,16 @@ class LiveTvController extends Controller
             }
         }
 
+        // Create entertainment object for SEO/OG meta tags
+        $entertainment = (object) [
+            'seo_image' => $data['poster_image'] ?? null,
+            'meta_title' => $data['name'] ?? null,
+            'short_description' => $data['description'] ?? null,
+            'google_site_verification' => null,
+            'canonical_url' => route('livetv-details', ['id' => $data['slug']]),
+            'meta_keywords' => null,
+        ];
+
         return view('frontend::livetvDetail', compact(
             'data',
             'suggestions',
@@ -126,7 +136,8 @@ class LiveTvController extends Controller
             'chatGuestName',
             'chatIdentityType',
             'chatCanChangeName',
-            'chatIsIdentifiedGuest'
+            'chatIsIdentifiedGuest',
+            'entertainment'
         ));
     }
 

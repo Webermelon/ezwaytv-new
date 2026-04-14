@@ -149,7 +149,17 @@ class CastCrewController extends Controller
 
         }
 
-        return view('frontend::castCrewDetail', compact('data','more_items','movieCount','tvshowCount','averageRating','topGenres'));
+        // Create entertainment object for SEO/OG meta tags
+        $entertainment = (object) [
+            'seo_image' => $data['image'] ?? null,
+            'meta_title' => $data['name'] ?? null,
+            'short_description' => $data['description'] ?? null,
+            'google_site_verification' => null,
+            'canonical_url' => url()->current(),
+            'meta_keywords' => null,
+        ];
+
+        return view('frontend::castCrewDetail', compact('data','more_items','movieCount','tvshowCount','averageRating','topGenres','entertainment'));
     }
 
     public function moviecastcrewList(string $type, $id)

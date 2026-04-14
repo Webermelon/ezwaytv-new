@@ -1,4 +1,4 @@
-@extends('frontend::layouts.master')
+@extends('frontend::layouts.master', ['entertainment' => $entertainment])
 
 @section('title')
     {{ $data['name'] ?? '' }}
