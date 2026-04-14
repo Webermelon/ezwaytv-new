@@ -37,11 +37,14 @@
                         <div class="d-xl-none pb-3 mb-3 px-3">
                             {{-- Search Bar --}}
                             <div class="mb-3">
-                                <div class="form-group input-group mb-0">
-                                    <input type="text" id="search-query"
+                                <form action="{{ route('search') }}" method="GET" class="form-group input-group mb-0">
+                                    <input type="text" name="search" id="search-query"
                                         class="form-control border rounded"
                                         placeholder="{{ __('frontend.search_placeholder') }}">
-                                </div>
+                                    <button type="submit" class="btn btn-primary ms-2">
+                                        <i class="ph ph-magnifying-glass"></i>
+                                    </button>
+                                </form>
                             </div>
                             
                             {{-- Navigation Menu --}}
@@ -67,16 +70,77 @@
                                 @endif
                                 @if(isenablemodule('video'))
                                 <li class="py-2 px-2">
-                                    <a href="{{ route('videos') }}" class="text-decoration-none d-block {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'text-primary' : 'text-white' }}">
-                                        {{__('frontend.video')}}
+                                    <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#videosSubmenu" role="button" aria-expanded="false">
+                                        <span>{{__('frontend.video')}}</span>
+                                        <i class="ph ph-caret-down"></i>
                                     </a>
+                                    <div class="collapse" id="videosSubmenu">
+                                        @php
+                                            $videos = \Modules\Video\Models\Video::where('status', 1)
+                                                ->whereDate('release_date', '<=', now())
+                                                ->orderBy('name')
+                                                ->get();
+                                        @endphp
+                                        @if($videos->count() > 0)
+                                            <div class="ps-3 mt-2 scroll-thin" style="max-height: 300px; overflow-y: auto;">
+                                                <ul class="list-unstyled">
+                                                    <li class="py-1">
+                                                        <a href="{{ route('videos') }}" class="text-decoration-none d-block {{ request()->routeIs('videos') && !request()->route('id') ? 'text-primary' : 'text-white-50' }}">
+                                                            All Videos
+                                                        </a>
+                                                    </li>
+                                                    @foreach($videos as $video)
+                                                    <li class="py-1">
+                                                        <a href="{{ route('video-details', $video->slug) }}" class="text-decoration-none d-block {{ request()->route('id') === $video->slug ? 'text-primary' : 'text-white-50' }}">
+                                                            {{ $video->name }}
+                                                        </a>
+                                                    </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @else
+                                            <div class="ps-3 mt-2">
+                                                <p class="text-white-50 mb-0">No videos available</p>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </li>
                                 @endif
                                 @if(isenablemodule('livetv'))
                                 <li class="py-2 px-2">
-                                    <a href="{{route('livetv')}}" class="text-decoration-none d-block {{ request()->routeIs('livetv') ? 'text-primary' : 'text-white' }}">
-                                        {{__('frontend.livetv')}}
+                                    <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs('livetv') ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#liveTvChannelsSubmenu" role="button" aria-expanded="false">
+                                        <span>{{__('frontend.livetv')}}</span>
+                                        <i class="ph ph-caret-down"></i>
                                     </a>
+                                    <div class="collapse" id="liveTvChannelsSubmenu">
+                                        @php
+                                            $liveTvChannels = \Modules\LiveTV\Models\LiveTvChannel::where('status', 1)
+                                                ->orderBy('name')
+                                                ->get();
+                                        @endphp
+                                        @if($liveTvChannels->count() > 0)
+                                            <div class="ps-3 mt-2 scroll-thin" style="max-height: 300px; overflow-y: auto;">
+                                                <ul class="list-unstyled">
+                                                    <li class="py-1">
+                                                        <a href="{{route('livetv')}}" class="text-decoration-none d-block {{ request()->routeIs('livetv') && !request()->route('id') ? 'text-primary' : 'text-white-50' }}">
+                                                            All Channels
+                                                        </a>
+                                                    </li>
+                                                    @foreach($liveTvChannels as $channel)
+                                                    <li class="py-1">
+                                                        <a href="{{ route('livetv-details', $channel->slug) }}" class="text-decoration-none d-block {{ request()->route('id') === $channel->slug ? 'text-primary' : 'text-white-50' }}">
+                                                            {{ $channel->name }}
+                                                        </a>
+                                                    </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @else
+                                            <div class="ps-3 mt-2">
+                                                <p class="text-white-50 mb-0">No channels available</p>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </li>
                                 @endif
                                 @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
@@ -87,7 +151,7 @@
                                             <i class="ph ph-caret-down"></i>
                                         </a>
                                         <div class="collapse" id="categoriesSubmenu">
-                                            <ul class="list-unstyled ps-3 mt-2">
+                                            <ul class="list-unstyled ps-3 mt-2 scroll-thin" style="max-height: 300px; overflow-y: auto;">
                                                 @foreach($navCategories as $navCat)
                                                 <li class="py-1">
                                                     <a href="{{ route('videos.by-category', $navCat->slug) }}" class="text-decoration-none d-block {{ request()->routeIs('videos.by-category') && request()->route('slug') === $navCat->slug ? 'text-primary' : 'text-white-50' }}">
@@ -109,6 +173,40 @@
                         
                         <div
                             class="d-flex flex-md-row flex-column align-items-md-center align-items-end justify-content-end gap-xl-3 gap-0">
+                            {{-- Desktop Search Bar --}}
+                            <ul class="navbar-nav align-items-center list-inline justify-content-end mt-md-0 mt-3 d-none d-xl-flex">
+                                <li class="flex-grow-1">
+                                    <div class="search-box position-relative text-end">
+                                        <a href="#" class="nav-link p-0" id="search-drop"
+                                            data-bs-toggle="dropdown">
+                                            <div class="btn-icon btn-sm rounded-pill btn-action">
+                                                <span class="btn-inner">
+                                                    <svg class="icon-20" width="20" viewBox="0 0 24 24"
+                                                        fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <circle cx="11.7669" cy="11.7666" r="8.98856"
+                                                            stroke="currentColor" stroke-width="1.5"
+                                                            stroke-linecap="round" stroke-linejoin="round"></circle>
+                                                        <path d="M18.0186 18.4851L21.5426 22" stroke="currentColor"
+                                                            stroke-width="1.5" stroke-linecap="round"
+                                                            stroke-linejoin="round"></path>
+                                                    </svg>
+                                                </span>
+                                            </div>
+                                        </a>
+                                        <ul class="dropdown-menu p-0 dropdown-search m-0 iq-search-bar"
+                                            style="width: 20rem;">
+                                            <li class="p-0">
+                                                <form action="{{ route('search') }}" method="GET" class="form-group input-group mb-0">
+                                                    <input type="text" name="search" id="search-query-desktop"
+                                                        class="form-control border rounded"
+                                                        placeholder="{{ __('frontend.search_placeholder') }}">
+
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </li>
+                            </ul>
                             <ul class="navbar-nav align-items-center mb-0 list-inline justify-content-end">
                                 @if (auth()->check() && !getCurrentProfileSession('is_child_profile'))
                                     <li class="nav-item dropdown iq-dropdown header-notification">

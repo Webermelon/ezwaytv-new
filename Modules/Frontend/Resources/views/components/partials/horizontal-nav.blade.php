@@ -36,8 +36,8 @@
           @endif
           @if(isenablemodule('video'))
           <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'active text-primary' : '' }}"  href="{{ route('videos') }}">
-              <span class="item-name">{{__('frontend.video')}}</span>
+            <a class="nav-link {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'active text-primary' : '' }}" href="{{ route('videos') }}">
+              <span class="item-name">All Videos</span>
             </a>
           </li>
           @endif
@@ -72,17 +72,56 @@
 
       @if(isenablemodule('livetv'))
       <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('livetv') ? 'active text-primary' : '' }}"  href="{{route('livetv')}}">
+        <a class="nav-link {{ request()->routeIs('livetv') ? 'active text-primary' : '' }}" href="#">
           <span class="item-name">{{__('frontend.livetv')}}</span>
         </a>
+        <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
+          @php
+            $liveTvChannels = \Modules\LiveTV\Models\LiveTvChannel::where('status', 1)
+                ->orderBy('name')
+                ->get();
+          @endphp
+          <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('livetv') && !request()->route('id') ? 'active text-primary' : '' }}" href="{{route('livetv')}}">
+              <span class="item-name">All Channels</span>
+            </a>
+          </li>
+          @foreach($liveTvChannels as $channel)
+          <li class="nav-item">
+            <a class="nav-link {{ request()->route('id') === $channel->slug ? 'active text-primary' : '' }}" href="{{ route('livetv-details', $channel->slug) }}">
+              <span class="item-name">{{ $channel->name }}</span>
+            </a>
+          </li>
+          @endforeach
+        </ul>
       </li>
       
       @endif
       @if(isenablemodule('video'))
       <li class="nav-item">
-        <a class="nav-link"  href="{{ route('videos') }}">
+        <a class="nav-link {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'active text-primary' : '' }}" href="#">
           <span class="item-name">{{__('frontend.video')}}</span>
         </a>
+        <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
+          @php
+            $videos = \Modules\Video\Models\Video::where('status', 1)
+                ->whereDate('release_date', '<=', now())
+                ->orderBy('name')
+                ->get();
+          @endphp
+          <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('videos') && !request()->route('id') ? 'active text-primary' : '' }}" href="{{ route('videos') }}">
+              <span class="item-name">All Videos</span>
+            </a>
+          </li>
+          @foreach($videos as $video)
+          <li class="nav-item">
+            <a class="nav-link {{ request()->route('id') === $video->slug ? 'active text-primary' : '' }}" href="{{ route('video-details', $video->slug) }}">
+              <span class="item-name">{{ $video->name }}</span>
+            </a>
+          </li>
+          @endforeach
+        </ul>
       </li>
       @endif 
       @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
