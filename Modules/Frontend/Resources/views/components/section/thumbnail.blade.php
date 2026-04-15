@@ -226,6 +226,26 @@
         max-width: 400px; /* cap at 400px */
         box-sizing: border-box;
     }
+    /* Mobile: stack Now/Next vertically (top and bottom) and allow titles to wrap */
+    @media (max-width: 768px) {
+        .livetv-schedule-mini {
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 8px;
+        }
+        .livetv-schedule-mini__now, .livetv-schedule-mini__next {
+            width: 100%;
+            max-width: none;
+            display: flex;
+            align-items: flex-start;
+        }
+        .livetv-schedule-mini__title {
+            white-space: normal; /* allow wrapping on small screens */
+            overflow: visible;
+        }
+        .livetv-schedule-mini__time { font-size: 12px; }
+    }
     .livetv-schedule-mini__label { font-size: 11px; color: #9aa3ad; }
     .livetv-schedule-mini__title { font-weight:600; margin-top:4px; max-width:100%; overflow:hidden; white-space:nowrap; display:block; }
     .livetv-schedule-mini__time { color:#9aa3ad; font-size:12px; }
