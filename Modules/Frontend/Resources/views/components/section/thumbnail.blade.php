@@ -291,6 +291,12 @@
             }
         }
 
+        function cleanTitle(title){
+            // Remove "_converted" suffix from schedule titles
+            if(!title) return '-';
+            return title.replace(/_converted$/i, '').trim() || '-';
+        }
+
         function renderSchedules(){
             var now = new Date();
             // update mini bar current/next
@@ -317,7 +323,7 @@
 
                 var item = document.createElement('div');
                 item.className = 'livetv-schedule__item';
-                var title = document.createElement('div'); title.textContent = s.title || '-';
+                var title = document.createElement('div'); title.textContent = cleanTitle(s.title);
                 var time = document.createElement('div'); time.className = 'livetv-schedule__time';
                 time.textContent = (start ? fmtTime(start) : '-') + ' — ' + (end ? fmtTime(end) : '-');
 
@@ -396,14 +402,14 @@
                 });
             }
 
-            setTitleWithMarquee(miniCurTitle, displayCurrent ? displayCurrent.title || '-' : '-');
+            setTitleWithMarquee(miniCurTitle, displayCurrent ? cleanTitle(displayCurrent.title) : '-');
             miniCurTime.textContent = displayCurrent ? ((displayCurrent.start_at?fmtTime(new Date(displayCurrent.start_at)):'-') + ' — ' + (displayCurrent.end_at?fmtTime(new Date(displayCurrent.end_at)):'-')) : '-';
 
             // panel current can reuse plain text but allow marquee as well
-            setTitleWithMarquee(panelCurTitle, displayCurrent ? displayCurrent.title || '-' : '-');
+            setTitleWithMarquee(panelCurTitle, displayCurrent ? cleanTitle(displayCurrent.title) : '-');
             panelCurTime.textContent = displayCurrent && displayCurrent.start_at ? fmtDateTime(displayCurrent.start_at) + (displayCurrent.end_at ? ' — ' + fmtDateTime(displayCurrent.end_at) : '') : miniCurTime.textContent;
 
-            setTitleWithMarquee(miniNextTitle, displayNext ? displayNext.title || '-' : '-');
+            setTitleWithMarquee(miniNextTitle, displayNext ? cleanTitle(displayNext.title) : '-');
             miniNextTime.textContent = displayNext ? ((displayNext.start_at?fmtTime(new Date(displayNext.start_at)):'-') + ' — ' + (displayNext.end_at?fmtTime(new Date(displayNext.end_at)):'-')) : '-';
         }
 
