@@ -78,7 +78,7 @@
             <option value="year">Last Year</option>
             <option value="all">All Time</option>
         </select>
-        <a href="{{ route('backend.statistics.settings') }}" class="btn btn-sm btn-dark">
+        <a href="{{ route('backend.statistics.settings') }}" class="btn btn-sm btn-dark" style="display:none">
             <i class="ph ph-gear me-1"></i>Settings
         </a>
         @if(auth()->user()->hasRole('admin'))

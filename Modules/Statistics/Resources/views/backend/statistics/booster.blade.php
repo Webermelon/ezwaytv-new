@@ -68,9 +68,6 @@
         <a href="{{ route('backend.statistics.index') }}" class="btn btn-sm btn-dark">
             <i class="ph ph-chart-bar me-1"></i>Dashboard
         </a>
-        <a href="{{ route('backend.statistics.settings') }}" class="btn btn-sm btn-dark">
-            <i class="ph ph-gear me-1"></i>Settings
-        </a>
     </div>
 </div>
 
