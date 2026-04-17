@@ -135,7 +135,7 @@
                 <i class="ph ph-chart-line"></i>
             </div>
             <div class="stat-value" id="val-views">—</div>
-            <div class="stat-label">Total Views</div>
+            <div class="stat-label">Total Video/Channel Views</div>
             <span class="stat-change neutral" id="chg-views" style="display:none"></span>
         </div>
     </div>
@@ -211,7 +211,7 @@
                         <option value="video">Videos</option>
                         <option value="entertainment">Movies &amp; TV</option>
                         <option value="episode">Episodes</option>
-                        <option value="livetv">Live TV</option>
+                        <option value="livetv" selected>Live TV</option>
                     </select>
                 </div>
             </div>

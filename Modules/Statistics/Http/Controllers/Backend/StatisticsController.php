@@ -83,12 +83,24 @@ class StatisticsController extends Controller
 
         $totalPlays     = $totalPlays + $boostPlaysSum;
         $totalPageViews = $totalPageViews + $boostViewsSum;
+        if ($startDate && $period !== 'all') {
+            // Apply the same fixed per-content boosts to previous totals for fair comparison.
+            $prevPlays += $boostPlaysSum;
+            $prevViews += $boostViewsSum;
+        }
 
         // ── Boost (admin-only global multiplier/fixed) ─────
         $totalPlays     = $this->applyBoost($totalPlays,     'plays');
         $totalPageViews = $this->applyBoost($totalPageViews, 'views');
         $uniqueViewers  = $this->applyBoost($uniqueViewers,  'visitors');
         $uniqueVisitors = $this->applyBoost($uniqueVisitors, 'visitors');
+        if ($startDate && $period !== 'all') {
+            $prevPlays = $this->applyBoost($prevPlays, 'plays');
+            $prevViews = $this->applyBoost($prevViews, 'views');
+        }
+
+        $playsChange = $this->calculatePercentChange($totalPlays, $prevPlays, $period);
+        $pageViewsChange = $this->calculatePercentChange($totalPageViews, $prevViews, $period);
 
         // Respect display toggles (admin-controlled)
         $showPageViews = \Modules\Statistics\Models\StatSetting::get('show_page_views', '1') === '1';
@@ -96,9 +108,11 @@ class StatisticsController extends Controller
 
         if (!$showPageViews) {
             $totalPageViews = 0;
+            $pageViewsChange = null;
         }
         if (!$showPlayerPlays) {
             $totalPlays = 0;
+            $playsChange = null;
         }
 
         return response()->json([
@@ -107,9 +121,9 @@ class StatisticsController extends Controller
             'page_views'       => number_format($totalPageViews),
             'unique_visitors'  => number_format($uniqueVisitors > 0 ? $uniqueVisitors : $uniqueViewers),
             'watch_hours'      => number_format($watchHours, 1),
-            'views_change'     => $prevPlays > 0 ? round((($totalPlays - $prevPlays) / $prevPlays) * 100, 1) : null,
-            'plays_change'     => $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
-            'page_views_change'=> $prevViews > 0 ? round((($totalPageViews - $prevViews) / $prevViews) * 100, 1) : null,
+            'views_change'     => $playsChange,
+            'plays_change'     => $playsChange,
+            'page_views_change'=> $pageViewsChange,
             'boost_active'     => (float)(StatSetting::get('boost_multiplier', 1)) != 1.0
                                   || (int)(StatSetting::get('boost_fixed_plays', 0)) > 0
                                   || (int)(StatSetting::get('boost_fixed_views', 0)) > 0,
@@ -695,6 +709,15 @@ class StatisticsController extends Controller
         $start = \Carbon\Carbon::parse($startDate)->subDays($days)->toDateString();
 
         return [$start, $end];
+    }
+
+    private function calculatePercentChange(int $current, int $previous, string $period): ?float
+    {
+        if ($period === 'all' || $previous <= 0) {
+            return null;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 
     private function resolveContentName(string $contentType, int $contentId): string
