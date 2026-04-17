@@ -235,7 +235,7 @@
 </div>
 
 {{-- ── Top Users Table ───────────────────────────────── --}}
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4" style="display:none">
     <div class="col-12">
         <div class="chart-card">
             <h6 class="mb-3 fw-semibold">Top Viewers</h6>
@@ -684,7 +684,6 @@
         loadTrafficChart();
         loadCountriesChart();
         loadTopContent();
-        loadTopUsers();
         loadPageViews();
         loadPlayEvents();
     }
