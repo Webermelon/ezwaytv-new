@@ -219,6 +219,68 @@
                 </div>
             </div>
 
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Admin User Access</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Assign roles for backend/admin users from here.</p>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Roles</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($adminUsers as $adminUser)
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ trim(($adminUser->first_name ?? '') . ' ' . ($adminUser->last_name ?? '')) ?: ($adminUser->name ?? '—') }}</div>
+                                            <small class="text-muted">ID: {{ $adminUser->id }} | Type: {{ $adminUser->user_type ?? '—' }}</small>
+                                        </td>
+                                        <td>{{ $adminUser->email }}</td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-3">
+                                                @foreach($manageableRoles as $roleOption)
+                                                    <div class="form-check me-2">
+                                                        <input
+                                                            class="form-check-input"
+                                                            type="checkbox"
+                                                            name="roles[]"
+                                                            id="user-{{ $adminUser->id }}-role-{{ $roleOption->id }}"
+                                                            value="{{ $roleOption->name }}"
+                                                            form="admin-user-access-{{ $adminUser->id }}"
+                                                            {{ $adminUser->roles->contains('name', $roleOption->name) ? 'checked' : '' }}
+                                                        >
+                                                        <label class="form-check-label" for="user-{{ $adminUser->id }}-role-{{ $roleOption->id }}">
+                                                            {{ $roleOption->title ?: ucfirst(str_replace('_', ' ', $roleOption->name)) }}
+                                                        </label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="POST" action="{{ route('backend.permission-role.user-access.update', $adminUser->id) }}" id="admin-user-access-{{ $adminUser->id }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-primary">Update Access</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">No admin users found.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div data-render="app">
                 <manage-role-form create-title="{{ __('messages.create') }}  {{ __('page.lbl_role') }}">
                 </manage-role-form>

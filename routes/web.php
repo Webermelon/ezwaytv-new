@@ -52,6 +52,7 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
         Route::get('/permission-role', [RolePermission::class, 'index'])->name('permission-role.list')->middleware('password.confirm');
         Route::post('/permission-role/store/{role_id}', [RolePermission::class, 'store'])->name('permission-role.store');
         Route::get('/permission-role/reset/{role_id}', [RolePermission::class, 'reset_permission'])->name('permission-role.reset');
+        Route::post('/permission-role/user-access/{user}', [RolePermission::class, 'updateUserAccess'])->name('permission-role.user-access.update');
         // Role & Permissions Crud
         Route::resource('permission', PermissionController::class);
         Route::resource('role', RoleController::class);
