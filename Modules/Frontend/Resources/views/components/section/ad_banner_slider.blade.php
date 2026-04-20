@@ -7,7 +7,9 @@
 @if($adSlides->isNotEmpty())
 <div class="ad-banner-slider-section">
     <div class="ad-banner-slider-inner">
-        <div class="ad-banner-slider"
+        <div class="row ad-banner-row">
+            <div class="col-12 col-md-7">
+                <div class="ad-banner-slider"
              data-autoplay="true"
              data-autoplay-speed="3000"
              data-slides="{{ $adSlides->count() }}">
@@ -25,6 +27,11 @@
                     @endif
                 </div>
             @endforeach
+                </div>
+            </div>
+            <div class="col-12 col-md-5 ezway-custom-ad">
+                <iframe src="https://ads.ezwaynetwork.com/ad-placement/all-sites-top-square-ad-400-x-400/" class="ezway-ad-iframe" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            </div>
         </div>
     </div>
 </div>
@@ -44,9 +51,40 @@
 
 /* Centered container — max 1100px on desktop, full-width on mobile */
 .ad-banner-slider-inner {
-    max-width: 1100px;
+    /* max-width: 1100px; */
     margin: 0 auto;
     padding: 0 12px;
+}
+
+/* Row layout: slider + custom ad side-by-side on wide screens */
+.ad-banner-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+    /* max-width: 1100px; */
+    margin: 0 auto;
+    padding: 0 12px;
+}
+
+.ad-banner-slider-inner {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ezway-custom-ad {
+    flex: 0 0 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ezway-ad-iframe {
+    width: 100%;
+    height: 400px;
+    border: 0;
+    border-radius: 6px;
+    display: block;
 }
 
 .ad-banner-slider .slick-slide {

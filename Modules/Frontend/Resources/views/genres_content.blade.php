@@ -11,7 +11,7 @@
 
 
                 <h4 class="mb-5 text-center">
-                    {{ $genre->name }}
+                    {{ $genre->name ?? '' }}
                 </h4>
 
                 <!-- Content Type Tabs -->
