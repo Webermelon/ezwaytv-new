@@ -4,7 +4,7 @@
     {{ $data['name'] ?? '' }}
 @endsection
 @section('content')
-    <div id="thumbnail-section" class="section-spacing-bottom">
+    <div id="thumbnail-section">
         @php
             if ($data['stream_type'] == 'Embedded') {
                 $videodata = Crypt::encryptString($data['embedded']);

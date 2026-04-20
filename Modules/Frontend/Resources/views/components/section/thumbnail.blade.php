@@ -58,32 +58,40 @@
                 </div>
             </div>
 
-            <!-- Live TV Schedule: mini Now/Next + hidden full panel -->
-            <div id="livetv-schedule-mini" class="livetv-schedule-mini" aria-hidden="false">
-                <div class="livetv-schedule-mini__now">
-                    <div class="livetv-schedule-mini__label">Now</div>
-                    <div class="livetv-schedule-mini__title" id="livetv-schedule-current-title">-</div>
-                    <div class="livetv-schedule-mini__time" id="livetv-schedule-current-time">-</div>
+            <!-- Live TV Schedule with New Layout -->
+            <div class="tv-wrap" id="livetv-schedule-wrap">
+              <div class="tv-inner">
+                <div class="screen-area">
+                  <div class="screen" style="display:none;">
+                    <div class="screen-bg"></div>
+                    <div class="screen-overlay"></div>
+                    <div class="play-btn"><div class="play-icon"></div></div>
+                  </div>
+                  <div class="now-next">
+                    <div class="info-card">
+                      <div class="info-label">Now</div>
+                      <div class="info-title" id="sn-now-title">-</div>
+                      <div class="info-time" id="sn-now-time">-</div>
+                    </div>
+                    <div class="info-card">
+                      <div class="info-label">Next</div>
+                      <div class="info-title" id="sn-next-title">-</div>
+                      <div class="info-time" id="sn-next-time">-</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="livetv-schedule-mini__next">
-                    <div class="livetv-schedule-mini__label">Next</div>
-                    <div class="livetv-schedule-mini__title" id="livetv-schedule-next-title">-</div>
-                    <div class="livetv-schedule-mini__time" id="livetv-schedule-next-time">-</div>
-                </div>
-                <!-- Schedule toggle hidden for now; only show Now/Next mini bar -->
-            </div>
+              </div>
+              <button class="schedule-btn" id="toggleSchedBtn">Full Schedule</button>
 
-            <div id="livetv-schedule-panel" class="livetv-schedule" style="display:none;" aria-hidden="true">
-                <button id="livetv-schedule-close" class="livetv-schedule__close" aria-label="Close schedule">&times;</button>
-                <div class="livetv-schedule__current">
-                    <div class="livetv-schedule__label">Now</div>
-                    <div class="livetv-schedule__title" id="livetv-schedule-panel-current-title">-</div>
-                    <div class="livetv-schedule__time" id="livetv-schedule-panel-current-time">-</div>
+              <div class="schedule-panel" id="schedPanel">
+                <div class="schedule-header">
+                  <span class="schedule-header-title">Full Schedule</span>
+                  <button class="close-btn" id="closeSchedBtn">&times;</button>
                 </div>
-                <div id="livetv-schedule-loading" style="display:none;color:#9aa3ad;font-size:12px;margin-bottom:6px;">Loading schedule…</div>
-                <div class="livetv-schedule__upcoming" id="livetv-schedule-upcoming">
-                    <!-- upcoming items injected here -->
+                <div class="schedule-list" id="scheduleList">
+                  <!-- items injected -->
                 </div>
+              </div>
             </div>
         </div>
     </div>
@@ -163,337 +171,202 @@
     }
 </style>
 <style>
-    /* Schedule overlay */
-    .livetv-schedule {
-        /* place the schedule under the player in normal flow */
-        position: relative;
-        width: 100%;
-        max-width: 900px;
-        max-height: 60vh;
-        background: rgba(0,0,0,0.85);
-        color: #fff;
-        border-radius: 12px;
-        padding: 12px;
-        margin: 12px auto 0;
-        z-index: 2;
-        overflow: auto;
-        font-size: 13px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    }
-
-    .livetv-schedule__label { font-size: 11px; color: #9aa3ad; }
-    .livetv-schedule__current { margin-bottom: 10px; }
-    .livetv-schedule__title { font-weight: 600; margin-top: 4px; }
-    .livetv-schedule__time { color: #9aa3ad; font-size: 12px; }
-    .livetv-schedule__upcoming { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; }
-    .livetv-schedule__item { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.03); }
-    .livetv-schedule__item:last-child { border-bottom: none; }
-    .livetv-schedule__item.current { background: rgba(63, 132, 255, 0.08); }
-
-    .livetv-schedule__close {
-        position: absolute;
-        top: 8px;
-        right: 10px;
-        background: transparent;
-        border: none;
-        color: #fff;
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
-        padding: 4px 8px;
-    }
-
-    /* Mini bar */
-    .livetv-schedule-mini {
-        /* mini bar sits below the player, inline with schedule panel */
-        position: relative;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-top: 8px;
-        z-index: 3;
-        justify-content: flex-end;
-    }
-    .livetv-schedule-mini__now, .livetv-schedule-mini__next {
-        background: rgba(0,0,0,0.6);
-        padding: 8px 10px;
-        border-radius: 8px;
-        color: #fff;
-        display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-        width: auto; /* shrink to content */
-        max-width: 400px; /* cap at 400px */
-        box-sizing: border-box;
-    }
-    /* Mobile: stack Now/Next vertically (top and bottom) and allow titles to wrap */
-    @media (max-width: 768px) {
-        .livetv-schedule-mini {
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            gap: 8px;
-        }
-        .livetv-schedule-mini__now, .livetv-schedule-mini__next {
-            width: 100%;
-            max-width: none;
-            display: flex;
-            align-items: flex-start;
-        }
-        .livetv-schedule-mini__title {
-            white-space: normal; /* allow wrapping on small screens */
-            overflow: visible;
-        }
-        .livetv-schedule-mini__time { font-size: 12px; }
-    }
-    .livetv-schedule-mini__label { font-size: 11px; color: #9aa3ad; }
-    .livetv-schedule-mini__title { font-weight:600; margin-top:4px; max-width:100%; overflow:hidden; white-space:nowrap; display:block; }
-    .livetv-schedule-mini__time { color:#9aa3ad; font-size:12px; }
-    .livetv-schedule-toggle {
-        background: rgba(255,255,255,0.06);
-        color: #fff;
-        border: none;
-        padding: 8px 10px;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-
-    /* Marquee (duplicate-track technique) */
-    .marquee-clip { display:inline-block; vertical-align:top; overflow:hidden; }
-    .marquee-track { display:inline-block; white-space:nowrap; }
-    .marquee-track .marquee-item { display:inline-block; padding-right:40px; }
-    .marquee-active .marquee-track { animation: marquee-scroll linear infinite; }
-    @keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500;600&display=swap');
+  .tv-wrap{background:#0d0d0f;border-radius:16px;padding:4px;font-family:'Barlow',sans-serif;color:#fff;margin-top:12px;}
+  .tv-inner{display:flex;flex-direction:column;gap:14px}
+  .screen-area{display:flex;flex-direction:column;gap:14px}
+  .screen{background:#111;border-radius:10px;position:relative;overflow:hidden;aspect-ratio:16/9;max-height:260px;border:2px solid #1e1e22;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .screen-bg{position:absolute;inset:0;background:linear-gradient(135deg,#0f0f14 0%,#1a1a24 50%,#111118 100%)}
+  .screen-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.45)}
+  .play-btn{position:relative;z-index:2;width:68px;height:68px;border-radius:50%;background:#f97316;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 0 30px rgba(249,115,22,0.5)}
+  .play-btn:hover{transform:scale(1.08);box-shadow:0 0 40px rgba(249,115,22,0.7)}
+  .play-icon{width:0;height:0;border-style:solid;border-width:13px 0 13px 22px;border-color:transparent transparent transparent #fff;margin-left:5px}
+  .now-next{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .info-card{background:#13131a;border-radius:8px;padding:12px 14px;border:1px solid #2a2a30}
+  .info-label{font-size:10px;font-weight:700;letter-spacing:2px;color:#f97316;text-transform:uppercase;margin-bottom:6px}
+  .info-title{font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px}
+  .info-time{font-size:16px;color:rgba(255,255,255,0.45);font-weight:500}
+  .schedule-btn{background:#13131a;border:1px solid #2a2a30;color:#f97316;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;writing-mode:horizontal-tb;padding:14px 20px;border-radius:8px;cursor:pointer;transition:background 0.2s,border-color 0.2s,transform 0.05s;width:100%;margin-top:10px}
+  .schedule-btn:hover{background:#1a1a24;border-color:#f97316;transform:scale(1.02)}
+  .schedule-panel{background:#13131a;border-radius:12px;border:1px solid #2a2a30;overflow:hidden;margin-top:16px;max-height:0;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1),opacity 0.3s;opacity:0;pointer-events:none}
+  .schedule-panel.open{max-height:420px;opacity:1;pointer-events:auto}
+  .schedule-header{padding:14px 18px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between}
+  .schedule-header-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#f97316}
+  .close-btn{background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;line-height:1;transition:color 0.2s}
+  .close-btn:hover{color:#fff}
+  .schedule-list{overflow-y:auto;max-height:360px;padding:8px 0}
+  .schedule-list::-webkit-scrollbar{width:4px}
+  .schedule-list::-webkit-scrollbar-track{background:#1a1a22}
+  .schedule-list::-webkit-scrollbar-thumb{background:#f97316;border-radius:2px}
+  .sched-item{padding:12px 18px;border-bottom:1px solid #1e1e26;transition:background 0.15s}
+  .sched-item:last-child{border-bottom:none}
+  .sched-item:hover{background:#1c1c26}
+  .sched-item.now{background:#1e150a;border-left:3px solid #f97316;padding-left:15px}
+  .sched-item.now .sched-name{color:#f97316}
+  .sched-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:#f97316;color:#fff;border-radius:3px;padding:2px 6px;margin-bottom:5px}
+  .sched-name{font-size:13px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:3px}
+  .sched-time{font-size:11px;color:rgba(255,255,255,0.4);font-weight:300}
+  @media (max-width: 768px) {
+    .now-next{grid-template-columns:1fr;gap:10px}
+  }
 </style>
 
 <script>
-    (function(){
-        try {
-            var schedules = @json($schedules ?? []);
-        } catch(e) {
-            var schedules = [];
+  (function(){
+    try {
+      var schedules = @json($schedules ?? []);
+    } catch(e) {
+      var schedules = [];
+    }
+    try {
+      var schedulesApiKey = @json($schedules_api_key ?? null);
+    } catch(e) {
+      var schedulesApiKey = null;
+    }
+
+    // Defensive: normalize API key - reject non-schedule URLs, extract token only if valid
+    try{
+      if(schedulesApiKey && /https?:\/\//.test(schedulesApiKey)){
+        // If it's a public schedules URL, keep it; otherwise try extracting last segment
+        if(/\/api\/public\/schedules\//.test(schedulesApiKey)){
+          // keep as-is
+        } else {
+          var parts = schedulesApiKey.split('/');
+          var last = decodeURIComponent(parts[parts.length-1] || '');
+          // Only accept if last segment looks like a 32-hex token
+          if(/^[a-f0-9]{32}$/i.test(last)){
+            schedulesApiKey = last;
+          } else {
+            // Reject (e.g., logo URLs)
+            schedulesApiKey = null;
+          }
         }
-        // schedules_api_key passed from server when channel mapping has an api key
-        try {
-            var schedulesApiKey = @json($schedules_api_key ?? null);
-        } catch(e) {
-            var schedulesApiKey = null;
+      }
+    }catch(e){ schedulesApiKey = null; }
+
+    function cleanTitle(t){ return t ? t.replace(/_converted$/i, '').trim() : '-'; }
+
+    function renderSchedules(){
+      var now = new Date();
+      var nowTitle = document.getElementById('sn-now-title');
+      var nowTime = document.getElementById('sn-now-time');
+      var nextTitle = document.getElementById('sn-next-title');
+      var nextTime = document.getElementById('sn-next-time');
+      var list = document.getElementById('scheduleList');
+      if(!nowTitle || !nowTime || !nextTitle || !nextTime || !list) return;
+
+      list.innerHTML = '';
+      var current = null, next = null;
+      var sorted = schedules.sort(function(a,b){ return new Date(a.start_at) - new Date(b.start_at); });
+
+      // Filter to show only current and upcoming schedules
+      var currentAndUpcoming = sorted.filter(function(it){
+        var e = it.end_at ? new Date(it.end_at) : null;
+        // Include if end time is in the future (still playing or upcoming)
+        return e && e >= now;
+      });
+
+      currentAndUpcoming.forEach(function(it){
+        var s = it.start_at ? new Date(it.start_at) : null;
+        var e = it.end_at ? new Date(it.end_at) : null;
+        var div = document.createElement('div'); div.className = 'sched-item';
+        if(s && e && now >= s && now <= e){ div.classList.add('now'); if(!current) current = it; }
+        if(s && now < s && !next){ next = it; }
+        var badgeWrap = '';
+        if(it.meta && (it.meta.type || it.meta.category)){
+          badgeWrap = '<div class="sched-badge">'+(it.meta.type || it.meta.category)+'</div>';
+        } else if(s && e && now >= s && now <= e){
+          badgeWrap = '<div class="sched-badge">Now</div>';
         }
+        var dStart = s ? s.toLocaleString() : '-';
+        var dEnd = e ? e.toLocaleString() : '-';
+        div.innerHTML = badgeWrap + '<div class="sched-name">'+cleanTitle(it.title)+'</div>'+
+          '<div class="sched-time">'+dStart+' — '+dEnd+'</div>';
+        list.appendChild(div);
+      });
 
-        // Normalize if backend accidentally provided the full URL instead of the raw key.
-        try{
-            if(schedulesApiKey && /https?:\/\//.test(schedulesApiKey)){
-                try{
-                    var parts = schedulesApiKey.split('/');
-                    var last = parts[parts.length-1] || '';
-                    // if URL ended with an encoded value, decode it
-                    schedulesApiKey = decodeURIComponent(last);
-                }catch(e){}
-            }
-        }catch(e){}
+      if(currentAndUpcoming.length === 0){
+        list.innerHTML = '<div style="padding:18px;color:#9aa3ad">No upcoming schedule</div>';
+      }
 
-        function fmtTime(iso){
-            try{
-                // Parse ISO (expected UTC) and display in viewer's local timezone
-                var d = new Date(iso);
-                return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName: 'short'});
-            }catch(e){
-                return iso;
-            }
+      var displayCurrent = current || sorted[0] || null;
+      var displayNext = next || (sorted.length > 1 ? sorted[1] : null);
+
+      nowTitle.textContent = displayCurrent ? cleanTitle(displayCurrent.title) : '-';
+      nowTime.textContent = displayCurrent && displayCurrent.start_at ? new Date(displayCurrent.start_at).toLocaleString() + (displayCurrent.end_at ? ' — ' + new Date(displayCurrent.end_at).toLocaleString() : '') : '-';
+      nextTitle.textContent = displayNext ? cleanTitle(displayNext.title) : '-';
+      nextTime.textContent = displayNext && displayNext.start_at ? new Date(displayNext.start_at).toLocaleString() : '-';
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      var wrap = document.getElementById('livetv-schedule-wrap');
+      var btn = document.getElementById('toggleSchedBtn');
+      var panel = document.getElementById('schedPanel');
+      var closeBtn = document.getElementById('closeSchedBtn');
+
+      // Toggle button
+      btn && btn.addEventListener('click', function(){ 
+        panel.classList.toggle('open'); 
+        if(panel.classList.contains('open')){
+          panel.scrollTop = 0; // Reset to top to show current "now" item first
         }
+      });
+      closeBtn && closeBtn.addEventListener('click', function(){ panel.classList.remove('open'); });
 
-        function fmtDateTime(iso){
-            try{
-                var d = new Date(iso);
-                return d.toLocaleString([], {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', timeZoneName: 'short'});
-            }catch(e){
-                return iso;
+      // If we have an API key, fetch external schedules
+      if(schedulesApiKey){
+        var originalSchedules = schedules; // backup embedded schedules
+        schedules = [];
+        // Check if schedulesApiKey is already a full URL or just a token
+        var fetchUrl = /^https?:\/\//.test(schedulesApiKey) 
+          ? schedulesApiKey 
+          : 'https://stream.ezway.tv/api/public/schedules/' + encodeURIComponent(schedulesApiKey);
+        fetch(fetchUrl)
+          .then(function(r){ return r.json(); })
+          .then(function(json){
+            if(json && json.schedules && Array.isArray(json.schedules)){
+              function normalizeIso(ts){
+                if(!ts) return null;
+                if(/T.*(Z|[+\-]\d{2}:?\d{2})$/.test(ts)) return ts;
+                if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)) return ts.replace(' ', 'T') + 'Z';
+                if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(ts)) return ts + 'Z';
+                return ts;
+              }
+              schedules = json.schedules.map(function(it){
+                return {
+                  id: it.id,
+                  title: (it.media && it.media.title) ? it.media.title : (it.title || '-'),
+                  start_at: normalizeIso(it.start_time || it.start_at),
+                  end_at: normalizeIso(it.end_time || it.end_at),
+                  meta: it.meta || null
+                };
+              });
             }
+          })
+          .catch(function(){ 
+            // On fetch error, fall back to embedded schedules
+            schedules = originalSchedules;
+          })
+          .finally(function(){ 
+            // Hide UI only if we have no schedules at all
+            if(!schedules || schedules.length === 0){
+              if(wrap) wrap.style.display = 'none';
+            } else {
+              renderSchedules(); 
+              setInterval(renderSchedules, 30000);
+            }
+          });
+      } else {
+        // No API key - use embedded schedules if available
+        if(!schedules || schedules.length === 0){
+          if(wrap) wrap.style.display = 'none';
+        } else {
+          renderSchedules(); 
+          setInterval(renderSchedules, 30000);
         }
-
-        function cleanTitle(title){
-            // Remove "_converted" suffix from schedule titles
-            if(!title) return '-';
-            return title.replace(/_converted$/i, '').trim() || '-';
-        }
-
-        function renderSchedules(){
-            var now = new Date();
-            // update mini bar current/next
-            var miniCurTitle = document.getElementById('livetv-schedule-current-title');
-            var miniCurTime = document.getElementById('livetv-schedule-current-time');
-            var miniNextTitle = document.getElementById('livetv-schedule-next-title');
-            var miniNextTime = document.getElementById('livetv-schedule-next-time');
-
-            var panelCurTitle = document.getElementById('livetv-schedule-panel-current-title');
-            var panelCurTime = document.getElementById('livetv-schedule-panel-current-time');
-            var upcoming = document.getElementById('livetv-schedule-upcoming');
-            if(!miniCurTitle || !miniCurTime || !miniNextTitle || !miniNextTime || !panelCurTitle || !panelCurTime || !upcoming) return;
-
-            upcoming.innerHTML = '';
-
-            var currentFound = null;
-            var nextFound = null;
-
-            schedules.sort(function(a,b){ return new Date(a.start_at) - new Date(b.start_at); });
-
-            schedules.forEach(function(s){
-                var start = s.start_at ? new Date(s.start_at) : null;
-                var end = s.end_at ? new Date(s.end_at) : null;
-
-                var item = document.createElement('div');
-                item.className = 'livetv-schedule__item';
-                var title = document.createElement('div'); title.textContent = cleanTitle(s.title);
-                var time = document.createElement('div'); time.className = 'livetv-schedule__time';
-                time.textContent = (start ? fmtTime(start) : '-') + ' — ' + (end ? fmtTime(end) : '-');
-
-                // find current
-                if(!currentFound && start && end && now >= start && now <= end){
-                    currentFound = s;
-                    item.className += ' current';
-                }
-
-                // find next (first start > now)
-                if(!nextFound && start && now < start){
-                    nextFound = s;
-                }
-
-                item.appendChild(title);
-                item.appendChild(time);
-                upcoming.appendChild(item);
-            });
-
-            // populate mini and panel current
-            var displayCurrent = currentFound || schedules[0] || null;
-            var displayNext = nextFound || (schedules.length > 1 ? schedules[1] : null);
-
-            // helper: set title with marquee if overflow
-            function setTitleWithMarquee(containerEl, text){
-                if(!containerEl) return;
-                containerEl.innerHTML = '';
-                var clip = document.createElement('span'); clip.className='marquee-clip';
-                var track = document.createElement('span'); track.className='marquee-track';
-                var item1 = document.createElement('span'); item1.className='marquee-item'; item1.textContent = text || '-';
-                // append only single item initially; duplicate only when overflow is detected
-                track.appendChild(item1);
-                // ensure clip fills the available container width so overflow detection works
-                clip.style.display = 'inline-block';
-                clip.style.width = '100%';
-                clip.style.boxSizing = 'border-box';
-                clip.appendChild(track);
-                containerEl.appendChild(clip);
-                // after render, detect overflow and enable animation
-                requestAnimationFrame(function(){
-                    try{
-                        var clipW = clip.clientWidth;
-                        var itemW = item1.scrollWidth;
-                        // if single item wider than clip, enable marquee by duplicating the item
-                        if(itemW > clipW + 6){
-                            // append duplicate if not already present
-                            if(track.children.length < 2){
-                                var item2 = document.createElement('span'); item2.className='marquee-item'; item2.textContent = text || '-';
-                                track.appendChild(item2);
-                            }
-                            // set duration proportional to single item length
-                            var duration = Math.max(6, Math.min(40, Math.round(itemW/30)));
-                            // ensure track contains two copies and is wide enough
-                            track.style.display = 'inline-block';
-                            track.style.width = (itemW * 2) + 'px';
-                            // explicit animation: use existing keyframes which animate -50% (half the track)
-                            track.style.animationName = 'marquee-scroll';
-                            track.style.animationTimingFunction = 'linear';
-                            track.style.animationIterationCount = 'infinite';
-                            track.style.animationDuration = duration + 's';
-                            // play normal so text moves right-to-left
-                            track.style.animationDirection = 'normal';
-                            containerEl.classList.add('marquee-active');
-                        } else {
-                            // remove duplicate if exists
-                            if(track.children.length > 1){
-                                while(track.children.length > 1) track.removeChild(track.lastChild);
-                            }
-                            containerEl.classList.remove('marquee-active');
-                            track.style.animationName = '';
-                            track.style.animationDuration = '';
-                            track.style.animationDirection = '';
-                            track.style.width = '';
-                        }
-                    }catch(e){}
-                });
-            }
-
-            setTitleWithMarquee(miniCurTitle, displayCurrent ? cleanTitle(displayCurrent.title) : '-');
-            miniCurTime.textContent = displayCurrent ? ((displayCurrent.start_at?fmtTime(new Date(displayCurrent.start_at)):'-') + ' — ' + (displayCurrent.end_at?fmtTime(new Date(displayCurrent.end_at)):'-')) : '-';
-
-            // panel current can reuse plain text but allow marquee as well
-            setTitleWithMarquee(panelCurTitle, displayCurrent ? cleanTitle(displayCurrent.title) : '-');
-            panelCurTime.textContent = displayCurrent && displayCurrent.start_at ? fmtDateTime(displayCurrent.start_at) + (displayCurrent.end_at ? ' — ' + fmtDateTime(displayCurrent.end_at) : '') : miniCurTime.textContent;
-
-            setTitleWithMarquee(miniNextTitle, displayNext ? cleanTitle(displayNext.title) : '-');
-            miniNextTime.textContent = displayNext ? ((displayNext.start_at?fmtTime(new Date(displayNext.start_at)):'-') + ' — ' + (displayNext.end_at?fmtTime(new Date(displayNext.end_at)):'-')) : '-';
-        }
-
-        // render once on load and refresh every 30s to update 'Now' highlight
-        document.addEventListener('DOMContentLoaded', function(){
-            var loadingEl = document.getElementById('livetv-schedule-loading');
-            var miniBar = document.getElementById('livetv-schedule-mini');
-            var panel = document.getElementById('livetv-schedule-panel');
-
-            // If no schedules API key for this channel, hide Now/Next UI entirely
-            if(!schedulesApiKey){
-                if(miniBar) miniBar.style.display = 'none';
-                if(panel) panel.style.display = 'none';
-                return;
-            }
-
-            // When API key exists: ignore embedded local schedules and fetch external feed
-            schedules = [];
-            if(loadingEl) loadingEl.style.display = 'block';
-            fetch('https://stream.ezway.tv/api/public/schedules/' + encodeURIComponent(schedulesApiKey))
-                .then(function(r){ return r.json(); })
-                .then(function(json){
-                    if(json && json.schedules && Array.isArray(json.schedules)){
-                        function normalizeIso(ts){
-                            if(!ts) return null;
-                            if(/T.*(Z|[+\-]\d{2}:?\d{2})$/.test(ts)) return ts;
-                            if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)){
-                                return ts.replace(' ', 'T') + 'Z';
-                            }
-                            if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(ts)){
-                                return ts + 'Z';
-                            }
-                            return ts;
-                        }
-                        schedules = json.schedules.map(function(it){
-                            return {
-                                id: it.id,
-                                title: (it.media && it.media.title) ? it.media.title : (it.title || '-'),
-                                start_at: normalizeIso(it.start_time || it.start_at),
-                                end_at: normalizeIso(it.end_time || it.end_at),
-                                meta: it.meta || null
-                            };
-                        });
-                    }
-                })
-                .catch(function(){
-                    // on fetch error, hide Now/Next UI to avoid showing stale local schedules
-                    if(miniBar) miniBar.style.display = 'none';
-                    if(panel) panel.style.display = 'none';
-                })
-                .finally(function(){ if(loadingEl) loadingEl.style.display = 'none'; renderSchedules(); setInterval(renderSchedules, 30000); });
-
-            // Close button inside panel to 'untoggle'
-            var closeBtn = document.getElementById('livetv-schedule-close');
-            if(closeBtn && panel){
-                closeBtn.addEventListener('click', function(){
-                    panel.style.display = 'none';
-                    panel.setAttribute('aria-hidden','true');
-                    if(miniBar) miniBar.style.display = 'flex';
-                    try{ miniBar && miniBar.focus(); }catch(e){}
-                });
-            }
-        });
-    })();
+      }
+    });
+  })();
 </script>
 <style>
     /* Hide ALL IMA Skip Elements */
