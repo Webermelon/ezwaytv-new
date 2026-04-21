@@ -96,7 +96,7 @@
     width: 100%;
     height: 400px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 10px;
     display: block;
 }
 
