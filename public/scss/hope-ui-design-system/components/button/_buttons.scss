@@ -2,6 +2,9 @@
     .btn-#{$color} {
         --bs-btn-bg: var(--bs-#{$color});
         --bs-btn-border-color: var(--bs-#{$color});
+        --bs-btn-color: var(--bs-#{$color}-contrast, #000);
+        --bs-btn-hover-color: var(--bs-btn-color);
+        --bs-btn-active-color: var(--bs-btn-color);
         --bs-btn-hover-bg: var(--bs-#{$color}-hover-bg);
         --bs-btn-hover-border-color: var(--bs-#{$color}-hover-border);
         --bs-btn-active-bg: var(--bs-#{$color}-active-bg);
@@ -12,6 +15,8 @@
 
     .btn-outline-#{$color} {
         --bs-btn-color: var(--bs-#{$color});
+        --bs-btn-hover-color: var(--bs-btn-color);
+        --bs-btn-active-color: var(--bs-btn-color);
         --bs-btn-border-color: var(--bs-#{$color});
         --bs-btn-hover-bg: var(--bs-#{$color}-hover-bg);
         --bs-btn-hover-border-color: var(--bs-#{$color}-hover-border);
@@ -24,7 +29,7 @@
     .btn-#{$color}-subtle {
         --bs-btn-color: var(--bs-#{$color});
         --bs-btn-bg: var(--bs-#{$color}-bg-subtle);
-        --bs-btn-hover-color: var(--bs-white);
+        --bs-btn-hover-color: var(--bs-btn-color);
         --bs-btn-hover-bg: var(--bs-#{$color}-hover-bg);
         --bs-btn-active-bg: var(--bs-#{$color}-active-bg);
         --bs-btn-disabled-bg: var(--bs-#{$color});
