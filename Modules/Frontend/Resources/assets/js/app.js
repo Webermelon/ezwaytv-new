@@ -190,6 +190,10 @@ function slickBanner(isRTL) {
       try { bannerSlider.slick('setPosition'); } catch (e) {}
     });
 
+    // determine whether to show pagination dots (hide when only one slide)
+    const bannerSlideCount = bannerSlider.children().length || bannerSlider.find('.slick-item').length || 0;
+    const showBannerDots = bannerSlider.data("pagination") && bannerSlideCount > 1;
+
     bannerSlider.slick({
       fade: true,
       slidesToShow: 1,
@@ -200,7 +204,7 @@ function slickBanner(isRTL) {
       centerMode: bannerSlider.data("center"),
       infinite: bannerSlider.data("infinite"),
       arrows: bannerSlider.data("navigation"),
-      dots: bannerSlider.data("pagination"),
+      dots: showBannerDots,
       prevArrow: "<span class='slick-arrow-prev'><i class='ph ph-caret-left'></i></span>",
       nextArrow: "<span class='slick-arrow-next'><i class='ph ph-caret-right'></i></span>",
       rtl: isRTL,
