@@ -99,6 +99,16 @@
                                                         </span>
                                                     </a>
                                                 </div>
+                                                @if ($slider['type'] == 'livetv')
+                                                <div>
+                                                    <a href="{{ route('livetv') }}" class="btn btn-outline-light">
+                                                        <span class="d-flex align-items-center justify-content-center gap-2">
+                                                            <span><i class="ph ph-list"></i></span>
+                                                            <span>{{ __('All channels') }}</span>
+                                                        </span>
+                                                    </a>
+                                                </div>
+                                                @endif
                                                 <div class="position-relative share-button dropend dropdown">
                                                     <button type="button"
                                                         data-bs-toggle="dropdown" data-bs-auto-close="outside" title="{{__('messages.lbl_share')}}"
