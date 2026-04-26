@@ -1,9 +1,15 @@
 @php
     $seo = Modules\SEO\Models\Seo::first();
-    $ogImage = $entertainment->seo_image ?? $seo->seo_image ?? asset('img/logo/favicon.png');
-    $ogTitle = $entertainment->meta_title ?? $seo->meta_title ?? config('app.name');
-    $ogDescription = $entertainment->short_description ?? $seo->short_description ?? '';
-    $ogUrl = $entertainment->canonical_url ?? $seo->canonical_url ?? url()->current();
+    // Route-specific Open Graph image overrides
+    if(request()->is('topchannel-list')){
+        // Use absolute URL so social validators can reach the image
+        $ogImage = rtrim(config('app.url'), '/') . '/images/topchannel-og.png';
+    } else {
+        $ogImage = $entertainment->seo_image ?? $seo->seo_image ?? asset('img/logo/favicon.png');
+    }
+    $ogTitle = (isset($entertainment) && !empty($entertainment->meta_title)) ? $entertainment->meta_title : ($seo->meta_title ?? config('app.name'));
+    $ogDescription = (isset($entertainment) && !empty($entertainment->short_description)) ? $entertainment->short_description : ($seo->short_description ?? '');
+    $ogUrl = (isset($entertainment) && !empty($entertainment->canonical_url)) ? $entertainment->canonical_url : ($seo->canonical_url ?? url()->current());
 @endphp
 
 
