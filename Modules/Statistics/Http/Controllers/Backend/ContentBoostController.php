@@ -5,6 +5,7 @@ namespace Modules\Statistics\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Statistics\Models\ContentBoost;
 
 class ContentBoostController extends Controller
@@ -28,9 +29,21 @@ class ContentBoostController extends Controller
         $module_icon   = 'ph ph-rocket-launch';
         $module_action = 'Booster';
 
+        $hasWatchBoostColumn = $this->hasWatchBoostColumn();
+        $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
+        $watchSelect = $hasWatchBoostColumn
+            ? ', SUM(boost_watch_seconds) as boost_watch_seconds'
+            : ', 0 as boost_watch_seconds';
+        $visitorSelect = $hasVisitorBoostColumn
+            ? ', SUM(boost_unique_visitors) as boost_unique_visitors'
+            : ', 0 as boost_unique_visitors';
+
         $boosts = ContentBoost::selectRaw(
                 'content_type, content_id, MAX(content_name) as content_name, ' .
-                'SUM(boost_plays) as boost_plays, SUM(boost_views) as boost_views, COUNT(*) as entries, MAX(updated_at) as updated_at'
+                'SUM(boost_plays) as boost_plays, SUM(boost_views) as boost_views' .
+                $watchSelect .
+                $visitorSelect .
+                ', COUNT(*) as entries, MAX(updated_at) as updated_at'
             )
             ->groupBy('content_type', 'content_id')
             ->orderByDesc('updated_at')
@@ -56,6 +69,9 @@ class ContentBoostController extends Controller
         if (strlen($q) < 2) {
             return response()->json([]);
         }
+
+        $hasWatchBoostColumn = $this->hasWatchBoostColumn();
+        $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
 
         $results = collect();
 
@@ -93,7 +109,11 @@ class ContentBoostController extends Controller
                 // Get existing boost if any (summed)
                 $boostSums = ContentBoost::where('content_type', $ctype)
                     ->where('content_id', $row->id)
-                    ->selectRaw('SUM(boost_plays) as total_plays, SUM(boost_views) as total_views, COUNT(*) as entries')
+                    ->selectRaw(
+                        'SUM(boost_plays) as total_plays, SUM(boost_views) as total_views, ' .
+                        ($hasWatchBoostColumn ? 'SUM(boost_watch_seconds)' : '0') . ' as total_watch_seconds, ' .
+                        ($hasVisitorBoostColumn ? 'SUM(boost_unique_visitors)' : '0') . ' as total_unique_visitors, COUNT(*) as entries'
+                    )
                     ->first();
 
                 $results->push([
@@ -104,6 +124,8 @@ class ContentBoostController extends Controller
                     'real_plays'    => $realPlays,
                     'boost_plays'   => (int)($boostSums->total_plays ?? 0),
                     'boost_views'   => (int)($boostSums->total_views ?? 0),
+                    'boost_watch_seconds' => (int)($boostSums->total_watch_seconds ?? 0),
+                    'boost_unique_visitors' => (int)($boostSums->total_unique_visitors ?? 0),
                     'boost_entries' => (int)($boostSums->entries ?? 0),
                 ]);
             }
@@ -124,6 +146,9 @@ class ContentBoostController extends Controller
             return response()->json(['error' => 'Missing params'], 422);
         }
 
+        $hasWatchBoostColumn = $this->hasWatchBoostColumn();
+        $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
+
         // Real counts
         $realPlays = DB::table('entertainment_views')
             ->where('entertainment_id', $id)
@@ -139,23 +164,50 @@ class ContentBoostController extends Controller
             ->where('content_type', $type)
             ->count();
 
+        $realUniqueVisitors = (int) DB::table('stat_page_views')
+            ->where('content_id', $id)
+            ->where('content_type', $type)
+            ->distinct('ip_address')
+            ->count('ip_address');
+
+        $realWatchSeconds = (int) DB::table('stat_play_events')
+            ->where('content_id', $id)
+            ->where('content_type', $type)
+            ->sum('watch_seconds');
+
         // Summed boosts
         $boostSums = ContentBoost::where('content_type', $type)
             ->where('content_id', $id)
-            ->selectRaw('SUM(boost_plays) as total_plays, SUM(boost_views) as total_views')
+            ->selectRaw(
+                'SUM(boost_plays) as total_plays, SUM(boost_views) as total_views, ' .
+                ($hasWatchBoostColumn ? 'SUM(boost_watch_seconds)' : '0') . ' as total_watch_seconds, ' .
+                ($hasVisitorBoostColumn ? 'SUM(boost_unique_visitors)' : '0') . ' as total_unique_visitors'
+            )
             ->first();
 
         // Boost history (newest first)
         $history = ContentBoost::where('content_type', $type)
             ->where('content_id', $id)
             ->orderByDesc('created_at')
-            ->get(['id', 'boost_plays', 'boost_views', 'note', 'created_at']);
+            ->get(array_filter([
+                'id',
+                'boost_plays',
+                'boost_views',
+                $hasWatchBoostColumn ? 'boost_watch_seconds' : null,
+                $hasVisitorBoostColumn ? 'boost_unique_visitors' : null,
+                'note',
+                'created_at',
+            ]));
 
         return response()->json([
             'real_plays'   => $realPlays,
             'real_views'   => $realViews,
+            'real_unique_visitors' => $realUniqueVisitors,
+            'real_watch_seconds' => $realWatchSeconds,
             'boost_plays'  => (int)($boostSums->total_plays ?? 0),
             'boost_views'  => (int)($boostSums->total_views ?? 0),
+            'boost_watch_seconds' => (int)($boostSums->total_watch_seconds ?? 0),
+            'boost_unique_visitors' => (int)($boostSums->total_unique_visitors ?? 0),
             'history'      => $history,
         ]);
     }
@@ -170,20 +222,32 @@ class ContentBoostController extends Controller
             'content_id'   => 'required|integer|min:1',
             'boost_plays'  => 'required|integer|min:0',
             'boost_views'  => 'required|integer|min:0',
+            'boost_watch_seconds' => 'nullable|integer|min:0',
+            'boost_unique_visitors' => 'nullable|integer|min:0',
             'note'         => 'nullable|string|max:255',
         ]);
 
         // Resolve content name for display
         $name = $this->resolveName($validated['content_type'], $validated['content_id']);
 
-        ContentBoost::create([
+        $payload = [
             'content_type' => $validated['content_type'],
             'content_id'   => $validated['content_id'],
             'content_name' => $name,
             'boost_plays'  => $validated['boost_plays'],
             'boost_views'  => $validated['boost_views'],
             'note'         => $validated['note'] ?? null,
-        ]);
+        ];
+
+        if ($this->hasWatchBoostColumn()) {
+            $payload['boost_watch_seconds'] = (int) ($validated['boost_watch_seconds'] ?? 0);
+        }
+
+        if ($this->hasVisitorBoostColumn()) {
+            $payload['boost_unique_visitors'] = (int) ($validated['boost_unique_visitors'] ?? 0);
+        }
+
+        ContentBoost::create($payload);
 
         return response()->json(['success' => true, 'name' => $name]);
     }
@@ -208,5 +272,27 @@ class ContentBoostController extends Controller
 
         $row = DB::table($table)->where('id', $id)->first(['name']);
         return $row->name ?? "#{$id}";
+    }
+
+    private function hasWatchBoostColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('stat_content_boosts', 'boost_watch_seconds');
+        }
+
+        return $hasColumn;
+    }
+
+    private function hasVisitorBoostColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('stat_content_boosts', 'boost_unique_visitors');
+        }
+
+        return $hasColumn;
     }
 }

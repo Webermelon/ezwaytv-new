@@ -93,5 +93,40 @@
             table.search(this.value).draw();
         });
     });
+        // Handle ajax delete/restore/force-delete buttons
+        $(document).on('click', '.delete-btn, .force-delete-btn, .restore-btn', function (e) {
+            e.preventDefault();
+            const $btn = $(this);
+            const url = $btn.data('url');
+            const isRestore = $btn.hasClass('restore-btn');
+            const method = isRestore ? 'POST' : 'DELETE';
+            const confirmMessage = isRestore ? '{{ __('messages.restore_confirm') }}' : '{{ __('messages.are_you_sure?') }}';
+
+            if (!confirm(confirmMessage)) return;
+
+            $.ajax({
+                url: url,
+                type: method,
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function (res) {
+                    if (res.status) {
+                        if (typeof renderedDataTable !== 'undefined') {
+                            renderedDataTable.ajax.reload(null, false);
+                        } else if (typeof table !== 'undefined') {
+                            table.ajax.reload(null, false);
+                        }
+                        window.successSnackbar && window.successSnackbar(res.message);
+                    } else {
+                        alert(res.message || 'Error');
+                    }
+                },
+                error: function (err) {
+                    console.error(err);
+                    alert('Request failed');
+                }
+            });
+        });
     </script>
 @endpush

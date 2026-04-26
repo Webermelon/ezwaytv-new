@@ -76,7 +76,7 @@
             <option value="week" selected>Last 7 Days</option>
             <option value="month">Last 30 Days</option>
             <option value="year">Last Year</option>
-            <option value="all">All Time</option>
+            <option value="all" >All Time</option>
         </select>
         <a href="{{ route('backend.statistics.settings') }}" class="btn btn-sm btn-dark" style="display:none">
             <i class="ph ph-gear me-1"></i>Settings
@@ -126,19 +126,10 @@
                 <i class="ph ph-clock"></i>
             </div>
             <div class="stat-value" id="val-hours">—</div>
-            <div class="stat-label">Watch Hours</div>
+            <div class="stat-label">Total Watch Time</div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl">
-        <div class="stat-card h-100">
-            <div class="stat-icon" style="background:rgba(16,185,129,.2); color:#34d399;">
-                <i class="ph ph-chart-line"></i>
-            </div>
-            <div class="stat-value" id="val-views">—</div>
-            <div class="stat-label">Total Video/Channel Views</div>
-            <span class="stat-change neutral" id="chg-views" style="display:none"></span>
-        </div>
-    </div>
+    <!-- Total Video/Channel Views card removed per request -->
 </div>
 
 {{-- ── Main Chart + Top Content ──────────────────────── --}}
@@ -417,7 +408,9 @@
             document.getElementById('val-plays').textContent     = data.total_plays;
             document.getElementById('val-pageviews').textContent = data.page_views;
             document.getElementById('val-visitors').textContent  = data.unique_visitors;
-            document.getElementById('val-hours').textContent     = data.watch_hours + ' h';
+            // Display watch time in minutes instead of hours
+            const watchMinutes = Math.round((parseFloat(data.watch_hours) || 0) * 60);
+            document.getElementById('val-hours').textContent     = watchMinutes + ' min';
             document.getElementById('val-views').textContent     = data.total_views;
 
             const boostBadge = document.getElementById('boostBadge');

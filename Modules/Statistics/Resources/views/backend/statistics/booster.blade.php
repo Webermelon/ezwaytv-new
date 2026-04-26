@@ -58,6 +58,25 @@
 </style>
 @endpush
 
+@php
+    $formatWatch = function ($seconds) {
+        $seconds = max(0, (int) $seconds);
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        $s = $seconds % 60;
+
+        if ($h > 0) {
+            return $h . 'h ' . $m . 'm';
+        }
+
+        if ($m > 0) {
+            return $m . 'm ' . $s . 's';
+        }
+
+        return $s . 's';
+    };
+@endphp
+
 @section('content')
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
@@ -125,6 +144,22 @@
                     <div class="num text-success" id="displayViews">—</div>
                     <div class="lbl">Display Views</div>
                 </div>
+                <div class="stat-box">
+                    <div class="num text-secondary" id="realUniqueVisitors">—</div>
+                    <div class="lbl">Real Unique Visitors</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num text-secondary" id="displayUniqueVisitors">—</div>
+                    <div class="lbl">Display Unique Visitors</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num text-warning" id="realWatch">—</div>
+                    <div class="lbl">Real Watch Time</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num text-warning" id="displayWatch">—</div>
+                    <div class="lbl">Display Watch Time</div>
+                </div>
             </div>
 
             <form id="boostForm">
@@ -163,6 +198,39 @@
                                 title="5×">5×</button>
                         </div>
                         <div class="form-text">Views to add on top of real count</div>
+                    </div>
+                    <div class="col-sm-12">
+                        <label class="form-label fw-medium" for="f_boost_unique_visitors">
+                            <i class="ph ph-users text-secondary me-1"></i>Boosted Unique Visitors
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="f_boost_unique_visitors"
+                                name="boost_unique_visitors" min="0" step="1" value="0">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                onclick="document.getElementById('f_boost_unique_visitors').value = Math.max(0, parseInt(document.getElementById('f_boost_unique_visitors').value||0) + 100); updateDisplayNums();"
+                                title="+100">+100</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                onclick="document.getElementById('f_boost_unique_visitors').value = Math.max(0, parseInt(document.getElementById('f_boost_unique_visitors').value||0) + 500); updateDisplayNums();"
+                                title="+500">+500</button>
+                        </div>
+                        <div class="form-text">Unique visitors to add on top of real unique visitor count</div>
+                    </div>
+                    <div class="col-sm-12">
+                        <label class="form-label fw-medium" for="f_boost_watch_minutes">
+                            <i class="ph ph-timer text-warning me-1"></i>Boosted Watch Time (minutes)
+                        </label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="f_boost_watch_minutes"
+                                min="0" step="1" value="0">
+                            <input type="hidden" id="f_boost_watch_seconds" name="boost_watch_seconds" value="0">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                onclick="document.getElementById('f_boost_watch_minutes').value = Math.max(0, parseInt(document.getElementById('f_boost_watch_minutes').value||0) + 30); updateDisplayNums();"
+                                title="+30m">+30m</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2"
+                                onclick="document.getElementById('f_boost_watch_minutes').value = Math.max(0, parseInt(document.getElementById('f_boost_watch_minutes').value||0) + 60); updateDisplayNums();"
+                                title="+1h">+1h</button>
+                        </div>
+                        <div class="form-text">Watch-time minutes to add on top of real tracked watch-time</div>
                     </div>
                 </div>
 
@@ -216,6 +284,10 @@
                                 <i class="ph ph-rocket-launch me-1"></i>+{{ number_format($boost->boost_plays) }} plays
                                 &nbsp;·&nbsp;
                                 <i class="ph ph-eye me-1"></i>+{{ number_format($boost->boost_views) }} views
+                                &nbsp;·&nbsp;
+                                <i class="ph ph-users me-1"></i>+{{ number_format($boost->boost_unique_visitors ?? 0) }} visitors
+                                &nbsp;·&nbsp;
+                                <i class="ph ph-timer me-1"></i>+{{ $formatWatch($boost->boost_watch_seconds ?? 0) }} watch
                             </small>
                             @if($boost->entries > 1)
                             <small class="text-muted">({{ $boost->entries }} entries)</small>
@@ -319,10 +391,25 @@
         .then(data => {
             document.getElementById('realPlays').textContent    = data.real_plays.toLocaleString();
             document.getElementById('realViews').textContent    = data.real_views.toLocaleString();
+            document.getElementById('realUniqueVisitors').textContent = (data.real_unique_visitors || 0).toLocaleString();
+            document.getElementById('realWatch').textContent    = formatWatch(data.real_watch_seconds || 0);
             document.getElementById('f_boost_plays').value      = 0;
             document.getElementById('f_boost_views').value      = 0;
+            document.getElementById('f_boost_unique_visitors').value = 0;
+            document.getElementById('f_boost_watch_minutes').value = 0;
+            document.getElementById('f_boost_watch_seconds').value = 0;
             document.getElementById('f_note').value             = '';
-            renderHistory(data.history, data.boost_plays, data.boost_views, data.real_plays, data.real_views);
+            renderHistory(
+                data.history,
+                data.boost_plays,
+                data.boost_views,
+                data.boost_watch_seconds,
+                data.boost_unique_visitors,
+                data.real_plays,
+                data.real_views,
+                data.real_unique_visitors || 0,
+                data.real_watch_seconds || 0
+            );
             updateDisplayNums();
         });
     }
@@ -330,17 +417,29 @@
     function updateDisplayNums() {
         const bPlays = parseInt(document.getElementById('f_boost_plays').value) || 0;
         const bViews = parseInt(document.getElementById('f_boost_views').value) || 0;
+        const bVisitors = parseInt(document.getElementById('f_boost_unique_visitors').value) || 0;
+        const bWatchMinutes = parseInt(document.getElementById('f_boost_watch_minutes').value) || 0;
+        const bWatch = Math.max(0, bWatchMinutes) * 60;
+        document.getElementById('f_boost_watch_seconds').value = bWatch;
         const rPlays = parseInt(document.getElementById('realPlays').textContent.replace(/,/g, '')) || 0;
         const rViews = parseInt(document.getElementById('realViews').textContent.replace(/,/g, '')) || 0;
+        const rVisitors = parseInt(document.getElementById('realUniqueVisitors').dataset.count || '0') || 0;
+        const rWatch = parseInt(document.getElementById('realWatch').dataset.seconds || '0') || 0;
         const ht = document.getElementById('historyTotal');
         const stackedPlays = parseInt(ht.dataset.boostPlays || '0') || 0;
         const stackedViews = parseInt(ht.dataset.boostViews || '0') || 0;
+        const stackedVisitors = parseInt(ht.dataset.boostUniqueVisitors || '0') || 0;
+        const stackedWatch = parseInt(ht.dataset.boostWatchSeconds || '0') || 0;
         document.getElementById('displayPlays').textContent = (rPlays + stackedPlays + bPlays).toLocaleString();
         document.getElementById('displayViews').textContent = (rViews + stackedViews + bViews).toLocaleString();
+        document.getElementById('displayUniqueVisitors').textContent = (rVisitors + stackedVisitors + bVisitors).toLocaleString();
+        document.getElementById('displayWatch').textContent = formatWatch(rWatch + stackedWatch + bWatch);
     }
 
     document.getElementById('f_boost_plays').addEventListener('input', updateDisplayNums);
     document.getElementById('f_boost_views').addEventListener('input', updateDisplayNums);
+    document.getElementById('f_boost_unique_visitors').addEventListener('input', updateDisplayNums);
+    document.getElementById('f_boost_watch_minutes').addEventListener('input', updateDisplayNums);
 
     document.getElementById('clearEditor').addEventListener('click', () => {
         document.getElementById('boostEditor').style.display = 'none';
@@ -451,22 +550,34 @@
     };
 
     // ── Render boost history inside editor ─────────────────
-    function renderHistory(history, totalBoostPlays, totalBoostViews, realPlays, realViews) {
+    function renderHistory(history, totalBoostPlays, totalBoostViews, totalBoostWatchSeconds, totalBoostUniqueVisitors, realPlays, realViews, realUniqueVisitors, realWatchSeconds) {
         const section  = document.getElementById('boostHistory');
         const listEl   = document.getElementById('historyList');
         const totalEl  = document.getElementById('historyTotal');
+
+        const realUniqueVisitorsEl = document.getElementById('realUniqueVisitors');
+        realUniqueVisitorsEl.dataset.count = String(parseInt(realUniqueVisitors || 0));
+        realUniqueVisitorsEl.textContent = Number(realUniqueVisitors || 0).toLocaleString();
+
+        const realWatchEl = document.getElementById('realWatch');
+        realWatchEl.dataset.seconds = String(parseInt(realWatchSeconds || 0));
+        realWatchEl.textContent = formatWatch(realWatchSeconds || 0);
 
         if (!history || !history.length) {
             section.style.display = 'none';
             totalEl.dataset.boostPlays = 0;
             totalEl.dataset.boostViews = 0;
+            totalEl.dataset.boostUniqueVisitors = 0;
+            totalEl.dataset.boostWatchSeconds = 0;
             return;
         }
 
         section.style.display = '';
         totalEl.dataset.boostPlays = totalBoostPlays;
         totalEl.dataset.boostViews = totalBoostViews;
-        totalEl.textContent = `${history.length} ${history.length === 1 ? 'entry' : 'entries'} · +${Number(totalBoostPlays).toLocaleString()} plays · +${Number(totalBoostViews).toLocaleString()} views`;
+        totalEl.dataset.boostUniqueVisitors = totalBoostUniqueVisitors;
+        totalEl.dataset.boostWatchSeconds = totalBoostWatchSeconds;
+        totalEl.textContent = `${history.length} ${history.length === 1 ? 'entry' : 'entries'} · +${Number(totalBoostPlays).toLocaleString()} plays · +${Number(totalBoostViews).toLocaleString()} views · +${Number(totalBoostUniqueVisitors || 0).toLocaleString()} visitors · +${formatWatch(totalBoostWatchSeconds || 0)} watch`;
 
         listEl.innerHTML = history.map(h => {
             const d = new Date(h.created_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
@@ -474,6 +585,8 @@
                 <div class="flex-grow-1">
                     <span class="text-danger fw-semibold me-2">+${Number(h.boost_plays).toLocaleString()} plays</span>
                     <span class="text-info me-2">+${Number(h.boost_views).toLocaleString()} views</span>
+                    <span class="text-secondary me-2">+${Number(h.boost_unique_visitors || 0).toLocaleString()} visitors</span>
+                    <span class="text-warning me-2">+${formatWatch(h.boost_watch_seconds || 0)} watch</span>
                     ${h.note ? `<span class="text-muted fst-italic">${escHtml(h.note)}</span>` : ''}
                 </div>
                 <small class="text-muted me-2 text-nowrap">${escHtml(d)}</small>
@@ -521,6 +634,23 @@
 
     function escHtml(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatWatch(seconds) {
+        const s = Math.max(0, parseInt(seconds || 0));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+
+        if (h > 0) {
+            return `${h}h ${m}m`;
+        }
+
+        if (m > 0) {
+            return `${m}m ${sec}s`;
+        }
+
+        return `${sec}s`;
     }
 })();
 </script>

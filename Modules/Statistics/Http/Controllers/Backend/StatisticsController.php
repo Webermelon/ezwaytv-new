@@ -5,9 +5,11 @@ namespace Modules\Statistics\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Statistics\Models\PlayEvent;
 use Modules\Statistics\Models\StatSetting;
 use Modules\Statistics\Models\ContentBoost;
+// External stream API disabled: only internal ezway.tv data returned
 
 class StatisticsController extends Controller
 {
@@ -80,9 +82,18 @@ class StatisticsController extends Controller
         // Include per-content boosts into totals (stacked boosts)
         $boostPlaysSum = (int) ContentBoost::sum('boost_plays');
         $boostViewsSum = (int) ContentBoost::sum('boost_views');
+        $boostWatchSecondsSum = Schema::hasColumn('stat_content_boosts', 'boost_watch_seconds')
+            ? (int) ContentBoost::sum('boost_watch_seconds')
+            : 0;
+        $boostUniqueVisitorsSum = Schema::hasColumn('stat_content_boosts', 'boost_unique_visitors')
+            ? (int) ContentBoost::sum('boost_unique_visitors')
+            : 0;
 
         $totalPlays     = $totalPlays + $boostPlaysSum;
         $totalPageViews = $totalPageViews + $boostViewsSum;
+        $uniqueVisitors = $uniqueVisitors + $boostUniqueVisitorsSum;
+        $uniqueViewers  = $uniqueViewers + $boostUniqueVisitorsSum;
+        $watchHours      = round(($watchSeconds + $boostWatchSecondsSum) / 3600, 1);
         if ($startDate && $period !== 'all') {
             // Apply the same fixed per-content boosts to previous totals for fair comparison.
             $prevPlays += $boostPlaysSum;
@@ -126,7 +137,9 @@ class StatisticsController extends Controller
             'page_views_change'=> $pageViewsChange,
             'boost_active'     => (float)(StatSetting::get('boost_multiplier', 1)) != 1.0
                                   || (int)(StatSetting::get('boost_fixed_plays', 0)) > 0
-                                  || (int)(StatSetting::get('boost_fixed_views', 0)) > 0,
+                                  || (int)(StatSetting::get('boost_fixed_views', 0)) > 0
+                                  || $boostWatchSecondsSum > 0
+                                  || $boostUniqueVisitorsSum > 0,
         ]);
     }
 
@@ -164,6 +177,14 @@ class StatisticsController extends Controller
             }
             ksort($pvRows);
             $viewData = $pvRows;
+
+            $rawViewsTotal = (int) array_sum($viewData);
+            $targetViewsTotal = $this->boostedTargetTotal($rawViewsTotal, 'views');
+            $viewData = $this->injectSpikeBoost(
+                $viewData,
+                max(0, $targetViewsTotal - $rawViewsTotal),
+                "chart_views_{$period}"
+            );
         }
 
         if ($type !== 'views') {
@@ -187,6 +208,14 @@ class StatisticsController extends Controller
             }
             ksort($evRows);
             $playData = $evRows;
+
+            $rawPlaysTotal = (int) array_sum($playData);
+            $targetPlaysTotal = $this->boostedTargetTotal($rawPlaysTotal, 'plays');
+            $playData = $this->injectSpikeBoost(
+                $playData,
+                max(0, $targetPlaysTotal - $rawPlaysTotal),
+                "chart_plays_{$period}"
+            );
         }
 
         $labels = array_unique(array_merge(array_keys($viewData), array_keys($playData)));
@@ -233,18 +262,37 @@ class StatisticsController extends Controller
         $results = $rows->map(function ($row) {
             [$name, $url] = $this->resolveContentInfo($row->content_type, $row->content_id);
 
-            // Apply per-content boost if exists (additive: real + sum of all boosts)
-            $boostSum = ContentBoost::where('content_type', $row->content_type)
+            // Get summed boosts (plays + views)
+            $boostSums = ContentBoost::where('content_type', $row->content_type)
                 ->where('content_id', $row->content_id)
-                ->sum('boost_plays');
-            $total = (int) $row->total + (int) $boostSum;
+                ->selectRaw('SUM(boost_plays) as boost_plays, SUM(boost_views) as boost_views')
+                ->first();
+
+            $boostPlays = (int) ($boostSums->boost_plays ?? 0);
+            $boostViews = (int) ($boostSums->boost_views ?? 0);
+
+            // real plays and real views
+            $realPlays = (int) $row->total;
+            $realViews = DB::table('stat_page_views')
+                ->where('content_type', $row->content_type)
+                ->where('content_id', $row->content_id)
+                ->count();
+
+            // Display views = real page views + boost views
+            $displayViews = $realViews + $boostViews;
 
             return [
-                'content_type' => $row->content_type,
-                'content_id'   => $row->content_id,
-                'name'         => $name,
-                'url'          => $url,
-                'total'        => $total,
+                'content_type'  => $row->content_type,
+                'content_id'    => $row->content_id,
+                'name'          => $name,
+                'url'           => $url,
+                'real_plays'    => $realPlays,
+                'boost_plays'   => $boostPlays,
+                'real_views'    => $realViews,
+                'boost_views'   => $boostViews,
+                'display_views' => $displayViews,
+                'stream_count'  => 0,
+                'total'         => $displayViews,
             ];
         })->keyBy(fn($r) => $r['content_type'] . '_' . $r['content_id']);
 
@@ -259,12 +307,26 @@ class StatisticsController extends Controller
             $key = $boost->content_type . '_' . $boost->content_id;
             if (!$results->has($key)) {
                 [$name, $url] = $this->resolveContentInfo($boost->content_type, $boost->content_id);
+                $boostPlays = (int) $boost->total_plays;
+                $realViews = DB::table('stat_page_views')
+                    ->where('content_type', $boost->content_type)
+                    ->where('content_id', $boost->content_id)
+                    ->count();
+                $boostViews = 0; // unknown from this aggregated row
+                $displayViews = $realViews + $boostViews;
+
                 $results->put($key, [
-                    'content_type' => $boost->content_type,
-                    'content_id'   => $boost->content_id,
-                    'name'         => $name ?: ($boost->content_name ?? "#{$boost->content_id}"),
-                    'url'          => $url,
-                    'total'        => (int) $boost->total_plays,
+                    'content_type'  => $boost->content_type,
+                    'content_id'    => $boost->content_id,
+                    'name'          => $name ?: ($boost->content_name ?? "#{$boost->content_id}"),
+                    'url'           => $url,
+                    'real_plays'    => 0,
+                    'boost_plays'   => $boostPlays,
+                    'real_views'    => $realViews,
+                    'boost_views'   => $boostViews,
+                    'display_views' => $displayViews,
+                    'stream_count'  => 0,
+                    'total'         => $displayViews,
                 ]);
             }
         }
@@ -294,6 +356,15 @@ class StatisticsController extends Controller
         if ($evCount > 0) {
             $spData['web'] = ($spData['web'] ?? 0) + $evCount;
         }
+
+        $rawTotal = (int) array_sum($spData);
+        $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
+        $spData = $this->injectSpikeBoost(
+            $spData,
+            max(0, $targetTotal - $rawTotal),
+            "devices_{$period}",
+            ['web' => 1.3, 'mobile' => 1.15, 'tv' => 1.1]
+        );
 
         arsort($spData);
         if (empty($spData)) {
@@ -327,6 +398,22 @@ class StatisticsController extends Controller
             $spData['Unknown'] = ($spData['Unknown'] ?? 0) + $evCount;
         }
 
+        $rawTotal = (int) array_sum($spData);
+        $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
+        $spData = $this->injectSpikeBoost(
+            $spData,
+            max(0, $targetTotal - $rawTotal),
+            "countries_{$period}",
+            [
+                'UNKNOWN' => 0.8,
+                'BD' => 0.25,
+                'BANGLADESH' => 0.25,
+                'US' => 1.8,
+                'USA' => 1.8,
+                'UNITED STATES' => 1.8,
+            ]
+        );
+
         arsort($spData);
         $spData = array_slice($spData, 0, $limit, true);
 
@@ -359,6 +446,15 @@ class StatisticsController extends Controller
         if ($evCount > 0) {
             $spData['web'] = ($spData['web'] ?? 0) + $evCount;
         }
+
+        $rawTotal = (int) array_sum($spData);
+        $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
+        $spData = $this->injectSpikeBoost(
+            $spData,
+            max(0, $targetTotal - $rawTotal),
+            "platforms_{$period}",
+            ['web' => 1.25, 'android' => 1.15, 'ios' => 1.1]
+        );
 
         arsort($spData);
         if (empty($spData)) {
@@ -403,6 +499,15 @@ class StatisticsController extends Controller
         if ($evCount > 0) {
             $pvData['Direct'] = ($pvData['Direct'] ?? 0) + $evCount;
         }
+
+        $rawTotal = (int) array_sum($pvData);
+        $targetTotal = $this->boostedTargetTotal($rawTotal, 'views');
+        $pvData = $this->injectSpikeBoost(
+            $pvData,
+            max(0, $targetTotal - $rawTotal),
+            "traffic_{$period}",
+            ['Direct' => 1.7, 'Google' => 1.35, 'Facebook' => 1.15, 'Other' => 0.9]
+        );
 
         arsort($pvData);
         $pvData = array_slice($pvData, 0, $limit, true);
@@ -664,6 +769,82 @@ class StatisticsController extends Controller
         };
 
         return (int) round($value * $multiplier) + $fixed;
+    }
+
+    /**
+     * Target total after stacking content boosts and global boost settings.
+     */
+    private function boostedTargetTotal(int $rawTotal, string $metric): int
+    {
+        $contentBoost = $metric === 'plays'
+            ? (int) ContentBoost::sum('boost_plays')
+            : (int) ContentBoost::sum('boost_views');
+
+        return $this->applyBoost($rawTotal + $contentBoost, $metric);
+    }
+
+    /**
+     * Inject synthetic boosted points with deterministic spikes for realistic charts/breakdowns.
+     */
+    private function injectSpikeBoost(array $series, int $extra, string $seed, array $labelBias = []): array
+    {
+        if ($extra <= 0) {
+            return $series;
+        }
+
+        if (empty($series)) {
+            $series[now()->toDateString()] = 0;
+        }
+
+        $weights = [];
+        foreach ($series as $label => $value) {
+            $numericValue = max(0, (int) $value);
+            $baseWeight = max(1.0, sqrt($numericValue + 1));
+            $hash = (crc32($seed . '|' . $label) % 1000) / 1000;
+
+            $spikeFactor = 1.0;
+            if ($hash >= 0.82) {
+                $spikeFactor = 2.8;
+            } elseif ($hash >= 0.68) {
+                $spikeFactor = 1.8;
+            } elseif ($hash >= 0.52) {
+                $spikeFactor = 1.25;
+            }
+
+            $normalizedLabel = strtoupper(trim((string) $label));
+            $bias = max(0.2, (float) ($labelBias[$label] ?? $labelBias[$normalizedLabel] ?? 1.0));
+            $weights[$label] = $baseWeight * $spikeFactor * $bias;
+        }
+
+        $totalWeight = array_sum($weights);
+        if ($totalWeight <= 0) {
+            $totalWeight = count($weights);
+            $weights = array_fill_keys(array_keys($weights), 1);
+        }
+
+        $assigned = 0;
+        $remainders = [];
+        foreach ($weights as $label => $weight) {
+            $portion = ($extra * $weight) / $totalWeight;
+            $add = (int) floor($portion);
+            $series[$label] = ((int) $series[$label]) + $add;
+            $assigned += $add;
+            $remainders[$label] = $portion - $add;
+        }
+
+        $remaining = $extra - $assigned;
+        if ($remaining > 0) {
+            arsort($remainders);
+            $labels = array_keys($remainders);
+            $count = count($labels);
+
+            for ($i = 0; $i < $remaining; $i++) {
+                $label = $labels[$i % $count];
+                $series[$label] = ((int) $series[$label]) + 1;
+            }
+        }
+
+        return $series;
     }
 
     /**
