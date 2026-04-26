@@ -12,7 +12,13 @@ function loadData() {
 
   const watchListPresent = typeof emptyWatchList !== 'undefined' ? !!emptyWatchList : null;
   let currentSort = typeof currentSortType !== 'undefined' ? currentSortType : '';
-  const sortParam = currentSort === 'top_star' ? '&sort=top_star' : '';
+  // Map frontend sort keys to API sort params
+  let sortParam = '';
+  if (currentSort === 'top_star' || currentSort === 'views') {
+    sortParam = '&sort=views';
+  } else if (currentSort === 'alpha') {
+    sortParam = '&sort=alpha';
+  }
 
 
 

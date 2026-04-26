@@ -131,7 +131,23 @@ class LiveTVsController extends Controller
     public function channelList(Request $request){
         $userPlanLevel = (int) (auth()->user()?->subscriptionPackage?->level ?? 0);
 
-        $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->orderBy('updated_at', 'desc');
+        // Base query
+        $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1);
+
+        // Allow sorting by views (uses stat_page_views.content_type = 'livetv') or alphabetic
+        if ($request->input('sort') === 'views') {
+            $channelData = $channelData->leftJoin('stat_page_views', function($join){
+                $join->on('live_tv_channel.id', '=', 'stat_page_views.content_id')
+                     ->where('stat_page_views.content_type', 'livetv');
+            })
+            ->select('live_tv_channel.*', \DB::raw('COUNT(stat_page_views.id) as total_views'))
+            ->groupBy('live_tv_channel.id')
+            ->orderByDesc('total_views');
+        } elseif ($request->input('sort') === 'alpha') {
+            $channelData = $channelData->orderBy('name', 'asc');
+        } else {
+            $channelData = $channelData->orderBy('updated_at', 'desc');
+        }
         if(!empty($request->category_id)){
             $channelData = $channelData->where('category_id',$request->category_id);
         }
@@ -191,7 +207,13 @@ class LiveTVsController extends Controller
             $userPlanId = $userLevel->plan_id ?? 0;
             $userPlanLevel = $userLevel->plan_level ?? 0;
 
-            $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->where('deleted_at',null)->orderBy('id', 'desc');
+            $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->where('deleted_at',null);
+            // support alphabetic sorting
+            if ($request->input('sort') === 'alpha') {
+                $channelData = $channelData->orderBy('name', 'asc');
+            } else {
+                $channelData = $channelData->orderBy('id', 'desc');
+            }
             if(!empty($request->category_id)){
                 $channelData = $channelData->where('category_id',$request->category_id);
             }

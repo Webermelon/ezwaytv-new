@@ -17,4 +17,9 @@
             </span>
         </div>
     </a>
+    <div class="livetv-title mt-2 text-center">
+        <a href="{{ route('livetv-details', ['id' => $value['slug']]) }}" class="d-block text-truncate text-decoration-none text-reset">
+            <h6 class="mb-0">{{ $value['name'] }}</h6>
+        </a>
+    </div>
 </div>
