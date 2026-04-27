@@ -168,6 +168,11 @@
                                         eZWay PPV
                                     </a>
                                 </li>
+                                <li class="py-2 px-2">
+                                    <a href="https://ezwaynetwork.com" target="_blank" rel="noopener noreferrer" class="text-decoration-none d-block text-white fw-bold">
+                                        JOIN OUR FAMILY
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                         
@@ -208,6 +213,11 @@
                                 </li>
                             </ul>
                             <ul class="navbar-nav align-items-center mb-0 list-inline justify-content-end">
+                                <li class="nav-item d-none d-xl-flex align-items-center ms-2">
+                                    <a href="https://ezwaynetwork.com" target="_blank" rel="noopener noreferrer" class="btn btn-warning-subtle font-size-14 text-uppercase px-3">
+                                        JOIN OUR FAMILY
+                                    </a>
+                                </li>
                                 @if (auth()->check() && !getCurrentProfileSession('is_child_profile'))
                                     <li class="nav-item dropdown iq-dropdown header-notification">
                                         <a class="nav-link btn-icon rounded-pill btn-action p-0"
