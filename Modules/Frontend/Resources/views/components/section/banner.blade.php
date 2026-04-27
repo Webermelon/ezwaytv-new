@@ -101,7 +101,7 @@
                                                 </div>
                                                 @if ($slider['type'] == 'livetv')
                                                 <div>
-                                                    <a href="{{ route('livetv') }}" class="btn btn-outline-light">
+                                                    <a href="{{ route('topChannelList') }}" class="btn btn-outline-light">
                                                         <span class="d-flex align-items-center justify-content-center gap-2">
                                                             <span><i class="ph ph-list"></i></span>
                                                             <span>{{ __('All channels') }}</span>
