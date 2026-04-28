@@ -25,12 +25,18 @@ class RoleBasedRouteAccess
         $user = Auth::user();
         $isAdminRoute = str_starts_with($path, 'app/') || $path === 'app';
 
+        // Allow super-admin to access any route (frontend or admin)
+        if ($user->hasRole('super-admin')) {
+            return $next($request);
+        }
+
         if ($path === 'admin/logout' || $path === 'admin/confirm-password') {
             return $next($request);
         }
 
         // Admin trying to access user routes (non /app/ routes)
-        if ($user->hasRole(['admin', 'super-admin', 'demo_admin']) && !$isAdminRoute) {
+        // Allow `super-admin` to access frontend routes; only redirect regular admins.
+        if ($user->hasRole(['admin', 'demo_admin']) && !$isAdminRoute) {
             return redirect()->route('backend.home');
         }
 
