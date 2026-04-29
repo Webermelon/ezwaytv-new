@@ -89,7 +89,7 @@
                                                             class="movie-actions d-flex align-items-center flex-wrap column-gap-3 row-gap-2">
                                                             <x-watchlist-button :entertainment-id="$details['id'] ?? null" :in-watchlist="$details['is_in_watchlist'] ?? null"
                                                             :entertainmentType="$details['type']" customClass="watch-list-btn" />
-                                                            <a href="{{ route('video-details', data_get($details, 'slug')) }}"
+                                                            <a href="{{ route('video-details', ['id' => data_get($details, 'slug'), 'autoplay' => 1]) }}"
                                                                 class="btn btn-primary" tabindex="-1">
                                                                 <span
                                                                     class="d-flex align-items-center justify-content-center gap-2">

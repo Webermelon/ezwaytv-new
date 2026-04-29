@@ -784,13 +784,23 @@ document.addEventListener('DOMContentLoaded', function () {
       if (encryptedData) {
         fetch(`${baseUrl}/video/stream/${encodeURIComponent(encryptedData)}`)
           .then((response) => response.json())
-          .then((data) => {
+          .then(async (data) => {
             const qualityOptions = data.qualityOptions
             setVideoSource(player, data.platform, data.videoId, data.url, data.mimeType, qualityOptions)
             player.load();
             if (continueWatch == true) {
               setSubtitle(player, subtitleInfoforwatchlist);
             }
+            
+            // Automatically save entertainment view when loading actual video content (not trailer)
+            if (contentVideoType !== 'trailer' && watchNowButton) {
+              try {
+                await saveEntertainmentView(watchNowButton);
+              } catch (error) {
+                console.error('Error saving entertainment view on autoplay:', error);
+              }
+            }
+            
             player.one('loadedmetadata', async function () {
               player.muted(true) // Mute the player for autoplay
               try {
@@ -815,6 +825,20 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   loadVideoIfAuthenticated()
+  
+  // Auto-trigger watch button click if autoplay parameter is present in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const shouldAutoplay = urlParams.get('autoplay') === '1';
+  if (shouldAutoplay) {
+    // Wait a moment for DOM to be ready, then trigger watch button
+    setTimeout(() => {
+      const watchNowBtn = document.getElementById('watchNowButton');
+      if (watchNowBtn) {
+        watchNowBtn.click();
+      }
+    }, 500);
+  }
+  
   const playButton = document.querySelector('.vjs-big-play-button')
   if (playButton) {
     playButton.addEventListener('click', async function (e) {

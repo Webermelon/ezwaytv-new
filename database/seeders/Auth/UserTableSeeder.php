@@ -42,7 +42,7 @@ class UserTableSeeder extends Seeder
                 'username' => 'ezwaytv-admin',
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
-                'email' => 'ezwaytv-admin@ezwaytv.webermelon.dev',
+                'email' => 'ezwaynetwork@gmail.com',
                 'password' => Hash::make('ezway@123'),
                 'mobile' => '+12123567890',
                 'date_of_birth' => fake()->date,
@@ -70,7 +70,7 @@ class UserTableSeeder extends Seeder
 
 
 
-            [
+    [
                 'username' => 'ezwaytv-admin',
                 'first_name' => 'Super',
                 'last_name' => 'Admin',
@@ -79,16 +79,15 @@ class UserTableSeeder extends Seeder
                 'mobile' => '+12123567890',
                 'date_of_birth' => fake()->date,
                 'file_url' => '/dummy-images/profile/admin/super_admin.png',
-                'gender' => 'female',
+                'gender' => 'male',
                 'email_verified_at' => Carbon::now(),
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
                 'user_type' => 'admin',
                 'seed_roles' => ['super-admin', 'admin'],
                 'is_subscribe' => 0,
-                'country_code' => 1,    
+                'country_code' => 91,    
             ],
-
 
                 [
                     'username' => 'karim',
@@ -103,7 +102,7 @@ class UserTableSeeder extends Seeder
                     'email_verified_at' => Carbon::now(),
                     'created_at' => Carbon::now(),
                     'updated_at' => Carbon::now(),
-                    'user_type' => 'admin',
+                     'seed_roles' => ['super-admin', 'admin'],
                     'is_subscribe' => 0,
                     'country_code' => 880,    
                 ],

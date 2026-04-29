@@ -87,7 +87,7 @@
                                                     <a href="{{ $slider['type'] == 'livetv'
                                                         ? route('livetv-details', ['id' => $data['slug']])
                                                         : ($slider['type'] == 'video'
-                                                            ? route('video-details', ['id' => $data['slug']])
+                                                            ? route('video-details', ['id' => $data['slug'], 'autoplay' => 1])
                                                             : ($data['type'] == 'tvshow'
                                                                 ? route('tvshow-details', ['id' => $data['slug']])
                                                                 : route('movie-details', ['id' => $data['slug']]))) }}"

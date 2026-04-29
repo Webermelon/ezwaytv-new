@@ -6,11 +6,11 @@
             <div class="block-images position-relative w-100">
 
                 @if (isset($is_search) && $is_search == 1)
-                    <a href="{{ route('video-details', ['id' => $data['slug'], 'is_search' => request()->has('search') ? 1 : null]) }}"
+                    <a href="{{ route('video-details', ['id' => $data['slug'], 'is_search' => request()->has('search') ? 1 : null, 'autoplay' => 1]) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100">
                     </a>
                 @else
-                    <a href="{{ route('video-details', ['id' => $data['slug']]) }}"
+                    <a href="{{ route('video-details', ['id' => $data['slug'], 'autoplay' => 1]) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100">
                     </a>
                 @endif
@@ -64,7 +64,7 @@
 
                         <div class="d-flex align-items-center gap-3 mt-3">
                             <div class="flex-grow-1">
-                                <a href="{{ route('video-details', ['id' => $data['slug']]) }}" class="btn btn-primary w-100">
+                                <a href="{{ route('video-details', ['id' => $data['slug'], 'autoplay' => 1]) }}" class="btn btn-primary w-100">
                                     {{ __('frontend.watch_now') }}
                                 </a>
                             </div>
