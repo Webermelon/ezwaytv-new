@@ -205,3 +205,8 @@ Route::delete('/notifications/delete-selected', [\Modules\Frontend\Http\Controll
 Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
 Route::get('/update-profile', [UserController::class, 'updateProfile'])->name('update-profile');
 Route::get('/change-password', [UserController::class, 'changePassword'])->name('change-password');
+
+// Distribution page route (static view)
+Route::get('/distribution', function () {
+    return view('frontend::distribution');
+})->name('distribution');
