@@ -159,6 +159,8 @@
     background: linear-gradient(to right, var(--gold-dim), transparent);
   }
 
+  /* (removed duplicate Ad Reach banner styles) */
+
   /* ── LA STATION CARD ──────────────────────────────── */
   .la-station-card {
     position: relative;
@@ -337,7 +339,7 @@
 
   .card-body {
     font-size: 13px;
-    color: var(--text-muted);
+    color: var(--text);
     line-height: 1.7;
     flex: 1;
   }
@@ -350,7 +352,7 @@
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--gold-dim);
+    color: var(--gold-light);
   }
 
   /* ── PLATFORM STRIP ───────────────────────────────── */
@@ -418,17 +420,11 @@
       eZWay.TV is an interactive streaming platform with worldwide reach — powered by a massive distribution network across AVOD, linear, mobile, smart TVs, and cable-connected devices.
     </p>
     <div class="hero-badge-row">
-      <span class="hero-badge">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        500M+ Potential Viewers
+      <span class="hero-badge" style="font-weight:700;">
+        100,000,000 Potential Reach
       </span>
-      <span class="hero-badge">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2l-5 5-5-5"/></svg>
-        Multi-Platform Streaming
-      </span>
-      <span class="hero-badge">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7a2 2 0 0 1 1.72 2.02z"/></svg>
-        OTA · Cable · IPTV · Streaming
+      <span class="hero-badge" style="background:transparent;border:none;color:var(--text);font-weight:600;">
+        Tens of thousands of organic viewers
       </span>
     </div>
   </div>
@@ -437,6 +433,8 @@
 <div class="reach-bar">
   Broadcasting across Tubi · Pluto TV · Apple TV · Roku · Fire TV · Whale TV · iVOD · Be Spire TV · Fan TV Global · Power TV Network
 </div>
+
+<!-- Duplicate reach banner removed -->
  
 {{-- ── LOS ANGELES STATION ─────────────────────────── --}}
 <div class="dist-section">
@@ -495,7 +493,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/tubi.png" alt="Tubi" onerror="this.style.display='none'">
+          <img src="/img/distribution/tubi.png" alt="Tubi" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Tubi</div>
       </div>
@@ -509,7 +507,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/pluto.png" alt="Pluto TV" onerror="this.style.display='none'">
+          <img src="/img/distribution/pluto-logo.png" alt="Pluto TV" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Pluto TV</div>
       </div>
@@ -523,7 +521,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/apple-tv.png" alt="Apple TV" onerror="this.style.display='none'">
+          <img src="/img/distribution/apple-tv.png" alt="Apple TV" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Apple TV</div>
       </div>
@@ -537,7 +535,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/roku.png" alt="Roku" onerror="this.style.display='none'">
+          <img src="/img/distribution/Roku-Logo.png" alt="Roku" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Roku</div>
       </div>
@@ -551,7 +549,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/fire-tv.png" alt="Amazon Fire TV" onerror="this.style.display='none'">
+          <img src="/img/distribution/fire-tv.png" alt="Amazon Fire TV" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Fire TV</div>
       </div>
@@ -565,7 +563,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/whale-tv.png" alt="Whale TV" onerror="this.style.display='none'">
+          <img src="/img/distribution/whale-tv.png" alt="Whale TV" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Whale TV</div>
       </div>
@@ -579,7 +577,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/ivod.png" alt="iVOD" onerror="this.style.display='none'">
+          <img src="/img/distribution/ivod-logo.jpg" alt="iVOD" onerror="this.style.display='none'">
         </div>
         <div class="card-name">iVOD</div>
       </div>
@@ -593,7 +591,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/be-spire-tv.png" alt="Be Spire TV" onerror="this.style.display='none'">
+          <img src="/img/distribution/bespire-tv.jpeg" alt="Be Spire TV" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Be Spire TV</div>
       </div>
@@ -607,7 +605,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/fan-tv.png" alt="Fan TV Global" onerror="this.style.display='none'">
+          <img src="/img/distribution/fan-tv.jpeg" alt="Fan TV Global" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Fan TV Global</div>
       </div>
@@ -621,7 +619,7 @@
     <div class="network-card" data-reveal>
       <div class="card-logo-area">
         <div class="card-logo-box">
-          <img src="/images/partners/power-tv.png" alt="Power TV Network" onerror="this.style.display='none'">
+          <img src="/img/distribution/wps-tv.jpeg" alt="Power TV Network" onerror="this.style.display='none'">
         </div>
         <div class="card-name">Power TV Network</div>
       </div>
