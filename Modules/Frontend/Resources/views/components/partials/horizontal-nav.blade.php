@@ -147,6 +147,11 @@
           <span class="item-name" style="text-transform: none;">eZWay PPV</span>
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs('distribution') ? 'active text-primary' : '' }}" href="{{ route('distribution') }}">
+          <span class="item-name">Distribution</span>
+        </a>
+      </li>
     </ul>
   </div>
   <!-- container-fluid.// -->

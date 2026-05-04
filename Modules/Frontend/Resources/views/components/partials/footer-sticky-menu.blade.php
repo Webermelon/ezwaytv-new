@@ -30,6 +30,12 @@
           <span class="item-name">{{__('frontend.profile')}}</span>
         </a>
       </li>
+      <li class="nav-item d-none d-sm-block d-md-none">
+        <a class="nav-link text-center"  href="{{ route('distribution') }}">
+          <i class="ph ph-globe"></i>
+          <span class="item-name">Distribution</span>
+        </a>
+      </li>
     </ul>
 </div>
 

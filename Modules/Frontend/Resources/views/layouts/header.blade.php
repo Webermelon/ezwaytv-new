@@ -143,6 +143,11 @@
                                     </div>
                                 </li>
                                 @endif
+                                <li class="py-2 px-2">
+                                    <a href="{{ route('distribution') }}" class="text-decoration-none d-block {{ request()->routeIs('distribution') ? 'text-primary' : 'text-white' }}">
+                                        Distribution
+                                    </a>
+                                </li>
                                 @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
                                 @if($navCategories->count() && isenablemodule('show_categories_menu'))
                                     <li class="py-2 px-2">
