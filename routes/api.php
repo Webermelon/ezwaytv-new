@@ -120,6 +120,8 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('livetv-dashboard', [LiveTVsController::class, 'liveTvDashboardV3']);
     Route::get('pay-per-view-list', [DashboardController::class, 'getPayPerViewUnlockedContentV3']);
     Route::get('banner-data', [DashboardController::class, 'getEntertainmentDataV3']);
+    // Ad banner sliders (public)
+    Route::get('ad-banner-sliders', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.ad-banner-sliders');
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');
 
 });
