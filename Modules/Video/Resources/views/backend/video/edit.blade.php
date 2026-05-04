@@ -22,7 +22,7 @@
         window.toggleClipsSection = toggleClipsSection;
     </script>
 
-    {{ html()->form('PUT', route('backend.videos.update', $data->id))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->attribute('novalidate', 'novalidate')->class('requires-validation')->open() }}
+    {{ html()->form('PUT', route('backend.videos.update', $data->id))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->attribute('novalidate', 'novalidate')->class('requires-validation video-form-page')->open() }}
 
     @csrf
 
@@ -400,6 +400,17 @@
                             </select>
                         </div>
                         @endif
+                        {{-- Author Channel --}}
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label" for="author_channel_id">Author Channel</label>
+                            <select name="author_channel_id" id="author_channel_id" class="form-control select2">
+                                <option value="">-- None --</option>
+                                @php $currentChannelId = $data->authorChannels->first()->id ?? null; @endphp
+                                @foreach(\App\Models\AuthorChannel::where('is_active',1)->get() as $ch)
+                                    <option value="{{ $ch->id }}" {{ $currentChannelId == $ch->id ? 'selected' : '' }}>{{ $ch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1964,15 +1975,15 @@
     </script>
 
     <style>
-        .position-relative {
+        .video-form-page .position-relative {
             position: relative;
         }
 
-        .position-absolute {
+        .video-form-page .position-absolute {
             position: absolute;
         }
 
-        .close-icon {
+        .video-form-page .close-icon {
             top: -13px;
             left: 54px;
             background: rgba(255, 0, 0, 0.6);
@@ -1989,7 +2000,7 @@
             line-height: 25px;
         }
 
-        .required {
+        .video-form-page .required {
             color: red;
         }
     </style>
@@ -2562,7 +2573,7 @@
 
 @once
     <style>
-        .media-thumb-10 {
+        .video-form-page .media-thumb-10 {
             width: 10rem;
             height: 10rem;
         }

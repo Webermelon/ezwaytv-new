@@ -212,6 +212,11 @@ class Video extends BaseModel
         )->withTimestamps();
     }
 
+    public function authorChannels()
+    {
+        return $this->belongsToMany(\App\Models\AuthorChannel::class, 'author_channel_video', 'video_id', 'author_channel_id')->withTimestamps();
+    }
+
         public static function get_popular_videos($videoIdsArray)
         {
             $videoIdsArray = is_array($videoIdsArray) ? $videoIdsArray : (array) $videoIdsArray;

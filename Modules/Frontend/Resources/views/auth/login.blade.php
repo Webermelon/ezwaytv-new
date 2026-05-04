@@ -77,18 +77,18 @@
                                             Continue With Network Account
                                         </a>
                                     @endif
-                                    <p class="mt-2 mb-0 fw-normal">{{ __('frontend.not_have_account') }}
+                                    <p class="mt-2 mb-0 fw-normal d-none">{{ __('frontend.not_have_account') }}
                                         <a href="{{ route('register-page') }}"
                                             class="ms-1 btn btn-link">{{ __('frontend.sign_up') }}</a>
                                     </p>
                                 </div>
 
                                 @if (setting('is_otp_login') == 1 || setting('is_google_login') == 1)
-                                    <div class="border-style">
+                                    <div class="border-style d-none">
                                         <span>Or</span>
                                     </div>
                                 @endif
-                                <div class="full-button text-center">
+                                <div class="full-button text-center d-none">
                                     <div class="d-flex align-items-center gap-3">
                                         @if (setting('is_google_login') == 1)
                                             <a href="{{ route('auth.google') }}" class="d-block w-100">

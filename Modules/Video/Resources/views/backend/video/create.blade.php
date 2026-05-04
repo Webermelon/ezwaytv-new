@@ -22,7 +22,7 @@
         window.toggleClipsSection = toggleClipsSection;
     </script>
 
-    {{ html()->form('POST', route('backend.videos.store'))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->class('requires-validation')->attribute('novalidate', 'novalidate')->open() }}
+    {{ html()->form('POST', route('backend.videos.store'))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->class('requires-validation video-form-page')->attribute('novalidate', 'novalidate')->open() }}
     @csrf
 
     <ul class="nav nav-pills mb-3 movie-tab" id="pills-tab" role="tablist">
@@ -371,6 +371,16 @@
                             </select>
                         </div>
                         @endif
+                        {{-- Author Channel --}}
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label" for="author_channel_id">Author Channel</label>
+                            <select name="author_channel_id" id="author_channel_id" class="form-control select2">
+                                <option value="">-- None --</option>
+                                @foreach(\App\Models\AuthorChannel::where('is_active',1)->get() as $ch)
+                                    <option value="{{ $ch->id }}">{{ $ch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2353,15 +2363,15 @@
     </script>
 
     <style>
-        .position-relative {
+        .video-form-page .position-relative {
             position: relative;
         }
 
-        .position-absolute {
+        .video-form-page .position-absolute {
             position: absolute;
         }
 
-        .close-icon {
+        .video-form-page .close-icon {
             top: -13px;
             left: 54px;
             background: rgba(255, 0, 0, 0.6);
@@ -2378,7 +2388,7 @@
             line-height: 25px;
         }
 
-        .required {
+        .video-form-page .required {
             color: red;
         }
     </style>

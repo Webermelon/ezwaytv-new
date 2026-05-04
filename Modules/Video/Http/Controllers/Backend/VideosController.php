@@ -406,6 +406,10 @@ class VideosController extends Controller
     $categoryIds = $request->input('category_ids', []);
     $video->categories()->sync($categoryIds);
 
+    // Sync author channel
+    $authorChannelId = $request->input('author_channel_id');
+    $video->authorChannels()->sync($authorChannelId ? [$authorChannelId] : []);
+
     // Check if request is AJAX
     if ($request->ajax()) {
         return response()->json([
@@ -823,6 +827,10 @@ class VideosController extends Controller
     // Sync categories
     $categoryIds = $request->input('category_ids', []);
     $data->categories()->sync($categoryIds);
+
+    // Sync author channel
+    $authorChannelId = $request->input('author_channel_id');
+    $data->authorChannels()->sync($authorChannelId ? [$authorChannelId] : []);
 
     // Check if request is AJAX
     if ($request->ajax()) {

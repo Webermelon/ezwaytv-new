@@ -9,7 +9,7 @@
             </div>
             <div class="modal-body">
 
-                @include('components.filemanager-section', compact('page_type'))
+                @include('components.filemanager-section', ['page_type' => $page_type ?? 'default'])
             </div>
         </div>
     </div>

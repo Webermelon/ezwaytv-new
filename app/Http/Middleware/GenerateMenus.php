@@ -45,6 +45,15 @@ class GenerateMenus
                 $this->staticMenu($menu, ['title' => __('sidebar.media_management'), 'order' => 0]);
             }
 
+            // Author Channels menu (Super Admin)
+            $this->mainRoute($menu, [
+                'icon' => 'ph ph-user-circle',
+                'route' => 'backend.author_channels.index',
+                'title' => 'Author Channels',
+                'active' => ['app/author-channels','app/author-channels/*'],
+                'order' => 0,
+            ]);
+
             $this->mainRoute($menu, [
                 'icon' => 'ph ph-mask-happy',
                 'route' => 'backend.genres.index',

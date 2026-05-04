@@ -218,6 +218,7 @@ return [
         Modules\Constant\Providers\RouteServiceProvider::class,
         Modules\Banner\Providers\RouteServiceProvider::class,
         Modules\Constant\Providers\RouteServiceProvider::class,
+        Modules\AuthorChannel\Providers\AuthorChannelServiceProvider::class,
         Modules\Frontend\Providers\FrontendServiceProvider::class,
         App\Providers\StreamContentServiceProvider::class,
         App\Providers\ChatGTPServiceProvider::class,
