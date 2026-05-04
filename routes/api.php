@@ -17,6 +17,7 @@ use App\Http\Controllers\Backend\SettingController;
 use App\Http\Controllers\Auth\WebQrLoginController;
 use Modules\CastCrew\Http\Controllers\API\CastCrewController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
+use Modules\Frontend\Http\Controllers\API\DistributionController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -122,6 +123,8 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');
 
 });
+// Public endpoint returning distribution page HTML (no header/footer)
+Route::get('distribution/html', [DistributionController::class, 'html']);
 Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('profile-details', [UserController::class, 'profileDetailsV3'])->name('api.v3.profile-details');
     Route::get('rented-content-list', [PerviewPaymentController::class, 'allUnlockVideosV3']);

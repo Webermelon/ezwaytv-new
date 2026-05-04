@@ -414,17 +414,17 @@
 {{-- HERO --}}
 <section class="dist-hero">
   <div class="dist-section">
-    <div class="eyebrow">eZWay TV Network</div>
-    <h1>Global <span>TV</span><br>Distribution</h1>
+    <div class="eyebrow">eZWay Network</div>
+    <h1>eZWay <span>TV</span><br>Distribution</h1>
     <p class="hero-lead">
       eZWay.TV is an interactive streaming platform with worldwide reach — powered by a massive distribution network across AVOD, linear, mobile, smart TVs, and cable-connected devices.
     </p>
     <div class="hero-badge-row">
       <span class="hero-badge" style="font-weight:700;">
-        100,000,000 Potential Reach
+        Potential reach: 100,000,000 ·
       </span>
       <span class="hero-badge" style="background:transparent;border:none;color:var(--text);font-weight:600;">
-        Tens of thousands of organic viewers
+        Organic viewers: tens of thousands
       </span>
     </div>
   </div>
