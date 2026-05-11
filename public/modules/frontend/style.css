@@ -16859,11 +16859,6 @@ img {
     height: 150px;
   }
 
-@media (max-width: 575.98px) {
-    #top-channel-section .channel-card .channel-img {
-      height: 361px;
-  }
-
 }
 .cast-card {
   transition: all 0.3s ease 0s;
