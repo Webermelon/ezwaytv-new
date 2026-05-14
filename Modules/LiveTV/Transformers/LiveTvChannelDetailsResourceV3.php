@@ -7,7 +7,6 @@ use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Subscriptions\Models\Plan;
 use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Transformers\LiveTvChannelResource;
-
 class LiveTvChannelDetailsResourceV3 extends JsonResource
 {
     /**
@@ -30,7 +29,9 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                 'category' => $this->TvCategory->name ?? null,
             ],
             'video_qualities'=> $this->video_qualities,
+            'schedules_url' => optional($this->TvChannelStreamContentMappings)->api_key ?? null,
             'suggested_content' => LiveTvChannelResourceV3::collection($this->moreItems),
         ];
     }
+
 }
