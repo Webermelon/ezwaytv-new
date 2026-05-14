@@ -181,6 +181,10 @@ class ProcessFileUpload implements ShouldQueue
                 }
             }
 
+            if (empty($this->filemanager->file_name)) {
+                throw new \Exception('Filemanager file_name is empty, cannot determine upload path.');
+            }
+
             $fileToStreamPath = $processedPath ?: $localSourcePath;
             $file = fopen($fileToStreamPath, 'rb');
 
@@ -212,6 +216,7 @@ class ProcessFileUpload implements ShouldQueue
                 Storage::disk($this->diskType)->writeStream($folderPath, $file);
             }
 
+            $this->filemanager->file_url = $folderPath;
             $this->filemanager->save();
 
             // Delete the unique file (with ID)
