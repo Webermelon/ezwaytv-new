@@ -210,3 +210,13 @@ Route::get('/change-password', [UserController::class, 'changePassword'])->name(
 Route::get('/distribution', function () {
     return view('frontend::distribution');
 })->name('distribution');
+
+// API: distribution data
+Route::get('/api/distribution', function () {
+    $path = base_path('Modules/Frontend/Resources/data/distribution.json');
+    if (!file_exists($path)) {
+        return response()->json(['error' => 'Data not found'], 404);
+    }
+    $json = file_get_contents($path);
+    return response($json, 200)->header('Content-Type', 'application/json');
+})->name('api.distribution');

@@ -1,0 +1,158 @@
+{
+  "networks": [
+    {
+      "name": "EZWAY.TV",
+      "slug": "ezway-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Frame_14_69bffc354fd95.jpg",
+      "description": "Official flagship streaming platform of the eZWay ecosystem delivering curated entertainment, interviews, and creator-driven content across multiple devices and audiences.",
+      "tag": "Flagship · Network Hub"
+    },
+    {
+      "name": "XOTV",
+      "slug": "xotv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/IMG_20260426_WA0016_69ee16da67dc3.jpg",
+      "description": "Streaming and media distribution channel within the eZWay ecosystem focusing on entertainment and creator content.",
+      "tag": "Streaming · Entertainment"
+    },
+    {
+      "name": "BVC TV",
+      "slug": "bvc-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/6c799fe3_043c_4094_86b9_fabe4b3a8eec_300x222_69afe52fe2b7e.jpeg",
+      "description": "BVC TV is a nonprofit supported by the eZWay Family community, which includes eZWay TV. The partnership includes fundraising events, such as the eZWay Awards Golden Gala, to support eye care and education for children. Eric Zuley leads the eZWay community, which features 24/7, promoting BVC's mission.",
+      "tag": "Broadcast · Digital TV"
+    },
+    {
+      "name": "National Biz TV",
+      "slug": "national-biz-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/1000154509_69defe5ac06b2.jpg",
+      "description": "Business-focused media channel featuring entrepreneurship, interviews, and educational content.",
+      "tag": "Business · Media"
+    },
+    {
+      "name": "EZWAY MUSIC",
+      "slug": "ezway-music",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/WhatsApp_Image_2026_04_14_at_13_00_04_69ddeed88c92e.jpeg",
+      "description": "Music-focused distribution channel showcasing artists, performances, and curated audio-visual content.",
+      "tag": "Music · Entertainment"
+    },
+    {
+      "name": "The Women’s Channel",
+      "slug": "the-womens-channel",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/the_womans_channel_69d0a0d4083c3.jpeg",
+      "description": "Content platform focused on empowering stories, leadership, lifestyle, and women-centered programming.",
+      "tag": "Lifestyle · Empowerment"
+    },
+    {
+      "name": "Be Spire TV",
+      "slug": "be-spire-tv",
+      "image": "/img/distribution/bespire-tv.jpeg",
+      "description": "Inspirational and purpose-driven content platform aligned with empowerment and positive storytelling.",
+      "tag": "Inspirational · Purpose-Driven"
+    },
+    {
+      "name": "XPN TV",
+      "slug": "xpn-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/xpn_69eef82b59e28.jpeg",
+      "description": "Multimedia broadcast channel delivering entertainment, interviews, and creator-driven programming.",
+      "tag": "Broadcast · Network"
+    },
+    {
+      "name": "Fan TV Global",
+      "slug": "fan-tv-global",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Untitled_69e138d4675c9.jpeg",
+      "description": "Global creator-focused streaming and distribution platform amplifying independent voices worldwide.",
+      "tag": "Web3 · Global · Creator"
+    },
+    {
+      "name": "EZWAY Movies",
+      "slug": "ezway-movies",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/movies_69dcf6ff8ca84.jpeg",
+      "description": "Film-focused distribution channel featuring movies, specials, and cinematic content from creators.",
+      "tag": "Movies · VOD"
+    },
+    {
+      "name": "Kate Linder TV",
+      "slug": "kate-linder-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/kate_69e7220ad0de4.jpeg",
+      "description": "Branded content channel featuring personality-driven media and curated entertainment programming.",
+      "tag": "Branded · Entertainment"
+    },
+    {
+      "name": "Power TV Network",
+      "slug": "power-tv-network",
+      "image": "/img/distribution/power.jpg",
+      "description": "Broadcast and streaming network delivering impactful storytelling and diverse programming.",
+      "tag": "Broadcast · Network"
+    },
+    {
+      "name": "I&C TV",
+      "slug": "ic-tv",
+      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Untitled_69e138d4675c9.jpeg",
+      "description": "International content channel within the eZWay distribution ecosystem focused on curated programming and global reach.",
+      "tag": "International · Content"
+    },
+    {
+      "name": "Tubi",
+      "slug": "tubi",
+      "image": "/img/distribution/tubi.png",
+      "description": "One of the largest free streaming platforms in the US with over 75 million monthly active users. eZWay content reaches a massive cord-cutter audience across smart TVs, mobile, web, and connected devices — completely free and ad-supported.",
+      "tag": "AVOD · Free Streaming"
+    },
+    {
+      "name": "Pluto TV",
+      "slug": "pluto-tv",
+      "image": "/img/distribution/pluto-logo.png",
+      "description": "A leading free, ad-supported streaming service owned by Paramount with over 80 million monthly active users worldwide. eZWay programming is distributed across Pluto TV's live channel lineup and on-demand library, reaching audiences across the US and globally.",
+      "tag": "FAST · Free · Paramount"
+    },
+    {
+      "name": "Apple TV",
+      "slug": "apple-tv",
+      "image": "/img/distribution/apple-tv.png",
+      "description": "eZWay content is available on Apple TV, putting the network in front of hundreds of millions of Apple device users worldwide — distributed through the Apple TV app ecosystem across iPhones, iPads, Macs, and Apple TV hardware.",
+      "tag": "Premium · Apple Ecosystem"
+    },
+    {
+      "name": "Apple TV+",
+      "slug": "apple-tv-plus",
+      "image": "/img/distribution/apple-tv-plus.png",
+      "description": "Apple TV+ offers premium original shows and movies; eZWay distribution partners help extend select content to premium streaming audiences.",
+      "tag": "Premium · Originals"
+    },
+    {
+      "name": "Peacock",
+      "slug": "peacock",
+      "image": "/img/distribution/peacock-tv-logo.png",
+      "description": "Peacock is NBCUniversal's streaming service offering a mix of live and on-demand content — eZWay partners with Peacock to extend reach to linear and streaming viewers across the U.S.",
+      "tag": "AVOD · Premium"
+    },
+    {
+      "name": "Roku",
+      "slug": "roku",
+      "image": "/img/distribution/Roku-Logo.png",
+      "description": "The #1 TV streaming platform in the US with over 80 million active accounts. eZWay reaches Roku's massive audience through the Roku Channel Store — available on Roku streaming sticks, smart TVs, and the Roku mobile app on iOS and Android.",
+      "tag": "Streaming · #1 Platform"
+    },
+    {
+      "name": "Fire TV",
+      "slug": "fire-tv",
+      "image": "/img/distribution/fire-tv.png",
+      "description": "Amazon Fire TV reaches over 200 million devices sold worldwide. eZWay programming is distributed through the Fire TV app ecosystem — connecting with Amazon's vast customer base across Fire TV Sticks, Fire TV Cubes, and Fire TV Edition smart TVs.",
+      "tag": "Amazon · 200M+ Devices"
+    },
+    {
+      "name": "Whale TV",
+      "slug": "whale-tv",
+      "image": "/img/distribution/whale-tv.png",
+      "description": "Whale TV is an emerging streaming platform delivering curated independent content to audiences hungry for fresh, authentic programming outside the mainstream. eZWay's distribution on Whale TV connects the network's purpose-driven content with a growing community of engaged viewers.",
+      "tag": "Independent · Streaming"
+    },
+    {
+      "name": "iVOD",
+      "slug": "ivod",
+      "image": "/img/distribution/ivod-logo.jpg",
+      "description": "iVOD delivers video-on-demand content to audiences across connected TV devices and digital platforms. eZWay's presence on iVOD extends the network's reach into on-demand viewing, giving audiences the flexibility to watch compelling content on their own schedule.",
+      "tag": "VOD · Connected TV"
+    }
+  ]
+}

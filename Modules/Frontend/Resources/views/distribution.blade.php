@@ -496,290 +496,37 @@
   </div>
  
   <div class="network-grid">
+    @php
+      $jsonPath = base_path('Modules/Frontend/Resources/data/distribution.json');
+      $data = null;
+      if (file_exists($jsonPath)) {
+          $raw = file_get_contents($jsonPath);
+          $data = json_decode($raw);
+      }
+    @endphp
 
-  {{-- EZWAY.TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Frame_14_69bffc354fd95.jpg" alt="EZWAY.TV" onerror="this.style.display='none'">
+    @if(!$data || empty($data->networks))
+      <div class="network-card" data-reveal>
+        <div class="card-body">No distribution data available.</div>
       </div>
-      <div class="card-name">EZWAY.TV</div>
-    </div>
-    <div class="card-body">
-      Official flagship streaming platform of the eZWay ecosystem delivering curated entertainment, interviews, and creator-driven content across multiple devices and audiences.
-    </div>
-    <span class="card-tag">Flagship · Network Hub</span>
+    @else
+      @foreach($data->networks as $network)
+        <div class="network-card" data-reveal>
+          <div class="card-logo-area">
+            <div class="card-logo-box">
+              <img src="{{ $network->image }}" alt="{{ $network->name }}" onerror="this.style.display='none'">
+            </div>
+            <div class="card-name">{{ $network->name }}</div>
+          </div>
+          <div class="card-body">{{ $network->description }}</div>
+          @if(isset($network->tag))
+            <span class="card-tag">{{ $network->tag }}</span>
+          @endif
+        </div>
+      @endforeach
+    @endif
+
   </div>
-
-  {{-- XOTV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/IMG_20260426_WA0016_69ee16da67dc3.jpg" alt="XOTV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">XOTV</div>
-    </div>
-    <div class="card-body">
-      Streaming and media distribution channel within the eZWay ecosystem focusing on entertainment and creator content.
-    </div>
-    <span class="card-tag">Streaming · Entertainment</span>
-  </div>
-
-  {{-- BVC TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/6c799fe3_043c_4094_86b9_fabe4b3a8eec_300x222_69afe52fe2b7e.jpeg" alt="BVC TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">BVC TV</div>
-    </div>
-    <div class="card-body">
-      BVC TV is a nonprofit supported by the eZWay Family community, which includes eZWay TV. The partnership includes fundraising events, such as the eZWay Awards Golden Gala, to support eye care and education for children. Eric Zuley leads the eZWay community, which features 24/7, promoting BVC's mission.
-    </div>
-    <span class="card-tag">Broadcast · Digital TV</span>
-  </div>
-
-  {{-- NATIONAL BIZ TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/1000154509_69defe5ac06b2.jpg" alt="National Biz TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">National Biz TV</div>
-    </div>
-    <div class="card-body">
-      Business-focused media channel featuring entrepreneurship, interviews, and educational content.
-    </div>
-    <span class="card-tag">Business · Media</span>
-  </div>
-
-  {{-- EZWAY MUSIC --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/WhatsApp_Image_2026_04_14_at_13_00_04_69ddeed88c92e.jpeg" alt="EZWAY MUSIC" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">EZWAY MUSIC</div>
-    </div>
-    <div class="card-body">
-      Music-focused distribution channel showcasing artists, performances, and curated audio-visual content.
-    </div>
-    <span class="card-tag">Music · Entertainment</span>
-  </div>
-
-  {{-- THE WOMEN’S CHANNEL --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/the_womans_channel_69d0a0d4083c3.jpeg" alt="The Women’s Channel" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">The Women’s Channel</div>
-    </div>
-    <div class="card-body">
-      Content platform focused on empowering stories, leadership, lifestyle, and women-centered programming.
-    </div>
-    <span class="card-tag">Lifestyle · Empowerment</span>
-  </div>
-
-  {{-- BE SPIRE TV (existing) --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/bespire-tv.jpeg" alt="Be Spire TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Be Spire TV</div>
-    </div>
-    <div class="card-body">
-      Inspirational and purpose-driven content platform aligned with empowerment and positive storytelling.
-    </div>
-    <span class="card-tag">Inspirational · Purpose-Driven</span>
-  </div>
-
-  {{-- XPN TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/xpn_69eef82b59e28.jpeg" alt="XPN TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">XPN TV</div>
-    </div>
-    <div class="card-body">
-      Multimedia broadcast channel delivering entertainment, interviews, and creator-driven programming.
-    </div>
-    <span class="card-tag">Broadcast · Network</span>
-  </div>
-
-  {{-- FAN TV GLOBAL (existing) --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Untitled_69e138d4675c9.jpeg" alt="Fan TV Global" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Fan TV Global</div>
-    </div>
-    <div class="card-body">
-      Global creator-focused streaming and distribution platform amplifying independent voices worldwide.
-    </div>
-    <span class="card-tag">Web3 · Global · Creator</span>
-  </div>
-
-  {{-- EZWAY MOVIES --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/movies_69dcf6ff8ca84.jpeg" alt="EZWAY Movies" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">EZWAY Movies</div>
-    </div>
-    <div class="card-body">
-      Film-focused distribution channel featuring movies, specials, and cinematic content from creators.
-    </div>
-    <span class="card-tag">Movies · VOD</span>
-  </div>
-
-  {{-- KATE LINDER TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/kate_69e7220ad0de4.jpeg" alt="Kate Linder TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Kate Linder TV</div>
-    </div>
-    <div class="card-body">
-      Branded content channel featuring personality-driven media and curated entertainment programming.
-    </div>
-    <span class="card-tag">Branded · Entertainment</span>
-  </div>
-
-  {{-- POWER TV NETWORK (existing) --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/power.jpg" alt="Power TV Network" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Power TV Network</div>
-    </div>
-    <div class="card-body">
-      Broadcast and streaming network delivering impactful storytelling and diverse programming.
-    </div>
-    <span class="card-tag">Broadcast · Network</span>
-  </div>
-
-  {{-- I&C TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Untitled_69e138d4675c9.jpeg" alt="I&C TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">I&C TV</div>
-    </div>
-    <div class="card-body">
-      International content channel within the eZWay distribution ecosystem focused on curated programming and global reach.
-    </div>
-    <span class="card-tag">International · Content</span>
-  </div>
-
-  {{-- EXISTING ORIGINAL ITEMS (kept unchanged) --}}
-
-  {{-- Tubi --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/tubi.png" alt="Tubi" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Tubi</div>
-    </div>
-    <div class="card-body">
-      One of the largest free streaming platforms in the US with over 75 million monthly active users. eZWay content reaches a massive cord-cutter audience across smart TVs, mobile, web, and connected devices — completely free and ad-supported.
-    </div>
-    <span class="card-tag">AVOD · Free Streaming</span>
-  </div>
-
-  {{-- Pluto TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/pluto-logo.png" alt="Pluto TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Pluto TV</div>
-    </div>
-    <div class="card-body">
-      A leading free, ad-supported streaming service owned by Paramount with over 80 million monthly active users worldwide. eZWay programming is distributed across Pluto TV's live channel lineup and on-demand library, reaching audiences across the US and globally.
-    </div>
-    <span class="card-tag">FAST · Free · Paramount</span>
-  </div>
-
-  {{-- Apple TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/apple-tv.png" alt="Apple TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Apple TV</div>
-    </div>
-    <div class="card-body">
-      eZWay content is available on Apple TV, putting the network in front of hundreds of millions of Apple device users worldwide — distributed through the Apple TV app ecosystem across iPhones, iPads, Macs, and Apple TV hardware.
-    </div>
-    <span class="card-tag">Premium · Apple Ecosystem</span>
-  </div>
-
-  {{-- Roku --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/Roku-Logo.png" alt="Roku" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Roku</div>
-    </div>
-    <div class="card-body">
-      The #1 TV streaming platform in the US with over 80 million active accounts. eZWay reaches Roku's massive audience through the Roku Channel Store — available on Roku streaming sticks, smart TVs, and the Roku mobile app on iOS and Android.
-    </div>
-    <span class="card-tag">Streaming · #1 Platform</span>
-  </div>
-
-  {{-- Fire TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/fire-tv.png" alt="Amazon Fire TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Fire TV</div>
-    </div>
-    <div class="card-body">
-      Amazon Fire TV reaches over 200 million devices sold worldwide. eZWay programming is distributed through the Fire TV app ecosystem — connecting with Amazon's vast customer base across Fire TV Sticks, Fire TV Cubes, and Fire TV Edition smart TVs.
-    </div>
-    <span class="card-tag">Amazon · 200M+ Devices</span>
-  </div>
-
-  {{-- Whale TV --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/whale-tv.png" alt="Whale TV" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">Whale TV</div>
-    </div>
-    <div class="card-body">
-      Whale TV is an emerging streaming platform delivering curated independent content to audiences hungry for fresh, authentic programming outside the mainstream. eZWay's distribution on Whale TV connects the network's purpose-driven content with a growing community of engaged viewers.
-    </div>
-    <span class="card-tag">Independent · Streaming</span>
-  </div>
-
-  {{-- iVOD --}}
-  <div class="network-card" data-reveal>
-    <div class="card-logo-area">
-      <div class="card-logo-box">
-        <img src="/img/distribution/ivod-logo.jpg" alt="iVOD" onerror="this.style.display='none'">
-      </div>
-      <div class="card-name">iVOD</div>
-    </div>
-    <div class="card-body">
-      iVOD delivers video-on-demand content to audiences across connected TV devices and digital platforms. eZWay's presence on iVOD extends the network's reach into on-demand viewing, giving audiences the flexibility to watch compelling content on their own schedule.
-    </div>
-    <span class="card-tag">VOD · Connected TV</span>
-  </div>
-
-</div>
 </div>
 
 {{-- ── PLATFORMS STRIP ──────────────────────────────── --}}
