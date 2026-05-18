@@ -90,6 +90,7 @@ class FilemanagersController extends Controller
 
     $page_type = $request->input('page_type');
         $normalizedPageType = $page_type;
+        $lastUploadedFileName = null;
         if ($normalizedPageType === 'season') {
             $normalizedPageType = 'tvshow/season';
         } elseif ($normalizedPageType === 'episode') {
@@ -118,14 +119,18 @@ class FilemanagersController extends Controller
             $filemanager = Filemanager::create([
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
+                // mark as processing for immediate handling, avoid leaving video in pending queue
+                'status' => $fileType === 'video' ? 'processing' : 'ready',
             ]);
+            $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
                 $redirectFolder = trim($normalizedPageType . '/' . $targetType, '/');
             }
             $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('file uploaded', ['file' => $uniqueFileName]);
-            if ($fileType === 'image') {
+            if (in_array($fileType, ['image', 'video'], true)) {
+                // process images and videos synchronously to avoid queuing backlog
                 ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $syncProcessedCount++;
             } else {
@@ -147,14 +152,18 @@ class FilemanagersController extends Controller
             $filemanager = Filemanager::create([
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
+                // mark as processing for immediate handling, avoid leaving video in pending queue
+                'status' => $fileType === 'video' ? 'processing' : 'ready',
             ]);
+            $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
                 $redirectFolder = trim($normalizedPageType . '/' . $targetType, '/');
             }
             $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('queued assembled temp', ['file' => $originalName]);
-            if ($fileType === 'image') {
+            if (in_array($fileType, ['image', 'video'], true)) {
+                // process images and videos synchronously to avoid queuing backlog
                 ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $syncProcessedCount++;
             } else {
@@ -188,6 +197,15 @@ class FilemanagersController extends Controller
     $redirectParams = [];
     if (!empty($redirectFolder)) {
         $redirectParams['open_folder'] = $redirectFolder;
+    }
+
+    if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'file_name' => $lastUploadedFileName,
+            'redirect_folder' => $redirectFolder,
+        ]);
     }
 
     return redirect()->route('backend.media-library.index', $redirectParams)->with('success', $message);
@@ -454,17 +472,58 @@ private function getFileType($extension)
                     }
                 }
             } else {
-                // Remote storage (Bunny, S3, etc.)
+                // Remote storage (Bunny, S3, DO Spaces, etc.)
                 $disk = Storage::disk($activeDisk);
-                $files = $disk->files($folder);
                 $directories = $disk->directories($folder);
 
                 foreach ($directories as $dir) {
                     $allItems[] = $this->formatItem(basename($dir), $dir, $folder, $activeDisk, true, trim($dir, '/'));
                 }
 
-                foreach ($files as $file) {
-                    $allItems[] = $this->formatItem(basename($file), $file, $folder, $activeDisk, false, trim($file, '/'));
+                // Use listContents to fetch file metadata (including lastModified) in one request
+                try {
+                    $fsDriver = $disk->getDriver();
+                    foreach ($fsDriver->listContents($folder ?: '', false) as $fsItem) {
+                        if ($fsItem instanceof \League\Flysystem\FileAttributes) {
+                            $filePath = $fsItem->path();
+                            $modified = $fsItem->lastModified() ?? 0;
+                            $size = $fsItem->fileSize() ?? 0;
+                            $name = basename($filePath);
+                            $relativePath = trim($filePath, '/');
+                            $isVideo = (bool) preg_match('/\.(mp4|webm|avi|mov)$/i', $name);
+                            $isImage = (bool) preg_match('/\.(jpg|jpeg|png|gif|webp|svg)$/i', $name);
+                            $pageType = 'default';
+                            if (!empty($folder)) {
+                                $segments = explode('/', $folder);
+                                $videoIndex = array_search('video', $segments, true);
+                                $imageIndex = array_search('image', $segments, true);
+                                if ($imageIndex !== false && $imageIndex > 0) {
+                                    $pageType = $segments[$imageIndex - 1];
+                                } elseif ($videoIndex !== false && $videoIndex > 0) {
+                                    $pageType = $segments[$videoIndex - 1];
+                                } else {
+                                    $pageType = end($segments) ?: 'default';
+                                }
+                            }
+                            $mediaUrl = ($isVideo || $isImage) ? setBaseUrlWithFileName($name, $isVideo ? 'video' : 'image', $pageType) : '';
+                            $allItems[] = [
+                                'name' => $name,
+                                'path' => $relativePath,
+                                'is_dir' => false,
+                                'size' => $size,
+                                'modified' => $modified,
+                                'media_url' => $mediaUrl,
+                                'is_video' => $isVideo,
+                                'is_image' => $isImage,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Fallback: individual file listing
+                    $files = $disk->files($folder);
+                    foreach ($files as $file) {
+                        $allItems[] = $this->formatItem(basename($file), $file, $folder, $activeDisk, false, trim($file, '/'));
+                    }
                 }
             }
 
@@ -526,6 +585,12 @@ private function getFileType($extension)
                 });
             }
 
+            // Filter out files with no recognised media extension (keep dirs always)
+            $allItems = array_values(array_filter($allItems, function ($item) {
+                if ($item['is_dir'] ?? false) return true;
+                return ($item['is_video'] ?? false) || ($item['is_image'] ?? false);
+            }));
+
             // Apply pagination
             $totalItems = count($allItems);
             $contents = array_slice($allItems, $offset, $limit);
@@ -581,8 +646,16 @@ private function getFileType($extension)
 
         // When local, compute size/mtime using absolute path; expose relative path to the client
         $size = $disk === 'local' && !$isDir && is_file($absolutePath) ? filesize($absolutePath) : 0;
-        $modified = $disk === 'local' && !$isDir && file_exists($absolutePath) ? filemtime($absolutePath) : time();
-
+        if ($disk === 'local') {
+            $modified = (!$isDir && file_exists($absolutePath)) ? filemtime($absolutePath) : 0;
+        } else {
+            // Remote disk: use Storage::disk()->lastModified() so files sort by real mtime
+            try {
+                $modified = !$isDir ? \Illuminate\Support\Facades\Storage::disk($disk)->lastModified($absolutePath) : 0;
+            } catch (\Exception $e) {
+                $modified = 0;
+            }
+        }
         return [
             'name' => $name,
             'path' => $relativePath !== null ? $relativePath : $absolutePath,
@@ -613,4 +686,30 @@ private function getFileType($extension)
         ]);
     }
 
+    /**
+     * Poll upload processing status for a file by file_name.
+     * Returns: { status: 'pending'|'processing'|'ready'|'failed' }
+     */
+    public function getFileStatus(Request $request)
+    {
+        $fileName = $request->get('file_name');
+        if (!$fileName) {
+            return response()->json(['status' => 'ready']);
+        }
+
+        $record = \Modules\Filemanager\Models\Filemanager::where('file_name', $fileName)
+            ->latest()
+            ->first();
+
+        if (!$record) {
+            return response()->json(['status' => 'ready']);
+        }
+
+        return response()->json([
+            'status' => $record->status ?? 'ready',
+            'file_name' => $record->file_name,
+        ]);
+    }
+
 }
+
