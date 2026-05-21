@@ -122,7 +122,7 @@
                                             <div class="ps-3 mt-2 scroll-thin" style="max-height: 300px; overflow-y: auto;">
                                                 <ul class="list-unstyled">
                                                     <li class="py-1">
-                                                        <a href="{{route('livetv')}}" class="text-decoration-none d-block {{ request()->routeIs('livetv') && !request()->route('id') ? 'text-primary' : 'text-white-50' }}">
+                                                        <a href="{{ route('topChannelList') }}" class="text-decoration-none d-block {{ (request()->routeIs('topChannelList') || (request()->routeIs('livetv') && !request()->route('id'))) ? 'text-primary' : 'text-white-50' }}">
                                                             All Channels
                                                         </a>
                                                     </li>

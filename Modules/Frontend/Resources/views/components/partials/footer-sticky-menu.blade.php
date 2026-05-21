@@ -19,13 +19,13 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link text-center"  href="/livetv">
+        <a class="nav-link text-center"  href="/topchannel-list">
           <i class="ph ph-television-simple"></i>
           <span class="item-name">{{__('frontend.livetv')}}</span>
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link text-center"  href="/livetv">
+        <a class="nav-link text-center"  href="/topchannel-list">
           <i class="ph ph-user"></i>
           <span class="item-name">{{__('frontend.profile')}}</span>
         </a>

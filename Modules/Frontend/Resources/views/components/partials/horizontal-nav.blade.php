@@ -72,7 +72,7 @@
 
       @if(isenablemodule('livetv'))
       <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('livetv') ? 'active text-primary' : '' }}" href="#">
+        <a class="nav-link {{ request()->routeIs('topChannelList') || request()->routeIs('livetv') ? 'active text-primary' : '' }}" href="{{ route('topChannelList') }}">
           <span class="item-name">{{__('frontend.livetv')}}</span>
         </a>
         <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
@@ -82,7 +82,7 @@
                 ->get();
           @endphp
           <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('livetv') && !request()->route('id') ? 'active text-primary' : '' }}" href="{{route('livetv')}}">
+            <a class="nav-link {{ request()->routeIs('livetv') && !request()->route('id') ? 'active text-primary' : '' }}" href="{{ route('topChannelList') }}">
               <span class="item-name">All Channels</span>
             </a>
           </li>
