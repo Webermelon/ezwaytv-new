@@ -222,12 +222,21 @@ class GenerateMenus
             ]);
 
             $this->childMain($adsManager, [
+                'title' => __('sidebar.video_ads'),
+                'route' => 'backend.video-ads.index',
+                'active' => ['app/video-ads','app/video-ads/*'],
+                'icon' => 'ph ph-video',
+                'permission' => ['view_video_ads'],
+                'order' => 2,
+            ]);
+
+            $this->childMain($adsManager, [
                 'title' => __('sidebar.custom_ads_settings'),
                 'active' => ['app/customads','app/customads/*'],
                 'route' => 'backend.customads.index',
                 'icon' => 'ph ph-sliders',
                 'permission' => ['view_customads'],
-                'order' => 2,
+                'order' => 3,
             ]);
 
             $this->childMain($adsManager, [
@@ -236,7 +245,7 @@ class GenerateMenus
                 'route' => 'backend.adbannersides.index',
                 'icon' => 'ph ph-images',
                 'permission' => ['view_ads'],
-                'order' => 3,
+                'order' => 4,
             ]);
 
             $this->childMain($adsManager, [

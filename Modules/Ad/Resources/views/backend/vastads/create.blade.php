@@ -215,8 +215,10 @@
         url = url.trim();
         try {
             const parsed = new URL(url);
-            // Allow only http/https and .xml extension
-            return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.pathname.endsWith('.xml');
+            // Allow http/https and either .xml extension OR /vast-xml/ API endpoints
+            const isHttpOrHttps = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            const isValidPath = parsed.pathname.endsWith('.xml') || parsed.pathname.includes('/vast-xml/');
+            return isHttpOrHttps && isValidPath;
         } catch (e) {
             return false;
         }
@@ -448,21 +450,34 @@
             $('#select-all-targets').prop('checked', false);
 
             if (selectedType) {
+                console.log('Fetching target selection for type:', selectedType);
                 $.ajax({
                     url: '{{ route("backend.vastads.get-target-selection") }}',
                     type: 'GET',
                     data: { type: selectedType },
                     success: function(data) {
-                        if (data.length > 0) {
+                        console.log('Received data:', data);
+                        if (data && data.length > 0) {
                             const options = data.map(item => new Option(item.text, item.id, false, false));
                             $('#target_selection').append(options).prop('disabled', false).trigger('change');
                             if (oldSelections && oldSelections.length > 0) {
                                 $('#target_selection').val(oldSelections).trigger('change');
                             }
+                            console.log('Loaded ' + data.length + ' options');
+                        } else {
+                            console.warn('No data returned for target type:', selectedType);
+                            $('#target_selection').prop('disabled', false);
                         }
                     },
-                    error: function(xhr) {
-                        console.error(xhr.responseText);
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            responseText: xhr.responseText,
+                            error: error
+                        });
+                        alert('Failed to load target selection. Please check console for details.');
+                        $('#target_selection').prop('disabled', false);
                     }
                 });
             }

@@ -80,6 +80,16 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     });
     Route::resource("customads", CustomAdsSettingController::class);
 
+    // Video Ads (VAST XML Generator)
+    Route::group(['prefix' => 'video-ads', 'as' => 'video-ads.'], function () {
+        Route::get('index_data', [\Modules\Ad\Http\Controllers\Backend\VideoAdController::class, 'index_data'])->name('index_data');
+        Route::post('bulk-action', [\Modules\Ad\Http\Controllers\Backend\VideoAdController::class, 'bulk_action'])->name('bulk_action');
+        Route::post('update-status/{id}', [\Modules\Ad\Http\Controllers\Backend\VideoAdController::class, 'update_status'])->name('update_status');
+        Route::post('restore/{id}', [\Modules\Ad\Http\Controllers\Backend\VideoAdController::class, 'restore'])->name('restore');
+        Route::delete('force-delete/{id}', [\Modules\Ad\Http\Controllers\Backend\VideoAdController::class, 'forceDelete'])->name('force_delete');
+    });
+    Route::resource('video-ads', \Modules\Ad\Http\Controllers\Backend\VideoAdController::class);
+
     // Ad Banner Slides
     Route::group(['prefix' => 'adbannersides', 'as' => 'adbannersides.'], function () {
         Route::get('index_data', [AdBannerSlideController::class, 'index_data'])->name('index_data');

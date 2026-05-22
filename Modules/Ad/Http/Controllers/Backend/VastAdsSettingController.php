@@ -351,14 +351,12 @@ class VastAdsSettingController extends Controller
             case 'movie':
                 $items = Entertainment::where('type', 'movie')
                             ->select('id', 'name as text')
-                            ->where('video_upload_type', '!=', 'Vimeo')
-                            ->where('trailer_url_type', '!=', 'Vimeo')
                             ->where('status',1)
                             ->get();
                 break;
 
             case 'video':
-                $items = Video::select('id', 'name as text')->where('trailer_url_type', '!=', 'Vimeo')->where('video_upload_type', '!=', 'Vimeo')->where('status',1)->get();
+                $items = Video::select('id', 'name as text')->where('status',1)->get();
                 break;
 
             case 'tvshow':
@@ -369,8 +367,6 @@ class VastAdsSettingController extends Controller
                     \DB::raw("CONCAT(episodes.name, ' (', entertainments.name, ')') as text")
                 )
                 ->where('episodes.status',1)
-                ->where('episodes.trailer_url_type', '!=', 'Vimeo')
-                ->where('episodes.video_upload_type', '!=', 'Vimeo')
                 ->get();
                 break;
 

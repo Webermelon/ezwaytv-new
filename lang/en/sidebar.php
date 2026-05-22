@@ -56,6 +56,7 @@ return [
     'rent_history'=>'Rent History',
     'ads_manager' => 'Ads Manager',
     'vast_ads_settings' => 'VAST Ads',
+    'video_ads' => 'Video Ads (VAST XML)',
     'custom_ads_settings' => 'Custom Ads',
     'ad_banner_slides' => 'Banner Ad Slider',
     'ad_banner_slider_settings' => 'Slider Settings',

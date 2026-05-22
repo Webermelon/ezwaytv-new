@@ -203,8 +203,10 @@
         url = url.trim();
         try {
             const parsed = new URL(url);
-            // Allow only http/https and .xml extension
-            return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.pathname.endsWith('.xml');
+            // Allow http/https and either .xml extension OR /vast-xml/ API endpoints
+            const isHttpOrHttps = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            const isValidPath = parsed.pathname.endsWith('.xml') || parsed.pathname.includes('/vast-xml/');
+            return isHttpOrHttps && isValidPath;
         } catch (e) {
             return false;
         }
