@@ -3784,16 +3784,63 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const originalConsoleError = console.error;
     console.error = function (...args) {
-      errorCount++;
-      if (errorCount > MAX_ERRORS && !customAdsDisabled) {
-        console.warn('Too many errors detected, disabling custom ads');
-        customAdsDisabled = true;
-        customAdPlayed = true;
-        blockPlay = false;
-        customAdShowing = false;
+      try {
+        const msg = (args && args[0]) ? String(args[0]) : '';
+        const benignPatterns = [
+          'IMA SDK is either not loaded from a google domain',
+          'is not a supported version',
+          'player.ima is not a function',
+          'Google IMA SDK failed to load'
+        ];
+        const isBenign = benignPatterns.some(p => msg.indexOf(p) !== -1);
+        if (!isBenign) errorCount++;
+        else console.warn.apply(console, args);
+
+        if (errorCount > MAX_ERRORS && !customAdsDisabled) {
+          console.warn('Too many errors detected, disabling custom ads');
+          customAdsDisabled = true;
+          customAdPlayed = true;
+          blockPlay = false;
+          customAdShowing = false;
+        }
+      } catch (e) {
+        try { errorCount++; } catch (e2) {}
       }
       originalConsoleError.apply(console, args);
     };
+
+    // Helper that returns a safe IMA interface (no-op when unavailable)
+    function safeIma(playerInstance) {
+      if (!playerInstance) return {
+        initializeAdDisplayContainer: function(){},
+        changeAdTag: function(){},
+        requestAds: function(){},
+        playAdBreak: function(){},
+        pauseAd: function(){},
+        resumeAd: function(){},
+        addEventListener: function(){},
+        getAdsManager: function(){return null},
+        reset: function(){}
+      };
+      if (typeof playerInstance.ima === 'function') {
+        try {
+          return playerInstance.ima();
+        } catch (e) {
+          console.warn('player.ima() threw', e);
+        }
+      }
+      return {
+        initializeAdDisplayContainer: function(){ console.warn('IMA not available: initializeAdDisplayContainer() skipped'); },
+        changeAdTag: function(){ console.warn('IMA not available: changeAdTag() skipped'); },
+        requestAds: function(){ console.warn('IMA not available: requestAds() skipped'); },
+        playAdBreak: function(){ console.warn('IMA not available: playAdBreak() skipped'); },
+        pauseAd: function(){},
+        resumeAd: function(){},
+        addEventListener: function(){},
+        getAdsManager: function(){return null},
+        reset: function(){}
+      };
+    }
 
     // IMA setup
     const adsRenderingSettings = new google.ima.AdsRenderingSettings();
@@ -3804,19 +3851,27 @@ document.addEventListener('DOMContentLoaded', function () {
     ];
     adsRenderingSettings.useStyledLinearAds = true;
 
-    player.ima({
-      id: 'videoPlayer',
-      adTagUrl: '',
-      debug: true,
-      showControlsForJSAds: true,
-      adsRenderingSettings: adsRenderingSettings,
-      disableCustomPlaybackForIOS10Plus: true,
-      contribAdsSettings: {
-        prerollTimeout: 15000,  // 15s: VAST fetch + IMA load can take 5–10+ seconds
-        postrollTimeout: 15000,
-        disablePlayContentBehindAd: true
+    if (typeof player.ima === 'function' && window.google && window.google.ima) {
+      try {
+        player.ima({
+          id: 'videoPlayer',
+          adTagUrl: '',
+          debug: true,
+          showControlsForJSAds: true,
+          adsRenderingSettings: adsRenderingSettings,
+          disableCustomPlaybackForIOS10Plus: true,
+          contribAdsSettings: {
+            prerollTimeout: 15000,  // 15s: VAST fetch + IMA load can take 5–10+ seconds
+            postrollTimeout: 15000,
+            disablePlayContentBehindAd: true
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to initialize videojs-ima plugin:', e);
       }
-    });
+    } else {
+      console.warn('videojs-ima plugin or Google IMA SDK unavailable; skipping IMA init');
+    }
 
     let customAdChecked = false;
     player.one('play', function () {
@@ -3824,13 +3879,13 @@ document.addEventListener('DOMContentLoaded', function () {
         customAdChecked = true;
         player.pause();
         showCustomAdThenPlayMain(function () {
-          player.ima.initializeAdDisplayContainer();
+            safeIma(player).initializeAdDisplayContainer();
           loadAdsAndStartInterval(); // ✅ NEW central logic
         });
         return;
       }
 
-      player.ima.initializeAdDisplayContainer();
+      safeIma(player).initializeAdDisplayContainer();
       loadAdsAndStartInterval(); // ✅ in case no custom ad
     });
 
