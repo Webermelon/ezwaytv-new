@@ -139,7 +139,7 @@
             @forelse($channel->videos as $v)
             <div class="col-md-3">
                 <div class="card h-100">
-                    <img src="{{ $v->thumbnail_url ?: asset('images/default-thumb.jpg') }}"
+                      <img src="{{ ($v->thumbnail_url ?: $v->poster_url) ? setBaseUrlWithFileNameV2($v->thumbnail_url ?: $v->poster_url) : asset('images/default-thumb.jpg') }}"
                          class="card-img-top" style="height:120px;object-fit:cover;">
                     <div class="card-body p-2">
                         <p class="mb-1 small fw-semibold">{{ Str::limit($v->name, 50) }}</p>

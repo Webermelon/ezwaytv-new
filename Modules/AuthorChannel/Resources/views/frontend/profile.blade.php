@@ -18,7 +18,7 @@
         @foreach($channel->videos as $video)
         <div class="col-md-3 mb-3">
             <div class="card">
-                <img src="{{ $video->thumbnail_url ?: '/images/default-thumb.jpg' }}" class="card-img-top">
+                <img src="{{ $video->thumbnail_url ? setBaseUrlWithFileNameV2($video->thumbnail_url) : asset('images/default-thumb.jpg') }}" class="card-img-top">
                 <div class="card-body">
                     <h6 class="card-title">{{ Str::limit($video->name, 60) }}</h6>
                     <a href="/watch/{{ $video->slug }}" class="btn btn-sm btn-primary">Watch</a>

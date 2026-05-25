@@ -1464,6 +1464,13 @@ function setBaseUrlWithFileNameV2($url = '')
         "storage/streamit-laravel/$fileName",
     ];
 
+    // If the stored value is a bare filename (no scheme), return CDN prefix if configured.
+    // Use env CDN_BASE_URL or fall back to known spaces URL.
+    if (!empty($url) && strpos($url, '://') === false) {
+        $cdnBase = rtrim(env('CDN_BASE_URL', 'https://ezwayott.sfo3.digitaloceanspaces.com/video/image'), '/');
+        return "$cdnBase/$fileName";
+    }
+
     if ($remotePath !== '') {
         $localCandidates[] = $remotePath;
     }

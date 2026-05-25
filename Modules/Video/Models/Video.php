@@ -135,7 +135,7 @@ class Video extends BaseModel
 
     public function creatorChannel()
     {
-        return $this->belongsTo(CreatorChannel::class, 'creator_channel_id', 'id');
+        return $this->belongsTo(\App\Models\AuthorChannel::class, 'creator_channel_id', 'id');
     }
 
     public function plan()

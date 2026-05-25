@@ -26,7 +26,7 @@ class AuthorChannel extends Model
 
     public function videos()
     {
-        // Adjust the Video model namespace if your app uses a module namespace
-        return $this->belongsToMany(Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
+        // Video model lives in the Video module
+        return $this->belongsToMany(\Modules\Video\Models\Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
     }
 }
