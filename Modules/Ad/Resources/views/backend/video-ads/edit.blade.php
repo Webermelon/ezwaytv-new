@@ -44,24 +44,41 @@
             <div class="col-md-12">
                 <div class="position-relative">
                     {{ html()->label(__('messages.video_file'), 'video_file')->class('form-label') }}
-                    <div class="input-group btn-file-upload">
-                        <button type="button"
-                            class="input-group-text form-control"
-                            style="height:8rem"
-                            data-bs-toggle="modal"
-                            data-bs-target="#exampleModal"
-                            data-image-container="selectedVideoContainer"
-                            data-hidden-input="video_file_url">
-                            <i class="ph ph-video"></i> {{ __('messages.choose_video') }}
-                        </button>
-                    </div>
-                    <div class="uploaded-image" id="selectedVideoContainer">
-                        @if($videoAd->video_url)
-                            <video width="400" controls>
-                                <source src="{{ $videoAd->video_url }}" type="{{ $videoAd->mime_type }}">
-                            </video>
-                        @endif
-                    </div>
+                    
+                    @if($videoAd->video_url)
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>Current Video:</strong>
+                                <button type="button"
+                                    class="btn btn-sm btn-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#exampleModal"
+                                    data-image-container="selectedVideoContainer"
+                                    data-hidden-input="video_file_url">
+                                    <i class="ph ph-video"></i> Change Video
+                                </button>
+                            </div>
+                            <div id="selectedVideoContainer">
+                                <video width="100%" style="max-width: 600px;" controls>
+                                    <source src="{{ $videoAd->video_url }}" type="{{ $videoAd->mime_type }}">
+                                </video>
+                            </div>
+                        </div>
+                    @else
+                        <div class="input-group btn-file-upload mb-3">
+                            <button type="button"
+                                class="input-group-text form-control"
+                                style="height:8rem"
+                                data-bs-toggle="modal"
+                                data-bs-target="#exampleModal"
+                                data-image-container="selectedVideoContainer"
+                                data-hidden-input="video_file_url">
+                                <i class="ph ph-video"></i> {{ __('messages.choose_video') }}
+                            </button>
+                        </div>
+                        <div class="uploaded-image" id="selectedVideoContainer"></div>
+                    @endif
+                    
                     {{ html()->text('video_file_url')
                         ->id('video_file_url')
                         ->class('form-control mt-2')

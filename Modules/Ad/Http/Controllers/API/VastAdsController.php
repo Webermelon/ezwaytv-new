@@ -42,7 +42,10 @@ class VastAdsController extends Controller
                             'subscription_plan' => $subscription['plan_type'],
                             'plan_limitations' => $planLimitations
                         ]);
-                        return ApiResponse::success([], __('messages.ads_are_disabled_in_your_subscription'), 200);
+                        return ApiResponse::success([], __('messages.ads_are_disabled_in_your_subscription'), 200)
+                            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                            ->header('Pragma', 'no-cache')
+                            ->header('Expires', '0');
                     }
                 }
             }
@@ -59,7 +62,10 @@ class VastAdsController extends Controller
 
             // Skip ads for trailers
             if ($contentVideoType === 'trailer') {
-                return ApiResponse::success([], __('messages.vast_ads_list'), 200);
+                return ApiResponse::success([], __('messages.vast_ads_list'), 200)
+                    ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    ->header('Pragma', 'no-cache')
+                    ->header('Expires', '0');
             }
 
             $currentDate = Carbon::now()->format('Y-m-d');
@@ -178,7 +184,10 @@ class VastAdsController extends Controller
                 'ads' => $filteredAds->toArray()
             ]);
 
-            return ApiResponse::success($filteredAds, __('messages.vast_ads_list'), 200);
+            return ApiResponse::success($filteredAds, __('messages.vast_ads_list'), 200)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
         } catch (\Exception $e) {
             Log::error('Error in getActiveAds:', [
                 'error' => $e->getMessage(),
@@ -187,7 +196,10 @@ class VastAdsController extends Controller
                 'type' => $request->input('type')
             ]);
 
-            return ApiResponse::error($e->getMessage(), 500);
+            return ApiResponse::error($e->getMessage(), 500)
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
         }
     }
 }

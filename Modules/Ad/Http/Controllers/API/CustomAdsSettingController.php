@@ -38,7 +38,10 @@ class CustomAdsSettingController extends Controller
                             'plan_limitations' => $planLimitations
                         ]);
                         // Ads are disabled for this user   
-                        return ApiResponse::success([], __('messages.ads_are_disabled_in_your_subscription'), 200);
+                        return ApiResponse::success([], __('messages.ads_are_disabled_in_your_subscription'), 200)
+                            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                            ->header('Pragma', 'no-cache')
+                            ->header('Expires', '0');
                     }
                 }
             }
@@ -51,7 +54,10 @@ class CustomAdsSettingController extends Controller
 
             // Skip ads for trailers
             if ($contentVideoType === 'trailer') {
-                return ApiResponse::success([], __('messages.custom_ads_list'), 200);
+                return ApiResponse::success([], __('messages.custom_ads_list'), 200)
+                    ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    ->header('Pragma', 'no-cache')
+                    ->header('Expires', '0');
             }
             $query = CustomAdsSetting::where('status', 1);
 
@@ -159,13 +165,17 @@ class CustomAdsSettingController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => CustomAdsSettingResource::collection($filteredAds),
-            ]);
+            ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+              ->header('Pragma', 'no-cache')
+              ->header('Expires', '0');
         } catch (\Exception $e) {
 
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage()
-            ], 500);
+            ], 500)->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    ->header('Pragma', 'no-cache')
+                    ->header('Expires', '0');
         }
     }
 }

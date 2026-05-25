@@ -55,7 +55,7 @@
             <div class="col-md-12">
                 <div class="position-relative">
                     {{ html()->label(__('messages.video_file') . ' <span class="text-danger">*</span>', 'video_file')->class('form-label') }}
-                    <div class="input-group btn-file-upload">
+                    <div class="input-group btn-file-upload mb-3">
                         <button type="button"
                             class="input-group-text form-control"
                             style="height:8rem"
@@ -66,16 +66,16 @@
                             <i class="ph ph-video"></i> {{ __('messages.choose_video') }}
                         </button>
                     </div>
-                    <div class="uploaded-image" id="selectedVideoContainer">
+                    <div class="uploaded-image mb-3" id="selectedVideoContainer">
                         @if(old('video_file'))
-                            <video width="400" controls>
+                            <video width="100%" style="max-width: 600px;" controls>
                                 <source src="{{ old('video_file') }}" type="video/mp4">
                             </video>
                         @endif
                     </div>
                     {{ html()->text('video_file')
                         ->id('video_file')
-                        ->class('form-control mt-2' . ($errors->has('video_file') ? ' is-invalid' : ''))
+                        ->class('form-control' . ($errors->has('video_file') ? ' is-invalid' : ''))
                         ->value(old('video_file', ''))
                         ->placeholder('https://...or select from media above')
                         ->attribute('data-validation', 'video')
