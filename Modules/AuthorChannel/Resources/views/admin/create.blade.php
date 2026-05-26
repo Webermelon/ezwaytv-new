@@ -26,9 +26,20 @@
                 {{-- Channel Name --}}
                 <div class="col-md-6">
                     <label class="form-label">Channel Name <span class="text-danger">*</span></label>
-                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                    <input type="text" name="name" id="channelName" class="form-control @error('name') is-invalid @enderror"
                            value="{{ old('name') }}" required>
                     @error('name')<span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
+                {{-- Username --}}
+                <div class="col-md-6">
+                    <label class="form-label">Username <span class="text-muted">(URL slug, auto-generated if blank)</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text text-muted">/author-channels/</span>
+                        <input type="text" name="username" id="channelUsername" class="form-control @error('username') is-invalid @enderror"
+                               value="{{ old('username') }}" placeholder="e.g. ezway-vod" pattern="[a-z0-9\-]+">
+                    </div>
+                    @error('username')<span class="text-danger">{{ $message }}</span>@enderror
                 </div>
 
                 {{-- Linked User --}}
@@ -139,5 +150,22 @@ document.getElementById('exampleModal')?.addEventListener('show.bs.modal', funct
         }
     }, 300);
 });
+
+// Auto-generate username slug from channel name (only if username is still empty)
+const nameInput = document.getElementById('channelName');
+const usernameInput = document.getElementById('channelUsername');
+if (nameInput && usernameInput) {
+    nameInput.addEventListener('input', function () {
+        if (!usernameInput.dataset.manuallyEdited) {
+            usernameInput.value = nameInput.value
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+    });
+    usernameInput.addEventListener('input', function () {
+        usernameInput.dataset.manuallyEdited = '1';
+    });
+}
 </script>
 @endsection

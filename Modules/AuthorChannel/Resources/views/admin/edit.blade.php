@@ -26,9 +26,20 @@
                 {{-- Channel Name --}}
                 <div class="col-md-6">
                     <label class="form-label">Channel Name <span class="text-danger">*</span></label>
-                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                    <input type="text" name="name" id="channelName" class="form-control @error('name') is-invalid @enderror"
                            value="{{ old('name', $channel->name) }}" required>
                     @error('name')<span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
+                {{-- Username --}}
+                <div class="col-md-6">
+                    <label class="form-label">Username <span class="text-muted">(URL slug)</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text text-muted">/author-channels/</span>
+                        <input type="text" name="username" id="channelUsername" class="form-control @error('username') is-invalid @enderror"
+                               value="{{ old('username', $channel->username) }}" placeholder="e.g. ezway-vod" pattern="[a-z0-9\-]+">
+                    </div>
+                    @error('username')<span class="text-danger">{{ $message }}</span>@enderror
                 </div>
 
                 {{-- Linked User --}}
@@ -131,27 +142,69 @@
 
 {{-- Assigned Videos --}}
 <div class="card mt-4">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Assigned Videos</h5>
+        <span class="badge bg-secondary">{{ $channel->videos->count() }} video(s)</span>
     </div>
     <div class="card-body">
+
+        {{-- Assign existing video form --}}
+        <form action="{{ route('backend.author_channels.videos.assign', $channel->id) }}" method="POST" class="mb-4">
+            @csrf
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold">Assign Existing Video</label>
+                    <select name="video_id" id="assignVideoSelect" class="form-control" style="width:100%" required>
+                        <option value="">— Select a video —</option>
+                        @foreach($availableVideos as $av)
+                            <option value="{{ $av->id }}">{{ $av->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="ph ph-plus-circle"></i> Assign Video
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <hr>
+
+        {{-- Upload new video link --}}
+        <div class="mb-3">
+            <a href="{{ route('backend.videos.create') }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                <i class="ph ph-upload-simple"></i> Upload New Video
+            </a>
+            <small class="text-muted ms-2">Upload a new video, then assign it here.</small>
+        </div>
+
+        {{-- Assigned video grid --}}
         <div class="row gy-3">
             @forelse($channel->videos as $v)
             <div class="col-md-3">
-                <div class="card h-100">
-                      <img src="{{ ($v->thumbnail_url ?: $v->poster_url) ? setBaseUrlWithFileNameV2($v->thumbnail_url ?: $v->poster_url) : asset('images/default-thumb.jpg') }}"
+                <div class="card h-100 border">
+                    <img src="{{ ($v->thumbnail_url ?: $v->poster_url) ? setBaseUrlWithFileNameV2($v->thumbnail_url ?: $v->poster_url) : asset('images/default-thumb.jpg') }}"
                          class="card-img-top" style="height:120px;object-fit:cover;">
                     <div class="card-body p-2">
-                        <p class="mb-1 small fw-semibold">{{ Str::limit($v->name, 50) }}</p>
-                        <a href="{{ route('backend.videos.edit', $v->id) }}"
-                           class="btn btn-sm btn-outline-primary">Edit</a>
+                        <p class="mb-2 small fw-semibold">{{ Str::limit($v->name, 45) }}</p>
+                        <div class="d-flex gap-1 flex-wrap">
+                            <a href="{{ route('backend.videos.edit', $v->id) }}"
+                               class="btn btn-sm btn-outline-primary" target="_blank">Edit</a>
+                            <form action="{{ route('backend.author_channels.videos.unassign', [$channel->id, $v->id]) }}"
+                                  method="POST" onsubmit="return confirm('Remove this video from the channel?')">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
             @empty
-            <p class="text-muted">No videos assigned yet. Edit a video and pick this channel.</p>
+            <p class="text-muted col-12">No videos assigned yet. Use the form above to assign videos.</p>
             @endforelse
         </div>
+
     </div>
 </div>
 
@@ -167,5 +220,24 @@ document.getElementById('exampleModal')?.addEventListener('show.bs.modal', funct
         }
     }, 300);
 });
+
+// Select2 on the assign-video dropdown (static options, search-enabled)
+$(document).ready(function () {
+    var $sel = $('#assignVideoSelect');
+    if ($sel.length && typeof $.fn.select2 !== 'undefined') {
+        $sel.select2({
+            theme: 'bootstrap-5',
+            placeholder: '— Select a video —',
+            allowClear: true,
+            width: '100%'
+        });
+    }
+});
+// Auto-slug: only update if user manually edits the field
+const nameInput = document.getElementById('channelName');
+const usernameInput = document.getElementById('channelUsername');
+if (nameInput && usernameInput) {
+    usernameInput.dataset.manuallyEdited = '1'; // edit page: don't auto-overwrite
+}
 </script>
 @endsection

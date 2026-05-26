@@ -112,7 +112,31 @@ class VideoDetailResource extends JsonResource
             'is_clips_enabled' => $this->enable_clips,
             'bunny_video_url' => $this->bunny_video_url,
             'clips' => ClipResource::collection(($this->clips ?? collect())->where('content_type', 'video')->values()),
-            'categories' => ($this->relationLoaded('categories') ? $this->categories : collect())->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'slug' => $c->slug])->values(),
+            'categories' => ($this->relationLoaded('categories') ? $this->categories : collect())->map(fn($c) => ['id' => $c->id, 'name' => $c->name, 'slug' => $c->slug])->values()->toArray(),
+            'author_channels' => $this->resolveAuthorChannels(),
         ];
+    }
+
+    /**
+     * Resolve author channels from pivot (preferred) or creator_channel_id FK.
+     * Always returns a plain array for safe caching/serialization.
+     */
+    private function resolveAuthorChannels(): array
+    {
+        $channels = collect();
+
+        if ($this->relationLoaded('authorChannels') && $this->authorChannels->isNotEmpty()) {
+            $channels = $this->authorChannels;
+        } elseif ($this->relationLoaded('creatorChannel') && $this->creatorChannel) {
+            $channels = collect([$this->creatorChannel]);
+        }
+
+        return $channels->map(fn($ch) => [
+            'id'       => $ch->id,
+            'name'     => $ch->name,
+            'username' => $ch->username,
+            'avatar'   => $ch->avatar ?: null,
+            'banner'   => $ch->banner ?: null,
+        ])->values()->toArray();
     }
 }

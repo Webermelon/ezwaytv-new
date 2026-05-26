@@ -9,13 +9,16 @@ class AuthorChannelController extends Controller
 {
     public function index()
     {
-        $channels = AuthorChannel::where('is_active',1)->paginate(24);
+        $channels = AuthorChannel::where('is_active',1)
+            ->withCount('videos')
+            ->orderBy('created_at', 'desc')
+            ->paginate(24);
         return view('authorchannel::frontend.list', compact('channels'));
     }
 
-    public function show($id)
+    public function show($username)
     {
-        $channel = AuthorChannel::with('videos')->findOrFail($id);
+        $channel = AuthorChannel::with(['videos', 'user'])->where('username', $username)->firstOrFail();
         return view('authorchannel::frontend.profile', compact('channel'));
     }
 }

@@ -10,4 +10,9 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['web', 'au
     Route::get('author-channels/{id}/edit', [AuthorChannelController::class, 'edit'])->name('author_channels.edit');
     Route::post('author-channels/{id}/update', [AuthorChannelController::class, 'update'])->name('author_channels.update');
     Route::post('author-channels/{id}/delete', [AuthorChannelController::class, 'destroy'])->name('author_channels.delete');
+
+    // Video assignment
+    Route::post('author-channels/{id}/videos/assign', [AuthorChannelController::class, 'assignVideo'])->name('author_channels.videos.assign');
+    Route::post('author-channels/{id}/videos/{videoId}/unassign', [AuthorChannelController::class, 'unassignVideo'])->name('author_channels.videos.unassign');
+    Route::get('author-channels/{id}/videos/available', [AuthorChannelController::class, 'availableVideos'])->name('author_channels.videos.available');
 });

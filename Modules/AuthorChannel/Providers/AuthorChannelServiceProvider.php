@@ -17,6 +17,9 @@ class AuthorChannelServiceProvider extends ServiceProvider
         if (file_exists($modulePath . '/Routes/web.php')) {
             $this->loadRoutesFrom($modulePath . '/Routes/web.php');
         }
+        if (file_exists($modulePath . '/Routes/api.php')) {
+            $this->loadRoutesFrom($modulePath . '/Routes/api.php');
+        }
 
         // Load views
         $this->loadViewsFrom($modulePath . '/Resources/views', 'authorchannel');

@@ -78,6 +78,8 @@ class VideoController extends Controller
                     'plan',
                     'clips',
                     'categories',
+                    'authorChannels',
+                    'creatorChannel',
                 ])
                 ->where('slug','=', $id)
                 ->first();

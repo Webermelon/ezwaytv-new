@@ -190,6 +190,30 @@
                         })();
                     </script>
                     <ul class="list-inline my-4 mx-0 p-0 d-flex align-items-center flex-wrap gap-3 movie-metalist">
+                        {{-- Author Channels --}}
+                        @if (!empty($data['author_channels']) && count($data['author_channels']) > 0)
+                            @foreach($data['author_channels'] as $authorChannel)
+                            <li>
+                                <a href="{{ route('author_channels.show', $authorChannel['username']) }}"
+                                   class="d-flex align-items-center gap-2 text-decoration-none text-white">
+                                    @php
+                                        $chAvatar = !empty($authorChannel['avatar']) ? setBaseUrlWithFileNameV2($authorChannel['avatar']) : null;
+                                    @endphp
+                                    @if($chAvatar)
+                                        <img src="{{ $chAvatar }}" alt="{{ $authorChannel['name'] }}"
+                                             class="rounded-circle flex-shrink-0"
+                                             style="width:28px;height:28px;object-fit:cover;">
+                                    @else
+                                        <span class="rounded-circle bg-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+                                              style="width:28px;height:28px;">
+                                            <i class="ph ph-user" style="font-size:14px;"></i>
+                                        </span>
+                                    @endif
+                                    <span class="fw-medium font-size-14">{{ $authorChannel['name'] }}</span>
+                                </a>
+                            </li>
+                            @endforeach
+                        @endif
                         <li>
                             <span class="d-flex align-items-center gap-2">
                                 <span><i class="ph ph-calendar"></i></span>
