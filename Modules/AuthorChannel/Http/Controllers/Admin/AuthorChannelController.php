@@ -3,16 +3,102 @@
 namespace Modules\AuthorChannel\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\ModuleTrait;
 use Illuminate\Http\Request;
 use App\Models\AuthorChannel;
 use Modules\Video\Models\Video;
+use Yajra\DataTables\DataTables;
 
 class AuthorChannelController extends Controller
 {
+    use ModuleTrait;
+
+    public function __construct()
+    {
+        $this->initializeModuleTrait('Author Channels', 'author_channels', 'ph-television');
+    }
+
     public function index()
     {
-        $channels = AuthorChannel::paginate(20);
-        return view('authorchannel::admin.index', compact('channels'));
+        return view('authorchannel::admin.index');
+    }
+
+    public function index_data(DataTables $datatable, Request $request)
+    {
+        $query = AuthorChannel::query()->withTrashed()->with('user');
+
+        $filter = $request->filter;
+        if (isset($filter['column_status']) && $filter['column_status'] !== '') {
+            $query->where('is_active', $filter['column_status']);
+        }
+        if (!empty($filter['name'])) {
+            $query->where('name', 'like', '%' . $filter['name'] . '%');
+        }
+
+        return $datatable->eloquent($query)
+            ->addColumn('check', function ($data) {
+                return '<input type="checkbox" class="form-check-input select-table-row" id="datatable-row-' . $data->id . '" name="datatable_ids[]" value="' . $data->id . '" data-type="authorchannel" onclick="dataTableRowCheck(' . $data->id . ',this)">';
+            })
+            ->editColumn('image', function ($data) {
+                $imageUrl = $data->avatar ? setBaseUrlWithFileNameV2($data->avatar) : asset('images/default-avatar.png');
+                return view('components.media-item', ['thumbnail' => $imageUrl, 'name' => $data->name, 'type' => 'authorchannel'])->render();
+            })
+            ->addColumn('username_col', fn($data) => '@' . $data->username)
+            ->addColumn('videos_count', fn($data) => $data->videos()->count())
+            ->editColumn('status', function ($data) {
+                $checked  = $data->is_active ? 'checked="checked"' : '';
+                $disabled = $data->trashed() ? 'disabled' : '';
+                return '
+                    <div class="form-check form-switch">
+                        <input type="checkbox" data-url="' . route('backend.author_channels.update_status', $data->id) . '"
+                               data-token="' . csrf_token() . '" class="switch-status-change form-check-input"
+                               id="datatable-row-' . $data->id . '" name="status" value="' . $data->id . '"
+                               ' . $checked . ' ' . $disabled . '>
+                    </div>
+                ';
+            })
+            ->addColumn('action', function ($data) {
+                return view('authorchannel::admin.action', compact('data'))->render();
+            })
+            ->editColumn('updated_at', fn($data) => $data->updated_at ? $data->updated_at->diffForHumans() : '-')
+            ->rawColumns(['check', 'image', 'status', 'action'])
+            ->orderColumns(['id'], '-:column $1')
+            ->make(true);
+    }
+
+    public function bulk_action(Request $request)
+    {
+        $ids        = explode(',', $request->rowIds);
+        $actionType = $request->action_type;
+
+        if ($actionType === 'change-status') {
+            AuthorChannel::withoutGlobalScopes()->whereIn('id', $ids)
+                ->update(['is_active' => (int) $request->status]);
+            return response()->json(['status' => true, 'message' => __('messages.status_updated')]);
+        }
+
+        return $this->performBulkAction(AuthorChannel::class, $ids, $actionType, 'Author Channel');
+    }
+
+    public function update_status(Request $request, $id)
+    {
+        $channel = AuthorChannel::findOrFail($id);
+        $channel->update(['is_active' => $request->status ? 1 : 0]);
+        return response()->json(['status' => true, 'message' => __('messages.status_updated')]);
+    }
+
+    public function restore($id)
+    {
+        $channel = AuthorChannel::withTrashed()->findOrFail($id);
+        $channel->restore();
+        return response()->json(['message' => 'Author Channel restored.', 'status' => true], 200);
+    }
+
+    public function forceDelete($id)
+    {
+        $channel = AuthorChannel::withTrashed()->findOrFail($id);
+        $channel->forceDelete();
+        return response()->json(['message' => 'Author Channel permanently deleted.', 'status' => true], 200);
     }
 
     public function create()
@@ -75,7 +161,15 @@ class AuthorChannelController extends Controller
     {
         $channel = AuthorChannel::findOrFail($id);
         $channel->delete();
-        return redirect()->route('backend.author_channels.index')->with('success','Channel deleted');
+        return response()->json(['status' => true, 'message' => 'Author Channel deleted.']);
+    }
+
+    // Legacy - kept for compatibility
+    public function toggleStatus($id)
+    {
+        $channel = AuthorChannel::findOrFail($id);
+        $channel->update(['is_active' => !$channel->is_active]);
+        return redirect()->route('backend.author_channels.index')->with('success','Channel status updated');
     }
 
     /**

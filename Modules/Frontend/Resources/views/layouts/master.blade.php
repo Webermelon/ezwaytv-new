@@ -45,6 +45,29 @@
     @include('frontend::components.partials.head.plugins')
     @stack('after-styles')
 
+    {{-- Global: video card play button + hover preview --}}
+    <style>
+        .ac-video-card .block-images { border-radius:6px; overflow:hidden; }
+        .ac-thumb-wrapper { position:relative; aspect-ratio:16/9; background:#111; }
+        .ac-thumb-img, .ac-preview-video { border-radius:0; }
+
+        /* Play button — centered absolutely, no Bootstrap translate-middle needed */
+        .ac-play-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            transition: transform .2s ease, background .2s ease, opacity .2s ease;
+            pointer-events: none;
+        }
+        .ac-video-card:hover .ac-play-btn {
+            transform: translate(-50%, -50%) scale(1.15);
+            background: rgba(255,255,255,0.28) !important;
+        }
+        .ac-video-card.ac-playing .ac-play-btn { opacity: 0; }
+    </style>
+
     {{-- Custom CSS from admin settings (wrapped in <style> like admin) --}}
     <style>
         {!! setting('custom_css_block') !!}
@@ -407,6 +430,107 @@
     <script type="text/javascript" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js"></script>
     <script src="{{ asset('js/script.js') }}" defer></script>
     @stack('after-scripts')
+
+    {{-- Global: video card hover preview JS --}}
+    <script>
+    (function () {
+        'use strict';
+        var HOVER_DELAY  = 700;
+        var PREVIEW_STOP = 10000;
+
+        function initCard(card) {
+            if (card._acInit) return;
+            card._acInit = true;
+
+            var previewSrc = card.dataset.preview || '';
+            var video  = card.querySelector('.ac-preview-video');
+            var thumb  = card.querySelector('.ac-thumb-img');
+            if (!video || !thumb) return;
+
+            var hoverTimer = null, stopTimer = null, loaded = false, playing = false;
+
+            function startPreview() {
+                if (playing) return;
+                if (!video.src) {
+                    card.classList.add('ac-loading');
+                    video.src = previewSrc;
+                    video.load();
+                    video.addEventListener('canplay', function onCp() {
+                        video.removeEventListener('canplay', onCp);
+                        card.classList.remove('ac-loading');
+                        loaded = true;
+                        doPlay();
+                    }, { once: true });
+                    video.addEventListener('error', function () {
+                        card.classList.remove('ac-loading');
+                    }, { once: true });
+                } else if (loaded) {
+                    doPlay();
+                }
+            }
+
+            function doPlay() {
+                if (playing) return;
+                video.currentTime = 0;
+                var p = video.play();
+                if (p) {
+                    p.then(function () {
+                        playing = true;
+                        // Use inline styles — overrides any CSS specificity
+                        video.style.opacity = '1';
+                        thumb.style.opacity = '0';
+                        card.classList.add('ac-playing');
+                        stopTimer = setTimeout(stopPreview, PREVIEW_STOP);
+                    }).catch(function () {
+                        card.classList.remove('ac-loading');
+                    });
+                }
+            }
+
+            function stopPreview() {
+                clearTimeout(hoverTimer);
+                clearTimeout(stopTimer);
+                hoverTimer = stopTimer = null;
+                if (playing) {
+                    video.pause();
+                    playing = false;
+                }
+                video.style.opacity = '0';
+                thumb.style.opacity = '1';
+                card.classList.remove('ac-playing', 'ac-loading');
+            }
+
+            if (previewSrc) {
+                card.addEventListener('mouseenter', function () {
+                    hoverTimer = setTimeout(startPreview, HOVER_DELAY);
+                });
+                card.addEventListener('mouseleave', stopPreview);
+            }
+        }
+
+        function initAll() {
+            document.querySelectorAll('.ac-video-card').forEach(initCard);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAll);
+        } else {
+            initAll();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    m.addedNodes.forEach(function (n) {
+                        if (n.nodeType !== 1) return;
+                        if (n.classList && n.classList.contains('ac-video-card')) initCard(n);
+                        n.querySelectorAll && n.querySelectorAll('.ac-video-card').forEach(initCard);
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        });
+    })();
+    </script>
 
     {{-- EzStats: global page-view tracker --}}
     <script src="{{ asset('js/ezstats.js') }}"></script>
