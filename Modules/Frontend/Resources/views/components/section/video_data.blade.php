@@ -112,6 +112,27 @@
                         </div>
                     @endif
                     <h4>{{ $data['name'] }}</h4>
+                    @if(!empty($data['author_channels']))
+                        <div class="d-flex flex-wrap gap-3 mb-2 mt-1">
+                            @foreach($data['author_channels'] as $ac)
+                                <a href="{{ route('author_channels.show', $ac['username']) }}"
+                                   class="d-flex align-items-center gap-2 text-decoration-none text-white ac-channel-badge">
+                                    @if(!empty($ac['avatar']))
+                                        <img src="{{ setBaseUrlWithFileNameV2($ac['avatar']) }}"
+                                             alt="{{ $ac['name'] }}"
+                                             class="rounded-circle"
+                                             style="width:32px;height:32px;object-fit:cover;border:2px solid rgba(255,255,255,0.25);">
+                                    @else
+                                        <span class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                                              style="width:32px;height:32px;font-size:14px;flex-shrink:0;">
+                                            <i class="ph ph-television"></i>
+                                        </span>
+                                    @endif
+                                    <span class="small fw-semibold opacity-90">{{ $ac['name'] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                     @include('frontend::components.section.content_stats')
                     <p class="font-size-14 js-episode-desc">
                         <span class="js-desc-text">{!! Str::limit(strip_tags($data['description']), 300) !!}</span>
@@ -296,6 +317,23 @@
 
             <!-- Movie Title -->
             <h4 class="fw-bold mb-2">{{ $data['name'] }}</h4>
+            @if(!empty($data['author_channels']))
+                <div class="d-flex flex-wrap gap-3 mb-2">
+                    @foreach($data['author_channels'] as $ac)
+                        <a href="{{ route('author_channels.show', $ac['username']) }}"
+                           class="d-flex align-items-center gap-2 text-decoration-none text-white ac-channel-badge">
+                            @if(!empty($ac['avatar']))
+                                <img src="{{ setBaseUrlWithFileNameV2($ac['avatar']) }}" alt="{{ $ac['name'] }}"
+                                     class="rounded-circle" style="width:28px;height:28px;object-fit:cover;border:2px solid rgba(255,255,255,0.25);">
+                            @else
+                                <span class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                                      style="width:28px;height:28px;font-size:13px;flex-shrink:0;"><i class="ph ph-television"></i></span>
+                            @endif
+                            <span class="small fw-semibold opacity-90">{{ $ac['name'] }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
 
             <!-- Movie Metadata -->
             <ul class="list-inline mb-4 d-flex flex-wrap gap-4">
@@ -419,6 +457,23 @@
 
             <!-- Movie Title -->
             <h4 class="fw-bold mb-2">{{ $data['name'] }}</h4>
+            @if(!empty($data['author_channels']))
+                <div class="d-flex flex-wrap gap-3 mb-2">
+                    @foreach($data['author_channels'] as $ac)
+                        <a href="{{ route('author_channels.show', $ac['username']) }}"
+                           class="d-flex align-items-center gap-2 text-decoration-none text-white ac-channel-badge">
+                            @if(!empty($ac['avatar']))
+                                <img src="{{ setBaseUrlWithFileNameV2($ac['avatar']) }}" alt="{{ $ac['name'] }}"
+                                     class="rounded-circle" style="width:28px;height:28px;object-fit:cover;border:2px solid rgba(255,255,255,0.25);">
+                            @else
+                                <span class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                                      style="width:28px;height:28px;font-size:13px;flex-shrink:0;"><i class="ph ph-television"></i></span>
+                            @endif
+                            <span class="small fw-semibold opacity-90">{{ $ac['name'] }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
 
             <!-- Movie Metadata -->
             <ul class="list-inline mb-4 d-flex flex-wrap gap-4">
