@@ -106,6 +106,36 @@
                                     </div>
                                 </li>
                                 @endif
+                                <li class="py-2 px-2">
+                                    <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs(['author_channels.index','author_channels.show']) ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#authorChannelsSubmenu" role="button" aria-expanded="false">
+                                        <span>Channels</span>
+                                        <i class="ph ph-caret-down"></i>
+                                    </a>
+                                    <div class="collapse" id="authorChannelsSubmenu">
+                                        @php
+                                            $mobileAuthorChannels = \App\Models\AuthorChannel::where('is_active', 1)->orderBy('name')->get();
+                                        @endphp
+                                        <div class="ps-3 mt-2 scroll-thin" style="max-height: 300px; overflow-y: auto;">
+                                            <ul class="list-unstyled">
+                                                <li class="py-1">
+                                                    <a href="{{ route('author_channels.index') }}" class="text-decoration-none d-block {{ request()->routeIs('author_channels.index') ? 'text-primary' : 'text-white-50' }}">
+                                                        All Channels
+                                                    </a>
+                                                </li>
+                                                @foreach($mobileAuthorChannels as $mCh)
+                                                <li class="py-1">
+                                                    <a href="{{ route('author_channels.show', $mCh->username) }}" class="text-decoration-none d-flex align-items-center gap-2 {{ request()->routeIs('author_channels.show') && request()->route('username') === $mCh->username ? 'text-primary' : 'text-white-50' }}">
+                                                        @if($mCh->avatar)
+                                                            <img src="{{ setBaseUrlWithFileNameV2($mCh->avatar) }}" alt="" class="rounded-circle" style="width:20px;height:20px;object-fit:cover;flex-shrink:0;">
+                                                        @endif
+                                                        {{ $mCh->name }}
+                                                    </a>
+                                                </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
                                 @if(isenablemodule('livetv'))
                                 <li class="py-2 px-2">
                                     <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs('livetv') ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#liveTvChannelsSubmenu" role="button" aria-expanded="false">

@@ -123,7 +123,33 @@
           @endforeach
         </ul>
       </li>
-      @endif 
+      @endif
+      <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs(['author_channels.index', 'author_channels.show']) ? 'active text-primary' : '' }}" href="{{ route('author_channels.index') }}">
+          <span class="item-name">Channels</span>
+        </a>
+        <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
+          @php
+            $navAuthorChannels = \App\Models\AuthorChannel::where('is_active', 1)->orderBy('name')->get();
+          @endphp
+          <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('author_channels.index') ? 'active text-primary' : '' }}" href="{{ route('author_channels.index') }}">
+              <span class="item-name">All Channels</span>
+            </a>
+          </li>
+          @foreach($navAuthorChannels as $navCh)
+          <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('author_channels.show') && request()->route('username') === $navCh->username ? 'active text-primary' : '' }}"
+               href="{{ route('author_channels.show', $navCh->username) }}">
+              @if($navCh->avatar)
+                <img src="{{ setBaseUrlWithFileNameV2($navCh->avatar) }}" alt="" class="rounded-circle me-1" style="width:20px;height:20px;object-fit:cover;">
+              @endif
+              <span class="item-name">{{ $navCh->name }}</span>
+            </a>
+          </li>
+          @endforeach
+        </ul>
+      </li>
       @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
       @if($navCategories->count() && isenablemodule('show_categories_menu'))
       <li class="nav-item">
