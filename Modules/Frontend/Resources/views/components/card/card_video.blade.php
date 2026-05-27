@@ -1,24 +1,51 @@
-@foreach ($values as $data)
+@php
+    $cardValues = $values ?? $data ?? [];
+
+    if ($cardValues instanceof \Illuminate\Support\Collection) {
+        $cardValues = $cardValues->all();
+    }
+
+    if (!is_iterable($cardValues)) {
+        $cardValues = [$cardValues];
+    } elseif (is_array($cardValues) && array_key_exists('id', $cardValues)) {
+        $cardValues = [$cardValues];
+    }
+@endphp
+
+@foreach ($cardValues as $data)
+    @php
+        $videoName = data_get($data, 'name', data_get($data, 'details.name', '--'));
+        $videoSlug = data_get($data, 'slug', data_get($data, 'details.slug'));
+        $posterImage = data_get($data, 'poster_image', data_get($data, 'details.poster_image', asset('img/no-image.jpg')));
+
+        $previewUrl = data_get($data, 'trailer_url_type') === 'Local' && !empty(data_get($data, 'trailer_url'))
+            ? data_get($data, 'trailer_url')
+            : null;
+
+        if (empty($previewUrl) && data_get($data, 'video_upload_type') === 'Local' && !empty(data_get($data, 'video_url_input'))) {
+            $previewUrl = data_get($data, 'video_url_input');
+        }
+    @endphp
     <div class="slick-item">
         <div class="iq-card card-hover entainment-slick-card ac-video-card"
              data-movie-id="{{ $data['id'] }}"
              data-movie-data="{{ json_encode($data) }}"
-             data-preview="{{ (!empty($data['trailer_url']) && ($data['trailer_url_type'] ?? '') === 'Local') ? setBaseUrlWithFileName($data['trailer_url'], 'video', 'video') : '' }}"
+             data-preview="{{ $previewUrl }}"
              data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}">
 
             <div class="block-images position-relative w-100">
 
                 @if (isset($is_search) && $is_search == 1)
-                    <a href="{{ route('video-details', ['id' => $data['slug'], 'is_search' => request()->has('search') ? 1 : null, 'autoplay' => 1]) }}"
+                    <a href="{{ route('video-details', ['id' => $videoSlug, 'is_search' => request()->has('search') ? 1 : null, 'autoplay' => 1]) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100"></a>
                 @else
-                    <a href="{{ route('video-details', ['id' => $data['slug'], 'autoplay' => 1]) }}"
+                    <a href="{{ route('video-details', ['id' => $videoSlug, 'autoplay' => 1]) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100"></a>
                 @endif
 
                 {{-- Thumbnail --}}
                 <div class="image-box w-100 ac-thumb-wrapper" style="overflow:hidden;">
-                    <img src="{{ $data['poster_image'] }}" alt="{{ $data['name'] ?? 'video' }}"
+                    <img src="{{ $posterImage }}" alt="{{ $videoName }}"
                          class="img-fluid object-cover w-100 d-block border-0 ac-thumb-img"
                          loading="lazy" style="transition:opacity .25s;">
                     <video class="ac-preview-video position-absolute top-0 start-0 w-100 h-100"
@@ -68,7 +95,7 @@
 
             {{-- Title below thumbnail --}}
             <div class="card-description p-2" style="min-height:48px;">
-                <h6 class="iq-title text-capitalize line-count-2 mb-0 font-size-14">{{ $data['name'] ?? '--' }}</h6>
+                <h6 class="iq-title text-capitalize line-count-2 mb-0 font-size-14">{{ $videoName }}</h6>
             </div>
 
         </div>

@@ -17,8 +17,19 @@ class VideoResourceV3 extends JsonResource
     {
          return [
             'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
             'poster_image' => setBaseUrlWithFileName($this->poster_image,'image','video'),
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','video'),
+            'trailer_url_type' => $this->trailer_url_type,
+            'trailer_url' => $this->trailer_url_type == 'Local'
+                ? setBaseUrlWithFileName($this->trailer_url, 'video', 'video')
+                : $this->trailer_url,
+            'video_upload_type' => $this->video_upload_type,
+            'video_url_input' => $this->video_upload_type == 'Local'
+                ? setBaseUrlWithFileName($this->video_url_input, 'video', 'video')
+                : $this->video_url_input,
+            'duration' => $this->duration,
             'details'=>[
                 'name' => $this->name,
                 'slug' => $this->slug,
