@@ -143,7 +143,9 @@ class VideosController extends Controller
         $assets = ['textarea'];
         $page_type='video';
         $categories = Category::where('status', 1)->orderBy('name')->get();
-        return view('video::backend.video.create', compact('subtitle_language','upload_url_type','assets', 'plan', 'video_quality', 'module_title', 'mediaUrls', 'movie_language','download_url_type','page_type','categories'));
+        $lock_author_channel_id = (int) request('author_channel_id') ?: null;
+        $return_channel_id      = (int) request('return_channel') ?: null;
+        return view('video::backend.video.create', compact('subtitle_language','upload_url_type','assets', 'plan', 'video_quality', 'module_title', 'mediaUrls', 'movie_language','download_url_type','page_type','categories','lock_author_channel_id','return_channel_id'));
     }
 
     public function store(VideoRequest $request)
@@ -412,11 +414,20 @@ class VideosController extends Controller
 
     // Check if request is AJAX
     if ($request->ajax()) {
+        $redirectUrl = $request->filled('return_channel')
+            ? route('backend.author_channels.edit', (int) $request->input('return_channel'))
+            : route('backend.videos.index');
         return response()->json([
-            'success' => true,
-            'message' => $message,
-            'redirect' => route('backend.videos.index')
+            'success'  => true,
+            'message'  => $message,
+            'redirect' => $redirectUrl,
         ]);
+    }
+
+    // Redirect back to author channel if coming from there
+    if ($request->filled('return_channel')) {
+        return redirect()->route('backend.author_channels.edit', (int) $request->input('return_channel'))
+            ->with('success', $message . ' Video assigned to channel.');
     }
 
     // Redirect to the video list page with a success message

@@ -373,14 +373,27 @@
                         @endif
                         {{-- Author Channel --}}
                         <div class="col-md-6 col-lg-4">
-                            <label class="form-label" for="author_channel_id">Author Channel</label>
-                            <select name="author_channel_id" id="author_channel_id" class="form-control select2">
-                                <option value="">-- None --</option>
-                                @foreach(\App\Models\AuthorChannel::where('is_active',1)->get() as $ch)
-                                    <option value="{{ $ch->id }}">{{ $ch->name }}</option>
-                                @endforeach
-                            </select>
+                            <label class="form-label" for="author_channel_id">Author Channel
+                                @if(!empty($lock_author_channel_id))
+                                    <span class="badge bg-warning-subtle text-warning ms-1"><i class="ph ph-lock-simple"></i> Locked</span>
+                                @endif
+                            </label>
+                            @if(!empty($lock_author_channel_id))
+                                @php $lockedChannel = \App\Models\AuthorChannel::withTrashed()->find($lock_author_channel_id); @endphp
+                                <input type="hidden" name="author_channel_id" value="{{ $lock_author_channel_id }}">
+                                <input type="text" class="form-control" value="{{ $lockedChannel?->name ?? 'Unknown Channel' }}" disabled>
+                            @else
+                                <select name="author_channel_id" id="author_channel_id" class="form-control select2">
+                                    <option value="">-- None --</option>
+                                    @foreach(\App\Models\AuthorChannel::where('is_active',1)->get() as $ch)
+                                        <option value="{{ $ch->id }}">{{ $ch->name }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                         </div>
+                        @if(!empty($return_channel_id))
+                            <input type="hidden" name="return_channel" value="{{ $return_channel_id }}">
+                        @endif
                     </div>
                 </div>
             </div>

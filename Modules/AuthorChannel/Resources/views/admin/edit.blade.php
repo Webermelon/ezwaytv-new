@@ -173,10 +173,10 @@
 
         {{-- Upload new video link --}}
         <div class="mb-3">
-            <a href="{{ route('backend.videos.create') }}" class="btn btn-outline-primary btn-sm" target="_blank">
+            <a href="{{ route('backend.videos.create') }}?author_channel_id={{ $channel->id }}&return_channel={{ $channel->id }}" class="btn btn-outline-primary btn-sm">
                 <i class="ph ph-upload-simple"></i> Upload New Video
             </a>
-            <small class="text-muted ms-2">Upload a new video, then assign it here.</small>
+            <small class="text-muted ms-2">Uploads will be automatically linked to this channel.</small>
         </div>
 
         {{-- Assigned video grid --}}
