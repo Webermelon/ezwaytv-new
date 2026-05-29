@@ -400,9 +400,9 @@
                             </select>
                         </div>
                         @endif
-                        {{-- Author Channel --}}
+                        {{-- On Demand --}}
                         <div class="col-md-6 col-lg-4">
-                            <label class="form-label" for="author_channel_id">Author Channel</label>
+                            <label class="form-label" for="author_channel_id">On Demand</label>
                             <select name="author_channel_id" id="author_channel_id" class="form-control select2">
                                 <option value="">-- None --</option>
                                 @php $currentChannelId = $data->authorChannels->first()->id ?? null; @endphp

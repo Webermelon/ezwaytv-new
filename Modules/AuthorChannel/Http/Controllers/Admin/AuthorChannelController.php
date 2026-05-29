@@ -15,7 +15,7 @@ class AuthorChannelController extends Controller
 
     public function __construct()
     {
-        $this->initializeModuleTrait('Author Channels', 'author_channels', 'ph-television');
+        $this->initializeModuleTrait('On Demand Channels', 'author_channels', 'ph-television');
     }
 
     public function index()
@@ -77,7 +77,7 @@ class AuthorChannelController extends Controller
             return response()->json(['status' => true, 'message' => __('messages.status_updated')]);
         }
 
-        return $this->performBulkAction(AuthorChannel::class, $ids, $actionType, 'Author Channel');
+        return $this->performBulkAction(AuthorChannel::class, $ids, $actionType, 'On Demand Channel');
     }
 
     public function update_status(Request $request, $id)
@@ -91,14 +91,14 @@ class AuthorChannelController extends Controller
     {
         $channel = AuthorChannel::withTrashed()->findOrFail($id);
         $channel->restore();
-        return response()->json(['message' => 'Author Channel restored.', 'status' => true], 200);
+        return response()->json(['message' => 'On Demand Channel restored.', 'status' => true], 200);
     }
 
     public function forceDelete($id)
     {
         $channel = AuthorChannel::withTrashed()->findOrFail($id);
         $channel->forceDelete();
-        return response()->json(['message' => 'Author Channel permanently deleted.', 'status' => true], 200);
+        return response()->json(['message' => 'On Demand Channel permanently deleted.', 'status' => true], 200);
     }
 
     public function create()
@@ -121,7 +121,7 @@ class AuthorChannelController extends Controller
             $data['username'] = AuthorChannel::generateUsername($data['name']);
         }
         AuthorChannel::create($data);
-        return redirect()->route('backend.author_channels.index')->with('success','Channel created');
+        return redirect()->route('backend.author_channels.index')->with('success','On Demand Channel created');
     }
 
     public function edit($id)
@@ -154,14 +154,14 @@ class AuthorChannelController extends Controller
             $data['username'] = AuthorChannel::generateUsername($data['name'], $id);
         }
         $channel->update($data);
-        return redirect()->route('backend.author_channels.index')->with('success','Channel updated');
+        return redirect()->route('backend.author_channels.index')->with('success','On Demand Channel updated');
     }
 
     public function destroy($id)
     {
         $channel = AuthorChannel::findOrFail($id);
         $channel->delete();
-        return response()->json(['status' => true, 'message' => 'Author Channel deleted.']);
+        return response()->json(['status' => true, 'message' => 'On Demand Channel deleted.']);
     }
 
     // Legacy - kept for compatibility
@@ -169,7 +169,7 @@ class AuthorChannelController extends Controller
     {
         $channel = AuthorChannel::findOrFail($id);
         $channel->update(['is_active' => !$channel->is_active]);
-        return redirect()->route('backend.author_channels.index')->with('success','Channel status updated');
+        return redirect()->route('backend.author_channels.index')->with('success','On Demand Channel status updated');
     }
 
     /**
@@ -191,7 +191,7 @@ class AuthorChannelController extends Controller
         }
 
         return redirect()->route('backend.author_channels.edit', $id)
-            ->with('success', 'Video assigned to channel.');
+            ->with('success', 'Video assigned to On Demand Channel.');
     }
 
     /**
@@ -203,7 +203,7 @@ class AuthorChannelController extends Controller
         $channel->videos()->detach((int) $videoId);
 
         return redirect()->route('backend.author_channels.edit', $id)
-            ->with('success', 'Video removed from channel.');
+            ->with('success', 'Video removed from On Demand Channel.');
     }
 
     /**

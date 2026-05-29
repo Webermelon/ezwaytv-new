@@ -9,7 +9,7 @@
         <x-backend.section-header>
             <div class="d-flex flex-wrap gap-3">
 
-                <x-backend.quick-action url="{{ route('backend.author_channels.bulk_action') }}" :entity_name="'Author Channel'" :entity_name_plural="'Author Channels'">
+                <x-backend.quick-action url="{{ route('backend.author_channels.bulk_action') }}" :entity_name="'On Demand Channel'" :entity_name_plural="'On Demand Channels'">
                     <div class="">
                         <select name="action_type" class="form-control select2 col-12" id="quick-action-type" style="width:100%">
                             <option value="">{{ __('messages.no_action') }}</option>
@@ -91,7 +91,7 @@
             {
                 data: 'image',
                 name: 'name',
-                title: 'Author Channel',
+                title: 'On Demand Channel',
                 orderable: true,
                 searchable: false,
             },
@@ -165,4 +165,3 @@
         });
     </script>
 @endpush
-

@@ -126,7 +126,7 @@
       @endif
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs(['author_channels.index', 'author_channels.show']) ? 'active text-primary' : '' }}" href="{{ route('author_channels.index') }}">
-          <span class="item-name">Channels</span>
+          <span class="item-name">On Demand</span>
         </a>
         <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
           @php
@@ -134,7 +134,7 @@
           @endphp
           <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('author_channels.index') ? 'active text-primary' : '' }}" href="{{ route('author_channels.index') }}">
-              <span class="item-name">All Channels</span>
+              <span class="item-name">All On Demand Channels</span>
             </a>
           </li>
           @foreach($navAuthorChannels as $navCh)

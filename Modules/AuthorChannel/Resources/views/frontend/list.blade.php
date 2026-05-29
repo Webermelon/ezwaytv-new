@@ -1,16 +1,16 @@
 @extends('frontend::layouts.master')
 
 @section('title')
-    Author Channels
+    On Demand
 @endsection
 
 @section('content')
 <div class="list-page section-spacing-bottom px-0">
     <div class="page-title mb-5">
         <h2 class="m-0 text-center fw-bold" style="font-size: 2.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-            Author Channels
+            On Demand
         </h2>
-        <p class="text-center text-muted mt-2">Discover amazing content creators</p>
+        <p class="text-center text-muted mt-2">Discover on demand content</p>
     </div>
     
     <div class="container-fluid">
@@ -58,7 +58,7 @@
                                 <!-- Action Button -->
                                 <div class="channel-action">
                                     <span class="view-channel-btn">
-                                        View Channel
+                                        View On Demand
                                         <i class="fas fa-arrow-right ms-2"></i>
                                     </span>
                                 </div>

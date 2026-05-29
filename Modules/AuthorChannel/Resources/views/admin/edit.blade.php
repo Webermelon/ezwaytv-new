@@ -1,7 +1,7 @@
 @extends('backend.layouts.app')
 
 @section('title')
-    Edit Author Channel
+    Edit On Demand Channel
 @endsection
 
 @section('content')
@@ -11,7 +11,7 @@
     @csrf
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="card-title mb-0">Edit Author Channel</h4>
+            <h4 class="card-title mb-0">Edit On Demand Channel</h4>
         </div>
         <div class="card-body">
 
@@ -23,9 +23,9 @@
 
             <div class="row gy-3">
 
-                {{-- Channel Name --}}
+                {{-- On Demand Channel Name --}}
                 <div class="col-md-6">
-                    <label class="form-label">Channel Name <span class="text-danger">*</span></label>
+                    <label class="form-label">On Demand Channel Name <span class="text-danger">*</span></label>
                     <input type="text" name="name" id="channelName" class="form-control @error('name') is-invalid @enderror"
                            value="{{ old('name', $channel->name) }}" required>
                     @error('name')<span class="text-danger">{{ $message }}</span>@enderror
@@ -35,7 +35,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Username <span class="text-muted">(URL slug)</span></label>
                     <div class="input-group">
-                        <span class="input-group-text text-muted">/author-channels/</span>
+                        <span class="input-group-text text-muted">/on-demand/</span>
                         <input type="text" name="username" id="channelUsername" class="form-control @error('username') is-invalid @enderror"
                                value="{{ old('username', $channel->username) }}" placeholder="e.g. ezway-vod" pattern="[a-z0-9\-]+">
                     </div>
@@ -130,7 +130,7 @@
 
                 <div class="col-12 mt-2">
                     <button type="submit" class="btn btn-primary">
-                        <i class="ph ph-floppy-disk"></i> Update Channel
+                        <i class="ph ph-floppy-disk"></i> Update On Demand Channel
                     </button>
                     <a href="{{ route('backend.author_channels.index') }}" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
@@ -176,7 +176,7 @@
             <a href="{{ route('backend.videos.create') }}?author_channel_id={{ $channel->id }}&return_channel={{ $channel->id }}" class="btn btn-outline-primary btn-sm">
                 <i class="ph ph-upload-simple"></i> Upload New Video
             </a>
-            <small class="text-muted ms-2">Uploads will be automatically linked to this channel.</small>
+            <small class="text-muted ms-2">Uploads will be automatically linked to this On Demand Channel.</small>
         </div>
 
         {{-- Assigned video grid --}}

@@ -427,7 +427,7 @@ class VideosController extends Controller
     // Redirect back to author channel if coming from there
     if ($request->filled('return_channel')) {
         return redirect()->route('backend.author_channels.edit', (int) $request->input('return_channel'))
-            ->with('success', $message . ' Video assigned to channel.');
+            ->with('success', $message . ' Video assigned to On Demand.');
     }
 
     // Redirect to the video list page with a success message

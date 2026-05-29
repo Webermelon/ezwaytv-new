@@ -371,9 +371,9 @@
                             </select>
                         </div>
                         @endif
-                        {{-- Author Channel --}}
+                        {{-- On Demand --}}
                         <div class="col-md-6 col-lg-4">
-                            <label class="form-label" for="author_channel_id">Author Channel
+                            <label class="form-label" for="author_channel_id">On Demand
                                 @if(!empty($lock_author_channel_id))
                                     <span class="badge bg-warning-subtle text-warning ms-1"><i class="ph ph-lock-simple"></i> Locked</span>
                                 @endif

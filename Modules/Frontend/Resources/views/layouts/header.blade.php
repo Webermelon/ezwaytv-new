@@ -108,7 +108,7 @@
                                 @endif
                                 <li class="py-2 px-2">
                                     <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs(['author_channels.index','author_channels.show']) ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#authorChannelsSubmenu" role="button" aria-expanded="false">
-                                        <span>Channels</span>
+                                        <span>On Demand</span>
                                         <i class="ph ph-caret-down"></i>
                                     </a>
                                     <div class="collapse" id="authorChannelsSubmenu">
@@ -119,7 +119,7 @@
                                             <ul class="list-unstyled">
                                                 <li class="py-1">
                                                     <a href="{{ route('author_channels.index') }}" class="text-decoration-none d-block {{ request()->routeIs('author_channels.index') ? 'text-primary' : 'text-white-50' }}">
-                                                        All Channels
+                                                        All On Demand Channels
                                                     </a>
                                                 </li>
                                                 @foreach($mobileAuthorChannels as $mCh)

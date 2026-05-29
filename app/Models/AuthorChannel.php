@@ -21,7 +21,7 @@ class AuthorChannel extends Model
     ];
 
     /**
-     * Use username as the route key so /author-channels/{username} works.
+     * Use username as the route key so /on-demand/{username} works.
      */
     public function getRouteKeyName(): string
     {

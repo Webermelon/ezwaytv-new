@@ -83,6 +83,6 @@ class AuthorChannelVideoController extends Controller
 
         $channel->videos()->detach((int) $videoId);
 
-        return response()->json(['message' => 'Video removed from channel.']);
+        return response()->json(['message' => 'Video removed from On Demand.']);
     }
 }

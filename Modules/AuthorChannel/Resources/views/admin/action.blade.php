@@ -14,7 +14,7 @@
     @else
         <a class="btn btn-success-subtle btn-sm fs-4 restore-tax"
            data-confirm-message="{{ __('messages.are_you_sure_restore') }}"
-           data-success-message="Author Channel restored."
+           data-success-message="On Demand Channel restored."
            href="{{ route('backend.author_channels.restore', $data->id) }}">
             <i class="ph ph-arrow-clockwise align-middle"></i>
         </a>

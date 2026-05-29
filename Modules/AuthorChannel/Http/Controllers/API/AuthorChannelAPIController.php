@@ -152,7 +152,7 @@ class AuthorChannelAPIController extends Controller
 
         $channel = AuthorChannel::create($data);
 
-        return ApiResponse::success($this->formatChannel($channel), 'Channel created successfully.', 201);
+        return ApiResponse::success($this->formatChannel($channel), 'On Demand created successfully.', 201);
     }
 
     /**
@@ -181,7 +181,7 @@ class AuthorChannelAPIController extends Controller
 
         $channel->update($validator->validated());
 
-        return ApiResponse::success($this->formatChannel($channel), 'Channel updated successfully.');
+        return ApiResponse::success($this->formatChannel($channel), 'On Demand updated successfully.');
     }
 
     /**
@@ -215,7 +215,7 @@ class AuthorChannelAPIController extends Controller
             'banner_url'   => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
             'videos_count' => $channel->videos_count ?? $channel->videos()->count(),
             'is_active'    => (bool) $channel->is_active,
-            'profile_url'  => url('/author-channels/' . $channel->username),
+            'profile_url'  => url('/on-demand/' . $channel->username),
         ];
 
         if ($includeDescription) {
