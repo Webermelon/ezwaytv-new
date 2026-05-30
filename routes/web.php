@@ -32,6 +32,12 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
+Route::get('/music', function () {
+    return view('frontend::music');
+})->name('music');
+
+Route::get('/ezwa-music', fn () => redirect()->route('music', [], 301));
+
 
 Route::group(['middleware' => ['checkInstallation']], function () {
 
@@ -194,4 +200,3 @@ Route::middleware(['web'])->group(function () {
 });
 
 });
-
