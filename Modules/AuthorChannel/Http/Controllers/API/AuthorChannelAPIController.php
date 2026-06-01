@@ -94,10 +94,9 @@ class AuthorChannelAPIController extends Controller
                 'videos.access',
                 'videos.duration',
                 'videos.release_date',
-                'videos.language',
                 'videos.status'
             )
-            ->orderByPivot('created_at', 'desc')
+            ->orderBy('author_channel_video.created_at', 'desc')
             ->paginate($perPage);
 
         $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
