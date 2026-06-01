@@ -200,6 +200,26 @@ class FilemanagersController extends Controller
     }
 
     if ($request->ajax() || $request->wantsJson()) {
+        // Clean temp files older than 1 hour to avoid accumulating local storage
+        try {
+            $tempDir = storage_path('app/temp');
+            if (is_dir($tempDir)) {
+                $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($tempDir));
+                $now = time();
+                foreach ($files as $file) {
+                    if ($file->isFile()) {
+                        $fileMTime = $file->getMTime();
+                        // delete files older than 1 hour (3600 seconds)
+                        if ($now - $fileMTime > 3600) {
+                            @unlink($file->getPathname());
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('temp cleanup failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => $message,
