@@ -3103,6 +3103,175 @@ document.addEventListener('DOMContentLoaded', function () {
   function showAdLoader() { }
   function hideAdLoader() { }
 
+  function safeIma(playerInstance) {
+    const emptyIma = {
+      initializeAdDisplayContainer: function(){},
+      changeAdTag: function(){},
+      requestAds: function(){},
+      playAdBreak: function(){},
+      pauseAd: function(){},
+      resumeAd: function(){},
+      addEventListener: function(){},
+      getAdsManager: function(){return null},
+      reset: function(){}
+    };
+
+    if (!playerInstance) return emptyIma;
+
+    if (playerInstance.ima && typeof playerInstance.ima.initializeAdDisplayContainer === 'function') {
+      return playerInstance.ima;
+    }
+
+    if (typeof playerInstance.ima === 'function') {
+      try {
+        playerInstance.ima();
+        if (playerInstance.ima && typeof playerInstance.ima.initializeAdDisplayContainer === 'function') {
+          return playerInstance.ima;
+        }
+      } catch (e) {
+        console.warn('player.ima() threw', e);
+      }
+    }
+
+    if (playerInstance.ima && typeof playerInstance.ima === 'object') {
+      return Object.assign({}, emptyIma, playerInstance.ima);
+    }
+
+    return {
+      initializeAdDisplayContainer: function(){ console.warn('IMA not available: initializeAdDisplayContainer() skipped'); },
+      changeAdTag: function(){ console.warn('IMA not available: changeAdTag() skipped'); },
+      requestAds: function(){ console.warn('IMA not available: requestAds() skipped'); },
+      playAdBreak: function(){ console.warn('IMA not available: playAdBreak() skipped'); },
+      pauseAd: function(){},
+      resumeAd: function(){},
+      addEventListener: function(){},
+      getAdsManager: function(){return null},
+      reset: function(){}
+    };
+  }
+
+  function isVideoJsInAdMode() {
+    try {
+      return !!(player.ads && typeof player.ads.isInAdMode === 'function' && player.ads.isInAdMode());
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function endStuckAdMode() {
+    try {
+      if (isVideoJsInAdMode() && player.ads && typeof player.ads.endLinearAdMode === 'function') {
+        player.ads.endLinearAdMode();
+      }
+    } catch (e) {
+      debugLog('Unable to end stuck ad mode', e);
+    }
+  }
+
+  function forceContentPlaybackAfterAd() {
+    let attempts = 0;
+
+    const tryPlay = () => {
+      attempts++;
+      let videoEl = null;
+
+      try {
+        const root = player.el && player.el();
+        videoEl = root && root.querySelector('video');
+        const posterEl = root && root.querySelector('.vjs-poster');
+        const adContainer = root && root.querySelector('.ima-ad-container, .vjs-ima-ad-container');
+        const bigPlay = root && root.querySelector('.vjs-big-play-button');
+
+        if (videoEl) {
+          videoEl.style.display = '';
+          videoEl.muted = true;
+          videoEl.defaultMuted = true;
+          videoEl.setAttribute('muted', '');
+          videoEl.setAttribute('playsinline', '');
+          videoEl.setAttribute('webkit-playsinline', '');
+        }
+        if (posterEl) posterEl.style.display = 'none';
+        if (bigPlay) bigPlay.style.display = 'none';
+        if (adContainer && !isVideoJsInAdMode()) adContainer.style.display = 'none';
+        if (root) root.style.pointerEvents = '';
+        if (typeof player.muted === 'function') player.muted(true);
+      } catch (e) {
+        debugLog('Unable to restore player display after ad', e);
+      }
+
+      if (isVideoJsInAdMode()) {
+        if (attempts < 30) setTimeout(tryPlay, 150);
+        return;
+      }
+
+      try {
+        const playPromise = player.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch((e) => {
+            debugLog('Content play after ad was blocked', e);
+            if (attempts < 30) setTimeout(tryPlay, 250);
+          });
+        }
+      } catch (e) {
+        debugLog('Unable to play content after ad', e);
+      }
+
+      if (videoEl && typeof videoEl.play === 'function') {
+        try {
+          const nativePlayPromise = videoEl.play();
+          if (nativePlayPromise && typeof nativePlayPromise.catch === 'function') {
+            nativePlayPromise.catch((e) => {
+              debugLog('Native content play after ad was blocked', e);
+              if (attempts < 30) setTimeout(tryPlay, 250);
+            });
+          }
+        } catch (e) {
+          debugLog('Unable to native-play content after ad', e);
+        }
+      }
+
+      if (attempts < 30) {
+        setTimeout(() => {
+          if (!isVideoJsInAdMode() && player.paused && player.paused()) {
+            tryPlay();
+          }
+        }, 350);
+      }
+    };
+
+    tryPlay();
+  }
+
+  function resumeAfterAdSequence(onComplete) {
+    let attempts = 0;
+
+    const finish = () => {
+      hideAdLoader();
+      hideSkipButton();
+      try { player.el().style.pointerEvents = ''; } catch (e) {}
+      if (typeof onComplete === 'function') onComplete();
+      forceContentPlaybackAfterAd();
+    };
+
+    const waitForContentMode = () => {
+      if (!isVideoJsInAdMode()) {
+        setTimeout(finish, 50);
+        return;
+      }
+
+      attempts++;
+      if (attempts >= 20) {
+        endStuckAdMode();
+        setTimeout(finish, 50);
+        return;
+      }
+
+      setTimeout(waitForContentMode, 100);
+    };
+
+    waitForContentMode();
+  }
+
   function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
@@ -3217,6 +3386,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function skipAd() {
     debugLog('Custom skip button clicked');
+    const skippedAd = currentAd;
     hideSkipButton();
 
     try {
@@ -3234,8 +3404,17 @@ document.addEventListener('DOMContentLoaded', function () {
           player.trigger('adend');
         }, 100);
       }
+
+      setTimeout(() => {
+        if (skippedAd && isVideoJsInAdMode()) {
+          debugLog('Skip fallback ending stuck ad mode');
+          endStuckAdMode();
+          player.trigger('adend');
+        }
+      }, 1500);
     } catch (e) {
       debugLog('Error during manual skip', e);
+      endStuckAdMode();
       player.trigger('adend');
     }
   }
@@ -3265,7 +3444,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let index = 0;
 
     const playNextAd = () => {
-      if (index >= ads.length) return onComplete();
+      if (index >= ads.length) return resumeAfterAdSequence(onComplete);
 
       const ad = ads[index];
       currentAd = ad;
@@ -3288,10 +3467,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const vastUrl = ad.url;
         debugLog('Loading VAST XML', { vastUrl });
 
-        player.ima.initializeAdDisplayContainer(); // ✅ ensure fresh IMA container
-        player.ima.changeAdTag(vastUrl);
-        player.ima.requestAds();
-        player.ima.playAdBreak();
+        const ima = safeIma(player);
+        ima.initializeAdDisplayContainer();
+        ima.changeAdTag(vastUrl);
+        ima.requestAds();
+        ima.playAdBreak();
 
         player.one('adstart', () => {
           debugLog(`${type} ad #${index + 1} started`);
@@ -3318,6 +3498,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     playNextAd();
   }
+
+  ['contentresumed', 'adend', 'adskip', 'adserror', 'adtimeout', 'nopreroll'].forEach((eventName) => {
+    player.on(eventName, () => {
+      setTimeout(() => {
+        if (!currentAd && !isVideoJsInAdMode()) {
+          forceContentPlaybackAfterAd();
+        }
+      }, 300);
+    });
+  });
 
   function scheduleOverlayAds() {
     if (!player || overlayAdsScheduled) return;
@@ -3808,39 +3998,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       originalConsoleError.apply(console, args);
     };
-
-    // Helper that returns a safe IMA interface (no-op when unavailable)
-    function safeIma(playerInstance) {
-      if (!playerInstance) return {
-        initializeAdDisplayContainer: function(){},
-        changeAdTag: function(){},
-        requestAds: function(){},
-        playAdBreak: function(){},
-        pauseAd: function(){},
-        resumeAd: function(){},
-        addEventListener: function(){},
-        getAdsManager: function(){return null},
-        reset: function(){}
-      };
-      if (typeof playerInstance.ima === 'function') {
-        try {
-          return playerInstance.ima();
-        } catch (e) {
-          console.warn('player.ima() threw', e);
-        }
-      }
-      return {
-        initializeAdDisplayContainer: function(){ console.warn('IMA not available: initializeAdDisplayContainer() skipped'); },
-        changeAdTag: function(){ console.warn('IMA not available: changeAdTag() skipped'); },
-        requestAds: function(){ console.warn('IMA not available: requestAds() skipped'); },
-        playAdBreak: function(){ console.warn('IMA not available: playAdBreak() skipped'); },
-        pauseAd: function(){},
-        resumeAd: function(){},
-        addEventListener: function(){},
-        getAdsManager: function(){return null},
-        reset: function(){}
-      };
-    }
 
     // IMA setup
     const adsRenderingSettings = new google.ima.AdsRenderingSettings();
