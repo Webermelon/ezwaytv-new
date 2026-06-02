@@ -6,26 +6,26 @@ use Modules\AuthorChannel\Http\Controllers\API\AuthorChannelVideoController;
 
 /*
 |--------------------------------------------------------------------------
-| Author Channel API Routes
+| Author Channel API Routes (renamed to Ondemand)
 |--------------------------------------------------------------------------
-| Base: /api/v1/author-channels
+| Base: /api/v3/ondemand
 |
 | Public  (no auth):
-|   GET    /api/v1/author-channels                    → index (list + search)
-|   GET    /api/v1/author-channels/{username}         → show (profile)
-|   GET    /api/v1/author-channels/{username}/videos  → videos (paginated)
+|   GET    /api/v3/ondemand                    → index (list + search)
+|   GET    /api/v3/ondemand/{username}         → show (profile)
+|   GET    /api/v3/ondemand/{username}/videos  → videos (paginated)
 |
 | Authenticated (Bearer token via Sanctum):
-|   GET    /api/v1/author-channels/my                 → my channels
-|   POST   /api/v1/author-channels                    → create channel
-|   PUT    /api/v1/author-channels/{id}               → update own channel
-|   DELETE /api/v1/author-channels/{id}               → delete own channel
+|   GET    /api/v3/ondemand/my                 → my channels
+|   POST   /api/v3/ondemand                    → create channel
+|   PUT    /api/v3/ondemand/{id}               → update own channel
+|   DELETE /api/v3/ondemand/{id}               → delete own channel
 */
 
 // ------------------------------------------------------------------
 // Public routes (no auth)
 // ------------------------------------------------------------------
-Route::prefix('api/v1/author-channels')->group(function () {
+Route::prefix('api/v3/ondemand')->group(function () {
 
     Route::get('/',                        [AuthorChannelAPIController::class, 'index']);
     Route::get('{username}/videos',        [AuthorChannelAPIController::class, 'videos']);
@@ -36,7 +36,7 @@ Route::prefix('api/v1/author-channels')->group(function () {
 // ------------------------------------------------------------------
 // Authenticated routes
 // ------------------------------------------------------------------
-Route::prefix('api/v1/author-channels')->middleware(['api', 'auth:sanctum'])->group(function () {
+Route::prefix('api/v3/ondemand')->middleware(['api', 'auth:sanctum'])->group(function () {
 
     Route::get('my',                       [AuthorChannelAPIController::class, 'myChannels']);
     Route::post('/',                       [AuthorChannelAPIController::class, 'store']);
@@ -49,8 +49,8 @@ Route::prefix('api/v1/author-channels')->middleware(['api', 'auth:sanctum'])->gr
 // Legacy: video assignment (kept for backward compat)
 // ------------------------------------------------------------------
 Route::group(['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']], function () {
-    Route::get('author-channels/{id}/videos',                  [AuthorChannelVideoController::class, 'index'])->name('api.author_channels.videos.index');
-    Route::post('author-channels/{id}/videos/assign',          [AuthorChannelVideoController::class, 'assign'])->name('api.author_channels.videos.assign');
-    Route::delete('author-channels/{id}/videos/{videoId}',     [AuthorChannelVideoController::class, 'unassign'])->name('api.author_channels.videos.unassign');
+    Route::get('ondemand/{id}/videos',                  [AuthorChannelVideoController::class, 'index'])->name('api.ondemand.videos.index');
+    Route::post('ondemand/{id}/videos/assign',          [AuthorChannelVideoController::class, 'assign'])->name('api.ondemand.videos.assign');
+    Route::delete('ondemand/{id}/videos/{videoId}',     [AuthorChannelVideoController::class, 'unassign'])->name('api.ondemand.videos.unassign');
 });
 

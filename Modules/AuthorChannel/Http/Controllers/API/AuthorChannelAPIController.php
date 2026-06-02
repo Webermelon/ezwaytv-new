@@ -16,8 +16,8 @@ class AuthorChannelAPIController extends Controller
     // -------------------------------------------------------------------------
 
     /**
-     * GET /api/v1/author-channels
-     * List all active author channels (paginated, searchable).
+     * GET /api/v3/ondemand
+     * List all active ondemand channels (paginated, searchable).
      */
     public function index(Request $request)
     {
@@ -43,7 +43,7 @@ class AuthorChannelAPIController extends Controller
     }
 
     /**
-     * GET /api/v1/author-channels/{username}
+     * GET /api/v3/ondemand/{username}
      * Channel profile by username (slug).
      */
     public function show($username)
@@ -61,7 +61,7 @@ class AuthorChannelAPIController extends Controller
     }
 
     /**
-     * GET /api/v1/author-channels/{username}/videos
+     * GET /api/v3/ondemand/{username}/videos
      * Paginated video list for a channel.
      */
     public function videos(Request $request, $username)
@@ -109,8 +109,8 @@ class AuthorChannelAPIController extends Controller
     // -------------------------------------------------------------------------
 
     /**
-     * GET /api/v1/author-channels/my
-     * Return the authenticated user's own channel(s).
+     * GET /api/v3/ondemand/my
+     * Return the authenticated user's own ondemand channel(s).
      */
     public function myChannels(Request $request)
     {
@@ -124,8 +124,8 @@ class AuthorChannelAPIController extends Controller
     }
 
     /**
-     * POST /api/v1/author-channels
-     * Create a new channel for the authenticated user.
+     * POST /api/v3/ondemand
+     * Create a new ondemand channel for the authenticated user.
      */
     public function store(Request $request)
     {
@@ -155,8 +155,8 @@ class AuthorChannelAPIController extends Controller
     }
 
     /**
-     * PUT /api/v1/author-channels/{id}
-     * Update own channel (user must own it).
+     * PUT /api/v3/ondemand/{id}
+     * Update own ondemand channel (user must own it).
      */
     public function update(Request $request, $id)
     {
@@ -184,8 +184,8 @@ class AuthorChannelAPIController extends Controller
     }
 
     /**
-     * DELETE /api/v1/author-channels/{id}
-     * Soft-delete own channel.
+     * DELETE /api/v3/ondemand/{id}
+     * Soft-delete own ondemand channel.
      */
     public function destroy($id)
     {
