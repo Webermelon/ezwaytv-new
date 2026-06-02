@@ -3220,14 +3220,20 @@ document.addEventListener('DOMContentLoaded', function () {
     hideSkipButton();
 
     try {
-      // Pause ad playback
-      player.pause();
+      const ima = safeIma(player);
+      const adsManager = ima.getAdsManager && ima.getAdsManager();
 
-      // Wait a tiny bit and force end the ad manually
-      setTimeout(() => {
-        debugLog('Force ending ad via adend trigger');
-        player.trigger('adend');
-      }, 100); // You can keep this short (100ms)
+      if (adsManager && typeof adsManager.skip === 'function') {
+        adsManager.skip();
+      } else if (adsManager && typeof adsManager.discardAdBreak === 'function') {
+        adsManager.discardAdBreak();
+      } else {
+        player.pause();
+        setTimeout(() => {
+          debugLog('Force ending ad via adend trigger');
+          player.trigger('adend');
+        }, 100);
+      }
     } catch (e) {
       debugLog('Error during manual skip', e);
       player.trigger('adend');
@@ -3264,6 +3270,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const ad = ads[index];
       currentAd = ad;
       debugLog(`Playing ${type} ad #${index + 1}`, ad);
+      let adCompleted = false;
+
+      const completeCurrentAd = (reason, event) => {
+        if (adCompleted) return;
+        adCompleted = true;
+        debugLog(`${type} ad #${index + 1} ${reason}`, event);
+        hideAdLoader();
+        hideSkipButton();
+        index++;
+        playNextAd();
+      };
 
       try {
         showAdLoader();
@@ -3287,32 +3304,15 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         });
 
-        player.one('adend', () => {
-          debugLog(`${type} ad #${index + 1} ended`);
-          hideSkipButton();
-          index++;
-          playNextAd();
-        });
+        player.one('adend', (e) => completeCurrentAd('ended', e));
 
-        player.one('adserror', (e) => {
-          debugLog(`${type} ad #${index + 1} error`, e);
-          hideSkipButton();
-          index++;
-          playNextAd();
-        });
+        player.one('adserror', (e) => completeCurrentAd('error', e));
 
-        player.one('adskip', () => {
-          debugLog(`${type} ad #${index + 1} skipped`);
-          hideSkipButton();
-          index++;
-          playNextAd();
-        });
+        player.one('adskip', (e) => completeCurrentAd('skipped', e));
 
       } catch (e) {
         debugLog(`Error playing ${type} ad`, e);
-        hideSkipButton();
-        index++;
-        playNextAd();
+        completeCurrentAd('error', e);
       }
     };
 

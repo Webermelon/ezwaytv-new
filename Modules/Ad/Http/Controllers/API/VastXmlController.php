@@ -20,7 +20,7 @@ class VastXmlController extends Controller
     /**
      * Generate and serve VAST XML for a specific video ad
      */
-    public function generate($id)
+    public function generate(Request $request, $id)
     {
         try {
             // Clean any output buffers
@@ -37,9 +37,7 @@ class VastXmlController extends Controller
             
             $vastXml = $this->vastGenerator->generate($videoAd);
             
-            return response($vastXml, 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8')
-                ->header('X-Content-Type-Options', 'nosniff');
+            return $this->xmlResponse($vastXml, 200, $request);
                 
         } catch (\Exception $e) {
             // Clean any output buffers
@@ -53,8 +51,7 @@ class VastXmlController extends Controller
             ]);
             
             // Return empty VAST on error
-            return response($this->getEmptyVast(), 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8');
+            return $this->xmlResponse($this->getEmptyVast(), 200, $request);
         }
     }
     
@@ -78,9 +75,7 @@ class VastXmlController extends Controller
             
             $vastXml = $this->vastGenerator->generateWrapper($videoAd, $vastTagUrl);
             
-            return response($vastXml, 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8')
-                ->header('X-Content-Type-Options', 'nosniff');
+            return $this->xmlResponse($vastXml, 200, $request);
                 
         } catch (\Exception $e) {
             // Clean any output buffers
@@ -93,8 +88,7 @@ class VastXmlController extends Controller
                 'error' => $e->getMessage(),
             ]);
             
-            return response($this->getEmptyVast(), 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8');
+            return $this->xmlResponse($this->getEmptyVast(), 200, $request);
         }
     }
     
@@ -118,9 +112,7 @@ class VastXmlController extends Controller
             
             $vmapXml = $this->vastGenerator->generateVmap($ads);
             
-            return response($vmapXml, 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8')
-                ->header('X-Content-Type-Options', 'nosniff');
+            return $this->xmlResponse($vmapXml, 200, $request);
                 
         } catch (\Exception $e) {
             // Clean any output buffers
@@ -132,9 +124,31 @@ class VastXmlController extends Controller
                 'error' => $e->getMessage(),
             ]);
             
-            return response($this->getEmptyVast(), 200)
-                ->header('Content-Type', 'application/xml; charset=UTF-8');
+            return $this->xmlResponse($this->getEmptyVast(), 200, $request);
         }
+    }
+
+    protected function xmlResponse(string $xml, int $status, Request $request)
+    {
+        $origin = $request->headers->get('Origin');
+        $allowedOrigins = [
+            config('app.url'),
+            'https://ezway.tv',
+            'https://www.ezway.tv',
+            'https://imasdk.googleapis.com',
+        ];
+
+        $allowedOrigins = array_values(array_unique(array_filter($allowedOrigins)));
+        $corsOrigin = in_array($origin, $allowedOrigins, true) ? $origin : config('app.url');
+
+        return response($xml, $status)
+            ->header('Content-Type', 'application/xml; charset=UTF-8')
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('Access-Control-Allow-Origin', $corsOrigin)
+            ->header('Access-Control-Allow-Credentials', 'true')
+            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            ->header('Vary', 'Origin');
     }
     
     /**
