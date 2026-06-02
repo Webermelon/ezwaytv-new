@@ -14,8 +14,7 @@
                         <p>{{ __('frontend.search_through_content') }}</p>
                     </div>
                     <div class="form-group input-group search-not-found">
-                        <input type="text" id="search-query" name="search" class="form-control border rounded" placeholder="{{ __('frontend.search_placeholder') }}"
-                            id="">
+                        <input type="text" id="search-page-query" name="search" class="form-control border rounded" placeholder="{{ __('frontend.search_placeholder') }}">
                         <button type="submit" class="remove-search d-none" id="movie-remove">
                             <i class="ph ph-x"></i>
                         </button>
@@ -66,6 +65,8 @@
                                 @if (isenablemodule('livetv') == 1)
                                     <div class="search-short-panel-link" data-type="livetv">{{ __('frontend.live_tv') }}</div>
                                 @endif
+
+                                <div class="search-short-panel-link" data-type="ondemand">{{ __('frontend.on_demand_channels') }}</div>
 
                                 <div class="search-short-panel-link" data-type="actor">{{ __('frontend.actors') }}</div>
                                 <div class="search-short-panel-link" data-type="director">{{ __('frontend.directors') }}</div>
@@ -177,9 +178,6 @@
             const urlParams = new URLSearchParams(window.location.search);
             const query = urlParams.get('search') || urlParams.get('query');
 
-            const navigationEntry = performance.getEntriesByType('navigation')[0];
-            const isPageRefresh = navigationEntry && navigationEntry.type === 'reload';
-
             // Multi-select state for filters
             // Keep filters out of URL; use sessionStorage instead
             let selectedCategories = [];
@@ -191,13 +189,22 @@
                 selectedCategories = [];
                 selectedGenreIds = [];
             }
-            // Default select Video if nothing stored
             if (!Array.isArray(selectedCategories) || selectedCategories.length === 0) {
-                selectedCategories = ['video'];
+                selectedCategories = [];
             }
             if (!Array.isArray(selectedGenreIds)) {
                 selectedGenreIds = [];
             }
+            if (
+                sessionStorage.getItem('searchFilterVersion') !== '2' &&
+                selectedCategories.length === 1 &&
+                selectedCategories[0] === 'video' &&
+                selectedGenreIds.length === 0
+            ) {
+                selectedCategories = [];
+                sessionStorage.setItem('searchSelectedTypes', JSON.stringify(selectedCategories));
+            }
+            sessionStorage.setItem('searchFilterVersion', '2');
 
             function validateGenreIds() {
                 const genresListEl = document.getElementById('genres-list');
@@ -226,34 +233,33 @@
                 sessionStorage.setItem('searchSelectedGenreIds', JSON.stringify(selectedGenreIds));
             }
 
-            const searchInput = document.querySelector('input[name="search"]');
+            const searchInput = document.getElementById('search-page-query');
+            searchInput.value = query || '';
 
-            if (isPageRefresh) {
-                // Clear search input and URL parameter on refresh
-                searchInput.value = '';
-                if (query) {
-                    const newUrl = window.location.pathname;
-                    window.history.replaceState({}, '', newUrl);
+            function getSearchTerm() {
+                return (searchInput.value || '').trim();
+            }
+
+            function syncSearchUrl(searchTerm, replace = false) {
+                const params = new URLSearchParams();
+                if (searchTerm) {
+                    params.set('search', searchTerm);
                 }
-            } else {
-                // Preserve search term when navigating from another page
-                searchInput.value = query || '';
+
+                const queryString = params.toString();
+                const newUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+                const method = replace ? 'replaceState' : 'pushState';
+                window.history[method]({}, '', newUrl);
             }
 
             let debounceTimer;
-
-            // Auto-search only if query exists and it's not a refresh
-            if (query && !isPageRefresh) {
-                search(query);
-            }
+            let activeSearchRequest = '';
+            let currentSearchXhr = null;
 
             document.getElementById('movie-search').addEventListener('click', function() {
-                const query = searchInput.value || '';
+                const query = getSearchTerm();
                 persistFilters();
-                const params = new URLSearchParams();
-                if (query) params.set('search', query);
-                const newUrl = `${window.location.pathname}?${params.toString()}`;
-                window.history.pushState({}, '', newUrl);
+                syncSearchUrl(query);
                 search(query);
             });
 
@@ -268,7 +274,18 @@
             const removeSearchButton = document.querySelector('#movie-remove');
 
             searchInput.addEventListener('input', function() {
+                const query = getSearchTerm();
+                activeSearchRequest = query;
+                if (currentSearchXhr) {
+                    currentSearchXhr.abort();
+                    currentSearchXhr = null;
+                }
                 toggleRemoveButton();
+                syncSearchUrl(query, true);
+                $('#results').empty();
+                $('#no_result').empty();
+                $('#no-data-found').addClass('d-none');
+                search(query);
             });
 
 
@@ -286,21 +303,23 @@
                 searchInput.value = '';
                 searchInput.dispatchEvent(new Event('input'));
 
-                const newUrl = `${window.location.origin}${window.location.pathname}`;
-                window.history.pushState({}, '', newUrl); // Update the URL without reloading the page
-                const query = document.getElementById('search-query').value;
+                syncSearchUrl('', true);
+                const query = getSearchTerm();
                 search(query)
 
             });
 
-            function search(query) {
+            function search(query = null) {
                 clearTimeout(debounceTimer); // Clear the previous timer
+                const requestedQuery = query !== null ? String(query).trim() : getSearchTerm();
 
                 debounceTimer = setTimeout(() => {
+                    const currentQuery = getSearchTerm();
+                    const activeQuery = currentQuery !== requestedQuery ? currentQuery : requestedQuery;
                     const hasFilters = (selectedCategories && selectedCategories.length) || (selectedGenreIds &&
                         selectedGenreIds.length);
                     const shimmerContainer = document.getElementById('search-shimmer');
-                    if (query.length === 0 && !hasFilters) {
+                    if (activeQuery.length === 0 && !hasFilters) {
                         // Clear search results and history
                         $('#search_histroy').empty();
                         $('#results').empty();
@@ -313,9 +332,9 @@
                         }
                     } else {
                         $('.remove-search').removeClass('d-none');
-                        performSearch(query);
+                        performSearch(activeQuery);
                         if (isLoggedIn) {
-                            getSearchKey(query);
+                            getSearchKey(activeQuery);
                         }
                         // Show loading state while searching
                     }
@@ -323,10 +342,18 @@
             }
 
             window.performSearch = function(query) {
+                const searchTerm = String(query || '').trim();
+                activeSearchRequest = searchTerm;
+                if (searchInput.value !== searchTerm) {
+                    searchInput.value = searchTerm;
+                    toggleRemoveButton();
+                }
+                syncSearchUrl(searchTerm, true);
+
                 const baseUrl = document.querySelector('meta[name="baseUrl"]').getAttribute('content');
                 const searchApiUrl = `${baseUrl}/api/v3/get-search-data`;
                 const params = new URLSearchParams();
-                params.set('search', query);
+                params.set('search', searchTerm);
                 params.set('is_ajax', '1');
                 if (selectedCategories.length) params.set('type', selectedCategories.join(','));
                 if (selectedGenreIds.length) params.set('genre_id', selectedGenreIds.join(','));
@@ -340,10 +367,18 @@
                 $('#no-data-found').addClass('d-none');
                 $('#results').empty();
 
-                $.ajax({
+                if (currentSearchXhr) {
+                    currentSearchXhr.abort();
+                }
+
+                currentSearchXhr = $.ajax({
                     url: searchUrl,
                     method: 'GET',
                     success: function(response) {
+                        if (activeSearchRequest !== searchTerm) {
+                            return;
+                        }
+
                         // Hide shimmer
                         if (shimmerContainer) {
                             shimmerContainer.style.display = 'none';
@@ -351,9 +386,9 @@
 
                         if (response.status) {
                             // Persist search history when results load
-                            if (isLoggedIn && query && query.trim().length) {
-                                saveSearchHistory(query.trim());
-                                getSearchKey(query.trim());
+                            if (isLoggedIn && searchTerm.length) {
+                                saveSearchHistory(searchTerm);
+                                getSearchKey(searchTerm);
                             }
                             if (response.html === '') {
                                 $('#results').empty().append('');
@@ -385,10 +420,18 @@
                         }
                     },
                     error: function(xhr) {
+                        if (xhr.statusText === 'abort') {
+                            return;
+                        }
                         console.error(xhr);
                         // Hide shimmer on error
                         if (shimmerContainer) {
                             shimmerContainer.style.display = 'none';
+                        }
+                    },
+                    complete: function(xhr) {
+                        if (currentSearchXhr === xhr) {
+                            currentSearchXhr = null;
                         }
                     }
                 });
@@ -435,6 +478,7 @@
                         season: '{{ __('frontend.seasons') }}',
                         episode: '{{ __('frontend.episodes') }}',
                         livetv: '{{ __('frontend.live_tv') }}',
+                        ondemand: '{{ __('frontend.on_demand_channels') }}',
                         actor: '{{ __('frontend.actors') }}',
                         director: '{{ __('frontend.directors') }}'
                     };
@@ -480,12 +524,9 @@
                     }
                     applySelectedClasses();
                     renderActiveFilters();
-                    const q = searchInput.value || '';
+                    const q = getSearchTerm();
                     persistFilters();
-                    const params = new URLSearchParams();
-                    if (q) params.set('search', q);
-                    const newUrl = `${window.location.pathname}?${params.toString()}`;
-                    window.history.pushState({}, '', newUrl);
+                    syncSearchUrl(q);
                     search(q);
                 });
             }
@@ -504,12 +545,9 @@
                     }
                     applySelectedClasses();
                     renderActiveFilters();
-                    const q = searchInput.value || '';
+                    const q = getSearchTerm();
                     persistFilters();
-                    const params = new URLSearchParams();
-                    if (q) params.set('search', q);
-                    const newUrl = `${window.location.pathname}?${params.toString()}`;
-                    window.history.pushState({}, '', newUrl);
+                    syncSearchUrl(q);
                     if (typeof isLoggedIn !== 'undefined' && isLoggedIn) {
                         saveSearchHistory(String(gid), 'genre', gid);
                     }
@@ -532,12 +570,9 @@
                 }
                 applySelectedClasses();
                 renderActiveFilters();
-                const q = searchInput.value || '';
+                const q = getSearchTerm();
                 persistFilters();
-                const params = new URLSearchParams();
-                if (q) params.set('search', q);
-                const newUrl = `${window.location.pathname}?${params.toString()}`;
-                window.history.pushState({}, '', newUrl);
+                syncSearchUrl(q);
 
                 // Check if there are no active filters and no search query
                 const shimmerContainer = document.getElementById('search-shimmer');
@@ -559,12 +594,9 @@
                 selectedGenreIds = [];
                 applySelectedClasses();
                 renderActiveFilters();
-                const q = searchInput.value || '';
+                const q = getSearchTerm();
                 persistFilters();
-                const params = new URLSearchParams();
-                if (q) params.set('search', q);
-                const newUrl = `${window.location.pathname}?${params.toString()}`;
-                window.history.pushState({}, '', newUrl);
+                syncSearchUrl(q);
 
                 // Clear search results when no query and no filters
                 const shimmerContainer = document.getElementById('search-shimmer');
@@ -577,8 +609,7 @@
                         shimmerContainer.style.display = 'none';
                     }
                 } else {
-                    // Call performSearch function when there's a query
-                    performSearch(q);
+                    search(q);
                 }
             });
 
@@ -587,7 +618,7 @@
             applySelectedClasses();
             renderActiveFilters();
             (function initialTrigger() {
-                const q = searchInput.value || '';
+                const q = getSearchTerm();
                 const hasFilters = (selectedCategories && selectedCategories.length) || (selectedGenreIds &&
                     selectedGenreIds.length);
                 if (q.length || hasFilters) {

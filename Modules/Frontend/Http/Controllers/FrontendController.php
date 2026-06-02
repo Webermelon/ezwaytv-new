@@ -26,6 +26,7 @@ use Modules\Genres\Models\Genres;
 use Modules\Episode\Models\Episode;
 use Modules\Video\Models\Video;
 use Modules\LiveTV\Models\LiveTvChannel;
+use App\Models\AuthorChannel;
 use App\Models\UserMultiProfile;
 use Modules\User\Transformers\UserMultiProfileResource;
 use Modules\Banner\Transformers\Backend\SliderResourceV3;
@@ -639,7 +640,7 @@ class FrontendController extends Controller
 
 
         if ($types->isEmpty() && !empty($searchTerm)) {
-            $types = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'actor', 'director', 'livetv']);
+            $types = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'actor', 'director', 'livetv', 'ondemand']);
         }
 
         $movieData = collect([]);
@@ -844,6 +845,32 @@ class FrontendController extends Controller
             $liveTVData = LiveTvChannelResourceV3::collection($liveTVList);
         }
 
+        // On-demand channels (AuthorChannel) search
+        $ondemandData = collect([]);
+        if ($types->contains('ondemand') || $types->isEmpty()) {
+            $ondemandList = AuthorChannel::query()->where('is_active', 1);
+            if (!empty($searchTerm)) {
+                $normalizedTerm = str_replace(' ', '', $searchTerm);
+                $ondemandList->where(function ($query) use ($normalizedTerm) {
+                    $query->whereRaw("REPLACE(name, ' ', '') LIKE ?", ["%{$normalizedTerm}%"]) 
+                          ->orWhereRaw("REPLACE(username, ' ', '') LIKE ?", ["%{$normalizedTerm}%"]) 
+                          ->orWhereRaw("REPLACE(description, ' ', '') LIKE ?", ["%{$normalizedTerm}%"]);
+                });
+            }
+            $ondemandList = $ondemandList->orderBy('updated_at', 'desc')->get();
+
+            // Map to simple structure usable by the frontend
+            $ondemandData = $ondemandList->map(function ($ch) {
+                return [
+                    'id' => $ch->id,
+                    'name' => $ch->name,
+                    'username' => $ch->username,
+                    'avatar_url' => $ch->avatar ? setBaseUrlWithFileNameV2($ch->avatar) : null,
+                    'profile_url' => url('/on-demand/' . $ch->username),
+                ];
+            });
+        }
+
 
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
@@ -978,6 +1005,22 @@ class FrontendController extends Controller
                 $html .= '</div>';
             }
 
+            if ($ondemandData && $ondemandData->isNotEmpty()) {
+                $html.= ' <h4 class="mb-5 mt-5">'.__('frontend.on_demand_channels').'</h4>';
+                $html.= '<div class="row gy-4" id="ondemand-list">';
+                foreach ($ondemandData->toArray() as $value) {
+                    $html .= '<div class="col-12 col-md-4 col-lg-3">';
+                    $html .= '<a href="' . e($value['profile_url']) . '" class="card card-channel">';
+                    $html .= '<div class="card-body">';
+                    if (!empty($value['avatar_url'])) {
+                        $html .= '<img src="' . e($value['avatar_url']) . '" alt="' . e($value['name']) . '" class="img-fluid mb-2">';
+                    }
+                    $html .= '<h5>' . e($value['name']) . '</h5>';
+                    $html .= '</div></a></div>';
+                }
+                $html .= '</div>';
+            }
+
             if (empty($movieData) && empty($tvshowData) && empty($videoData) && empty($seasonData) && empty($episodeData) && empty($actorData) && empty($directorData) && empty($liveTVData)) {
                 $html .= '';
             }
@@ -987,7 +1030,7 @@ class FrontendController extends Controller
                 'status' => true,
                 'html' => $html,
                 'message' => __('movie.search_list'),
-
+                'ondemandList' => $ondemandData,
             ], 200);
         }
 
@@ -997,6 +1040,7 @@ class FrontendController extends Controller
             'tvshowList' => $tvshowData,
             'videoList' => $videoData,
             'seasonList' => $seasonData,
+            'ondemandList' => $ondemandData,
             'message' => __('movie.search_list'),
         ], 200);
     }

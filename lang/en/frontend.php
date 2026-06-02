@@ -502,6 +502,7 @@ return [
     'active_filters' => 'Active filters:',
     'clear_all' => 'Clear all',
     'categories' => 'Categories',
+    'on_demand_channels' => 'On Demand Channels',
     'popular_search' => 'Popular Search',
     'genre' => 'Genre',
     'all_content' => 'All Content',
