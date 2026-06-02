@@ -18,6 +18,7 @@ use Modules\LiveTV\Models\LiveTvCategory;
 use Modules\LiveTV\Transformers\LiveTvCategoryResource;
 use Modules\Video\Models\Video;
 use Modules\Video\Transformers\VideoResource;
+use App\Models\AuthorChannel;
 
 class MobileSettingResource extends JsonResource
 {
@@ -94,6 +95,25 @@ class MobileSettingResource extends JsonResource
                     break;
                 case 'rate-our-app':
                     $data = [];
+                    break;
+                default:
+                    if ($this->type === 'ondemand') {
+                        $channelIds = json_decode($this->value);
+                        $channels = AuthorChannel::whereIn('id', $channelIds)
+                            ->where('is_active', 1)
+                            ->get();
+                        $data = $channels->map(function ($channel) {
+                            return [
+                                'id' => $channel->id,
+                                'name' => $channel->name,
+                                'username' => $channel->username,
+                                'description' => $channel->description,
+                                'avatar_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
+                                'banner_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
+                                'profile_url' => url('/on-demand/' . $channel->username),
+                            ];
+                        });
+                    }
                     break;
             }
         }

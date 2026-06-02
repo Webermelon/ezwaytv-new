@@ -30,6 +30,7 @@
         'tvshow' => __('setting_mobile_page.tvshow'),
         'video' => __('setting_mobile_page.video'),
         'channel' => __('setting_mobile_page.channel'),
+        'ondemand' => __('frontend.on_demand_channels'),
         'banner' => __('setting_mobile_page.banner'),
         'continue-watching' => __('setting_mobile_page.continue_watching'),
         'advertisement' => __('setting_mobile_page.advertisement'),
@@ -270,6 +271,7 @@
                         'tvshow' => __('messages.tvshow'),
                         'video' => __('messages.video'),
                         'channel' => __('messages.channel'),
+                        'ondemand' => __('frontend.on_demand_channels'),
                         ])->class('form-control select2')->id('section_type') }}
                         @error('section_type')
                         <span class="text-danger">{{ $message }}</span>
@@ -1082,6 +1084,7 @@
             const tvshowList = @json($tvshowList);
             const videoList = @json($videoList);
             const channelList = @json($channelList);
+            const ondemandChannelList = @json($ondemandChannelList);
 
             // Initialize Select2 with placeholder for #optionvalueSection
 
@@ -1156,6 +1159,8 @@
                     populateOptions(videoList);
                 } else if (type === 'channel') {
                     populateOptions(channelList);
+                } else if (type === 'ondemand') {
+                    populateOptions(ondemandChannelList);
                 }
             });
 

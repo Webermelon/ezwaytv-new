@@ -207,6 +207,17 @@
                             @endif
                         </div>
 
+                    @elseif ($dynamic_data['type'] == 'ondemand')
+                        <div id="{{ $key }}-section" class="section-wraper scroll-section section-hidden">
+                            @if (isset($dynamic_data['data']) && count($dynamic_data['data']) > 0)
+                                @include('frontend::components.section.ondemand', [
+                                    'channels' => $dynamic_data['data'] ?? [],
+                                    'title' => $dynamic_data['name'] ?? __('frontend.on_demand_channels'),
+                                    'slug' => $key,
+                                ])
+                            @endif
+                        </div>
+
                          @elseif ($dynamic_data['type'] == 'video' && isenablemodule('video') == 1)
                         <div id="{{ $key }}-section" class="section-wraper scroll-section section-hidden">
                             @if (isset($dynamic_data['data']) && count($dynamic_data['data']) > 0)

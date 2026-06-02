@@ -499,6 +499,37 @@ class FrontendController extends Controller
                   ];
 
                 }
+
+                if($mobile_setting->type == 'ondemand'){
+                  $channel_ids = json_decode($mobile_setting->value);
+                  $channels = (!empty($channel_ids)) ? AuthorChannel::whereIn('id', $channel_ids)
+                    ->where('is_active', 1)
+                    ->get()
+                    ->sortBy(function ($channel) use ($channel_ids) {
+                        $index = array_search($channel->id, $channel_ids);
+                        return $index !== false ? $index : 999999;
+                    })
+                    ->values() : collect();
+
+                  $channeldata = $channels->map(function ($channel) {
+                    return [
+                        'id' => $channel->id,
+                        'name' => $channel->name,
+                        'username' => $channel->username,
+                        'description' => $channel->description,
+                        'avatar_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
+                        'banner_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
+                        'profile_url' => url('/on-demand/' . $channel->username),
+                    ];
+                  })->toArray();
+
+                  $responseData['dynamic_data'][$mobile_setting->slug]= [
+                    'name' => $this->translateTabName($mobile_setting->name),
+                    'data' => $channeldata,
+                    'type' => 'ondemand',
+                  ];
+
+                }
               }
             }
 
@@ -2081,5 +2112,4 @@ public function getPaymentDetails(Request $request)
     }
 
 }
-
 

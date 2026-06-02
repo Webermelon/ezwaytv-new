@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use Modules\Video\Models\Video;
 use Carbon\Carbon;
 use App\Models\UserWatchHistory;
+use App\Models\AuthorChannel;
 
 class MobileSettingController extends Controller
 {
@@ -99,7 +100,12 @@ class MobileSettingController extends Controller
             ->pluck('name', 'id')
             ->toArray();
 
-        return view('backend.mobile-setting.index', compact('module_action', 'data', 'typeValue', 'movieList', 'tvshowList', 'videoList','channelList'));
+        $ondemandChannelList = AuthorChannel::where('is_active', 1)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+
+        return view('backend.mobile-setting.index', compact('module_action', 'data', 'typeValue', 'movieList', 'tvshowList', 'videoList','channelList', 'ondemandChannelList'));
     }
 
     /**
@@ -423,6 +429,14 @@ class MobileSettingController extends Controller
                     if (!empty($selectedIds)) {
                         $selected_values = LiveTvChannel::whereIn('id', $selectedIds)->where('status',1)->get();
                     }
+                } elseif ($type == 'ondemand') {
+                    $value = AuthorChannel::where('is_active', 1)
+                        ->orderBy('name')
+                        ->get();
+
+                    if (!empty($selectedIds)) {
+                        $selected_values = AuthorChannel::whereIn('id', $selectedIds)->where('is_active', 1)->get();
+                    }
                 } else {
                     return response()->json(['message' => 'Unsupported type'], 422);
                 }
@@ -579,6 +593,10 @@ class MobileSettingController extends Controller
                 } elseif ($type === 'channel') {
                     $value = LiveTvChannel::where('status', 1)
                         ->get();
+                } elseif ($type === 'ondemand') {
+                    $value = AuthorChannel::where('is_active', 1)
+                        ->orderBy('name')
+                        ->get();
                 }
                 break;
         }
@@ -590,6 +608,7 @@ class MobileSettingController extends Controller
 
          // Mobile settings affect dashboard and content caches
         clearRelatedCache(['setting', 'genres', 'home_banners'], null);
+        clearDashboardCache();
 
         if ($request->has('type') && $request->type != null) {
 
@@ -626,7 +645,8 @@ class MobileSettingController extends Controller
     {
 
         // Mobile settings affect dashboard and content caches
-        clearRelatedCache(['genres', 'home_banners'], null);
+        clearRelatedCache(['setting', 'genres', 'home_banners'], null);
+        clearDashboardCache();
         if ($request->has('section_type') && $request->section_type != null) {
 
             if ($request->has('optionvalue') && !empty($request->optionvalue)) {
