@@ -63,6 +63,10 @@ class VideoResourceV3 extends JsonResource
             'trailer_url_type' => $this->trailer_url_type,
             'short_desc'=>$this->short_desc,
             'trailer_url' => $this->trailer_url_type=='Local' ? setBaseUrlWithFileName($this->trailer_url,'video','video') : $this->trailer_url,
+            'video_upload_type' => $this->video_upload_type,
+            'video_url_input' => $this->video_upload_type == 'Local'
+                ? setBaseUrlWithFileName($this->video_url_input, 'video', 'video')
+                : $this->video_url_input,
             'access' => $this->access,
             'plan_id' => $this->plan_id,
             'description' => $this->description,

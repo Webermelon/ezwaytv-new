@@ -77,6 +77,7 @@ class VideosController extends Controller
 
         $videoList = Video::select([
             'id', 'name', 'slug', 'description', 'type', 'trailer_url_type', 'trailer_url',
+            'video_upload_type', 'video_url_input',
             'access', 'IMDb_rating', 'plan_id', 'duration', 'release_date', 'poster_url',
             'poster_tv_url', 'short_desc', 'is_restricted'
         ])

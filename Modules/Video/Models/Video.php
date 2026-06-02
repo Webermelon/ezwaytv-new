@@ -229,7 +229,8 @@ class Video extends BaseModel
             $query = Video::select([
                 'id', 'name', 'slug', 'poster_url', 'plan_id', 'status', 'thumbnail_url',
                 'is_restricted', 'duration', 'release_date', 'description',
-                'trailer_url', 'video_url_input', 'access', 'price', 'poster_tv_url'
+                'trailer_url_type', 'trailer_url', 'video_upload_type', 'video_url_input',
+                'access', 'price', 'poster_tv_url'
             ])
             ->with(['plan:id,level'])
             ->whereIn('id', $videoIdsArray)
@@ -256,7 +257,8 @@ class Video extends BaseModel
         $query = Video::select([
             'id', 'name', 'slug', 'poster_url', 'plan_id', 'status', 'thumbnail_url',
             'is_restricted', 'duration', 'release_date', 'description',
-            'trailer_url', 'video_url_input', 'access', 'price'
+            'trailer_url_type', 'trailer_url', 'video_upload_type', 'video_url_input',
+            'access', 'price'
         ])
         ->with(['plan:id,level'])
         ->where('access', 'pay-per-view')
