@@ -981,6 +981,15 @@ class EntertainmentsController extends Controller
                     ])->render();
                 }
             }
+            if ($ondemandData && $ondemandData->isNotEmpty()) {
+                foreach ($ondemandData->toArray($request) as $index => $value) {
+                    $html .= view('frontend::components.card.card_ondemand', [
+                        'value' => $value,
+                        'index' => $index,
+                        'is_search'=>1,
+                    ])->render();
+                }
+            }
             if ($seasonData && $seasonData->isNotEmpty()) {
 
                 foreach ($seasonData->toArray($request) as $index => $value) {
@@ -1405,6 +1414,7 @@ class EntertainmentsController extends Controller
     }
 
         $channelData = [];
+        $ondemandData = [];
         if (isenablemodule('livetv') == 1 && $shouldIncludeType('livetv', ['channel'], true)) {
             $channelList = LiveTvChannel::query()->where('status', 1)->whereNull('deleted_at');
 
@@ -1449,6 +1459,51 @@ class EntertainmentsController extends Controller
                 $channelList = [];
             }
             $channelData = LiveTvChannelResourceV3::collection($channelList);
+        }
+
+        // Include ondemand (author channels) in search results
+        if ($shouldIncludeType('ondemand', ['ondemand'], true)) {
+            $ondemandList = \App\Models\AuthorChannel::query()->where('is_active', 1)->whereNull('deleted_at');
+
+            if ($request->has('search') && $request->search != '') {
+                $searchTerm = $request->search;
+                $ondemandList->where('name', 'like', "%{$searchTerm}%");
+            }
+
+            $ondemandList = $ondemandList->orderBy('updated_at', 'desc')->get();
+
+            if ($user_id) {
+                $ondemandList = $ondemandList->map(function ($item) use ($request, $deviceTypeResponse, $user_id, $userPlanId, $purchasedIds) {
+                    $item->poster_image = $request->device_type == 'tv' ? setBaseUrlWithFileName($item->poster_tv_url, 'image', 'ondemand') : setBaseUrlWithFileName($item->poster_url, 'image', 'ondemand');
+                    $item = setContentAccess($item, $user_id, $userPlanId, $purchasedIds ?? []);
+                    $item->isDeviceSupported = ($deviceTypeResponse['isDeviceSupported'] ?? false) ? 1 : 0;
+                    return $item;
+                });
+            } else {
+                $ondemandList = $ondemandList->map(function ($item) use ($device_type) {
+                    $item->poster_image = $device_type == 'tv' ? setBaseUrlWithFileName($item->poster_tv_url, 'image', 'ondemand') : setBaseUrlWithFileName($item->poster_url, 'image', 'ondemand');
+                    $item = setContentAccess($item, null, null);
+                    $item->isDeviceSupported = 0;
+                    return $item;
+                });
+            }
+
+            if (class_exists('\\Modules\\AuthorChannel\\Http\\Resources\\AuthorChannelResourceV3')) {
+                $ondemandData = \Modules\AuthorChannel\Http\Resources\AuthorChannelResourceV3::collection($ondemandList);
+            } else {
+                $ondemandData = $ondemandList->map(function($ch) {
+                    $poster = $ch->avatar ?? $ch->banner ?? null;
+                    return [
+                        'id' => $ch->id,
+                        'name' => $ch->name,
+                        'username' => $ch->username ?? null,
+                        'description' => $ch->description ?? null,
+                        'poster_url' => $poster ? setBaseUrlWithFileName($poster, 'image', 'ondemand') : null,
+                        'poster_tv_url' => $poster ? setBaseUrlWithFileName($poster, 'image', 'ondemand') : null,
+                        'is_active' => $ch->is_active ?? 0,
+                    ];
+                })->values();
+            }
         }
 
         if ($shouldIncludeType('season', [], true)) {
@@ -1834,7 +1889,7 @@ class EntertainmentsController extends Controller
                 }
             }
 
-            if (empty($movieData) && empty($tvshowData) && empty($videoData) && empty($channelData) && empty($seasonData) && empty($episodeData) && empty($actorData) && empty($directorData)) {
+            if (empty($movieData) && empty($tvshowData) && empty($videoData) && empty($channelData) && empty($ondemandData) && empty($seasonData) && empty($episodeData) && empty($actorData) && empty($directorData)) {
                 $html .= '';
             }
 
@@ -1851,6 +1906,7 @@ class EntertainmentsController extends Controller
             'tvshowList' => $tvshowData,
             'videoList' => $videoData,
             'channelList' => $channelData,
+            'ondemandList' => $ondemandData,
             'seasonList' => $seasonData,
             'episodeList' => $episodeData,
             'actors_list' => $actorsList,
