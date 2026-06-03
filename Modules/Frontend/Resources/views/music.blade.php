@@ -20,7 +20,7 @@
         }
 
         .music-landing .ez-hero {
-            padding-top: 130px;
+            padding-top: 10px;
         }
     </style>
 @endpush
