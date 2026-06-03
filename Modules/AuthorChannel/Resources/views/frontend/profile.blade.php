@@ -8,6 +8,7 @@
 @php
     $bannerUrl = $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null;
     $avatarUrl = $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null;
+    $channelPosterUrl = $bannerUrl ?: ($avatarUrl ?: asset('default-image/Default-Image.jpg'));
     $videoCount = $channel->videos->count();
 @endphp
 
@@ -89,7 +90,7 @@
             @foreach($channel->videos as $video)
             @php
                 $thumb = $video->thumbnail_url ?: $video->poster_url;
-                $thumbUrl = $thumb ? setBaseUrlWithFileNameV2($thumb) : asset('img/no-image.jpg');
+                $thumbUrl = $thumb ? setBaseUrlWithFileNameV2($thumb) : $channelPosterUrl;
                 $previewUrl = null;
                 if (!empty($video->trailer_url) && $video->trailer_url_type === 'Local') {
                     $previewUrl = setBaseUrlWithFileName($video->trailer_url, 'video', 'video');
@@ -105,7 +106,7 @@
 
                         <div class="ac-video-thumb">
                             <div class="ac-thumb-inner">
-                                <img src="{{ $thumbUrl }}" alt="{{ $video->name }}" class="ac-thumb-img" loading="lazy">
+                                <img src="{{ $thumbUrl }}" alt="{{ $video->name }}" class="ac-thumb-img" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('default-image/Default-Image.jpg') }}';">
                                 <video class="ac-preview-video" muted playsinline preload="none"></video>
                                 <div class="ac-video-overlay"></div>
                                 <div class="ac-play-button">

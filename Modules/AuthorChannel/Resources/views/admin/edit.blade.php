@@ -180,12 +180,16 @@
         </div>
 
         {{-- Assigned video grid --}}
+        @php
+            $channelPoster = $channel->banner ?: $channel->avatar;
+        @endphp
         <div class="row gy-3">
             @forelse($channel->videos as $v)
             <div class="col-md-3">
                 <div class="card h-100 border">
-                    <img src="{{ ($v->thumbnail_url ?: $v->poster_url) ? setBaseUrlWithFileNameV2($v->thumbnail_url ?: $v->poster_url) : asset('images/default-thumb.jpg') }}"
-                         class="card-img-top" style="height:120px;object-fit:cover;">
+                    <img src="{{ ($v->thumbnail_url ?: $v->poster_url) ? setBaseUrlWithFileNameV2($v->thumbnail_url ?: $v->poster_url) : ($channelPoster ? setBaseUrlWithFileNameV2($channelPoster) : asset('default-image/Default-Image.jpg')) }}"
+                        class="card-img-top" style="height:120px;object-fit:cover;"
+                        onerror="this.onerror=null;this.src='{{ asset('default-image/Default-Image.jpg') }}';">
                     <div class="card-body p-2">
                         <p class="mb-2 small fw-semibold">{{ Str::limit($v->name, 45) }}</p>
                         <div class="d-flex gap-1 flex-wrap">
