@@ -236,10 +236,10 @@ class AuthorChannelAPIController extends Controller
             'thumbnail_url' => $thumb ? setBaseUrlWithFileNameV2($thumb) : null,
             'poster_url'    => $video->poster_url ? setBaseUrlWithFileNameV2($video->poster_url) : null,
             'trailer_url'   => ($video->trailer_url && $video->trailer_url_type === 'Local')
-                                ? setBaseUrlWithFileNameV2($video->trailer_url)
+                                ? setBaseUrlWithFileName($video->trailer_url, 'video', 'video')
                                 : $video->trailer_url,
             'video_url'     => ($video->video_upload_type === 'Local')
-                                ? setBaseUrlWithFileNameV2($video->video_url_input)
+                                ? setBaseUrlWithFileName($video->video_url_input, 'video', 'video')
                                 : $video->video_url_input,
             'video_type'    => $video->video_upload_type,
             'access'        => $video->access,
