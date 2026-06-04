@@ -1,7 +1,13 @@
 .channel-card {
+    border: 1px solid rgba(230, 193, 83, .38);
+    box-shadow: 0 0 0 1px rgba(230, 193, 83, .08);
     transition: all .3s ease 0s;
     &:hover {
         transform: scale(1.03);
+        border-color: rgba(245, 216, 112, .72);
+        box-shadow:
+            0 0 0 1px rgba(245, 216, 112, .18),
+            0 10px 24px rgba(230, 193, 83, .12);
     }
     .channel-img {
         min-width: 100%;

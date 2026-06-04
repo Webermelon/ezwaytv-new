@@ -16838,10 +16838,14 @@ img {
   }
 }
 .channel-card {
+  border: 1px solid rgba(230, 193, 83, 0.38);
+  box-shadow: 0 0 0 1px rgba(230, 193, 83, 0.08);
   transition: all 0.3s ease 0s;
 }
 .channel-card:hover {
   transform: scale(1.03);
+  border-color: rgba(245, 216, 112, 0.72);
+  box-shadow: 0 0 0 1px rgba(245, 216, 112, 0.18), 0 10px 24px rgba(230, 193, 83, 0.12);
 }
 .channel-card .channel-img {
   min-width: 100%;

@@ -15600,7 +15600,7 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
 }
 
 [data-bs-theme=dark] .sidebar .logo-main .logo-normal.dark-normal {
-  min-height: 45px;
+  min-height: 35px;
   height: 35px;
   opacity: 1;
   display: block;
