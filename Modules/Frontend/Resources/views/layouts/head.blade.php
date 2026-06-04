@@ -18,7 +18,7 @@
     <meta name="title" id="dynamicMetaTitle" content="{{ $ogTitle }}">
     <meta name="description" id="dynamicMetaDescription" content="{{ $ogDescription }}">
     <title id="pageTitle">{{ $ogTitle }}</title>
-    <meta name="google-site-verification" id="dynamicGoogleVerification" content="{{ $entertainment->google_site_verification ?? $seo->google_site_verification ?? '' }}">
+    <meta name="google-site-verification" id="dynamicGoogleVerification" content="{{ $entertainment->google_site_verification ?? $seo->google_site_verification ?? 'fKAs1MD3Q8uM4dMJBlWoIvevhysIO9B4vtJaAkxKYMA' }}">
     <meta name="keywords" id="dynamicMetaKeywords" content="{{ isset($entertainment->meta_keywords) ? (is_array($meta_keywords = json_decode($entertainment->meta_keywords)) ? implode(',', $meta_keywords) : $entertainment->meta_keywords) : (isset($seo->meta_keywords) ? (is_array($meta_keywords = json_decode($seo->meta_keywords)) ? implode(',', $meta_keywords) : $seo->meta_keywords) : '') }}">
     <link rel="canonical" id="dynamicCanonicalUrl" href="{{ $ogUrl }}">
 
