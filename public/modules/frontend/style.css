@@ -14102,8 +14102,8 @@ header .navbar-brand {
   display: inline-block;
 }
 header .navbar-brand img.logo {
-  height: 3.0625rem;
-  max-height: 5.0625rem;
+  height: 4.0625rem;
+  max-height: 6.0625rem;
 }
 header .navbar-brand svg {
   width: 10rem;
