@@ -4,6 +4,34 @@
             width: 10rem;
             height: 10rem;
         }
+
+        .ez-media-info {
+            display: grid;
+            gap: .2rem;
+            margin-top: .5rem;
+            font-size: .72rem;
+            line-height: 1.25;
+        }
+
+        .ez-media-info span,
+        .ez-media-url {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ez-media-actions {
+            display: flex;
+            gap: .35rem;
+            margin-top: .5rem;
+        }
+
+        .ez-media-actions .btn {
+            flex: 1 1 auto;
+            min-height: 1.875rem;
+            padding-inline: .5rem;
+        }
     </style>
 @endonce
 
@@ -362,16 +390,17 @@
                     const displayName = (window.localMessagesUpdate?.messages?.[transKey] && window.localMessagesUpdate.messages[transKey] !== 'messages.' + transKey) 
                         ? window.localMessagesUpdate.messages[transKey] 
                         : (folderName.charAt(0).toUpperCase() + folderName.slice(1));
+                    const safeDisplayName = escapeHtml(displayName);
+                    const safePath = escapeJsString(item.path);
+                    const folderDate = buildDateLine(item.modified);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="card h-100 text-center bg-body rounded" onclick="openSubFolder('${item.path}')" style="cursor: pointer;">
+                            <div class="card h-100 text-center bg-body rounded" onclick="openSubFolder('${safePath}')" style="cursor: pointer;">
                                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
                                     <i class="ph ph-folder text-warning" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-1 text-truncate" title="${displayName}">${displayName}</h6>
+                                    <h6 class="mt-2 mb-1 text-truncate" title="${safeDisplayName}">${safeDisplayName}</h6>
 
-                                    <div class="mt-2">
-                                        <small class="text-muted">${new Date(item.modified * 1000).toLocaleDateString()}</small>
-                                    </div>
+                                    ${folderDate}
                                 </div>
                             </div>
                         </div>
@@ -380,16 +409,19 @@
                     hasSelectable = true;
                     hasMediaFiles = true; // Mark that folder has media files
                     const videoUrl = item.media_url;
+                    const safeName = escapeHtml(item.name);
+                    const safeVideoUrl = escapeHtml(videoUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
-                                <video class="img-fluid object-fit-cover media-thumb-10" preload="metadata" controlsList="nodownload" controls>
-                                    <source src="${videoUrl}" type="video/mp4">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <video class="img-fluid object-fit-cover media-thumb-10" preload="none" controlsList="nodownload" controls>
+                                    <source src="${safeVideoUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${videoUrl}', 'video', '${item.name}', getFolderFromUrl('${videoUrl}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'))">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${item.name}">${item.name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${buildMediaInfo(item, videoUrl, 'video')}
                             </div>
                         </div>
                     `;
@@ -397,14 +429,17 @@
                     hasSelectable = true;
                     hasMediaFiles = true; // Mark that folder has media files
                     const imageUrl = item.media_url;
+                    const safeName = escapeHtml(item.name);
+                    const safeImageUrl = escapeHtml(imageUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
-                                <img class="img-fluid object-fit-cover media-thumb-10" src="${imageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${imageUrl}', 'image', '${item.name}', getFolderFromUrl('${imageUrl}'))">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'))">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${item.name}">${item.name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${buildMediaInfo(item, imageUrl, 'image')}
                             </div>
                         </div>
                     `;
@@ -413,19 +448,23 @@
                     const iconColor = getFileColor(item.name);
                     const size = formatFileSize(item.size);
                     const fileUrl = `${baseUrl}/storage/app/public/${item.path}`;
+                    const displayName = item.name ? (item.name.charAt(0).toUpperCase() + item.name.slice(1)) : item.name;
+                    const safeDisplayName = escapeHtml(displayName);
 
                     html += `
                         <div class="col-md-2 col-sm-1">
                             <div class="card h-100 position-relative">
                                 <div class="card-body text-center bg-body">
                                     <i class="ph ${iconClass} ${iconColor}" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-1 text-truncate" title="${item.name ? (item.name.charAt(0).toUpperCase() + item.name.slice(1)) : item.name}">${item.name ? (item.name.charAt(0).toUpperCase() + item.name.slice(1)) : item.name}</h6>
+                                    <h6 class="mt-2 mb-1 text-truncate" title="${safeDisplayName}">${safeDisplayName}</h6>
+                                    <small class="text-muted">${size}</small>
 
                                     <div class="mt-2">
-                                        <small class="text-muted">${new Date(item.modified * 1000).toLocaleDateString()}</small>
+                                        <small class="text-muted">${formatUploadDate(item.modified)}</small>
                                     </div>
+                                    ${buildMediaActions(fileUrl)}
                                 </div>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${fileUrl}', 'file', '${item.name}', getFolderFromUrl('${fileUrl}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(fileUrl)}', 'file', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(fileUrl)}'))">
                                     <i class="ph ph-trash"></i>
                                 </button>
                             </div>
@@ -578,6 +617,100 @@
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, function(match) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[match];
+        });
+    }
+
+    function escapeJsString(value) {
+        return String(value ?? '')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\r/g, '')
+            .replace(/\n/g, '\\n');
+    }
+
+    function formatUploadDate(timestamp) {
+        if (!timestamp) return '';
+        return new Date(timestamp * 1000).toLocaleString();
+    }
+
+    function buildDateLine(timestamp) {
+        const date = formatUploadDate(timestamp);
+        return date ? `<div class="mt-2"><small class="text-muted">${escapeHtml(date)}</small></div>` : '';
+    }
+
+    function getFileExtension(filename) {
+        const parts = String(filename || '').split('.');
+        return parts.length > 1 ? parts.pop().toUpperCase() : 'FILE';
+    }
+
+    function buildMediaInfo(item, url, type) {
+        const size = formatFileSize(Number(item.size || 0));
+        const date = formatUploadDate(item.uploaded_at || item.modified);
+        const ext = getFileExtension(item.name);
+        return `
+            <div class="ez-media-info text-muted">
+                <span title="${escapeHtml(size)}"><i class="ph ph-hard-drives me-1"></i>${escapeHtml(size)}</span>
+                <span title="${escapeHtml(date)}"><i class="ph ph-calendar me-1"></i>${escapeHtml(date)}</span>
+                <span title="${escapeHtml(type)} / ${escapeHtml(ext)}"><i class="ph ph-info me-1"></i>${escapeHtml(type)} / ${escapeHtml(ext)}</span>
+                <span class="ez-media-url" title="${escapeHtml(url)}"><i class="ph ph-link me-1"></i>${escapeHtml(url)}</span>
+            </div>
+            ${buildMediaActions(url)}
+        `;
+    }
+
+    function buildMediaActions(url) {
+        return `
+            <div class="ez-media-actions">
+                <button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); copyMediaUrl('${escapeJsString(url)}', this)">
+                    <i class="ph ph-copy"></i> URL
+                </button>
+            </div>
+        `;
+    }
+
+    function copyMediaUrl(url, button) {
+        const done = () => {
+            if (!button) return;
+            const original = button.innerHTML;
+            button.innerHTML = '<i class="ph ph-check"></i> Copied';
+            setTimeout(() => {
+                button.innerHTML = original;
+            }, 1400);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(done).catch(function() {
+                fallbackCopyMediaUrl(url);
+                done();
+            });
+            return;
+        }
+
+        fallbackCopyMediaUrl(url);
+        done();
+    }
+
+    function fallbackCopyMediaUrl(url) {
+        const input = document.createElement('textarea');
+        input.value = url;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
     }
 
     function openSubFolder(folderPath) {
@@ -740,30 +873,36 @@
                 if (isVideo) {
                     hasSelectable = true;
                     const videoUrl = item.media_url;
+                    const safeName = escapeHtml(item.name);
+                    const safeVideoUrl = escapeHtml(videoUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
-                                <video class="img-fluid object-fit-cover media-thumb-10" preload="metadata" controlsList="nodownload" controls>
-                                    <source src="${videoUrl}" type="video/mp4">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <video class="img-fluid object-fit-cover media-thumb-10" preload="none" controlsList="nodownload" controls>
+                                    <source src="${safeVideoUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${videoUrl}', 'video', '${item.name}', getFolderFromUrl('${videoUrl}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'))">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${item.name}">${item.name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${buildMediaInfo(item, videoUrl, 'video')}
                             </div>
                         </div>
                     `;
                 } else if (isImage) {
                     hasSelectable = true;
                     const imageUrl = item.media_url;
+                    const safeName = escapeHtml(item.name);
+                    const safeImageUrl = escapeHtml(imageUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${item.name}">
-                                <img class="img-fluid object-fit-cover media-thumb-10" src="${imageUrl}" loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${imageUrl}', 'image', '${item.name}', getFolderFromUrl('${imageUrl}'))">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}" loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'))">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${item.name}">${item.name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${buildMediaInfo(item, imageUrl, 'image')}
                             </div>
                         </div>
                     `;

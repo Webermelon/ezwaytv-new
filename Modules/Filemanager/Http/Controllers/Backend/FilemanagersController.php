@@ -532,6 +532,7 @@ private function getFileType($extension)
                                 'is_dir' => false,
                                 'size' => $size,
                                 'modified' => $modified,
+                                'uploaded_at' => null,
                                 'media_url' => $mediaUrl,
                                 'is_video' => $isVideo,
                                 'is_image' => $isImage,
@@ -611,6 +612,8 @@ private function getFileType($extension)
                 return ($item['is_video'] ?? false) || ($item['is_image'] ?? false);
             }));
 
+            $allItems = $this->attachUploadTimestamps($allItems);
+
             // Apply pagination
             $totalItems = count($allItems);
             $contents = array_slice($allItems, $offset, $limit);
@@ -667,11 +670,11 @@ private function getFileType($extension)
         // When local, compute size/mtime using absolute path; expose relative path to the client
         $size = $disk === 'local' && !$isDir && is_file($absolutePath) ? filesize($absolutePath) : 0;
         if ($disk === 'local') {
-            $modified = (!$isDir && file_exists($absolutePath)) ? filemtime($absolutePath) : 0;
+            $modified = file_exists($absolutePath) ? filemtime($absolutePath) : 0;
         } else {
             // Remote disk: use Storage::disk()->lastModified() so files sort by real mtime
             try {
-                $modified = !$isDir ? \Illuminate\Support\Facades\Storage::disk($disk)->lastModified($absolutePath) : 0;
+                $modified = \Illuminate\Support\Facades\Storage::disk($disk)->lastModified($absolutePath);
             } catch (\Exception $e) {
                 $modified = 0;
             }
@@ -682,10 +685,45 @@ private function getFileType($extension)
             'is_dir' => $isDir,
             'size' => $size,
             'modified' => $modified,
+            'uploaded_at' => null,
             'media_url' => $mediaUrl,
             'is_video' => $isVideo,
             'is_image' => $isImage,
         ];
+    }
+
+    private function attachUploadTimestamps(array $items): array
+    {
+        $fileNames = collect($items)
+            ->filter(fn ($item) => !($item['is_dir'] ?? false) && !empty($item['name']))
+            ->pluck('name')
+            ->unique()
+            ->values();
+
+        if ($fileNames->isEmpty()) {
+            return $items;
+        }
+
+        $uploadedAtByName = Filemanager::query()
+            ->whereIn('file_name', $fileNames)
+            ->latest('created_at')
+            ->get(['file_name', 'created_at'])
+            ->unique('file_name')
+            ->mapWithKeys(function ($filemanager) {
+                return [$filemanager->file_name => optional($filemanager->created_at)->timestamp];
+            });
+
+        foreach ($items as &$item) {
+            if ($item['is_dir'] ?? false) {
+                continue;
+            }
+
+            $item['uploaded_at'] = $uploadedAtByName[$item['name']] ?? ($item['modified'] ?? null);
+        }
+
+        unset($item);
+
+        return $items;
     }
 
     /**
@@ -732,4 +770,3 @@ private function getFileType($extension)
     }
 
 }
-

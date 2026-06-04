@@ -1,3 +1,35 @@
+@once
+    <style>
+        .ez-media-info {
+            display: grid;
+            gap: .2rem;
+            margin-top: .5rem;
+            font-size: .72rem;
+            line-height: 1.25;
+        }
+
+        .ez-media-info span,
+        .ez-media-url {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ez-media-actions {
+            display: flex;
+            gap: .35rem;
+            margin-top: .5rem;
+        }
+
+        .ez-media-actions .btn {
+            flex: 1 1 auto;
+            min-height: 1.875rem;
+            padding-inline: .5rem;
+        }
+    </style>
+@endonce
+
 <div class="bd-example">
     <nav>
         <div class="mb-3 nav nav-underline nav-tabs justify-content-between p-0 border-bottom rounded-0 bg-transparent"
@@ -303,6 +335,41 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             },
 
+            escapeHtml: (value) => {
+                return String(value ?? '').replace(/[&<>"']/g, function(match) {
+                    return {
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        '"': '&quot;',
+                        "'": '&#039;'
+                    }[match];
+                });
+            },
+
+            escapeJsString: (value) => {
+                return String(value ?? '')
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "\\'")
+                    .replace(/\r/g, '')
+                    .replace(/\n/g, '\\n');
+            },
+
+            formatUploadDate: (timestamp) => {
+                if (!timestamp) return '';
+                return new Date(timestamp * 1000).toLocaleString();
+            },
+
+            buildDateLine: (timestamp) => {
+                const date = FileManager.utils.formatUploadDate(timestamp);
+                return date ? `<div class="mt-2"><small class="text-muted">${FileManager.utils.escapeHtml(date)}</small></div>` : '';
+            },
+
+            getFileExtension: (filename) => {
+                const parts = String(filename || '').split('.');
+                return parts.length > 1 ? parts.pop().toUpperCase() : 'FILE';
+            },
+
             getFolderFromUrl: (url) => {
                 try {
                     const urlParts = url.split('/storage/');
@@ -521,8 +588,68 @@
             },
         },
 
+        copyUrl: (url, button) => {
+            const done = () => {
+                if (!button) return;
+                const original = button.innerHTML;
+                button.innerHTML = '<i class="ph ph-check"></i> Copied';
+                setTimeout(() => {
+                    button.innerHTML = original;
+                }, 1400);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(done).catch(() => {
+                    FileManager.fallbackCopyUrl(url);
+                    done();
+                });
+                return;
+            }
+
+            FileManager.fallbackCopyUrl(url);
+            done();
+        },
+
+        fallbackCopyUrl: (url) => {
+            const input = document.createElement('textarea');
+            input.value = url;
+            input.setAttribute('readonly', 'readonly');
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            input.remove();
+        },
+
         // Content rendering
         render: {
+            mediaInfoHTML: (item, url, type) => {
+                const size = FileManager.utils.formatFileSize(Number(item.size || 0));
+                const date = FileManager.utils.formatUploadDate(item.uploaded_at || item.modified);
+                const ext = FileManager.utils.getFileExtension(item.name);
+                const safeSize = FileManager.utils.escapeHtml(size);
+                const safeDate = FileManager.utils.escapeHtml(date);
+                const safeType = FileManager.utils.escapeHtml(type);
+                const safeExt = FileManager.utils.escapeHtml(ext);
+                const safeUrl = FileManager.utils.escapeHtml(url);
+                const jsUrl = FileManager.utils.escapeJsString(url);
+
+                return `
+                    <div class="ez-media-info text-muted">
+                        <span title="${safeSize}"><i class="ph ph-hard-drives me-1"></i>${safeSize}</span>
+                        <span title="${safeDate}"><i class="ph ph-calendar me-1"></i>${safeDate}</span>
+                        <span title="${safeType} / ${safeExt}"><i class="ph ph-info me-1"></i>${safeType} / ${safeExt}</span>
+                        <span class="ez-media-url" title="${safeUrl}"><i class="ph ph-link me-1"></i>${safeUrl}</span>
+                    </div>
+                    <div class="ez-media-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); FileManager.copyUrl('${jsUrl}', this)">
+                            <i class="ph ph-copy"></i> URL
+                        </button>
+                    </div>
+                `;
+            },
+
             generateItemHTML: (item) => {
                 const {
                     is_dir,
@@ -537,6 +664,12 @@
                 let displayName = (typeof name === 'string' && name.length > 0) ?
                     (name.charAt(0).toUpperCase() + name.slice(1)) :
                     name;
+                const safeDisplayName = FileManager.utils.escapeHtml(displayName);
+                const safeName = FileManager.utils.escapeHtml(name);
+                const jsName = FileManager.utils.escapeJsString(name);
+                const jsMediaUrl = FileManager.utils.escapeJsString(media_url);
+                const safeMediaUrl = FileManager.utils.escapeHtml(media_url);
+                const jsFolder = FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(media_url || ''));
 
                 if (is_dir) {
                     const transKey = 'folder_' + name.toLowerCase();
@@ -546,16 +679,17 @@
                 }
 
                 if (is_dir) {
+                    const safeFolderName = FileManager.utils.escapeHtml(displayName);
+                    const jsPath = FileManager.utils.escapeJsString(path);
+                    const folderDate = FileManager.utils.buildDateLine(modified);
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="card h-100" onclick="FileManager.navigation.openSubFolder('${path}')" style="cursor: pointer;">
+                            <div class="card h-100" onclick="FileManager.navigation.openSubFolder('${jsPath}')" style="cursor: pointer;">
                                 <div class="card-body text-center d-flex flex-column align-items-center justify-content-center">
                                     <i class="ph ph-folder text-warning" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-1 text-truncate" title="${displayName}">${displayName}</h6>
+                                    <h6 class="mt-2 mb-1 text-truncate" title="${safeFolderName}">${safeFolderName}</h6>
 
-                                    <div class="mt-2">
-                                        <small class="text-muted">${new Date(modified * 1000).toLocaleDateString()}</small>
-                                    </div>
+                                    ${folderDate}
                                 </div>
                             </div>
                         </div>
@@ -563,26 +697,28 @@
                 } else if (is_video) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${name}">
-                                <video class="img-fluid object-fit-cover" preload="metadata" controlsList="nodownload" controls>
-                                    <source src="${media_url}" type="video/mp4">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <video class="img-fluid object-fit-cover" preload="none" controlsList="nodownload" controls>
+                                    <source src="${safeMediaUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${name}', '${media_url}', 'video', '${FileManager.utils.getFolderFromUrl(media_url)}')">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', 'video', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${name}">${name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${FileManager.render.mediaInfoHTML(item, media_url, 'video')}
                             </div>
                         </div>
                     `;
                 } else if (is_image) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${name}">
-                                <img class="img-fluid object-fit-cover" src="${media_url}" loading="lazy" decoding="async" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${name}', '${media_url}', 'image', '${FileManager.utils.getFolderFromUrl(media_url)}')">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                                <img class="img-fluid object-fit-cover" src="${safeMediaUrl}" loading="lazy" decoding="async" onload="this.style.opacity=1">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', 'image', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
-                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${name}">${name}</p>
+                                <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
+                                ${FileManager.render.mediaInfoHTML(item, media_url, 'image')}
                             </div>
                         </div>
                     `;
@@ -591,19 +727,26 @@
                     const iconColor = FileManager.utils.getFileColor(name);
                     const fileSize = FileManager.utils.formatFileSize(size);
                     const fileUrl = `${FileManager.config.baseUrl}/storage/app/public/${path}`;
+                    const safeFileUrl = FileManager.utils.escapeHtml(fileUrl);
+                    const jsFileUrl = FileManager.utils.escapeJsString(fileUrl);
 
                     return `
                         <div class="col-md-2 col-sm-1">
                             <div class="card h-100 position-relative">
                                 <div class="card-body text-center">
                                     <i class="ph ${iconClass} ${iconColor}" style="font-size: 2rem;"></i>
-                                    <h6 class="mt-2 mb-1 text-truncate" title="${displayName}">${displayName}</h6>
-                                    <small class="text-muted">${fileSize}</small>
+                                    <h6 class="mt-2 mb-1 text-truncate" title="${safeDisplayName}">${safeDisplayName}</h6>
+                                    <small class="text-muted">${FileManager.utils.escapeHtml(fileSize)}</small>
                                     <div class="mt-2">
-                                        <small class="text-muted">${new Date(modified * 1000).toLocaleDateString()}</small>
+                                        <small class="text-muted">${FileManager.utils.formatUploadDate(modified)}</small>
+                                    </div>
+                                    <div class="ez-media-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); FileManager.copyUrl('${jsFileUrl}', this)" title="${safeFileUrl}">
+                                            <i class="ph ph-copy"></i> URL
+                                        </button>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${name}', '${FileManager.utils.getFolderFromUrl(fileUrl)}', 'file', '${FileManager.utils.getFolderFromUrl(fileUrl)}')">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsFileUrl}', 'file', '${FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(fileUrl))}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                             </div>
@@ -1061,6 +1204,8 @@
             grid.addEventListener('click', function(e) {
                 const deleteBtn = e.target.closest('.iq-button-delete');
                 if (deleteBtn) return;
+                const actionBtn = e.target.closest('.iq-media-action');
+                if (actionBtn) return;
                 const tile = e.target.closest('.iq-media-images');
                 if (tile) {
                     // If already selected, keep it selected (don't toggle off)
