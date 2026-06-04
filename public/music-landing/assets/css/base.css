@@ -1,29 +1,29 @@
 /* ============================================================
    eZWay  — Design System
-   Theme: Electric Purple-Black × Neon Orange-Gold
+   Theme: Black × Gold
    Inspired by the eZWay Music brand identity
    ============================================================ */
 :root {
-  /* Orange-Gold palette — eZWay primary brand */
+  /* Golden palette */
   --ez-golden: linear-gradient(
     100deg,
-    #c07800 0%,
-    #f5a623 38%,
-    #e8920a 68%,
-    #c07800 100%
+    #c9930a 0%,
+    #f5d870 40%,
+    #e6c153 70%,
+    #c9930a 100%
   );
   --ez-golden-shine: linear-gradient(
     90deg,
-    #e8920a 0%,
-    #ffc234 50%,
-    #e8920a 100%
+    #e7c255 0%,
+    #faf0a0 50%,
+    #e6c153 100%
   );
-  --ez-golden-dk: #b06a00;
-  --ez-golden-mid: #e8920a;
-  --ez-golden-lt: #ffc234;
-  --ez-golden-text: #f5a623;
-  --ez-golden-glow: rgba(245, 166, 35, 0.18);
-  --ez-golden-border: rgba(245, 166, 35, 0.28);
+  --ez-golden-dk: #c9930a;
+  --ez-golden-mid: #e6c153;
+  --ez-golden-lt: #f5ea85;
+  --ez-golden-text: #e3bb45;
+  --ez-golden-glow: rgba(230, 193, 83, 0.15);
+  --ez-golden-border: rgba(230, 193, 83, 0.22);
 
   /* Electric Blue / Purple accent — energy swirls from image */
   --ez-blue: #1a6fff;
@@ -36,19 +36,19 @@
   --ez-neon: #00d4ff;
   --ez-neon-glow: rgba(0, 212, 255, 0.15);
 
-  /* Dark purple-black palette — from image background */
-  --ez-dark: #060410;
-  --ez-dark2: #0a0818;
-  --ez-mid: #100d24;
-  --ez-mid2: #17143a;
-  --ez-surface: #1f1c48;
+  /* Dark palette */
+  --ez-dark: #07090d;
+  --ez-dark2: #0e1118;
+  --ez-mid: #161d2b;
+  --ez-mid2: #1e2737;
+  --ez-surface: #232d40;
 
   /* Neutrals */
   --ez-border: rgba(255, 255, 255, 0.07);
-  --ez-muted: #9ba3bf;
-  --ez-muted2: #6270a0;
+  --ez-muted: #8a94a8;
+  --ez-muted2: #5a6275;
   --ez-white: #ffffff;
-  --ez-light: #eef0f8;
+  --ez-light: #f0f2f7;
 
   /* Radii */
   --radius: 8px;
@@ -62,11 +62,11 @@
 
   /* Shadows */
   --shadow-gold:
-    0 0 48px rgba(245, 166, 35, 0.25), 0 0 96px rgba(245, 166, 35, 0.1);
+    0 0 48px rgba(230, 193, 83, 0.22), 0 0 96px rgba(230, 193, 83, 0.1);
   --shadow-blue:
     0 0 48px rgba(26, 111, 255, 0.25), 0 0 96px rgba(26, 111, 255, 0.1);
   --shadow-card: 0 24px 64px rgba(0, 0, 0, 0.7);
-  --shadow-nav: 0 1px 0 rgba(245, 166, 35, 0.2), 0 12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-nav: 0 1px 0 rgba(230, 193, 83, 0.2), 0 12px 40px rgba(0, 0, 0, 0.6);
 
   /* ── Typography scale tokens ──
      These drive both the utility classes (.ez-h-1 … .ez-text-xs)

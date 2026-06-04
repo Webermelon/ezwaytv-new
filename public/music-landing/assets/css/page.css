@@ -32,7 +32,7 @@
   gap: 8px;
   padding: 12px 28px;
   background: var(--ez-golden);
-  color: #0a0818 !important;
+  color: #07090d !important;
   font-size: 14px;
   font-weight: 700;
   border-radius: 100px;
@@ -40,12 +40,12 @@
   cursor: pointer;
   transition: all 0.25s var(--ease);
   text-decoration: none !important;
-  box-shadow: 0 4px 24px rgba(245, 166, 35, 0.35);
+  box-shadow: 0 4px 24px rgba(230, 193, 83, 0.32);
   white-space: nowrap;
 }
 .ez-btn-gold:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 40px rgba(245, 166, 35, 0.5);
+  box-shadow: 0 8px 40px rgba(230, 193, 83, 0.42);
   filter: brightness(1.08);
 }
 
@@ -238,7 +238,7 @@
     ),
     radial-gradient(
       ellipse 50% 40% at 80% 10%,
-      rgba(245, 166, 35, 0.1) 0%,
+      rgba(230, 193, 83, 0.1) 0%,
       transparent 55%
     ),
     var(--ez-dark);
@@ -251,7 +251,7 @@
   inset: 0;
   background: radial-gradient(
     ellipse 40% 60% at 75% 45%,
-    rgba(245, 166, 35, 0.07) 0%,
+    rgba(230, 193, 83, 0.07) 0%,
     transparent 70%
   );
   animation: heroGlow 6s ease-in-out infinite alternate;
@@ -304,7 +304,7 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ez-golden-text);
-  background: rgba(245, 166, 35, 0.12);
+  background: rgba(230, 193, 83, 0.12);
   border: 1px solid var(--ez-golden-border);
   border-radius: 100px;
   padding: 7px 18px;
@@ -436,7 +436,7 @@
   left: -5%;
   background: radial-gradient(
     ellipse at center,
-    rgba(245, 166, 35, 0.12) 0%,
+    rgba(230, 193, 83, 0.12) 0%,
     transparent 70%
   );
   animation: heroGlow 5s ease-in-out infinite alternate;
@@ -447,7 +447,7 @@
   height: 90%;
   top: 5%;
   left: 5%;
-  border: 1px solid rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(230, 193, 83, 0.12);
   background: transparent;
   border-radius: 24px;
   transform: rotate(3deg);
@@ -460,7 +460,7 @@
   overflow: hidden;
   border: 2px solid var(--ez-golden-border);
   box-shadow:
-    0 0 0 1px rgba(245, 166, 35, 0.08),
+    0 0 0 1px rgba(230, 193, 83, 0.08),
     var(--shadow-gold),
     var(--shadow-card);
 }
@@ -586,7 +586,7 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #0a0818;
+  color: #07090d;
 }
 
 .ez-ticker-track span.sep {
@@ -831,13 +831,13 @@
   background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent);
 }
 [data-genre="rnb"] .ez-genre-glow {
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.4), transparent);
+  background: radial-gradient(circle, rgba(230, 193, 83, 0.4), transparent);
 }
 [data-genre="rock"] .ez-genre-glow {
   background: radial-gradient(circle, rgba(239, 68, 68, 0.4), transparent);
 }
 [data-genre="gospel"] .ez-genre-glow {
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.5), transparent);
+  background: radial-gradient(circle, rgba(230, 193, 83, 0.5), transparent);
 }
 
 .ez-genre-card:hover .ez-genre-glow {
@@ -852,7 +852,7 @@
   --genre-color: #ec4899;
 }
 [data-genre="rnb"] {
-  --genre-color: #f5a623;
+  --genre-color: #e3bb45;
 }
 [data-genre="rock"] {
   --genre-color: #ef4444;
@@ -1029,8 +1029,8 @@
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: #0a0818;
-  box-shadow: 0 0 40px rgba(245, 166, 35, 0.5);
+  color: #07090d;
+  box-shadow: 0 0 40px rgba(230, 193, 83, 0.5);
   transition: transform 0.25s var(--ease-bounce);
   cursor: pointer;
   padding-left: 4px;
@@ -1224,7 +1224,7 @@
   height: 700px;
   background: radial-gradient(
     circle,
-    rgba(245, 166, 35, 0.06) 0%,
+    rgba(230, 193, 83, 0.06) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -1266,13 +1266,13 @@
         rgba(12, 8, 32, 0.99) 100%
       )
       padding-box,
-    linear-gradient(145deg, #b06a00 0%, #f5a623 45%, #ffc234 70%, #c07800 100%)
+    linear-gradient(145deg, #c9930a 0%, #e3bb45 45%, #f5ea85 70%, #c9930a 100%)
       border-box;
   border: 2px solid transparent;
   transform: scale(1.04);
   box-shadow:
-    0 0 0 1px rgba(245, 166, 35, 0.06),
-    0 8px 40px rgba(245, 166, 35, 0.22),
+    0 0 0 1px rgba(230, 193, 83, 0.06),
+    0 8px 40px rgba(230, 193, 83, 0.22),
     0 32px 80px rgba(0, 0, 0, 0.65);
   z-index: 1;
 }
@@ -1280,8 +1280,8 @@
 .ez-price-featured:hover {
   transform: scale(1.04) translateY(-6px);
   box-shadow:
-    0 0 0 1px rgba(245, 166, 35, 0.1),
-    0 12px 56px rgba(245, 166, 35, 0.32),
+    0 0 0 1px rgba(230, 193, 83, 0.1),
+    0 12px 56px rgba(230, 193, 83, 0.32),
     0 40px 90px rgba(0, 0, 0, 0.7);
 }
 
@@ -1310,7 +1310,7 @@
   color: #0a0614;
   font-weight: 900;
   letter-spacing: 0.18em;
-  box-shadow: 0 2px 16px rgba(245, 166, 35, 0.35);
+  box-shadow: 0 2px 16px rgba(230, 193, 83, 0.35);
 }
 
 .ez-price-icon {
@@ -1495,7 +1495,7 @@
   justify-content: center;
   font-size: 13px;
   font-weight: 800;
-  color: #0a0818;
+  color: #07090d;
   flex-shrink: 0;
 }
 
@@ -1543,7 +1543,7 @@
   height: 300px;
   background: radial-gradient(
     circle,
-    rgba(245, 166, 35, 0.18) 0%,
+    rgba(230, 193, 83, 0.18) 0%,
     transparent 70%
   );
   pointer-events: none;

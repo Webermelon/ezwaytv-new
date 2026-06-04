@@ -21,11 +21,11 @@
         }
 
         .music-upload-shell {
-            background: linear-gradient(160deg, rgba(31, 28, 72, 0.7) 0%, rgba(16, 13, 36, 0.94) 100%);
-            border: 1px solid rgba(245, 166, 35, 0.22);
+            background: linear-gradient(160deg, rgba(35, 45, 64, 0.72) 0%, rgba(14, 17, 24, 0.96) 100%);
+            border: 1px solid var(--ez-golden-border, rgba(230, 193, 83, 0.22));
             border-radius: 18px;
             padding: clamp(24px, 4vw, 42px);
-            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36), 0 0 46px rgba(230, 193, 83, 0.08);
         }
 
         .music-upload-header {
@@ -50,19 +50,19 @@
 
         .music-upload-page .form-control {
             color: var(--ez-white);
-            background: rgba(6, 4, 16, 0.78);
+            background: rgba(7, 9, 13, 0.78);
             border: 1px solid rgba(255, 255, 255, 0.14);
         }
 
         .music-upload-page .form-control:focus {
             border-color: var(--ez-golden-border);
-            box-shadow: 0 0 0 0.2rem rgba(245, 166, 35, 0.18);
+            box-shadow: 0 0 0 0.2rem rgba(230, 193, 83, 0.18);
         }
 
         .locked-channel {
-            border: 1px solid rgba(245, 166, 35, 0.22);
+            border: 1px solid var(--ez-golden-border, rgba(230, 193, 83, 0.22));
             border-radius: 12px;
-            background: rgba(245, 166, 35, 0.08);
+            background: rgba(230, 193, 83, 0.08);
             padding: 16px;
         }
 
@@ -70,7 +70,7 @@
             position: relative;
             display: none;
             margin-top: 12px;
-            border: 1px solid rgba(245, 166, 35, 0.22);
+            border: 1px solid var(--ez-golden-border, rgba(230, 193, 83, 0.22));
             border-radius: 12px;
             overflow: hidden;
             background: #000;
@@ -96,7 +96,7 @@
             padding: 10px 12px;
             color: var(--ez-muted);
             font-size: 12px;
-            background: rgba(6, 4, 16, 0.92);
+            background: rgba(7, 9, 13, 0.92);
         }
 
         .upload-preview-remove {
@@ -111,7 +111,7 @@
             border: 0;
             border-radius: 50%;
             color: var(--ez-white);
-            background: rgba(6, 4, 16, 0.82);
+            background: rgba(7, 9, 13, 0.82);
             backdrop-filter: blur(8px);
         }
 
@@ -121,7 +121,7 @@
             padding: 18px;
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 14px;
-            background: rgba(6, 4, 16, 0.58);
+            background: rgba(7, 9, 13, 0.58);
         }
 
         .upload-status-panel.is-visible {
