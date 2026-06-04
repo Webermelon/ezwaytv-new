@@ -22,6 +22,31 @@
         .music-landing .ez-hero {
             padding-top: 10px;
         }
+
+        .music-landing .ez-submission-form {
+            background: linear-gradient(160deg, rgba(31, 28, 72, 0.7) 0%, rgba(16, 13, 36, 0.94) 100%);
+            border: 1px solid rgba(245, 166, 35, 0.22);
+            border-radius: 18px;
+            padding: clamp(24px, 4vw, 40px);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+        }
+
+        .music-landing .ez-submission-form .form-label {
+            color: var(--ez-white);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .music-landing .ez-submission-form .form-control {
+            color: var(--ez-white);
+            background: rgba(6, 4, 16, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .music-landing .ez-submission-form .form-control:focus {
+            border-color: var(--ez-golden-border);
+            box-shadow: 0 0 0 0.2rem rgba(245, 166, 35, 0.18);
+        }
     </style>
 @endpush
 
@@ -38,6 +63,34 @@
 
     <div class="music-landing">
         {!! $musicContent !!}
+
+        <section class="ez-section" id="music-video-submission">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-xl-9">
+                        <div class="ez-section-label text-center">
+                            <i class="bi bi-upload"></i> MUSIC VIDEO SUBMISSION
+                        </div>
+                        <h2 class="ez-h-2 text-center mb-2">
+                            Upload to <span class="ez-gold-text">eZWay Music</span>
+                        </h2>
+                        <p class="ez-text-xl text-center mb-5">
+                            Login, confirm your purchase, then upload your poster and music video for review and scheduling.
+                        </p>
+
+                        <div class="ez-submission-form text-center">
+                            <div class="ez-section-label text-center mb-3">
+                                <i class="bi bi-lock-fill"></i> LOCKED CHANNEL: EZWAY MUSIC
+                            </div>
+                            <a href="{{ route('upload-your-videoes', ['channel' => 'ezway-music']) }}" class="ez-btn-gold ez-btn-lg">
+                                <i class="bi bi-cloud-arrow-up-fill"></i>
+                                Continue to Upload
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 @endsection
 

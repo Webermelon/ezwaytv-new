@@ -11,6 +11,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Backend\EmailLogController;
+use App\Http\Controllers\MusicVideoSubmissionController;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Backend\MobileSettingController;
@@ -35,6 +36,12 @@ require __DIR__ . '/auth.php';
 Route::get('/music', function () {
     return view('frontend::music');
 })->name('music');
+Route::middleware('auth')->group(function () {
+    Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
+    Route::get('/upload-your-videoes/{channel}', [MusicVideoSubmissionController::class, 'create'])->name('upload-your-videoes');
+    Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
+    Route::post('/music/video-submissions', [MusicVideoSubmissionController::class, 'store'])->name('music.video-submissions.store');
+});
 
 Route::get('/ezwa-music', fn () => redirect()->route('music', [], 301));
 
@@ -158,6 +165,19 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
         Route::resource("mobile-setting", MobileSettingController::class);
         Route::get('email-logs', [EmailLogController::class, 'index'])->name('email-logs.index');
         Route::get('email-logs/{id}', [EmailLogController::class, 'show'])->name('email-logs.show');
+        Route::get('users-submission', [MusicVideoSubmissionController::class, 'adminIndex'])->name('users_submission.index');
+        Route::get('users-submission/trash', [MusicVideoSubmissionController::class, 'trash'])->name('users_submission.trash');
+        Route::get('users-submission/{id}', [MusicVideoSubmissionController::class, 'adminShow'])->name('users_submission.show');
+        Route::post('users-submission/{id}', [MusicVideoSubmissionController::class, 'adminUpdate'])->name('users_submission.update');
+        Route::post('users-submission/{id}/status', [MusicVideoSubmissionController::class, 'adminSetStatus'])->name('users_submission.status');
+        Route::get('users-submission/{id}/download', [MusicVideoSubmissionController::class, 'download'])->name('users_submission.download');
+        Route::delete('users-submission/{id}', [MusicVideoSubmissionController::class, 'destroy'])->name('users_submission.destroy');
+        Route::post('users-submission/{id}/restore', [MusicVideoSubmissionController::class, 'restore'])->name('users_submission.restore');
+        Route::delete('users-submission/{id}/force-delete', [MusicVideoSubmissionController::class, 'forceDestroy'])->name('users_submission.force_destroy');
+        Route::get('music-video-submissions', fn () => redirect()->route('backend.users_submission.index'))->name('music_video_submissions.index');
+        Route::get('music-video-submissions/{id}', fn ($id) => redirect()->route('backend.users_submission.show', $id))->name('music_video_submissions.show');
+        Route::post('music-video-submissions/{id}', [MusicVideoSubmissionController::class, 'adminUpdate'])->name('music_video_submissions.update');
+        Route::get('music-video-submissions/{id}/download', [MusicVideoSubmissionController::class, 'download'])->name('music_video_submissions.download');
         Route::group(['prefix' => 'mobile-setting', 'as' => 'mobile-setting.'], function () {
             Route::get('get-dropdown-value/{id}', [MobileSettingController::class, 'getDropdownValue'])->name('get-dropdown-value');
 

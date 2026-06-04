@@ -137,6 +137,14 @@ class GenerateMenus
             ]);
         }
 
+        $this->mainRoute($menu, [
+            'icon' => 'ph ph-music-notes',
+            'route' => 'backend.users_submission.index',
+            'title' => 'Users Submission',
+            'active' => ['app/users-submission', 'app/users-submission/*', 'app/music-video-submissions', 'app/music-video-submissions/*'],
+            'order' => 0,
+        ]);
+
         if(isenablemodule('livetv')==1){
 
             $live_tv = $this->parentMenu($menu, [
