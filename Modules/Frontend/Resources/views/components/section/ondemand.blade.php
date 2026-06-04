@@ -15,7 +15,7 @@
                 <div class="slick-item">
                     <a href="{{ route('author_channels.show', $channel['username']) }}"
                         class="d-block text-decoration-none text-reset">
-                        <div class="position-relative overflow-hidden rounded">
+                        <div class="ondemand-channel-card position-relative overflow-hidden rounded">
                             <img src="{{ $channel['banner_url'] ?? asset('img/no-image.jpg') }}"
                                 alt="{{ $channel['name'] }}" class="img-fluid object-cover w-100 rounded"
                                 style="aspect-ratio: 16 / 9;">

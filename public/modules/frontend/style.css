@@ -16849,6 +16849,46 @@ img {
   height: 215px;
 }
 
+.ondemand-channel-card {
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 1px rgba(230, 193, 83, 0);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.ondemand-channel-card img {
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+.ondemand-channel-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(230, 193, 83, 0.12), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+a:hover .ondemand-channel-card,
+a:focus-visible .ondemand-channel-card {
+  border-color: var(--ez-golden-border, rgba(230, 193, 83, 0.42));
+  box-shadow: 0 0 0 1px rgba(230, 193, 83, 0.18), 0 16px 34px rgba(230, 193, 83, 0.14);
+  transform: translateY(-2px);
+}
+a:hover .ondemand-channel-card img,
+a:focus-visible .ondemand-channel-card img {
+  filter: saturate(1.08) contrast(1.04);
+  transform: scale(1.035);
+}
+a:hover .ondemand-channel-card::after,
+a:focus-visible .ondemand-channel-card::after {
+  opacity: 1;
+}
+
+a:focus-visible .ondemand-channel-card {
+  outline: 2px solid var(--ez-golden-mid, #e6c153);
+  outline-offset: 3px;
+}
+
 @media (max-width: 767.98px) {
   .channel-card .channel-img {
     height: 180px;

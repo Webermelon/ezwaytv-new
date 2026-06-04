@@ -7,7 +7,7 @@
 @section('content')
 <div class="list-page section-spacing-bottom px-0">
     <div class="page-title mb-5">
-        <h2 class="m-0 text-center fw-bold" style="font-size: 2.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        <h2 class="m-0 text-center fw-bold" style="font-size: 2.5rem; background: var(--ez-golden-shine, linear-gradient(90deg, #e7c255 0%, #faf0a0 50%, #e6c153 100%)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
             On Demand
         </h2>
         <p class="text-center text-muted mt-2">Discover on demand content</p>
@@ -99,14 +99,14 @@
 
 .author-channel-card:hover {
     transform: translateY(-10px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3), 0 0 30px rgba(118, 75, 162, 0.2);
-    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 20px 40px rgba(230, 193, 83, 0.22), 0 0 30px var(--ez-golden-glow, rgba(230, 193, 83, 0.15));
+    border-color: var(--ez-golden-border, rgba(230, 193, 83, 0.42));
 }
 
 /* Banner Section */
 .channel-banner {
     height: 180px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--ez-golden, linear-gradient(100deg, #c9930a 0%, #f5d870 40%, #e6c153 70%, #c9930a 100%));
 }
 
 .channel-banner img {
@@ -152,8 +152,9 @@
 }
 
 .author-channel-card:hover .video-count-badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--ez-golden, linear-gradient(100deg, #c9930a 0%, #f5d870 40%, #e6c153 70%, #c9930a 100%));
+    border-color: var(--ez-golden-border, rgba(230, 193, 83, 0.42));
+    color: #07090d;
     transform: scale(1.05);
 }
 
@@ -185,8 +186,8 @@
 }
 
 .author-channel-card:hover .channel-avatar img {
-    border-color: #667eea;
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    border-color: var(--ez-golden-mid, #e6c153);
+    box-shadow: 0 8px 25px rgba(230, 193, 83, 0.35);
 }
 
 .avatar-ring {
@@ -196,7 +197,7 @@
     right: -3px;
     bottom: -3px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: var(--ez-golden, linear-gradient(100deg, #c9930a 0%, #f5d870 40%, #e6c153 70%, #c9930a 100%));
     opacity: 0;
     transition: opacity 0.3s ease;
     animation: rotate 3s linear infinite;
@@ -230,7 +231,7 @@
 }
 
 .author-channel-card:hover .channel-name {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--ez-golden-shine, linear-gradient(90deg, #e7c255 0%, #faf0a0 50%, #e6c153 100%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -265,8 +266,8 @@
     display: inline-flex;
     align-items: center;
     padding: 10px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
+    background: var(--ez-golden, linear-gradient(100deg, #c9930a 0%, #f5d870 40%, #e6c153 70%, #c9930a 100%));
+    color: #07090d;
     font-size: 0.9rem;
     font-weight: 600;
     border-radius: 25px;
@@ -275,7 +276,7 @@
 
 .view-channel-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 5px 20px rgba(230, 193, 83, 0.35);
 }
 
 /* Empty State */
