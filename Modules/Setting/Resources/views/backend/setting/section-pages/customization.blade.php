@@ -50,7 +50,7 @@
                         id="custom-secondary-color" value="#8a92a6" data-setting="color">
                 </div>
             </div>
-            <div class="row row-cols-sm-3 row-cols-md-5 gy-3">
+            <div class="row row-cols-sm-3 row-cols-md-6 gy-3">
                 <div data-setting="radio" class="col">
                     <input type="radio" value="color-1" class="btn-check" name="theme_color" id="theme-color-1">
                     <label class="btn btn-border d-block bg-transparent text-center" for="theme-color-1">
@@ -98,6 +98,25 @@
                             width="26" height="26">
                             <circle cx="12" cy="12" r="10" fill="#E586B3" />
                             <path d="M2,12 a1,1 1 1,0 20,0" fill="#25C799" />
+                        </svg>
+                    </label>
+                </div>
+                <div data-setting="radio" class="col">
+                    <input type="radio" value="gold" class="btn-check" name="theme_color" id="theme-color-gold">
+                    <label class="btn btn-border d-block bg-transparent text-center" for="theme-color-gold">
+                        <svg class="customizer-btn" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                            width="26" height="26">
+                            <defs>
+                                <linearGradient id="theme-gold-gradient" x1="2" y1="12" x2="22" y2="12"
+                                    gradientUnits="userSpaceOnUse">
+                                    <stop offset="0" stop-color="#c9930a" />
+                                    <stop offset="0.4" stop-color="#f5d870" />
+                                    <stop offset="0.7" stop-color="#e6c153" />
+                                    <stop offset="1" stop-color="#c9930a" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="12" cy="12" r="10" fill="#07090d" />
+                            <path d="M2,12 a1,1 1 1,0 20,0" fill="url(#theme-gold-gradient)" />
                         </svg>
                     </label>
                 </div>
@@ -397,6 +416,29 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const presetThemes = ['default', 'color-1', 'color-2', 'color-3', 'color-4', 'color-5', 'gold'];
+            const applyThemeColor = function(value) {
+                if (!value) {
+                    return;
+                }
+
+                document.documentElement.setAttribute('data-bs-theme-color', value);
+                if (presetThemes.includes(value)) {
+                    sessionStorage.setItem('root_colors', '{}');
+                }
+            };
+
+            document.querySelectorAll('input[name="theme_color"][type="radio"]').forEach(function(radio) {
+                radio.addEventListener('change', function(event) {
+                    applyThemeColor(event.target.value);
+                });
+            });
+
+            const checkedThemeColor = document.querySelector('input[name="theme_color"][type="radio"]:checked');
+            if (checkedThemeColor) {
+                applyThemeColor(checkedThemeColor.value);
+            }
+
             // Load saved footer_style value and check the correct radio button
             const settingOptionsMeta = document.querySelector('meta[name="setting_options"]');
             if (settingOptionsMeta) {
@@ -560,7 +602,6 @@
 
                 const rootColors = sessionStorage.getItem('root_colors') || '{}';
                
-                const presetThemes = ['default', 'color-1', 'color-2', 'color-3', 'color-4', 'color-5'];
                 const selectedTheme = dataToSend.theme_color?.value;
                 const finalRootColors = (selectedTheme && presetThemes.includes(selectedTheme)) ? '{}' : rootColors;
                 

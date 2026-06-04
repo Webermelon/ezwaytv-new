@@ -89,7 +89,7 @@ export const defaultState = {
     },
     theme_color: {
       target: 'html',
-      choices: ['default', 'color-1', 'color-2', 'color-3', 'color-4', 'color-5'],
+      choices: ['default', 'color-1', 'color-2', 'color-3', 'color-4', 'color-5', 'gold'],
       type: 'default',
       colors: {},
       value: 'default'

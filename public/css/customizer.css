@@ -1785,3 +1785,354 @@
   --bs-indigo-text-emphasis: rgb(102, 192, 183.6);
   --bs-indigo-bg-subtle: rgb(0, 30, 27.2);
 }
+
+[data-bs-theme-color=gold] {
+  --bs-primary: #E3BB45;
+  --bs-primary-rgb: 227, 187, 69;
+  --bs-primary-bg-subtle: rgb(249.4, 241.4, 217.8);
+  --bs-primary-border-subtle: rgb(243.8, 227.8, 180.6);
+  --bs-link-color-rgb: var(--bs-primary-rgb);
+  --bs-primary-hover-bg: rgb(181.6, 149.6, 55.2);
+  --bs-primary-hover-border: rgb(158.9, 130.9, 48.3);
+  --bs-primary-active-bg: rgb(181.6, 149.6, 55.2);
+  --bs-primary-active-border: rgb(158.9, 130.9, 48.3);
+  --bs-primary-shade-90: rgb(252.2, 248.2, 236.4);
+  --bs-primary-shade-80: rgb(249.4, 241.4, 217.8);
+  --bs-primary-shade-60: rgb(243.8, 227.8, 180.6);
+  --bs-primary-shade-40: rgb(238.2, 214.2, 143.4);
+  --bs-primary-shade-20: rgb(232.6, 200.6, 106.2);
+  --bs-primary-shade-10: rgb(229.8, 193.8, 87.6);
+  --bs-primary-tint-90: rgb(22.7, 18.7, 6.9);
+  --bs-primary-tint-80: rgb(45.4, 37.4, 13.8);
+  --bs-primary-tint-60: rgb(90.8, 74.8, 27.6);
+  --bs-primary-tint-40: rgb(136.2, 112.2, 41.4);
+  --bs-primary-tint-20: rgb(181.6, 149.6, 55.2);
+  --bs-primary-tint-10: rgb(204.3, 168.3, 62.1);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-primary-text-emphasis: rgb(238.2, 214.2, 143.4);
+  --bs-primary-bg-subtle: rgb(45.4, 37.4, 13.8);
+}
+[data-bs-theme-color=gold] {
+  --bs-secondary: #C9930A;
+  --bs-secondary-rgb: 201, 147, 10;
+  --bs-secondary-bg-subtle: rgb(244.2, 233.4, 206);
+  --bs-secondary-border-subtle: rgb(233.4, 211.8, 157);
+  --bs-link-color-rgb: var(--bs-secondary-rgb);
+  --bs-secondary-hover-bg: rgb(160.8, 117.6, 8);
+  --bs-secondary-hover-border: rgb(140.7, 102.9, 7);
+  --bs-secondary-active-bg: rgb(160.8, 117.6, 8);
+  --bs-secondary-active-border: rgb(140.7, 102.9, 7);
+  --bs-secondary-shade-90: rgb(249.6, 244.2, 230.5);
+  --bs-secondary-shade-80: rgb(244.2, 233.4, 206);
+  --bs-secondary-shade-60: rgb(233.4, 211.8, 157);
+  --bs-secondary-shade-40: rgb(222.6, 190.2, 108);
+  --bs-secondary-shade-20: rgb(211.8, 168.6, 59);
+  --bs-secondary-shade-10: rgb(206.4, 157.8, 34.5);
+  --bs-secondary-tint-90: rgb(20.1, 14.7, 1);
+  --bs-secondary-tint-80: rgb(40.2, 29.4, 2);
+  --bs-secondary-tint-60: rgb(80.4, 58.8, 4);
+  --bs-secondary-tint-40: rgb(120.6, 88.2, 6);
+  --bs-secondary-tint-20: rgb(160.8, 117.6, 8);
+  --bs-secondary-tint-10: rgb(180.9, 132.3, 9);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-secondary-text-emphasis: rgb(222.6, 190.2, 108);
+  --bs-secondary-bg-subtle: rgb(40.2, 29.4, 2);
+}
+[data-bs-theme-color=gold] {
+  --bs-success: #33C889;
+  --bs-success-rgb: 51, 200, 137;
+  --bs-success-bg-subtle: rgb(214.2, 244, 231.4);
+  --bs-success-border-subtle: rgb(173.4, 233, 207.8);
+  --bs-link-color-rgb: var(--bs-success-rgb);
+  --bs-success-hover-bg: rgb(40.8, 160, 109.6);
+  --bs-success-hover-border: rgb(35.7, 140, 95.9);
+  --bs-success-active-bg: rgb(40.8, 160, 109.6);
+  --bs-success-active-border: rgb(35.7, 140, 95.9);
+  --bs-success-shade-90: rgb(234.6, 249.5, 243.2);
+  --bs-success-shade-80: rgb(214.2, 244, 231.4);
+  --bs-success-shade-60: rgb(173.4, 233, 207.8);
+  --bs-success-shade-40: rgb(132.6, 222, 184.2);
+  --bs-success-shade-20: rgb(91.8, 211, 160.6);
+  --bs-success-shade-10: rgb(71.4, 205.5, 148.8);
+  --bs-success-tint-90: rgb(5.1, 20, 13.7);
+  --bs-success-tint-80: rgb(10.2, 40, 27.4);
+  --bs-success-tint-60: rgb(20.4, 80, 54.8);
+  --bs-success-tint-40: rgb(30.6, 120, 82.2);
+  --bs-success-tint-20: rgb(40.8, 160, 109.6);
+  --bs-success-tint-10: rgb(45.9, 180, 123.3);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-success-text-emphasis: rgb(132.6, 222, 184.2);
+  --bs-success-bg-subtle: rgb(10.2, 40, 27.4);
+}
+[data-bs-theme-color=gold] {
+  --bs-warning: #F5D870;
+  --bs-warning-rgb: 245, 216, 112;
+  --bs-warning-bg-subtle: rgb(253, 247.2, 226.4);
+  --bs-warning-border-subtle: rgb(251, 239.4, 197.8);
+  --bs-link-color-rgb: var(--bs-warning-rgb);
+  --bs-warning-hover-bg: rgb(196, 172.8, 89.6);
+  --bs-warning-hover-border: rgb(171.5, 151.2, 78.4);
+  --bs-warning-active-bg: rgb(196, 172.8, 89.6);
+  --bs-warning-active-border: rgb(171.5, 151.2, 78.4);
+  --bs-warning-shade-90: rgb(254, 251.1, 240.7);
+  --bs-warning-shade-80: rgb(253, 247.2, 226.4);
+  --bs-warning-shade-60: rgb(251, 239.4, 197.8);
+  --bs-warning-shade-40: rgb(249, 231.6, 169.2);
+  --bs-warning-shade-20: rgb(247, 223.8, 140.6);
+  --bs-warning-shade-10: rgb(246, 219.9, 126.3);
+  --bs-warning-tint-90: rgb(24.5, 21.6, 11.2);
+  --bs-warning-tint-80: rgb(49, 43.2, 22.4);
+  --bs-warning-tint-60: rgb(98, 86.4, 44.8);
+  --bs-warning-tint-40: rgb(147, 129.6, 67.2);
+  --bs-warning-tint-20: rgb(196, 172.8, 89.6);
+  --bs-warning-tint-10: rgb(220.5, 194.4, 100.8);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-warning-text-emphasis: rgb(249, 231.6, 169.2);
+  --bs-warning-bg-subtle: rgb(49, 43.2, 22.4);
+}
+[data-bs-theme-color=gold] {
+  --bs-danger: #D64141;
+  --bs-danger-rgb: 214, 65, 65;
+  --bs-danger-bg-subtle: rgb(246.8, 217, 217);
+  --bs-danger-border-subtle: rgb(238.6, 179, 179);
+  --bs-link-color-rgb: var(--bs-danger-rgb);
+  --bs-danger-hover-bg: rgb(171.2, 52, 52);
+  --bs-danger-hover-border: rgb(149.8, 45.5, 45.5);
+  --bs-danger-active-bg: rgb(171.2, 52, 52);
+  --bs-danger-active-border: rgb(149.8, 45.5, 45.5);
+  --bs-danger-shade-90: rgb(250.9, 236, 236);
+  --bs-danger-shade-80: rgb(246.8, 217, 217);
+  --bs-danger-shade-60: rgb(238.6, 179, 179);
+  --bs-danger-shade-40: rgb(230.4, 141, 141);
+  --bs-danger-shade-20: rgb(222.2, 103, 103);
+  --bs-danger-shade-10: rgb(218.1, 84, 84);
+  --bs-danger-tint-90: rgb(21.4, 6.5, 6.5);
+  --bs-danger-tint-80: rgb(42.8, 13, 13);
+  --bs-danger-tint-60: rgb(85.6, 26, 26);
+  --bs-danger-tint-40: rgb(128.4, 39, 39);
+  --bs-danger-tint-20: rgb(171.2, 52, 52);
+  --bs-danger-tint-10: rgb(192.6, 58.5, 58.5);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-danger-text-emphasis: rgb(230.4, 141, 141);
+  --bs-danger-bg-subtle: rgb(42.8, 13, 13);
+}
+[data-bs-theme-color=gold] {
+  --bs-info: #E6C153;
+  --bs-info-rgb: 230, 193, 83;
+  --bs-info-bg-subtle: rgb(250, 242.6, 220.6);
+  --bs-info-border-subtle: rgb(245, 230.2, 186.2);
+  --bs-link-color-rgb: var(--bs-info-rgb);
+  --bs-info-hover-bg: rgb(184, 154.4, 66.4);
+  --bs-info-hover-border: rgb(161, 135.1, 58.1);
+  --bs-info-active-bg: rgb(184, 154.4, 66.4);
+  --bs-info-active-border: rgb(161, 135.1, 58.1);
+  --bs-info-shade-90: rgb(252.5, 248.8, 237.8);
+  --bs-info-shade-80: rgb(250, 242.6, 220.6);
+  --bs-info-shade-60: rgb(245, 230.2, 186.2);
+  --bs-info-shade-40: rgb(240, 217.8, 151.8);
+  --bs-info-shade-20: rgb(235, 205.4, 117.4);
+  --bs-info-shade-10: rgb(232.5, 199.2, 100.2);
+  --bs-info-tint-90: rgb(23, 19.3, 8.3);
+  --bs-info-tint-80: rgb(46, 38.6, 16.6);
+  --bs-info-tint-60: rgb(92, 77.2, 33.2);
+  --bs-info-tint-40: rgb(138, 115.8, 49.8);
+  --bs-info-tint-20: rgb(184, 154.4, 66.4);
+  --bs-info-tint-10: rgb(207, 173.7, 74.7);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-info-text-emphasis: rgb(240, 217.8, 151.8);
+  --bs-info-bg-subtle: rgb(46, 38.6, 16.6);
+}
+[data-bs-theme-color=gold] {
+  --bs-light: #F0F2F7;
+  --bs-light-rgb: 240, 242, 247;
+  --bs-light-bg-subtle: rgb(252, 252.4, 253.4);
+  --bs-light-border-subtle: rgb(249, 249.8, 251.8);
+  --bs-link-color-rgb: var(--bs-light-rgb);
+  --bs-light-hover-bg: rgb(192, 193.6, 197.6);
+  --bs-light-hover-border: rgb(168, 169.4, 172.9);
+  --bs-light-active-bg: rgb(192, 193.6, 197.6);
+  --bs-light-active-border: rgb(168, 169.4, 172.9);
+  --bs-light-shade-90: rgb(253.5, 253.7, 254.2);
+  --bs-light-shade-80: rgb(252, 252.4, 253.4);
+  --bs-light-shade-60: rgb(249, 249.8, 251.8);
+  --bs-light-shade-40: rgb(246, 247.2, 250.2);
+  --bs-light-shade-20: rgb(243, 244.6, 248.6);
+  --bs-light-shade-10: rgb(241.5, 243.3, 247.8);
+  --bs-light-tint-90: rgb(24, 24.2, 24.7);
+  --bs-light-tint-80: rgb(48, 48.4, 49.4);
+  --bs-light-tint-60: rgb(96, 96.8, 98.8);
+  --bs-light-tint-40: rgb(144, 145.2, 148.2);
+  --bs-light-tint-20: rgb(192, 193.6, 197.6);
+  --bs-light-tint-10: rgb(216, 217.8, 222.3);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-light-text-emphasis: rgb(246, 247.2, 250.2);
+  --bs-light-bg-subtle: rgb(48, 48.4, 49.4);
+}
+[data-bs-theme-color=gold] {
+  --bs-dark: #07090D;
+  --bs-dark-rgb: 7, 9, 13;
+  --bs-dark-bg-subtle: rgb(205.4, 205.8, 206.6);
+  --bs-dark-border-subtle: rgb(155.8, 156.6, 158.2);
+  --bs-link-color-rgb: var(--bs-dark-rgb);
+  --bs-dark-hover-bg: rgb(5.6, 7.2, 10.4);
+  --bs-dark-hover-border: rgb(4.9, 6.3, 9.1);
+  --bs-dark-active-bg: rgb(5.6, 7.2, 10.4);
+  --bs-dark-active-border: rgb(4.9, 6.3, 9.1);
+  --bs-dark-shade-90: rgb(230.2, 230.4, 230.8);
+  --bs-dark-shade-80: rgb(205.4, 205.8, 206.6);
+  --bs-dark-shade-60: rgb(155.8, 156.6, 158.2);
+  --bs-dark-shade-40: rgb(106.2, 107.4, 109.8);
+  --bs-dark-shade-20: rgb(56.6, 58.2, 61.4);
+  --bs-dark-shade-10: rgb(31.8, 33.6, 37.2);
+  --bs-dark-tint-90: rgb(0.7, 0.9, 1.3);
+  --bs-dark-tint-80: rgb(1.4, 1.8, 2.6);
+  --bs-dark-tint-60: rgb(2.8, 3.6, 5.2);
+  --bs-dark-tint-40: rgb(4.2, 5.4, 7.8);
+  --bs-dark-tint-20: rgb(5.6, 7.2, 10.4);
+  --bs-dark-tint-10: rgb(6.3, 8.1, 11.7);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-dark-text-emphasis: rgb(106.2, 107.4, 109.8);
+  --bs-dark-bg-subtle: rgb(1.4, 1.8, 2.6);
+}
+[data-bs-theme-color=gold] {
+  --bs-gray: #8A94A8;
+  --bs-gray-rgb: 138, 148, 168;
+  --bs-gray-bg-subtle: rgb(231.6, 233.6, 237.6);
+  --bs-gray-border-subtle: rgb(208.2, 212.2, 220.2);
+  --bs-link-color-rgb: var(--bs-gray-rgb);
+  --bs-gray-hover-bg: rgb(110.4, 118.4, 134.4);
+  --bs-gray-hover-border: rgb(96.6, 103.6, 117.6);
+  --bs-gray-active-bg: rgb(110.4, 118.4, 134.4);
+  --bs-gray-active-border: rgb(96.6, 103.6, 117.6);
+  --bs-gray-shade-90: rgb(243.3, 244.3, 246.3);
+  --bs-gray-shade-80: rgb(231.6, 233.6, 237.6);
+  --bs-gray-shade-60: rgb(208.2, 212.2, 220.2);
+  --bs-gray-shade-40: rgb(184.8, 190.8, 202.8);
+  --bs-gray-shade-20: rgb(161.4, 169.4, 185.4);
+  --bs-gray-shade-10: rgb(149.7, 158.7, 176.7);
+  --bs-gray-tint-90: rgb(13.8, 14.8, 16.8);
+  --bs-gray-tint-80: rgb(27.6, 29.6, 33.6);
+  --bs-gray-tint-60: rgb(55.2, 59.2, 67.2);
+  --bs-gray-tint-40: rgb(82.8, 88.8, 100.8);
+  --bs-gray-tint-20: rgb(110.4, 118.4, 134.4);
+  --bs-gray-tint-10: rgb(124.2, 133.2, 151.2);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-gray-text-emphasis: rgb(184.8, 190.8, 202.8);
+  --bs-gray-bg-subtle: rgb(27.6, 29.6, 33.6);
+}
+[data-bs-theme-color=gold] {
+  --bs-gray-dark: #161D2B;
+  --bs-gray-dark-rgb: 22, 29, 43;
+  --bs-gray-dark-bg-subtle: rgb(208.4, 209.8, 212.6);
+  --bs-gray-dark-border-subtle: rgb(161.8, 164.6, 170.2);
+  --bs-link-color-rgb: var(--bs-gray-dark-rgb);
+  --bs-gray-dark-hover-bg: rgb(17.6, 23.2, 34.4);
+  --bs-gray-dark-hover-border: rgb(15.4, 20.3, 30.1);
+  --bs-gray-dark-active-bg: rgb(17.6, 23.2, 34.4);
+  --bs-gray-dark-active-border: rgb(15.4, 20.3, 30.1);
+  --bs-gray-dark-shade-90: rgb(231.7, 232.4, 233.8);
+  --bs-gray-dark-shade-80: rgb(208.4, 209.8, 212.6);
+  --bs-gray-dark-shade-60: rgb(161.8, 164.6, 170.2);
+  --bs-gray-dark-shade-40: rgb(115.2, 119.4, 127.8);
+  --bs-gray-dark-shade-20: rgb(68.6, 74.2, 85.4);
+  --bs-gray-dark-shade-10: rgb(45.3, 51.6, 64.2);
+  --bs-gray-dark-tint-90: rgb(2.2, 2.9, 4.3);
+  --bs-gray-dark-tint-80: rgb(4.4, 5.8, 8.6);
+  --bs-gray-dark-tint-60: rgb(8.8, 11.6, 17.2);
+  --bs-gray-dark-tint-40: rgb(13.2, 17.4, 25.8);
+  --bs-gray-dark-tint-20: rgb(17.6, 23.2, 34.4);
+  --bs-gray-dark-tint-10: rgb(19.8, 26.1, 38.7);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-gray-dark-text-emphasis: rgb(115.2, 119.4, 127.8);
+  --bs-gray-dark-bg-subtle: rgb(4.4, 5.8, 8.6);
+}
+[data-bs-theme-color=gold] {
+  --bs-indigo: #E6C153;
+  --bs-indigo-rgb: 230, 193, 83;
+  --bs-indigo-bg-subtle: rgb(250, 242.6, 220.6);
+  --bs-indigo-border-subtle: rgb(245, 230.2, 186.2);
+  --bs-link-color-rgb: var(--bs-indigo-rgb);
+  --bs-indigo-hover-bg: rgb(184, 154.4, 66.4);
+  --bs-indigo-hover-border: rgb(161, 135.1, 58.1);
+  --bs-indigo-active-bg: rgb(184, 154.4, 66.4);
+  --bs-indigo-active-border: rgb(161, 135.1, 58.1);
+  --bs-indigo-shade-90: rgb(252.5, 248.8, 237.8);
+  --bs-indigo-shade-80: rgb(250, 242.6, 220.6);
+  --bs-indigo-shade-60: rgb(245, 230.2, 186.2);
+  --bs-indigo-shade-40: rgb(240, 217.8, 151.8);
+  --bs-indigo-shade-20: rgb(235, 205.4, 117.4);
+  --bs-indigo-shade-10: rgb(232.5, 199.2, 100.2);
+  --bs-indigo-tint-90: rgb(23, 19.3, 8.3);
+  --bs-indigo-tint-80: rgb(46, 38.6, 16.6);
+  --bs-indigo-tint-60: rgb(92, 77.2, 33.2);
+  --bs-indigo-tint-40: rgb(138, 115.8, 49.8);
+  --bs-indigo-tint-20: rgb(184, 154.4, 66.4);
+  --bs-indigo-tint-10: rgb(207, 173.7, 74.7);
+}
+[data-bs-theme-color=gold][data-bs-theme=dark] {
+  --bs-indigo-text-emphasis: rgb(240, 217.8, 151.8);
+  --bs-indigo-bg-subtle: rgb(46, 38.6, 16.6);
+}
+
+[data-bs-theme-color=gold] {
+  /* Golden palette */
+  --ez-golden: linear-gradient(
+      100deg,
+      #c9930a 0%,
+      #f5d870 40%,
+      #e6c153 70%,
+      #c9930a 100%
+  );
+  --ez-golden-shine: linear-gradient(
+      90deg,
+      #e7c255 0%,
+      #faf0a0 50%,
+      #e6c153 100%
+  );
+  --ez-golden-dk: #c9930a;
+  --ez-golden-mid: #e6c153;
+  --ez-golden-lt: #f5ea85;
+  --ez-golden-text: #e3bb45;
+  --ez-golden-glow: rgba(230, 193, 83, 0.15);
+  --ez-golden-border: rgba(230, 193, 83, 0.22);
+  /* Dark palette */
+  --ez-dark: #07090d;
+  --ez-dark2: #0e1118;
+  --ez-mid: #161d2b;
+  --ez-mid2: #1e2737;
+  --ez-surface: #232d40;
+  /* Neutrals */
+  --ez-border: rgba(255, 255, 255, 0.07);
+  --ez-muted: #8a94a8;
+  --ez-muted2: #5a6275;
+  --ez-white: #ffffff;
+  --ez-light: #f0f2f7;
+  /* Radii */
+  --radius: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+[data-bs-theme-color=gold] .btn-primary {
+  --bs-btn-color: #07090d;
+  --bs-btn-bg: var(--bs-primary);
+  --bs-btn-border-color: var(--bs-primary);
+  --bs-btn-hover-color: #07090d;
+  --bs-btn-hover-bg: var(--bs-primary-hover-bg);
+  --bs-btn-hover-border-color: var(--bs-primary-hover-border);
+  --bs-btn-active-color: #07090d;
+  --bs-btn-active-bg: var(--bs-primary-active-bg);
+  --bs-btn-active-border-color: var(--bs-primary-active-border);
+  --bs-btn-disabled-color: #07090d;
+  --bs-btn-disabled-bg: var(--bs-primary);
+  --bs-btn-disabled-border-color: var(--bs-primary);
+}

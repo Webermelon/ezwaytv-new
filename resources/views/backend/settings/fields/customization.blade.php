@@ -97,6 +97,29 @@
                                 </svg>
                             </label>
                         </div>
+                        <div data-setting="radio">
+                            <input type="radio" value="gold" class="btn-check"
+                                name="theme_color" id="theme-color-gold"
+                                data-colors='{"primary": "#E3BB45", "info": "#E6C153"}'>
+                            <label class="btn btn-border d-block bg-transparent" for="theme-color-gold"
+                                data-bs-toggle="tooltip" data-bs-placement="top" title="Gold"
+                                data-bs-original-title="Gold">
+                                <svg class="customizer-btn" xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24" width="26" height="26">
+                                    <defs>
+                                        <linearGradient id="legacy-theme-gold-gradient" x1="2" y1="12" x2="22"
+                                            y2="12" gradientUnits="userSpaceOnUse">
+                                            <stop offset="0" stop-color="#c9930a" />
+                                            <stop offset="0.4" stop-color="#f5d870" />
+                                            <stop offset="0.7" stop-color="#e6c153" />
+                                            <stop offset="1" stop-color="#c9930a" />
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="12" cy="12" r="10" fill="#07090d" />
+                                    <path d="M2,12 a1,1 1 1,0 20,0" fill="url(#legacy-theme-gold-gradient)" />
+                                </svg>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <hr class="hr-horizontal">

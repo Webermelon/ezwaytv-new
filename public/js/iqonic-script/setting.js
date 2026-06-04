@@ -103,6 +103,7 @@
           "color-3",
           "color-4",
           "color-5",
+          "gold",
         ],
         type: "variable",
         colors: {},
