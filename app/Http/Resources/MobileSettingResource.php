@@ -108,8 +108,8 @@ class MobileSettingResource extends JsonResource
                                 'name' => $channel->name,
                                 'username' => $channel->username,
                                 'description' => $channel->description,
-                                'avatar_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
-                                'banner_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
+                                'cover_image_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
+                                'avatar_image_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
                                 'profile_url' => url('/on-demand/' . $channel->username),
                             ];
                         });

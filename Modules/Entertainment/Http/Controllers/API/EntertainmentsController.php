@@ -1492,14 +1492,16 @@ class EntertainmentsController extends Controller
                 $ondemandData = \Modules\AuthorChannel\Http\Resources\AuthorChannelResourceV3::collection($ondemandList);
             } else {
                 $ondemandData = $ondemandList->map(function($ch) {
-                    $poster = $ch->avatar ?? $ch->banner ?? null;
+                    $coverImage = $ch->banner ?? $ch->avatar ?? null;
+                    $avatarImage = $ch->avatar ?? $ch->banner ?? null;
+
                     return [
                         'id' => $ch->id,
                         'name' => $ch->name,
                         'username' => $ch->username ?? null,
                         'description' => $ch->description ?? null,
-                        'poster_url' => $poster ? setBaseUrlWithFileName($poster, 'image', 'ondemand') : null,
-                        'poster_tv_url' => $poster ? setBaseUrlWithFileName($poster, 'image', 'ondemand') : null,
+                        'cover_image_url' => $coverImage ? setBaseUrlWithFileName($coverImage, 'image', 'ondemand') : null,
+                        'avatar_image_url' => $avatarImage ? setBaseUrlWithFileName($avatarImage, 'image', 'ondemand') : null,
                         'is_active' => $ch->is_active ?? 0,
                     ];
                 })->values();
