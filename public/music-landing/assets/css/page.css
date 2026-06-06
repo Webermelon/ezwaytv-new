@@ -25,6 +25,15 @@
   margin-bottom: 20px;
 }
 
+.ez-section-label.text-center {
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ── Buttons ─────────────────────────────────────────────── */
 .ez-btn-gold {
   display: inline-flex;
