@@ -37,6 +37,7 @@
 .type-pill.episode   { background: rgba(20,184,166,.2);  color: #2dd4bf; }
 .type-pill.livetv    { background: rgba(244,63,94,.2);   color: #f43f5e; }
 .type-pill.ondemand_video { background: rgba(236,72,153,.2); color: #f472b6; }
+.type-pill.ondemand_channel { background: rgba(14,165,233,.2); color: #38bdf8; }
 .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .stat-box {
     flex: 1; min-width: 130px;
@@ -101,6 +102,7 @@
                 <select id="searchType" class="form-select form-select-sm" style="width:130px; flex-shrink:0">
                     <option value="all">All Types</option>
                     <option value="video">Videos</option>
+                    <option value="ondemand_channel">On Demand Channels</option>
                     <option value="ondemand_video">On Demand Videos</option>
                     <option value="episode">Episodes</option>
                     <option value="livetv">Live TV</option>

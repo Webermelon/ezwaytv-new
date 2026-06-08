@@ -76,12 +76,13 @@ class ContentBoostController extends Controller
         $results = collect();
 
         $searchTypes = $type === 'all'
-            ? ['video', 'ondemand_video', 'episode', 'livetv']
+            ? ['video', 'ondemand_channel', 'ondemand_video', 'episode', 'livetv']
             : [$type];
 
         foreach ($searchTypes as $ctype) {
             [$table, $label] = match ($ctype) {
                 'video'   => ['videos', 'Video'],
+                'ondemand_channel' => ['author_channels', 'On Demand Channel'],
                 'ondemand_video' => ['videos', 'On Demand Video'],
                 'episode' => ['episodes', 'Episode'],
                 'livetv'  => ['live_tv_channel', 'Live TV'],
@@ -92,20 +93,40 @@ class ContentBoostController extends Controller
 
             $rows = DB::table($table)
                 ->where('name', 'like', "%{$q}%")
+                ->when($ctype === 'ondemand_channel', fn($query) => $query->where('is_active', 1))
                 ->whereNull('deleted_at')
                 ->limit($limit)
                 ->get(['id', 'name']);
 
             foreach ($rows as $row) {
                 // Get real play count
-                $realPlays = $ctype === 'ondemand_video' ? 0 : DB::table('entertainment_views')
+                $realPlays = in_array($ctype, ['ondemand_video', 'ondemand_channel'], true) ? 0 : DB::table('entertainment_views')
                     ->where('entertainment_id', $row->id)
                     ->whereNull('deleted_at')
                     ->count();
-                $realPlays += DB::table('stat_play_events')
-                    ->where('content_id', $row->id)
-                    ->where('content_type', $ctype)
-                    ->count();
+                if ($ctype === 'ondemand_channel') {
+                    $videoIds = DB::table('author_channel_video')
+                        ->where('author_channel_id', $row->id)
+                        ->pluck('video_id');
+
+                    $realPlays += DB::table('stat_play_events')
+                        ->where('content_type', 'video')
+                        ->whereIn('content_id', $videoIds)
+                        ->count();
+                    $realPlays += DB::table('stat_play_events')
+                        ->where('content_type', 'ondemand_video')
+                        ->where('channel_id', $row->id)
+                        ->count();
+                    $realPlays += DB::table('entertainment_views')
+                        ->whereIn('entertainment_id', $videoIds)
+                        ->whereNull('deleted_at')
+                        ->count();
+                } else {
+                    $realPlays += DB::table('stat_play_events')
+                        ->where('content_id', $row->id)
+                        ->where('content_type', $ctype)
+                        ->count();
+                }
 
                 // Get existing boost if any (summed)
                 $boostSums = ContentBoost::where('content_type', $ctype)
@@ -151,30 +172,53 @@ class ContentBoostController extends Controller
         $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
 
         // Real counts
-        $realPlays = $type === 'ondemand_video' ? 0 : DB::table('entertainment_views')
+        $realPlays = in_array($type, ['ondemand_video', 'ondemand_channel'], true) ? 0 : DB::table('entertainment_views')
             ->where('entertainment_id', $id)
             ->whereNull('deleted_at')
             ->count();
-        $realPlays += DB::table('stat_play_events')
-            ->where('content_id', $id)
-            ->where('content_type', $type)
-            ->count();
+        if ($type === 'ondemand_channel') {
+            $videoIds = DB::table('author_channel_video')->where('author_channel_id', $id)->pluck('video_id');
+            $realPlays += DB::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
+            $realPlays += DB::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
+            $realPlays += DB::table('entertainment_views')->whereIn('entertainment_id', $videoIds)->whereNull('deleted_at')->count();
 
-        $realViews = DB::table('stat_page_views')
-            ->where('content_id', $id)
-            ->where('content_type', $type)
-            ->count();
+            $realViews = DB::table('stat_page_views')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
+            $realViews += DB::table('stat_page_views')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
+            $realViews += DB::table('stat_page_views')->where('content_type', 'ondemand_channel')->where(fn($q) => $q->where('content_id', $id)->orWhere('channel_id', $id))->count();
 
-        $realUniqueVisitors = (int) DB::table('stat_page_views')
-            ->where('content_id', $id)
-            ->where('content_type', $type)
-            ->distinct('ip_address')
-            ->count('ip_address');
+            $realUniqueVisitors = (int) DB::table('stat_page_views')
+                ->where(function ($q) use ($videoIds, $id) {
+                    $q->where(fn($sub) => $sub->where('content_type', 'video')->whereIn('content_id', $videoIds))
+                        ->orWhere(fn($sub) => $sub->where('content_type', 'ondemand_video')->where('channel_id', $id))
+                        ->orWhere(fn($sub) => $sub->where('content_type', 'ondemand_channel')->where(fn($inner) => $inner->where('content_id', $id)->orWhere('channel_id', $id)));
+                })
+                ->distinct('ip_address')
+                ->count('ip_address');
 
-        $realWatchSeconds = (int) DB::table('stat_play_events')
-            ->where('content_id', $id)
-            ->where('content_type', $type)
-            ->sum('watch_seconds');
+            $realWatchSeconds = (int) DB::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->sum('watch_seconds');
+            $realWatchSeconds += (int) DB::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->sum('watch_seconds');
+        } else {
+            $realPlays += DB::table('stat_play_events')
+                ->where('content_id', $id)
+                ->where('content_type', $type)
+                ->count();
+
+            $realViews = DB::table('stat_page_views')
+                ->where('content_id', $id)
+                ->where('content_type', $type)
+                ->count();
+
+            $realUniqueVisitors = (int) DB::table('stat_page_views')
+                ->where('content_id', $id)
+                ->where('content_type', $type)
+                ->distinct('ip_address')
+                ->count('ip_address');
+
+            $realWatchSeconds = (int) DB::table('stat_play_events')
+                ->where('content_id', $id)
+                ->where('content_type', $type)
+                ->sum('watch_seconds');
+        }
 
         // Summed boosts
         $boostSums = ContentBoost::where('content_type', $type)
@@ -266,6 +310,7 @@ class ContentBoostController extends Controller
     {
         $table = match ($type) {
             'video'   => 'videos',
+            'ondemand_channel' => 'author_channels',
             'ondemand_video' => 'videos',
             'episode' => 'episodes',
             'livetv'  => 'live_tv_channel',

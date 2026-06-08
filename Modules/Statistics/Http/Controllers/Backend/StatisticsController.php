@@ -673,6 +673,16 @@ class StatisticsController extends Controller
             ->groupBy('channel_id')
             ->pluck('profile_views', 'channel_id');
 
+        $channelBoostRows = ContentBoost::where('content_type', 'ondemand_channel')
+            ->selectRaw(
+                'content_id as channel_id, SUM(boost_plays) as boost_plays, SUM(boost_views) as boost_views, ' .
+                (Schema::hasColumn('stat_content_boosts', 'boost_watch_seconds') ? 'SUM(boost_watch_seconds)' : '0') . ' as boost_watch_seconds, ' .
+                (Schema::hasColumn('stat_content_boosts', 'boost_unique_visitors') ? 'SUM(boost_unique_visitors)' : '0') . ' as boost_unique_visitors'
+            )
+            ->groupBy('content_id')
+            ->get()
+            ->keyBy('channel_id');
+
         $byVideo = [];
         foreach ($assignedVideos as $row) {
             $key = $row->channel_id . ':' . $row->content_id;
@@ -721,6 +731,7 @@ class StatisticsController extends Controller
         $channelIds = collect($byVideo)
             ->pluck('channel_id')
             ->merge($profileViewRows->keys())
+            ->merge($channelBoostRows->keys())
             ->unique()
             ->values();
         $videos = DB::table('videos')->whereIn('id', $videoIds)->pluck('name', 'id');
@@ -739,6 +750,10 @@ class StatisticsController extends Controller
                 'url' => $channel && $channel->username ? url('/on-demand/' . $channel->username) : null,
                 'views' => 0,
                 'profile_views' => (int) ($profileViewRows[$channelId] ?? 0),
+                'boost_views' => 0,
+                'boost_plays' => 0,
+                'boost_watch_seconds' => 0,
+                'boost_unique_visitors' => 0,
                 'plays' => 0,
                 'watch_seconds' => 0,
                 'unique_visitors' => 0,
@@ -778,6 +793,10 @@ class StatisticsController extends Controller
                 'url' => $channel && $channel->username ? url('/on-demand/' . $channel->username) : null,
                 'views' => 0,
                 'profile_views' => (int) $profileViews,
+                'boost_views' => 0,
+                'boost_plays' => 0,
+                'boost_watch_seconds' => 0,
+                'boost_unique_visitors' => 0,
                 'plays' => 0,
                 'watch_seconds' => 0,
                 'unique_visitors' => 0,
@@ -785,9 +804,38 @@ class StatisticsController extends Controller
             ];
         }
 
+        foreach ($channelBoostRows as $channelId => $boost) {
+            $channel = $channels[$channelId] ?? null;
+            $byChannel[$channelId] ??= [
+                'channel_id' => (int) $channelId,
+                'name' => $channel->name ?? "#{$channelId}",
+                'username' => $channel->username ?? null,
+                'url' => $channel && $channel->username ? url('/on-demand/' . $channel->username) : null,
+                'views' => 0,
+                'profile_views' => 0,
+                'boost_views' => 0,
+                'boost_plays' => 0,
+                'boost_watch_seconds' => 0,
+                'boost_unique_visitors' => 0,
+                'plays' => 0,
+                'watch_seconds' => 0,
+                'unique_visitors' => 0,
+                'videos' => 0,
+            ];
+
+            $byChannel[$channelId]['boost_views'] += (int) ($boost->boost_views ?? 0);
+            $byChannel[$channelId]['boost_plays'] += (int) ($boost->boost_plays ?? 0);
+            $byChannel[$channelId]['boost_watch_seconds'] += (int) ($boost->boost_watch_seconds ?? 0);
+            $byChannel[$channelId]['boost_unique_visitors'] += (int) ($boost->boost_unique_visitors ?? 0);
+        }
+
         $allChannels = collect($byChannel)->map(function ($row) {
-            $row['watch_time'] = gmdate('H:i:s', max(0, $row['watch_seconds']));
-            $row['total'] = $row['views'] + $row['profile_views'] + $row['plays'];
+            $row['display_profile_views'] = $row['profile_views'] + $row['boost_views'];
+            $row['display_plays'] = $row['plays'] + $row['boost_plays'];
+            $row['display_unique_visitors'] = $row['unique_visitors'] + $row['boost_unique_visitors'];
+            $row['display_watch_seconds'] = $row['watch_seconds'] + $row['boost_watch_seconds'];
+            $row['watch_time'] = gmdate('H:i:s', max(0, $row['display_watch_seconds']));
+            $row['total'] = $row['views'] + $row['display_profile_views'] + $row['display_plays'];
             return $row;
         })->sortByDesc('total')->values();
 
@@ -796,11 +844,11 @@ class StatisticsController extends Controller
         $videosOut = collect($videosOut)->sortByDesc('total')->values()->take($limit)->values();
         $totals = [
             'views' => $allChannels->sum('views'),
-            'profile_views' => $allChannels->sum('profile_views'),
-            'total_views' => $allChannels->sum('views') + $allChannels->sum('profile_views'),
-            'plays' => $allChannels->sum('plays'),
-            'watch_seconds' => $allChannels->sum('watch_seconds'),
-            'watch_hours' => round($allChannels->sum('watch_seconds') / 3600, 1),
+            'profile_views' => $allChannels->sum('display_profile_views'),
+            'total_views' => $allChannels->sum('views') + $allChannels->sum('display_profile_views'),
+            'plays' => $allChannels->sum('display_plays'),
+            'watch_seconds' => $allChannels->sum('display_watch_seconds'),
+            'watch_hours' => round($allChannels->sum('display_watch_seconds') / 3600, 1),
         ];
 
         return response()->json([

@@ -634,9 +634,9 @@
                 return `<tr>
                     <td>${name}<div class="text-muted small">${Number(row.videos || 0).toLocaleString()} tracked videos</div></td>
                     <td class="text-end">${Number(row.views || 0).toLocaleString()}</td>
-                    <td class="text-end">${Number(row.profile_views || 0).toLocaleString()}</td>
-                    <td class="text-end">${Number(row.plays || 0).toLocaleString()}</td>
-                    <td class="text-end">${Number(row.unique_visitors || 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.display_profile_views ?? row.profile_views ?? 0).toLocaleString()}${Number(row.boost_views || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
+                    <td class="text-end">${Number(row.display_plays ?? row.plays ?? 0).toLocaleString()}${Number(row.boost_plays || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
+                    <td class="text-end">${Number(row.display_unique_visitors ?? row.unique_visitors ?? 0).toLocaleString()}${Number(row.boost_unique_visitors || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
                     <td class="text-end">${escHtml(row.watch_time || '00:00:00')}</td>
                 </tr>`;
             }).join('');

@@ -151,5 +151,6 @@ Applied and active:
   - `ondemand_channel` profile views.
   - `ondemand_video` views/plays with `channel_id` when traffic comes from an On Demand channel.
   - Normal `video` views/plays for videos assigned through `author_channel_video`, so general video page traffic still rolls up into the owning On Demand channel report.
+  - `ondemand_channel` Content Booster entries, which add channel-level views, plays, watch time, and unique visitors to the On Demand dashboard row.
 
 Use this file as the baseline before new changes.
