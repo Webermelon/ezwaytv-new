@@ -33,8 +33,9 @@
                 data-movie-access="{{ $dataAccess ?? '' }}" data-plan-id="{{ $plan_id ?? '' }}"
                 data-watch-time="{{ $watched_time ?? 0 }}"
                 @if ($type != 'Local') data-encrypted="{{ $data }}" @endif
-                @if (isset($content_type) && isset($content_id)) data-contentType="{{ $content_type }}"
+                @if (isset($content_type) && isset($content_id)) data-contentType="{{ $stat_content_type ?? $content_type }}"
                     data-contentId="{{ $content_id }}" @endif
+                @if (!empty($stat_channel_id)) data-stat-channel-id="{{ (int) $stat_channel_id }}" @endif
                 data-forward-seconds="{{ setting('forward_seconds', 30) }}"
                 data-backward-seconds="{{ setting('backward_seconds', 30) }}" playsinline webkit-playsinline
                 x-webkit-airplay="allow" preload="metadata">

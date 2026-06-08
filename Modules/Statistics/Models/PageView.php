@@ -26,6 +26,7 @@ class PageView extends Model
         'page_url',
         'page_name',
         'route_name',
+        'channel_id',
         'session_id',
         'view_date',
     ];

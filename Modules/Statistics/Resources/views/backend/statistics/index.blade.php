@@ -55,6 +55,8 @@
 .type-pill.entertainment { background: rgba(59,130,246,.2); color: #60a5fa; }
 .type-pill.episode       { background: rgba(16,185,129,.2); color: #34d399; }
 .type-pill.livetv        { background: rgba(245,158,11,.2); color: #fbbf24; }
+.type-pill.ondemand_video,
+.type-pill.ondemand_channel { background: rgba(236,72,153,.2); color: #f472b6; }
 
 .loading-spinner { display: flex; align-items: center; justify-content: center; min-height: 120px; }
 </style>
@@ -203,6 +205,7 @@
                         <option value="entertainment">Movies &amp; TV</option>
                         <option value="episode">Episodes</option>
                         <option value="livetv" selected>Live TV</option>
+                        <option value="ondemand_video">On Demand Videos</option>
                     </select>
                 </div>
             </div>
@@ -242,6 +245,37 @@
                     </thead>
                     <tbody id="topUsersBody">
                         <tr><td colspan="4" class="text-center py-4 text-muted">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ── On Demand Channel Stats ───────────────────────── --}}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div>
+                    <h6 class="mb-0 fw-semibold"><i class="ph ph-television me-1"></i>On Demand Channels</h6>
+                    <div class="text-muted small" id="ondemandTotals">Separate On Demand totals loading…</div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table stat-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Channel</th>
+                            <th class="text-end">Video Views</th>
+                            <th class="text-end">Profile Views</th>
+                            <th class="text-end">Plays</th>
+                            <th class="text-end">Unique Visitors</th>
+                            <th class="text-end">Watch Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ondemandBody">
+                        <tr><td colspan="6" class="text-center py-4 text-muted">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -411,7 +445,8 @@
             // Display watch time in minutes instead of hours
             const watchMinutes = Math.round((parseFloat(data.watch_hours) || 0) * 60);
             document.getElementById('val-hours').textContent     = watchMinutes + ' min';
-            document.getElementById('val-views').textContent     = data.total_views;
+            const viewsEl = document.getElementById('val-views');
+            if (viewsEl) viewsEl.textContent = data.total_views;
 
             const boostBadge = document.getElementById('boostBadge');
             if (boostBadge) boostBadge.style.display = data.boost_active ? 'inline-block' : 'none';
@@ -419,6 +454,7 @@
             const setChange = (elId, val) => {
                 if (val === null) return;
                 const el = document.getElementById(elId);
+                if (!el) return;
                 const dir = val > 0 ? 'up' : (val < 0 ? 'down' : 'neutral');
                 const icon = val > 0 ? '↑' : (val < 0 ? '↓' : '—');
                 el.className = `stat-change ${dir}`;
@@ -570,6 +606,43 @@
         });
     }
 
+    // ── On Demand Channels ───────────────────────────────
+    function loadOndemand() {
+        const period = getPeriod();
+        const tbody = document.getElementById('ondemandBody');
+        const totalsEl = document.getElementById('ondemandTotals');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr>';
+
+        fetchJson(`${base}/ondemand`, { period, limit: 10 }).then(data => {
+            if (!data || data.migration_required) {
+                totalsEl.textContent = 'Run the latest Statistics migration to enable On Demand channel reporting.';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">Migration required</td></tr>';
+                return;
+            }
+
+            totalsEl.textContent = `${Number(data.totals.total_views || 0).toLocaleString()} total views (${Number(data.totals.views || 0).toLocaleString()} video, ${Number(data.totals.profile_views || 0).toLocaleString()} profile), ${Number(data.totals.plays || 0).toLocaleString()} plays, ${Number(data.totals.watch_hours || 0).toLocaleString()} watch hours`;
+
+            if (!data.channels.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No On Demand data yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.channels.map(row => {
+                const name = row.url
+                    ? `<a href="${escHtml(row.url)}" target="_blank" class="text-decoration-none fw-medium">${escHtml(row.name)}</a>`
+                    : `<span class="fw-medium">${escHtml(row.name)}</span>`;
+                return `<tr>
+                    <td>${name}<div class="text-muted small">${Number(row.videos || 0).toLocaleString()} tracked videos</div></td>
+                    <td class="text-end">${Number(row.views || 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.profile_views || 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.plays || 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.unique_visitors || 0).toLocaleString()}</td>
+                    <td class="text-end">${escHtml(row.watch_time || '00:00:00')}</td>
+                </tr>`;
+            }).join('');
+        });
+    }
+
     function escHtml(str) {
         const d = document.createElement('div');
         d.appendChild(document.createTextNode(str ?? ''));
@@ -677,6 +750,7 @@
         loadTrafficChart();
         loadCountriesChart();
         loadTopContent();
+        loadOndemand();
         loadPageViews();
         loadPlayEvents();
     }

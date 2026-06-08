@@ -76,12 +76,13 @@ class ContentBoostController extends Controller
         $results = collect();
 
         $searchTypes = $type === 'all'
-            ? ['video', 'episode', 'livetv']
+            ? ['video', 'ondemand_video', 'episode', 'livetv']
             : [$type];
 
         foreach ($searchTypes as $ctype) {
             [$table, $label] = match ($ctype) {
                 'video'   => ['videos', 'Video'],
+                'ondemand_video' => ['videos', 'On Demand Video'],
                 'episode' => ['episodes', 'Episode'],
                 'livetv'  => ['live_tv_channel', 'Live TV'],
                 default   => [null, null],
@@ -97,7 +98,7 @@ class ContentBoostController extends Controller
 
             foreach ($rows as $row) {
                 // Get real play count
-                $realPlays = DB::table('entertainment_views')
+                $realPlays = $ctype === 'ondemand_video' ? 0 : DB::table('entertainment_views')
                     ->where('entertainment_id', $row->id)
                     ->whereNull('deleted_at')
                     ->count();
@@ -150,7 +151,7 @@ class ContentBoostController extends Controller
         $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
 
         // Real counts
-        $realPlays = DB::table('entertainment_views')
+        $realPlays = $type === 'ondemand_video' ? 0 : DB::table('entertainment_views')
             ->where('entertainment_id', $id)
             ->whereNull('deleted_at')
             ->count();
@@ -265,6 +266,7 @@ class ContentBoostController extends Controller
     {
         $table = match ($type) {
             'video'   => 'videos',
+            'ondemand_video' => 'videos',
             'episode' => 'episodes',
             'livetv'  => 'live_tv_channel',
             default   => 'videos',

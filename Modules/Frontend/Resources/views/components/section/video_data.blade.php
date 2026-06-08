@@ -204,7 +204,9 @@
                                     data-profile-id="{{ getCurrentProfile(auth()->id(), request()) }}"
                                     data-quality-options={{ $qualityOptionsJson }}
                                     data-subtitle-info="{{ $subtitleInfoJson }}" data-contentid="{{ $data['id'] }}",
-                                    data-contenttype="video", content-video-type="video",
+                                    data-contenttype="{{ $statsContentType ?? 'video' }}",
+                                    @if(!empty($statsChannelId)) data-stat-channel-id="{{ (int) $statsChannelId }}" @endif
+                                    content-video-type="video",
                                     data-start-time="{{ $data['intro_starts_at'] }}",
                                     data-end-time="{{ $data['intro_ends_at'] }}",>
                                     <span class="d-flex align-items-center justify-content-center gap-2">

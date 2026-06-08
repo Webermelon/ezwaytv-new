@@ -4,6 +4,8 @@ namespace Modules\Statistics\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Modules\Statistics\Models\PageView;
 use Modules\Statistics\Models\PlayEvent;
 use Modules\Statistics\Models\StatSetting;
@@ -19,8 +21,25 @@ class StatisticsController extends Controller
      */
     public function trackView(Request $request)
     {
+        $validated = $request->validate([
+            'content_type' => 'nullable|string|max:50',
+            'content_id'   => 'nullable|integer|min:1',
+            'channel_id'   => 'nullable|integer|min:1',
+            'platform'     => 'nullable|string|max:50',
+            'session_id'   => 'nullable|string|max:100',
+            'page_url'     => 'nullable|string|max:500',
+            'referrer'     => 'nullable|string|max:1000',
+            'page_name'    => 'nullable|string|max:255',
+            'route_name'   => 'nullable|string|max:255',
+        ]);
+
         if (!StatSetting::get('track_page_views', '1')) {
             return response()->json(['status' => 'disabled']);
+        }
+
+        $contentType = $this->normalizeContentType($validated['content_type'] ?? null);
+        if (($validated['content_type'] ?? null) && !$contentType) {
+            return response()->json(['status' => 'invalid_content_type'], 422);
         }
 
         $ip = $this->getClientIp($request);
@@ -43,20 +62,21 @@ class StatisticsController extends Controller
         $ua = $this->parseUserAgent($request->userAgent() ?? '');
 
         PageView::create([
-            'content_type' => $request->input('content_type'),
-            'content_id'   => $request->input('content_id'),
+            'content_type' => $contentType,
+            'content_id'   => $validated['content_id'] ?? null,
+            'channel_id'   => $validated['channel_id'] ?? null,
             'user_id'      => optional($request->user())->id,
             'ip_address'   => $ip,
             'country_code' => $this->resolveCountry($ip),
             'device_type'  => $ua['device_type'],
             'browser'      => $ua['browser'],
             'os'           => $ua['os'],
-            'platform'     => $request->input('platform', $ua['platform']),
-            'referrer'     => $request->input('referrer'),
-            'page_url'     => $request->input('page_url'),
-            'page_name'    => $request->input('page_name'),
-            'route_name'   => $request->input('route_name'),
-            'session_id'   => $request->input('session_id'),
+            'platform'     => $validated['platform'] ?? $ua['platform'],
+            'referrer'     => $validated['referrer'] ?? null,
+            'page_url'     => $validated['page_url'] ?? null,
+            'page_name'    => $validated['page_name'] ?? null,
+            'route_name'   => $validated['route_name'] ?? null,
+            'session_id'   => $validated['session_id'] ?? null,
             'view_date'    => now()->toDateString(),
         ]);
 
@@ -71,8 +91,22 @@ class StatisticsController extends Controller
      */
     public function trackPlay(Request $request)
     {
+        $validated = $request->validate([
+            'content_type' => 'required|string|max:50',
+            'content_id'   => 'required|integer|min:1',
+            'channel_id'   => 'nullable|integer|min:1',
+            'platform'     => 'nullable|string|max:50',
+            'quality'      => 'nullable|string|max:20',
+            'session_id'   => 'nullable|string|max:100',
+        ]);
+
         if (!StatSetting::get('track_play_events', '1')) {
             return response()->json(['status' => 'disabled']);
+        }
+
+        $contentType = $this->normalizeContentType($validated['content_type'] ?? null);
+        if (!$contentType) {
+            return response()->json(['status' => 'invalid_content_type'], 422);
         }
 
         $ip = $this->getClientIp($request);
@@ -88,16 +122,17 @@ class StatisticsController extends Controller
         $ua = $this->parseUserAgent($request->userAgent() ?? '');
 
         $event = PlayEvent::create([
-            'content_type' => $request->input('content_type'),
-            'content_id'   => $request->input('content_id'),
+            'content_type' => $contentType,
+            'content_id'   => $validated['content_id'],
+            'channel_id'   => $validated['channel_id'] ?? null,
             'user_id'      => optional($request->user())->id,
             'ip_address'   => $ip,
             'country_code' => $this->resolveCountry($ip),
             'device_type'  => $ua['device_type'],
-            'platform'     => $request->input('platform', $ua['platform']),
+            'platform'     => $validated['platform'] ?? $ua['platform'],
             'watch_seconds' => 0,
-            'quality'      => $request->input('quality'),
-            'session_id'   => $request->input('session_id'),
+            'quality'      => $validated['quality'] ?? null,
+            'session_id'   => $validated['session_id'] ?? null,
             'play_date'    => now()->toDateString(),
         ]);
 
@@ -112,12 +147,17 @@ class StatisticsController extends Controller
      */
     public function updateWatchTime(Request $request)
     {
+        $validated = $request->validate([
+            'play_id' => 'required|integer|min:1',
+            'watch_seconds' => 'required|integer|min:1|max:86400',
+        ]);
+
         if (!StatSetting::get('track_watch_time', '1')) {
             return response()->json(['status' => 'disabled']);
         }
 
-        $playId = $request->input('play_id');
-        $seconds = (int) $request->input('watch_seconds', 0);
+        $playId = $validated['play_id'];
+        $seconds = $validated['watch_seconds'];
 
         if (!$playId || $seconds <= 0) {
             return response()->json(['status' => 'invalid'], 422);
@@ -141,9 +181,30 @@ class StatisticsController extends Controller
 
     private function getClientIp(Request $request): string
     {
-        $ip = $request->header('X-Forwarded-For') ?? $request->ip();
-        // Take first IP if comma-separated
-        return trim(explode(',', $ip)[0]);
+        return (string) $request->ip();
+    }
+
+    private function normalizeContentType(?string $type): ?string
+    {
+        if (!$type) {
+            return null;
+        }
+
+        $type = strtolower(trim($type));
+        $aliases = [
+            'live_tv' => 'livetv',
+            'livetvchannel' => 'livetv',
+            'on_demand' => 'ondemand_channel',
+            'ondemand' => 'ondemand_channel',
+            'ondemandchannel' => 'ondemand_channel',
+            'ondemand-video' => 'ondemand_video',
+            'ondemand_video' => 'ondemand_video',
+        ];
+
+        $type = $aliases[$type] ?? $type;
+        $allowed = ['page', 'video', 'movie', 'tvshow', 'entertainment', 'episode', 'livetv', 'ondemand_channel', 'ondemand_video'];
+
+        return in_array($type, $allowed, true) ? $type : null;
     }
 
     private function isExcludedIp(string $ip): bool
@@ -239,11 +300,15 @@ class StatisticsController extends Controller
         // In production you'd use a local MaxMind DB for speed
         try {
             $context = stream_context_create(['http' => ['timeout' => 2]]);
-            $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=countryCode", false, $context);
-            if ($response) {
-                $data = json_decode($response, true);
-                return $data['countryCode'] ?? null;
-            }
+            return Cache::remember('stat_country_' . md5($ip), now()->addDays(7), function () use ($ip, $context) {
+                $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=countryCode", false, $context);
+                if ($response) {
+                    $data = json_decode($response, true);
+                    return $data['countryCode'] ?? null;
+                }
+
+                return null;
+            });
         } catch (\Throwable) {
             // silent fail
         }
@@ -264,19 +329,25 @@ class StatisticsController extends Controller
             return response()->json(['error' => 'Missing params'], 422);
         }
 
-        // Real counts
-        $realPlays = \DB::table('entertainment_views')
-            ->when($type === 'entertainment' || $type === 'video', fn($q) => $q->where('entertainment_id', $id))
-            ->when($type !== 'entertainment' && $type !== 'video', fn($q) => $q->where('entertainment_id', $id))
-            ->whereNull('deleted_at')
-            ->count();
+        $type = $this->normalizeContentType($type);
+        if (!$type) {
+            return response()->json(['error' => 'Invalid content type'], 422);
+        }
 
-        $realPlays += \DB::table('stat_play_events')
+        // Real counts
+        $realPlays = in_array($type, ['entertainment', 'video', 'movie', 'tvshow'], true)
+            ? DB::table('entertainment_views')
+                ->where('entertainment_id', $id)
+                ->whereNull('deleted_at')
+                ->count()
+            : 0;
+
+        $realPlays += DB::table('stat_play_events')
             ->where('content_type', $type)
             ->where('content_id', $id)
             ->count();
 
-        $realViews = \DB::table('stat_page_views')
+        $realViews = DB::table('stat_page_views')
             ->where('content_type', $type)
             ->where('content_id', $id)
             ->count();

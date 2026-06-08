@@ -143,8 +143,13 @@ Implementation note:
 Applied and active:
 - Watch-time boost migration: `2026_04_24_000004_add_boost_watch_seconds_to_stat_content_boosts`
 - Unique visitor boost migration: `2026_04_24_000005_add_boost_unique_visitors_to_stat_content_boosts`
+- On Demand channel analytics migration: `2026_06_08_000001_add_channel_id_to_statistics_events`
 - Content Booster supports plays, views, watch-time, and unique visitors.
 - Overview totals include plays/views/watch-time/unique-visitor content boosts.
 - Graph spike boost is active for chart and traffic breakdown endpoints.
+- On Demand channel reporting includes:
+  - `ondemand_channel` profile views.
+  - `ondemand_video` views/plays with `channel_id` when traffic comes from an On Demand channel.
+  - Normal `video` views/plays for videos assigned through `author_channel_video`, so general video page traffic still rolls up into the owning On Demand channel report.
 
 Use this file as the baseline before new changes.

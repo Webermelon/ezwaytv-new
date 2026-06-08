@@ -22,6 +22,7 @@ class PlayEvent extends Model
         'platform',
         'watch_seconds',
         'quality',
+        'channel_id',
         'session_id',
         'play_date',
     ];

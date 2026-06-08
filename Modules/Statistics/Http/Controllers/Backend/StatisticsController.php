@@ -49,8 +49,13 @@ class StatisticsController extends Controller
         // Total plays = whichever source has more records for the period
         // stat_play_events is populated going forward; entertainment_views has historical data
         $evCount       = $this->playsQuery($startDate, $endDate)->count();
-        $spCount       = $this->statPlaysQuery($startDate, $endDate)->count();
-        $totalPlays    = max($evCount, $spCount);
+        $spBaseCount   = $this->statPlaysQuery($startDate, $endDate)
+            ->where(fn($q) => $q->where('content_type', '!=', 'ondemand_video')->orWhereNull('content_type'))
+            ->count();
+        $spOndemandCount = $this->statPlaysQuery($startDate, $endDate)
+            ->where('content_type', 'ondemand_video')
+            ->count();
+        $totalPlays    = max($evCount, $spBaseCount) + $spOndemandCount;
         $evViewers     = $this->playsQuery($startDate, $endDate)->distinct('user_id')->count('user_id');
         $spViewers     = $this->statPlaysQuery($startDate, $endDate)->distinct('user_id')->count('user_id');
         $uniqueViewers = max($evViewers, $spViewers);
@@ -578,6 +583,235 @@ class StatisticsController extends Controller
     }
 
     /**
+     * AJAX: On Demand channel/video stats.
+     *
+     * `ondemand_video` events keep content_id as the video id and channel_id as the
+     * On Demand channel id, so we can report channel totals without losing per-video detail.
+     */
+    public function ondemand(Request $request)
+    {
+        $period = $request->input('period', 'month');
+        $limit = min((int) $request->input('limit', 10), 50);
+        [$startDate, $endDate] = $this->resolvePeriod($period);
+
+        if (!Schema::hasColumn('stat_play_events', 'channel_id') || !Schema::hasColumn('stat_page_views', 'channel_id')) {
+            return response()->json([
+                'totals' => ['views' => 0, 'plays' => 0, 'watch_seconds' => 0, 'watch_hours' => 0],
+                'channels' => [],
+                'videos' => [],
+                'migration_required' => true,
+            ]);
+        }
+
+        $assignedVideos = DB::table('author_channel_video as acv')
+            ->join('author_channels as ac', 'ac.id', '=', 'acv.author_channel_id')
+            ->join('videos as v', 'v.id', '=', 'acv.video_id')
+            ->whereNull('ac.deleted_at')
+            ->whereNull('v.deleted_at')
+            ->where('ac.is_active', 1)
+            ->where('v.status', 1)
+            ->get(['acv.author_channel_id as channel_id', 'acv.video_id as content_id']);
+
+        $assignedVideoIds = $assignedVideos->pluck('content_id')->unique()->values();
+
+        $playRows = DB::table('stat_play_events')
+            ->selectRaw('channel_id, content_id, COUNT(*) as plays, SUM(watch_seconds) as watch_seconds')
+            ->where('content_type', 'ondemand_video')
+            ->whereNotNull('channel_id')
+            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->where('play_date', '<=', $endDate))
+            ->groupBy('channel_id', 'content_id')
+            ->get();
+
+        $generalPlayRows = DB::table('stat_play_events')
+            ->selectRaw('content_id, COUNT(*) as plays, SUM(watch_seconds) as watch_seconds')
+            ->where('content_type', 'video')
+            ->whereIn('content_id', $assignedVideoIds)
+            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->where('play_date', '<=', $endDate))
+            ->groupBy('content_id')
+            ->get()
+            ->keyBy('content_id');
+
+        $legacyPlayRows = DB::table('entertainment_views')
+            ->selectRaw('entertainment_id as content_id, COUNT(*) as plays')
+            ->whereIn('entertainment_id', $assignedVideoIds)
+            ->whereNull('deleted_at')
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->whereDate('created_at', '<=', $endDate))
+            ->groupBy('entertainment_id')
+            ->get()
+            ->keyBy('content_id');
+
+        $viewRows = DB::table('stat_page_views')
+            ->selectRaw('channel_id, content_id, COUNT(*) as views, COUNT(DISTINCT ip_address) as unique_visitors')
+            ->where('content_type', 'ondemand_video')
+            ->whereNotNull('channel_id')
+            ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->where('view_date', '<=', $endDate))
+            ->groupBy('channel_id', 'content_id')
+            ->get();
+
+        $generalViewRows = DB::table('stat_page_views')
+            ->selectRaw('content_id, COUNT(*) as views, COUNT(DISTINCT ip_address) as unique_visitors')
+            ->where('content_type', 'video')
+            ->whereIn('content_id', $assignedVideoIds)
+            ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->where('view_date', '<=', $endDate))
+            ->groupBy('content_id')
+            ->get()
+            ->keyBy('content_id');
+
+        $profileViewRows = DB::table('stat_page_views')
+            ->selectRaw('COALESCE(channel_id, content_id) as channel_id, COUNT(*) as profile_views')
+            ->where('content_type', 'ondemand_channel')
+            ->where(function ($q) {
+                $q->whereNotNull('channel_id')->orWhereNotNull('content_id');
+            })
+            ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->where('view_date', '<=', $endDate))
+            ->groupBy('channel_id')
+            ->pluck('profile_views', 'channel_id');
+
+        $byVideo = [];
+        foreach ($assignedVideos as $row) {
+            $key = $row->channel_id . ':' . $row->content_id;
+            $generalPlays = $generalPlayRows[$row->content_id] ?? null;
+            $legacyPlays = $legacyPlayRows[$row->content_id] ?? null;
+            $generalViews = $generalViewRows[$row->content_id] ?? null;
+
+            $byVideo[$key] = [
+                'channel_id' => (int) $row->channel_id,
+                'content_id' => (int) $row->content_id,
+                'views' => (int) ($generalViews->views ?? 0),
+                'plays' => (int) ($generalPlays->plays ?? 0) + (int) ($legacyPlays->plays ?? 0),
+                'watch_seconds' => (int) ($generalPlays->watch_seconds ?? 0),
+                'unique_visitors' => (int) ($generalViews->unique_visitors ?? 0),
+            ];
+        }
+
+        foreach ($playRows as $row) {
+            $key = $row->channel_id . ':' . $row->content_id;
+            $byVideo[$key] ??= [
+                'channel_id' => (int) $row->channel_id,
+                'content_id' => (int) $row->content_id,
+                'views' => 0,
+                'plays' => 0,
+                'watch_seconds' => 0,
+                'unique_visitors' => 0,
+            ];
+            $byVideo[$key]['plays'] += (int) $row->plays;
+            $byVideo[$key]['watch_seconds'] += (int) $row->watch_seconds;
+        }
+        foreach ($viewRows as $row) {
+            $key = $row->channel_id . ':' . $row->content_id;
+            $byVideo[$key] ??= [
+                'channel_id' => (int) $row->channel_id,
+                'content_id' => (int) $row->content_id,
+                'views' => 0,
+                'plays' => 0,
+                'watch_seconds' => 0,
+                'unique_visitors' => 0,
+            ];
+            $byVideo[$key]['views'] += (int) $row->views;
+            $byVideo[$key]['unique_visitors'] += (int) $row->unique_visitors;
+        }
+
+        $videoIds = collect($byVideo)->pluck('content_id')->unique()->values();
+        $channelIds = collect($byVideo)
+            ->pluck('channel_id')
+            ->merge($profileViewRows->keys())
+            ->unique()
+            ->values();
+        $videos = DB::table('videos')->whereIn('id', $videoIds)->pluck('name', 'id');
+        $channels = DB::table('author_channels')->whereIn('id', $channelIds)->get(['id', 'name', 'username'])->keyBy('id');
+
+        $byChannel = [];
+        $videosOut = [];
+        foreach ($byVideo as $row) {
+            $channelId = $row['channel_id'];
+            $channel = $channels[$channelId] ?? null;
+
+            $byChannel[$channelId] ??= [
+                'channel_id' => $channelId,
+                'name' => $channel->name ?? "#{$channelId}",
+                'username' => $channel->username ?? null,
+                'url' => $channel && $channel->username ? url('/on-demand/' . $channel->username) : null,
+                'views' => 0,
+                'profile_views' => (int) ($profileViewRows[$channelId] ?? 0),
+                'plays' => 0,
+                'watch_seconds' => 0,
+                'unique_visitors' => 0,
+                'videos' => 0,
+            ];
+            $byChannel[$channelId]['views'] += $row['views'];
+            $byChannel[$channelId]['plays'] += $row['plays'];
+            $byChannel[$channelId]['watch_seconds'] += $row['watch_seconds'];
+            $byChannel[$channelId]['unique_visitors'] += $row['unique_visitors'];
+            $byChannel[$channelId]['videos']++;
+
+            $videosOut[] = [
+                'channel_id' => $channelId,
+                'channel_name' => $byChannel[$channelId]['name'],
+                'content_id' => $row['content_id'],
+                'name' => $videos[$row['content_id']] ?? "#{$row['content_id']}",
+                'url' => $row['content_id'] ? $this->resolveContentInfo('video', $row['content_id'])[1] : null,
+                'views' => $row['views'],
+                'plays' => $row['plays'],
+                'watch_seconds' => $row['watch_seconds'],
+                'watch_time' => gmdate('H:i:s', max(0, $row['watch_seconds'])),
+                'unique_visitors' => $row['unique_visitors'],
+                'total' => $row['views'] + $row['plays'],
+            ];
+        }
+
+        foreach ($profileViewRows as $channelId => $profileViews) {
+            if (isset($byChannel[$channelId])) {
+                continue;
+            }
+
+            $channel = $channels[$channelId] ?? null;
+            $byChannel[$channelId] = [
+                'channel_id' => (int) $channelId,
+                'name' => $channel->name ?? "#{$channelId}",
+                'username' => $channel->username ?? null,
+                'url' => $channel && $channel->username ? url('/on-demand/' . $channel->username) : null,
+                'views' => 0,
+                'profile_views' => (int) $profileViews,
+                'plays' => 0,
+                'watch_seconds' => 0,
+                'unique_visitors' => 0,
+                'videos' => 0,
+            ];
+        }
+
+        $allChannels = collect($byChannel)->map(function ($row) {
+            $row['watch_time'] = gmdate('H:i:s', max(0, $row['watch_seconds']));
+            $row['total'] = $row['views'] + $row['profile_views'] + $row['plays'];
+            return $row;
+        })->sortByDesc('total')->values();
+
+        $channelOut = $allChannels->take($limit)->values();
+
+        $videosOut = collect($videosOut)->sortByDesc('total')->values()->take($limit)->values();
+        $totals = [
+            'views' => $allChannels->sum('views'),
+            'profile_views' => $allChannels->sum('profile_views'),
+            'total_views' => $allChannels->sum('views') + $allChannels->sum('profile_views'),
+            'plays' => $allChannels->sum('plays'),
+            'watch_seconds' => $allChannels->sum('watch_seconds'),
+            'watch_hours' => round($allChannels->sum('watch_seconds') / 3600, 1),
+        ];
+
+        return response()->json([
+            'totals' => $totals,
+            'channels' => $channelOut,
+            'videos' => $videosOut,
+            'migration_required' => false,
+        ]);
+    }
+
+    /**
      * AJAX: Individual page-view records (for detail table).
      */
     public function pageViews(Request $request)
@@ -591,6 +825,7 @@ class StatisticsController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'pv.user_id')
             ->select([
                 'pv.id', 'pv.content_type', 'pv.content_id',
+                Schema::hasColumn('stat_page_views', 'channel_id') ? 'pv.channel_id' : DB::raw('NULL as channel_id'),
                 'pv.page_url',
                 DB::raw('NULL as page_name'), DB::raw('NULL as route_name'),
                 'pv.device_type', 'pv.browser', 'pv.os', 'pv.platform',
@@ -633,6 +868,7 @@ class StatisticsController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'pe.user_id')
             ->select([
                 'pe.id', 'pe.content_type', 'pe.content_id',
+                Schema::hasColumn('stat_play_events', 'channel_id') ? 'pe.channel_id' : DB::raw('NULL as channel_id'),
                 'pe.device_type', 'pe.platform', 'pe.country_code',
                 'pe.ip_address', 'pe.watch_seconds', 'pe.quality',
                 'pe.play_date', 'pe.created_at',
@@ -916,6 +1152,8 @@ class StatisticsController extends Controller
             'episode'       => 'episodes',
             'livetv'        => 'live_tv_channel',
             'livetvchannel' => 'live_tv_channel',
+            'ondemand_channel' => 'author_channels',
+            'ondemand_video' => 'videos',
         ];
 
         $table = $tableMap[$contentType] ?? null;
@@ -926,6 +1164,11 @@ class StatisticsController extends Controller
         $columns = in_array($contentType, ['livetv', 'livetvchannel'])
             ? ['name', 'slug']
             : ['name', 'slug', 'type'];
+        if ($contentType === 'ondemand_channel') {
+            $columns = ['name', 'username'];
+        } elseif ($contentType === 'ondemand_video') {
+            $columns = ['name', 'slug'];
+        }
 
         $row = DB::table($table)->where('id', $contentId)->first($columns);
         if (!$row) {
@@ -941,6 +1184,8 @@ class StatisticsController extends Controller
             'episode'       => url('/episode-details/' . $slug),
             'livetv',
             'livetvchannel' => url('/livetv-details/' . $contentId),
+            'ondemand_channel' => url('/on-demand/' . ($row->username ?? $contentId)),
+            'ondemand_video' => url('/video-details/' . $slug),
             'movie'         => url('/movie-details/' . $slug),
             'tvshow'        => url('/tvshow-details/' . $slug),
             'entertainment' => match ($type) {

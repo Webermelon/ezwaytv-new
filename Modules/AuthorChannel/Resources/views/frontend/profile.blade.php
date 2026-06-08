@@ -100,7 +100,7 @@
             @endphp
             <div class="col">
                 <div class="ac-video-card" data-preview="{{ $previewUrl ?? '' }}">
-                    <a href="{{ route('video-details', ['id' => $video->slug, 'autoplay' => 1]) }}"
+                    <a href="{{ route('video-details', ['id' => $video->slug, 'autoplay' => 1, 'ondemand_channel' => $channel->id]) }}"
                        class="ac-video-link"
                        aria-label="{{ $video->name }}">
 
@@ -461,6 +461,16 @@
     .yt-channel-meta { font-size: 0.75rem; }
 }
 </style>
+@endpush
+
+@push('ezstats-meta')
+<script>
+    window._ezPageMeta = {
+        content_type: 'ondemand_channel',
+        content_id: {{ (int) $channel->id }},
+        channel_id: {{ (int) $channel->id }}
+    };
+</script>
 @endpush
 
 @push('after-scripts')

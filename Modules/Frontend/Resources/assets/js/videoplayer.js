@@ -269,12 +269,21 @@ document.addEventListener('DOMContentLoaded', function () {
   // Read variables from data-* attributes
   var contentId = videoEl.getAttribute('data-contentid') || '';
   var contentType = videoEl.getAttribute('data-contenttype') || '';
+  var statChannelId = videoEl.getAttribute('data-stat-channel-id') || '';
   var currentCategoryId = videoEl.getAttribute('data-category-id') || '';
   var contentVideoType = videoEl.getAttribute('content-video-type') || '';
 
+  function ezStatsPayload() {
+    const payload = { content_type: contentType, content_id: parseInt(contentId, 10) || contentId };
+    if (statChannelId) {
+      payload.channel_id = parseInt(statChannelId, 10) || statChannelId;
+    }
+    return payload;
+  }
+
   // Track page view immediately on load
   if (contentId && contentType && typeof window.EzStats !== 'undefined' && window.EZSTATS_CONFIG && window.EZSTATS_CONFIG.track_page_views === true) {
-    window.EzStats.trackView({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId });
+    window.EzStats.trackView(ezStatsPayload());
   }
 
   const access = document.querySelector('#videoPlayer').getAttribute('data-movie-access');
@@ -422,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function () {
   player.on('play', function () {
     if (!_ezPlayTracked && _ezCanTrackPlay()) {
       _ezPlayTracked = true;
-      window.EzStats.trackPlay({ content_type: contentType, content_id: parseInt(contentId, 10) || contentId })
+      window.EzStats.trackPlay(ezStatsPayload())
         .then(function (res) {
           if (res && res.play_id) {
             _ezPlayId = res.play_id;

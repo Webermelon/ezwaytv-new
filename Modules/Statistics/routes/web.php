@@ -16,6 +16,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth', 'a
         Route::get('/platforms', [StatisticsController::class, 'platforms'])->name('platforms');
         Route::get('/traffic',   [StatisticsController::class, 'traffic'])->name('traffic');
         Route::get('/users',     [StatisticsController::class, 'topUsers'])->name('top_users');
+        Route::get('/ondemand',  [StatisticsController::class, 'ondemand'])->name('ondemand');
         Route::get('/page-views',  [StatisticsController::class, 'pageViews'])->name('page_views');
         Route::get('/play-events', [StatisticsController::class, 'playEvents'])->name('play_events');
         Route::get('/settings',  [StatisticsController::class, 'settings'])->name('settings');
