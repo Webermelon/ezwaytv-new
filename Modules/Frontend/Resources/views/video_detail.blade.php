@@ -8,6 +8,12 @@
 
     @php
         $data = $data['data'];
+        $ondemandChannelId = (int) request()->query('ondemand_channel', 0);
+        $ondemandChannel = null;
+        if ($ondemandChannelId > 0 && !empty($data['author_channels'])) {
+            $ondemandChannel = collect($data['author_channels'])->firstWhere('id', $ondemandChannelId);
+        }
+        $statsContentType = $ondemandChannel ? 'ondemand_video' : 'video';
     @endphp
 
     <div id="thumbnail-section">
@@ -22,6 +28,8 @@
                 'plan_id' => $data['plan_id'] ?? null,
                 'content_type' => 'video',
                 'content_id' => $data['id'],
+                'stat_content_type' => $statsContentType,
+                'stat_channel_id' => $ondemandChannel['id'] ?? null,
                 'is_trailer' => false,
                 'video_type' => $data['video_upload_type'],
                 'content_video_type' => 'video',
@@ -37,6 +45,8 @@
                 'plan_id' => $data['plan_id'] ?? null,
                 'content_type' => 'video',
                 'content_id' => $data['id'],
+                'stat_content_type' => $statsContentType,
+                'stat_channel_id' => $ondemandChannel['id'] ?? null,
                 'is_trailer' => true,
                 'video_type' => $data['video_upload_type'],
                 'content_video_type' => 'trailer',
@@ -50,6 +60,8 @@
         @include('frontend::components.section.video_data', [
             'data' => $data,
             'subtitle_info' => $data['subtitle_info'],
+            'statsContentType' => $statsContentType,
+            'statsChannelId' => $ondemandChannel['id'] ?? null,
         ])
     </div>
 
@@ -68,7 +80,9 @@
             <div id="more-like-this">
                 @include('frontend::components.section.video', [
                     'data' => $data['more_items']->toArray(request()),
-                    'title' => __('frontend.more_like_this'),
+                    'title' => !empty($data['ondemand_channel_context'])
+                        ? ('More from ' . $data['ondemand_channel_context']['name'])
+                        : __('frontend.more_like_this'),
                 ])
             </div>
         </div>
@@ -169,6 +183,10 @@
 
 @push('ezstats-meta')
 <script>
-    window._ezPageMeta = { content_type: 'video', content_id: {{ (int)($data['id'] ?? 0) }} };
+    window._ezPageMeta = {
+        content_type: @json($statsContentType),
+        content_id: {{ (int)($data['id'] ?? 0) }},
+        channel_id: {{ (int)($ondemandChannel['id'] ?? 0) ?: 'null' }}
+    };
 </script>
 @endpush

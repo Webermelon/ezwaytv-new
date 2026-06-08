@@ -17,6 +17,11 @@
         $videoName = data_get($data, 'name', data_get($data, 'details.name', '--'));
         $videoSlug = data_get($data, 'slug', data_get($data, 'details.slug'));
         $posterImage = data_get($data, 'poster_image', data_get($data, 'details.poster_image', asset('img/no-image.jpg')));
+        $ondemandChannelId = data_get($data, 'ondemand_channel_id');
+        $videoRouteParams = ['id' => $videoSlug, 'autoplay' => 1];
+        if ($ondemandChannelId) {
+            $videoRouteParams['ondemand_channel'] = $ondemandChannelId;
+        }
 
         $previewUrl = data_get($data, 'trailer_url_type') === 'Local' && !empty(data_get($data, 'trailer_url'))
             ? data_get($data, 'trailer_url')
@@ -36,10 +41,10 @@
             <div class="block-images position-relative w-100">
 
                 @if (isset($is_search) && $is_search == 1)
-                    <a href="{{ route('video-details', ['id' => $videoSlug, 'is_search' => request()->has('search') ? 1 : null, 'autoplay' => 1]) }}"
+                    <a href="{{ route('video-details', array_merge($videoRouteParams, ['is_search' => request()->has('search') ? 1 : null])) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100"></a>
                 @else
-                    <a href="{{ route('video-details', ['id' => $videoSlug, 'autoplay' => 1]) }}"
+                    <a href="{{ route('video-details', $videoRouteParams) }}"
                         class="position-absolute top-0 bottom-0 start-0 end-0 w-100 h-100"></a>
                 @endif
 

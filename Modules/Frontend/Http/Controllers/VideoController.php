@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Crypt;
 use Modules\Banner\Models\Banner;
 use Modules\Banner\Transformers\Backend\SliderResourceV3;
 use Illuminate\Support\Facades\Auth;
+use App\Models\AuthorChannel;
+use Modules\Video\Transformers\Backend\VideoResourceV3;
 
 
 class VideoController extends Controller
@@ -140,6 +142,39 @@ class VideoController extends Controller
             return $data;
         });
 
+        $ondemandChannel = null;
+        $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
+        $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
+            ->whereHas('videos', fn($q) => $q->where('videos.id', $videoGuard->id));
+
+        if ($ondemandChannelId > 0) {
+            $ondemandChannelQuery->where('id', $ondemandChannelId);
+        }
+
+        $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
+
+        if ($ondemandChannel) {
+            $channelVideos = $ondemandChannel->videos()
+                ->where('videos.status', 1)
+                ->whereNull('videos.deleted_at')
+                ->where('videos.id', '!=', $videoGuard->id)
+                ->orderBy('author_channel_video.created_at', 'desc')
+                ->take(12)
+                ->get();
+
+            $channelVideos->each(function ($video) use ($ondemandChannel) {
+                $video->ondemand_channel_id = $ondemandChannel->id;
+            });
+
+            $data['data']['more_items'] = VideoResourceV3::collection($channelVideos);
+
+            $data['data']['ondemand_channel_context'] = [
+                'id' => $ondemandChannel->id,
+                'name' => $ondemandChannel->name,
+                'username' => $ondemandChannel->username,
+                'url' => route('author_channels.show', $ondemandChannel->username),
+            ];
+        }
 
         $entertainmentType = 'video';
         $entertainment = $data['data']['seoData'];

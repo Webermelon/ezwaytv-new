@@ -80,6 +80,7 @@ class VideoResourceV3 extends JsonResource
             'imdb_rating' => $this->IMDb_rating,
             'duration' => $this->duration,
             'poster_image' => setBaseUrlWithFileName($this->poster_url,'image','video'),
+            'ondemand_channel_id' => $this->ondemand_channel_id ?? null,
         ];
     }
 }
