@@ -1539,3 +1539,56 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Live TV Route 500 Env Fix
+
+- User reported `https://react.ezway.tv/livetv/ezway-tv` returned HTTP 500 after the Live TV stream resolver work.
+- Root cause:
+  - Laravel could not parse `.env` because `MIX_ASSET_URL` had an invalid value with whitespace: `https://react.avbar ezway.tv`.
+  - The invalid `.env` made all React web routes return 500 before Laravel could render the SPA view.
+- Updated `.env`:
+  - Corrected `MIX_ASSET_URL` to `https://react.ezway.tv`.
+- Server cleanup:
+  - Cleared Laravel config/cache.
+  - Restored Laravel runtime ownership on `storage` and `bootstrap/cache` to `www-data:www-data`.
+- Verified:
+  - Public `https://react.ezway.tv/livetv/ezway-tv` returns HTTP 200.
+  - Local origin with Cloudflare forwarding headers returns HTTP 200.
+  - `php artisan about --only=environment` runs successfully.
+  - `/api/v3/livetv-details?channel_id=ezway-tv` returns a valid HLS stream URL for eZWay TV.
+- No migrations were run and no database tables were altered.
+
+### Header Logo Loading Flash Fix
+
+- User reported the header briefly showed the text logo during reload before the image logo appeared.
+- Root cause:
+  - `BrandLogo` rendered the text fallback while the branding API was still loading.
+- Updated `resources/react/components/BrandLogo.tsx`:
+  - Added a quiet fixed-size black/gold loading placeholder while branding is loading.
+  - Kept the text fallback only for the real logo-failed/no-logo state after loading.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Passed header and mobile drawer placeholder sizes to prevent layout jump.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Header Hardcoded Logo Fallback
+
+- User provided a hardcoded white eZWay TV logo URL to prevent the header from ever flashing text branding.
+- Updated `resources/react/components/BrandLogo.tsx`:
+  - Added `https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/ezwaytv_white_6a26f75c71a3d.png` as the immediate fallback logo.
+  - The branding API logo still wins when available.
+  - Text fallback now only appears if both the configured logo and hardcoded fallback image fail.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Navbar Active Border State
+
+- User requested changing the navbar active item to use a bottom border.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Replaced the filled white active nav pill with a gold bottom-border active state.
+  - Kept inactive nav items transparent with subtle hover border/text changes.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

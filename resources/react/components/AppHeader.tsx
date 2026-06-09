@@ -59,7 +59,7 @@ export function AppHeader({ active }: AppHeaderProps) {
       <header className="sticky top-0 z-40 border-b border-white/8 bg-[#050505]/94 px-4 backdrop-blur-xl sm:px-8 lg:px-12">
         <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-6">
-            <BrandLogo imageClassName="max-h-11 max-w-[190px]" textClassName="text-2xl" />
+            <BrandLogo imageClassName="max-h-11 max-w-[190px]" textClassName="text-2xl" placeholderClassName="h-10 w-[170px]" />
             <nav className="hidden items-center gap-1 text-sm font-semibold text-white/62 md:flex">
               {navItems.map((item) => {
                 const items = item.dropdown ? dropdowns[item.dropdown] : []
@@ -69,10 +69,10 @@ export function AppHeader({ active }: AppHeaderProps) {
                     <a
                       href={item.href}
                       className={[
-                        'inline-flex items-center gap-1.5 rounded-md px-3 py-2 transition',
+                        'relative inline-flex h-16 items-center gap-1.5 border-b-2 px-3 text-sm transition',
                         activeKey === item.key
-                          ? 'bg-white text-black shadow-sm'
-                          : 'hover:bg-white/[0.08] hover:text-white',
+                          ? 'border-[#d4a843] text-white'
+                          : 'border-transparent text-white/62 hover:border-white/20 hover:text-white',
                       ].join(' ')}
                     >
                       {item.label}
@@ -153,7 +153,7 @@ function MobileMenu({
     <div className="fixed inset-y-0 left-0 right-0 z-[9999] min-h-screen w-[100dvw] max-w-[100dvw] overflow-hidden bg-[#020b0d] md:hidden">
       <nav className="flex h-screen min-h-screen w-full max-w-full flex-col overflow-hidden bg-[#020b0d]">
         <div className="flex min-h-24 w-full min-w-0 max-w-full items-center justify-between gap-4 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(90deg,#050505,#130d08)] px-4">
-          <BrandLogo imageClassName="max-h-14 max-w-[220px]" textClassName="text-3xl" />
+          <BrandLogo imageClassName="max-h-14 max-w-[220px]" textClassName="text-3xl" placeholderClassName="h-12 w-[210px]" />
           <button
             type="button"
             onClick={onClose}
