@@ -1633,3 +1633,14 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Video Detail Related Card Thumbnail Cleanup
+
+- User reported related video cards looked bad on mobile because cards appeared to show two images.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Removed the preview/blur thumbnail treatment from related cards.
+  - Related cards now render one clean `aspect-video` image with `object-cover`.
+  - Added a simple fallback state for related videos without an image.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

@@ -304,11 +304,18 @@ function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
 
 function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string | number | null }) {
   const href = buildVideoHref(item, channelId)
+  const image = item.poster_image ?? item.poster_tv_image ?? item.thumbnail_url ?? item.cover_image_url ?? item.details?.thumbnail_image
 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        <MediaThumbnail src={item.poster_image} alt={item.name} previewSrc={previewHref(item)} />
+        <div className="aspect-video bg-black">
+          {image ? (
+            <img src={image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/42">No image</div>
+          )}
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
           <Play className="h-5 w-5 fill-white text-white" />
