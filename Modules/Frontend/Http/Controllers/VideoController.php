@@ -130,8 +130,21 @@ class VideoController extends Controller
 
             $data = (new VideoDetailResource($video))->toArray(request());
             $data['type'] = 'video';
+
+            // Ensure social previews use the actual video artwork.
+            $ogImage = null;
+            if (!empty($video->thumbnail_url)) {
+                $ogImage = setBaseUrlWithFileName($video->thumbnail_url, 'image', 'video');
+            } elseif (!empty($video->poster_url)) {
+                $ogImage = setBaseUrlWithFileName($video->poster_url, 'image', 'video');
+            } elseif (!empty($data['poster_image'])) {
+                $ogImage = $data['poster_image'];
+            } elseif (!empty($video->seo_image)) {
+                $ogImage = $video->seo_image;
+            }
+
             $data['seoData'] = (object) [
-                "seo_image" => $video->seo_image,
+                "seo_image" => $ogImage,
                 "google_site_verification" => $video->google_site_verification,
                 "canonical_url" => $video->canonical_url,
                 "short_description" => $video->short_description,
@@ -141,6 +154,17 @@ class VideoController extends Controller
 
             return $data;
         });
+
+        $resolvedOgImage = null;
+        if (!empty($videoGuard->thumbnail_url)) {
+            $resolvedOgImage = setBaseUrlWithFileName($videoGuard->thumbnail_url, 'image', 'video');
+        } elseif (!empty($videoGuard->poster_url)) {
+            $resolvedOgImage = setBaseUrlWithFileName($videoGuard->poster_url, 'image', 'video');
+        }
+
+        if (!empty($resolvedOgImage) && isset($data['data']['seoData'])) {
+            $data['data']['seoData']->seo_image = $resolvedOgImage;
+        }
 
         $ondemandChannel = null;
         $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
