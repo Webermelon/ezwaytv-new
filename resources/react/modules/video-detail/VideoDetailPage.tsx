@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, Clock, Lock, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Copy, Link, Lock, Mail, MessageCircle, Play, Send, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -58,6 +58,7 @@ export function VideoDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
 
@@ -193,12 +194,16 @@ export function VideoDetailPage() {
                       Watch Now
                     </Button>
                   )}
-                  <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-                    <a href={shareHref()}>
-                      <Share2 className="h-5 w-5" />
-                      Share
-                    </a>
-                  </Button>
+                  <ShareMenu
+                    title={video.name}
+                    copied={copiedShareUrl}
+                    onCopy={() => {
+                      copyShareUrl().then(() => {
+                        setCopiedShareUrl(true)
+                        window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                      }).catch(() => undefined)
+                    }}
+                  />
                 </div>
               </section>
 
@@ -333,6 +338,101 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
   )
 }
 
+function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+  const shareUrl = currentShareUrl()
+  const shareText = `Watch ${title} on EZWay TV`
+  const shareTargets = [
+    {
+      label: 'Facebook',
+      icon: Share2,
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'X',
+      icon: Send,
+      href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: 'WhatsApp',
+      icon: MessageCircle,
+      href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+    {
+      label: 'Telegram',
+      icon: Send,
+      href: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: 'LinkedIn',
+      icon: Link,
+      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'Reddit',
+      icon: MessageCircle,
+      href: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`,
+    },
+    {
+      label: 'Pinterest',
+      icon: Link,
+      href: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(title)}`,
+    },
+    {
+      label: 'Email',
+      icon: Mail,
+      href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
+    },
+    {
+      label: 'SMS',
+      icon: MessageCircle,
+      href: `sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+  ]
+
+  return (
+    <div className="group/share relative">
+      <Button type="button" size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+        <Share2 className="h-5 w-5" />
+        Share
+      </Button>
+      <div className="invisible absolute left-0 top-full z-30 mt-3 w-[min(20rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111] p-3 opacity-0 shadow-2xl transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100">
+        <div className="grid grid-cols-2 gap-2">
+          {shareTargets.map(({ label, icon: Icon, href }) => (
+            <a
+              key={label}
+              href={href}
+              target={href.startsWith('http') ? '_blank' : undefined}
+              rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{label}</span>
+            </a>
+          ))}
+          {typeof navigator.share === 'function' ? (
+            <button
+              type="button"
+              onClick={() => navigator.share({ title, text: shareText, url: shareUrl }).catch(() => undefined)}
+              className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+            >
+              <Share2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">Device</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+          >
+            {copied ? <Check className="h-4 w-4 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
+            <span className="truncate">{copied ? 'Copied' : 'Copy Link'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function VideoDetailSkeleton() {
   return (
     <section className="grid min-h-[72vh] items-center gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:px-12">
@@ -381,8 +481,27 @@ function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
 }
 
-function shareHref() {
-  return `https://www.facebook.com/sharer?u=${encodeURIComponent(window.location.href)}`
+function currentShareUrl() {
+  return window.location.href
+}
+
+async function copyShareUrl() {
+  const url = currentShareUrl()
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url)
+    return
+  }
+
+  const input = document.createElement('input')
+  input.value = url
+  input.setAttribute('readonly', '')
+  input.style.position = 'fixed'
+  input.style.opacity = '0'
+  document.body.appendChild(input)
+  input.select()
+  document.execCommand('copy')
+  document.body.removeChild(input)
 }
 
 function stripHtml(value: string) {
