@@ -25,6 +25,8 @@ const emptyState: HomeState = {
   ondemandChannels: [],
 }
 
+const homeHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
+
 export function HomePage() {
   const homeQuery = useQuery({
     queryKey: ['home-module'],
@@ -44,7 +46,7 @@ export function HomePage() {
       <AppHeader active="home" />
       <Hero featured={featured} loading={homeQuery.isLoading} />
 
-      <section className="relative z-10 -mt-14 space-y-9 px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="relative z-10 -mt-10 space-y-9 px-4 pb-16 sm:px-8 lg:px-12">
         {homeQuery.isError ? (
           <div className="rounded-md border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
             Some home APIs did not respond. Existing backend remains untouched.
@@ -67,40 +69,43 @@ export function HomePage() {
 }
 
 function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean }) {
-  const image = featured?.poster_tv_image ?? featured?.poster_image
   const title = featured?.details?.name ?? featured?.name ?? 'eZWay TV'
   const category = featured?.details?.category ?? featured?.type ?? 'Streaming'
 
   return (
-    <section className="relative min-h-[82vh] overflow-hidden">
-      {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" /> : null}
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.86)_32%,rgba(5,5,5,0.34)_68%,#050505_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-[#050505] to-transparent" />
+    <section className="relative min-h-[70vh] overflow-hidden bg-[#050505]">
+      <img src={homeHeroImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_36%,rgba(5,5,5,0.58)_66%,rgba(5,5,5,0.24)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] via-[#050505]/82 to-transparent" />
 
-      <div className="relative z-10 flex min-h-[82vh] max-w-3xl flex-col justify-end px-4 pb-28 pt-28 sm:px-8 lg:px-12">
-        <Badge className={[
-          'mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase text-white',
-          loading ? 'bg-white/14' : 'bg-primary',
-        ].join(' ')}>
-          {loading ? 'Featured' : category}
-        </Badge>
-        <h1 className="max-w-2xl text-5xl font-black leading-none text-white sm:text-6xl lg:text-7xl">
-          {title}
-        </h1>
-        <p className="mt-5 max-w-xl text-base leading-7 text-white/72 sm:text-lg">
-          Frontend replacement pilot powered by your existing Laravel API. Backend logic and database tables stay exactly as they are.
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-            <a href={contentHref(featured)}>
-              <Play className="h-5 w-5 fill-current" />
-              Play
-            </a>
-          </Button>
-          <Button size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-            <Info className="h-5 w-5" />
-            More Info
-          </Button>
+      <div className="relative z-10 flex min-h-[70vh] items-center px-4 pb-20 pt-16 sm:px-8 lg:px-12">
+        <div className="max-w-3xl">
+          <Badge className={[
+            'mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase',
+            loading ? 'bg-white/14 text-white' : 'bg-[#d4a843] text-black',
+          ].join(' ')}>
+            {loading ? 'Featured' : category}
+          </Badge>
+          <h1 className="max-w-2xl text-4xl font-black leading-none text-white sm:text-6xl lg:text-7xl">
+            {title}
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-7 text-white/72 sm:text-lg">
+            Stream standout shows, live channels, and on-demand stories from the eZWay TV network.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button asChild size="lg" className="bg-[#d4a843] text-black hover:bg-[#edc342]">
+              <a href={contentHref(featured)}>
+                <Play className="h-5 w-5 fill-current" />
+                Watch Now
+              </a>
+            </Button>
+            <Button asChild size="lg" variant="secondary" className="bg-white/12 text-white hover:bg-white/22">
+              <a href={contentHref(featured)}>
+                <Info className="h-5 w-5" />
+                Details
+              </a>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

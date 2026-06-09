@@ -15,8 +15,8 @@ type AppHeaderProps = {
 
 const navItems = [
   { key: 'home', label: 'Home', href: '/' },
-  { key: 'movies', label: 'Movies', href: '/movies' },
-  { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
+  // { key: 'movies', label: 'Movies', href: '/movies' },
+  // { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
   { key: 'videos', label: 'Videos', href: '/videos', dropdown: 'videos' },
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },

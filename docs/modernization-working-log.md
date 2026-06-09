@@ -1469,3 +1469,73 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Homepage Hero Poster Image Priority
+
+- User reported the homepage hero direction did not look good and requested using poster image artwork instead.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Kept the simpler homepage hero layout.
+  - Changed hero artwork priority to use `poster_image` first, with `poster_tv_image` as fallback.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Homepage Hero Black Gold Gradient Pass
+
+- User requested using a nicer black/gold gradient instead of the previous poster-led hero direction.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Made the homepage hero primarily a black/gold gradient treatment.
+  - Kept poster artwork as a subtle desktop supporting layer instead of the dominant background.
+  - Replaced internal pilot copy with viewer-facing eZWay TV streaming copy.
+  - Updated CTA labels to `Watch Now` and `Details`.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Homepage Hero Logo Background Pass
+
+- User requested using the TV logo instead of content pictures in the homepage hero.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Removed the hero poster/photo background layer.
+  - Added the configured eZWay TV logo/mini-logo as a subtle oversized decorative brand layer on desktop.
+  - Kept the black/gold gradient as the primary hero visual treatment.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Homepage Hero Density And Brand Panel Pass
+
+- User shared a screenshot showing the homepage hero felt too dull and empty.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Reduced the hero height from 82vh to 70vh to remove excess empty dark space.
+  - Reworked the black/gold background into stronger angled bands.
+  - Added a desktop logo feature panel with a gold accent and simple Live TV / On Demand / Videos service strip.
+  - Moved hero content to vertical center alignment for better balance.
+  - Pulled the first rail slightly closer to the hero.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Homepage Hero Provided Image Pass
+
+- User requested using a specific DigitalOcean Spaces image for the homepage hero.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Added the provided image URL as the fixed homepage hero visual.
+  - Used the image as a subtle full-hero background layer and as the desktop feature card image.
+  - Kept black/gold overlays for readability and brand consistency.
+  - Removed the previous logo-panel hero treatment.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Homepage Hero Simplified Image Pass
+
+- User requested removing the square logo box and gold line from the homepage hero and using only a specific logo image.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Replaced the prior hero image URL with `https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg`.
+  - Removed the desktop feature card/square box.
+  - Removed the angled gold stripe overlay.
+  - Kept a dark readability overlay and bottom fade so text remains legible.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
