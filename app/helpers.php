@@ -978,7 +978,17 @@ function formatTime($date)
 
 function isenablemodule($key)
 {
-    $setting = Setting::where('name', $key)->value('val');
+    try {
+        $setting = Setting::where('name', $key)->value('val');
+    } catch (\Throwable $e) {
+        Log::warning('Unable to read module setting.', [
+            'key' => $key,
+            'error' => $e->getMessage(),
+        ]);
+
+        return 0;
+    }
+
     return $setting !== null ? $setting : 0;
 }
 

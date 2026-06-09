@@ -324,10 +324,14 @@ class SettingController extends Controller
         $response['is_download_available'] = isset($downloadOption) ? ($downloadOption['status'] ?? 0) : 0;
         $response['application_url'] = $application_url;
         $response['banner_ads'] = $bannerIds;
+        $response['app_name'] = isset($settings['app_name']) ? $settings['app_name'] : config('app.name');
         $response['app_mini_logo'] = isset($settings['mini_logo']) ? $settings['mini_logo'] : asset('img/logo/mini_logo.png');
         $response['app_logo'] = isset($settings['dark_logo']) ? $settings['dark_logo'] : asset('img/logo/dark_logo.png');
+        $response['app_light_logo'] = isset($settings['light_logo']) ? $settings['light_logo'] : asset('img/logo/light_logo.png');
         $response['app_favicon'] = isset($settings['favicon']) ? $settings['favicon'] : asset('img/logo/favicon.png');
         $response['app_loader'] = isset($settings['loader_gif']) ? $settings['loader_gif'] : asset('img/logo/loader.gif');
+        $response['theme_color'] = getCustomizationSetting('theme_color');
+        $response['root_colors'] = isset($settings['root_colors']) ? $settings['root_colors'] : null;
         $response['force_update'] = isset($settings['force_update']) ? (int)$settings['force_update'] : 0;
         $response['mobile_app'] = isset($settings['mobile_app']) ? $mobileAppVersion['mobile_app_versions'] ?? null : null;
         $response['tv_app'] = isset($settings['tv_app']) ? $response['tv_app_versions'] ?? null : null;

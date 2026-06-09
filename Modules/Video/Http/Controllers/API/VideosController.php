@@ -12,6 +12,7 @@ use Modules\Video\Transformers\VideoDetailResource;
 use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Like;
 use Modules\Entertainment\Models\EntertainmentDownload;
+use App\Models\AuthorChannel;
 use Carbon\Carbon;
 use Modules\Video\Transformers\Backend\VideoResourceV3;
 use Modules\Frontend\Models\PayPerView;
@@ -202,7 +203,31 @@ class VideosController extends Controller
 
   public function videoDetails(Request $request){
 
-            $video = Video::with('VideoStreamContentMappings','plan','subtitles')->where('id', $request->video_id)->first();
+            $videoKey = $request->video_id ?? $request->id ?? $request->slug;
+
+            $video = Video::with([
+                'VideoStreamContentMappings',
+                'plan',
+                'subtitles',
+                'clips',
+                'categories',
+                'authorChannels',
+                'creatorChannel',
+            ])
+                ->where(function ($query) use ($videoKey) {
+                    if (is_numeric($videoKey)) {
+                        $query->where('id', (int) $videoKey);
+                    }
+
+                    $query->orWhere('slug', $videoKey);
+                })
+                ->where('status', 1)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if (! $video) {
+                return ApiResponse::error(__('video.video_not_found'), 404);
+            }
 
             if($request->has('user_id')){
                 $user_id = $request->user_id;
@@ -217,7 +242,39 @@ class VideosController extends Controller
                 ->where('entertainment_type', 'video')->where('is_download', 1)->exists();
             }
 
-            $responseData = new VideoDetailResource($video);
+            $responseData = (new VideoDetailResource($video))->toArray($request);
+
+            $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
+            $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
+                ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id));
+
+            if ($ondemandChannelId > 0) {
+                $ondemandChannelQuery->where('id', $ondemandChannelId);
+            }
+
+            $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
+
+            if ($ondemandChannel) {
+                $channelVideos = $ondemandChannel->videos()
+                    ->where('videos.status', 1)
+                    ->whereNull('videos.deleted_at')
+                    ->where('videos.id', '!=', $video->id)
+                    ->orderBy('author_channel_video.created_at', 'desc')
+                    ->take(12)
+                    ->get();
+
+                $channelVideos->each(function ($video) use ($ondemandChannel) {
+                    $video->ondemand_channel_id = $ondemandChannel->id;
+                });
+
+                $responseData['more_items'] = VideoResourceV3::collection($channelVideos);
+                $responseData['ondemand_channel_context'] = [
+                    'id' => $ondemandChannel->id,
+                    'name' => $ondemandChannel->name,
+                    'username' => $ondemandChannel->username,
+                    'url' => route('author_channels.show', $ondemandChannel->username),
+                ];
+            }
 
 
       return ApiResponse::success($responseData, __('video.video_details'), 200);
