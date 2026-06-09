@@ -11,7 +11,7 @@
   --card-foreground: 0 0% 96%;
   --popover: 0 0% 8%;
   --popover-foreground: 0 0% 96%;
-  --primary: 357 92% 47%;
+  --primary: 222 69% 67%;
   --primary-foreground: 0 0% 100%;
   --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 96%;
@@ -23,7 +23,7 @@
   --destructive-foreground: 0 0% 98%;
   --border: 0 0% 20%;
   --input: 0 0% 18%;
-  --ring: 357 92% 47%;
+  --ring: 222 69% 67%;
   --radius: 0.375rem;
 }
 
@@ -34,7 +34,7 @@
   --card-foreground: 0 0% 98%;
   --popover: 240 10% 3.9%;
   --popover-foreground: 0 0% 98%;
-  --primary: 0 72.2% 50.6%;
+  --primary: 222 69% 67%;
   --primary-foreground: 0 85.7% 97.3%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
@@ -46,7 +46,7 @@
   --destructive-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 0 72.2% 50.6%;
+  --ring: 222 69% 67%;
 }
 
 @theme inline {
@@ -85,10 +85,11 @@ html {
 
 body {
   min-width: 320px;
+  overflow-x: hidden;
 }
 
-.ez-header-search {
-  display: inline-flex !important;
+.ez-header-search-desktop {
+  display: none !important;
   width: 112px !important;
   min-width: 112px !important;
   height: 40px !important;
@@ -113,6 +114,19 @@ body {
   font-weight: 700 !important;
   line-height: 1 !important;
   white-space: nowrap !important;
+}
+
+@media (min-width: 768px) {
+  .ez-header-search-desktop {
+    display: inline-flex !important;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .ez-header-search,
+  .ez-header-search-desktop {
+    display: none !important;
+  }
 }
 
 ::selection {

@@ -13,7 +13,7 @@ export function BrandLogo({
   imageClassName = '',
   textClassName = '',
 }: BrandLogoProps) {
-  const { appName, logo } = useBranding()
+  const { appName, logo, loading } = useBranding()
   const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function BrandLogo({
           onError={() => setImageFailed(true)}
         />
       ) : (
-        <span className={`text-2xl font-black uppercase text-primary ${textClassName}`}>{appName}</span>
+        <span className={`text-2xl font-black uppercase ${loading ? 'text-white' : 'text-primary'} ${textClassName}`}>{appName}</span>
       )}
     </a>
   )

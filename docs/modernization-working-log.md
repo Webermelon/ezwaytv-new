@@ -1324,3 +1324,90 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `npm.cmd run react:build` passes.
   - `GET /livetv/trailblazers-tv` returns 200.
 - No migrations were run and no database tables were altered.
+
+### React Test Site Setup And Current Frontend Pass
+
+- User requested the live Laravel site be cloned for testing at `/var/www/react.ezway.tv` while keeping the database separate.
+- Set up the test Laravel/React instance from the existing eZWay TV codebase, preserving Git history and using the `Laravel_React_Migration` branch after the GitHub repository was made public.
+- Configured the test app to use a separate database, `ezwayott_test`, so frontend modernization work does not alter the live database.
+- Brought the `react.ezway.tv` host online and resolved early server issues:
+  - Fixed `403 Forbidden` nginx serving.
+  - Fixed Cloudflare/nginx redirect loop.
+  - Confirmed the test host returns HTTP 200 after cache/config cleanup.
+- Added app-wide TanStack Query usage for React API reads and mutations:
+  - Wrapped the React app in `QueryClientProvider`.
+  - Migrated API usage beyond video detail, including header, home, videos, search, distribution, genres, on-demand, cast/crew, live TV, and video detail flows.
+- Updated video detail sharing:
+  - Added a broader share menu for major social networks, email, SMS, native device share, and copy link.
+- Updated Git hygiene:
+  - Added generated Vite build output under `public/build` to `.gitignore`.
+  - Removed build artifacts from Git tracking while leaving generated files available for the deployed test site.
+- Updated header and mobile navigation:
+  - Removed the Profile action for now.
+  - Added a responsive burger menu for mobile.
+  - Included the current public site menu items: Home, Movies, TV Shows, Videos, On Demand, Live TV, Distribution, eZWay PPV, and Join Our Family.
+  - Made mobile menu sections collapsible for Videos, On Demand, and Live TV.
+  - Reworked the mobile drawer so it overlays the page instead of pushing into and overlapping hero/content areas.
+- Reduced reload visual noise:
+  - Replaced the default red theme flash with a neutral/blue fallback.
+  - Changed the loading logo fallback to white branding text.
+  - Removed the red `Loading from API` visual treatment from the home hero state.
+- Current verification:
+  - `npm run react:build` passed after the frontend changes.
+  - Laravel config/cache cleanup completed during deployment checks.
+  - Local status checks still show permission warnings for Laravel runtime folders owned by the web user, but tracked frontend files are readable and editable.
+- Going forward, all major modernization work and verification notes should be recorded in this file.
+
+### Mobile Drawer Width Overflow Fix
+
+- User reported the mobile menu dropdown items were breaking the viewport width, especially long video titles inside the Videos section.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Constrained the mobile drawer to `100dvw`.
+  - Added `w-full`, `min-w-0`, `max-w-full`, and `overflow-hidden` guards to the drawer shell, menu sections, dropdown wrappers, and list rows.
+  - Kept thumbnails fixed-width and forced text columns to truncate inside the available row width.
+  - Reduced the mobile search submit column from 68px to 64px to give the input more safe space on narrow screens.
+- Updated `resources/react/styles.css`:
+  - Added a page-level `overflow-x: hidden` guard to prevent accidental side-scroll from long API content.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Mobile Header Search Cleanup
+
+- User requested removing the navbar search bar on mobile because the burger menu already includes search.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Hid the header search action on mobile.
+  - Kept the header search visible on desktop/tablet widths.
+- Updated `resources/react/styles.css`:
+  - Changed the `.ez-header-search` helper so it does not override mobile hiding with `display: inline-flex !important`.
+  - Restored `inline-flex` only at `md`/768px and above.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Mobile Header Search Hide Follow-Up
+
+- User reported the mobile navbar search was still showing after the first cleanup.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Renamed the header search styling hook from `.ez-header-search` to `.ez-header-search-desktop` so old display rules cannot keep the mobile search visible.
+- Updated `resources/react/styles.css`:
+  - Scoped desktop search button sizing/display to `.ez-header-search-desktop`.
+  - Added an explicit max-width mobile media rule hiding both the old and new search hooks below 768px.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+  - Built CSS contains `.ez-header-search-desktop` plus the mobile `display: none !important` rule.
+- No migrations were run and no database tables were altered.
+
+### Burger Menu Search Wiring Fix
+
+- User reported the search inside the burger menu was not working and should trigger the main search behavior.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Wired the mobile drawer search form to `useSpaNavigate`.
+  - Prevented the native form reload and now navigates directly to `/search?q=<term>`.
+  - Closes the drawer after submitting the search.
+- Updated `resources/react/modules/search/SearchPage.tsx`:
+  - Added URL-query synchronization so the main search input, submitted query, results state, and active filter update when navigation changes the search URL.
+  - This covers searching from the burger menu while already on the Search page.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

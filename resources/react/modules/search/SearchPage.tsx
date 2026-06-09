@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search, SlidersHorizontal } from 'lucide-react'
 
@@ -40,6 +40,17 @@ export function SearchPage() {
     () => activeFilter === 'all' ? results : results.filter((item) => item.searchKind === activeFilter),
     [activeFilter, results],
   )
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(path.split('?')[1] ?? '')
+    const nextQuery = nextParams.get('q') ?? nextParams.get('search') ?? ''
+    const nextType = normalizeFilter(nextParams.get('type'))
+
+    setQuery(nextQuery)
+    setSubmittedQuery(nextQuery)
+    setSearched(Boolean(nextQuery))
+    setActiveFilter(nextType)
+  }, [path])
 
   const submitSearch = () => {
     const term = query.trim()

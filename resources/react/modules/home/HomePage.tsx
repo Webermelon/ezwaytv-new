@@ -78,8 +78,11 @@ function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean })
       <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-[#050505] to-transparent" />
 
       <div className="relative z-10 flex min-h-[82vh] max-w-3xl flex-col justify-end px-4 pb-28 pt-28 sm:px-8 lg:px-12">
-        <Badge className="mb-4 w-fit rounded-sm bg-primary px-3 py-1 text-xs uppercase text-white">
-          {loading ? 'Loading from API' : category}
+        <Badge className={[
+          'mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase text-white',
+          loading ? 'bg-white/14' : 'bg-primary',
+        ].join(' ')}>
+          {loading ? 'Featured' : category}
         </Badge>
         <h1 className="max-w-2xl text-5xl font-black leading-none text-white sm:text-6xl lg:text-7xl">
           {title}
