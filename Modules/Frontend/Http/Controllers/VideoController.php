@@ -148,7 +148,7 @@ class VideoController extends Controller
                 "google_site_verification" => $video->google_site_verification,
                 "canonical_url" => $video->canonical_url,
                 "short_description" => $video->short_description,
-                "meta_title" => $video->meta_title,
+                "meta_title" => $video->name,
                 "meta_keywords" => $video->meta_keywords,
             ];
 
