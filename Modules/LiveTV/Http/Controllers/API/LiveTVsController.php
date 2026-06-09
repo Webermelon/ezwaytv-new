@@ -18,6 +18,7 @@ use Modules\Subscriptions\Models\Subscription;
 use Modules\Frontend\Models\PayPerView;
 use App\Models\MobileSetting;
 use Modules\Banner\Models\Banner;
+use Illuminate\Support\Facades\Cache;
 
 class LiveTVsController extends Controller
 {
@@ -508,20 +509,37 @@ class LiveTVsController extends Controller
     public function channelSchedules(Request $request)
     {
         $channelId = $request->channel_id;
-        $channel = LiveTvChannel::with('schedules')->find($channelId);
+        $channel = LiveTvChannel::find($channelId);
         if (!$channel) {
             return ApiResponse::error(null, __('livetv.channel_not_found'), 404);
         }
 
-        return ApiResponse::success($channel->schedules->map(function($s){
-            return [
-                'id' => $s->id,
-                'title' => $s->title,
-                'start_at' => optional($s->start_at)->toIso8601String(),
-                'end_at' => optional($s->end_at)->toIso8601String(),
-                'meta' => $s->meta ? json_decode($s->meta, true) : null,
-            ];
-        }), __('livetv.channel_schedules'), 200);
+        $schedule = Cache::remember("spa:livetv:schedules:{$channelId}", 60, function () use ($channelId) {
+            $channel = LiveTvChannel::with('schedules')->find($channelId);
+
+            return $channel->schedules->map(function($s){
+                return [
+                    'id' => $s->id,
+                    'title' => $s->title,
+                    'start_at' => optional($s->start_at)->toIso8601String(),
+                    'end_at' => optional($s->end_at)->toIso8601String(),
+                    'meta' => $s->meta ? json_decode($s->meta, true) : null,
+                ];
+            });
+        });
+
+        return ApiResponse::success($schedule, __('livetv.channel_schedules'), 200);
+    }
+
+    private function clearChannelScheduleCache($channelId): void
+    {
+        if ($channelId) {
+            Cache::forget("spa:livetv:schedules:{$channelId}");
+        }
+
+        if (function_exists('clearLiveTvDashboardCache')) {
+            clearLiveTvDashboardCache();
+        }
     }
 
     public function storeChannelSchedule(Request $request)
@@ -547,6 +565,8 @@ class LiveTVsController extends Controller
             'meta' => $request->meta ? json_encode($request->meta) : null,
         ]);
 
+        $this->clearChannelScheduleCache($request->channel_id);
+
         return ApiResponse::success($schedule, __('livetv.schedule_created'), 201);
     }
 
@@ -556,6 +576,7 @@ class LiveTVsController extends Controller
         if (!$schedule) {
             return ApiResponse::error(null, __('livetv.schedule_not_found'), 404);
         }
+        $channelId = $schedule->live_tv_channel_id;
 
         $request->validate([
             'title' => 'nullable|string',
@@ -576,6 +597,8 @@ class LiveTVsController extends Controller
             'meta' => $request->meta ? json_encode($request->meta) : $schedule->meta,
         ]);
 
+        $this->clearChannelScheduleCache($channelId);
+
         return ApiResponse::success($schedule, __('livetv.schedule_updated'), 200);
     }
 
@@ -585,7 +608,9 @@ class LiveTVsController extends Controller
         if (!$schedule) {
             return ApiResponse::error(null, __('livetv.schedule_not_found'), 404);
         }
+        $channelId = $schedule->live_tv_channel_id;
         $schedule->delete();
+        $this->clearChannelScheduleCache($channelId);
         return ApiResponse::success(null, __('livetv.schedule_deleted'), 200);
     }
 }

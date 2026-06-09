@@ -202,81 +202,105 @@ class VideosController extends Controller
 
 
   public function videoDetails(Request $request){
+      if (! $request->has('user_id')) {
+          $cacheKey = 'spa:video:details:' . md5(json_encode([
+              'video' => $request->video_id ?? $request->id ?? $request->slug,
+              'ondemand_channel' => $request->query('ondemand_channel', 0),
+          ]));
 
-            $videoKey = $request->video_id ?? $request->id ?? $request->slug;
+          $cachedResult = cacheApiResponse($cacheKey, 300, fn () => $this->buildVideoDetailsPayload($request));
 
-            $video = Video::with([
-                'VideoStreamContentMappings',
-                'plan',
-                'subtitles',
-                'clips',
-                'categories',
-                'authorChannels',
-                'creatorChannel',
-            ])
-                ->where(function ($query) use ($videoKey) {
-                    if (is_numeric($videoKey)) {
-                        $query->where('id', (int) $videoKey);
-                    }
+          if (! $cachedResult['data']) {
+              return ApiResponse::error(__('video.video_not_found'), 404);
+          }
 
-                    $query->orWhere('slug', $videoKey);
-                })
-                ->where('status', 1)
-                ->whereNull('deleted_at')
-                ->first();
+          return ApiResponse::success($cachedResult['data'], __('video.video_details'), 200);
+      }
 
-            if (! $video) {
-                return ApiResponse::error(__('video.video_not_found'), 404);
-            }
+      $responseData = $this->buildVideoDetailsPayload($request);
 
-            if($request->has('user_id')){
-                $user_id = $request->user_id;
-                $continueWatch = ContinueWatch::where('entertainment_id', $video->id)->where('user_id', $user_id)->where('entertainment_type', 'video')->first();
-                $video['continue_watch'] = $continueWatch;
-                $video['user_id'] = $user_id;
-                $video['is_watch_list'] = WatchList::where('entertainment_id',$request->video_id )->where('user_id', $user_id)->where('profile_id', $request->profile_id)
-                ->where('type', 'video')->exists();
-                $video['is_likes'] = Like::where('entertainment_id', $request->video_id)->where('type', 'video')->where('user_id', $user_id)->where('profile_id', $request->profile_id)
-                ->where('is_like', 1)->exists();
-                $video['is_download'] = EntertainmentDownload::where('entertainment_id', $request->video_id)->where('device_id',$request->device_id)->where('user_id', $user_id)
-                ->where('entertainment_type', 'video')->where('is_download', 1)->exists();
-            }
-
-            $responseData = (new VideoDetailResource($video))->toArray($request);
-
-            $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
-            $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
-                ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id));
-
-            if ($ondemandChannelId > 0) {
-                $ondemandChannelQuery->where('id', $ondemandChannelId);
-            }
-
-            $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
-
-            if ($ondemandChannel) {
-                $channelVideos = $ondemandChannel->videos()
-                    ->where('videos.status', 1)
-                    ->whereNull('videos.deleted_at')
-                    ->where('videos.id', '!=', $video->id)
-                    ->orderBy('author_channel_video.created_at', 'desc')
-                    ->take(12)
-                    ->get();
-
-                $channelVideos->each(function ($video) use ($ondemandChannel) {
-                    $video->ondemand_channel_id = $ondemandChannel->id;
-                });
-
-                $responseData['more_items'] = VideoResourceV3::collection($channelVideos);
-                $responseData['ondemand_channel_context'] = [
-                    'id' => $ondemandChannel->id,
-                    'name' => $ondemandChannel->name,
-                    'username' => $ondemandChannel->username,
-                    'url' => route('author_channels.show', $ondemandChannel->username),
-                ];
-            }
-
+      if (! $responseData) {
+          return ApiResponse::error(__('video.video_not_found'), 404);
+      }
 
       return ApiResponse::success($responseData, __('video.video_details'), 200);
+  }
+
+  private function buildVideoDetailsPayload(Request $request): ?array
+  {
+      $videoKey = $request->video_id ?? $request->id ?? $request->slug;
+
+      $video = Video::with([
+          'VideoStreamContentMappings',
+          'plan',
+          'subtitles',
+          'clips',
+          'categories',
+          'authorChannels',
+          'creatorChannel',
+      ])
+          ->where(function ($query) use ($videoKey) {
+              if (is_numeric($videoKey)) {
+                  $query->where('id', (int) $videoKey);
+              }
+
+              $query->orWhere('slug', $videoKey);
+          })
+          ->where('status', 1)
+          ->whereNull('deleted_at')
+          ->first();
+
+      if (! $video) {
+          return null;
+      }
+
+      if($request->has('user_id')){
+          $user_id = $request->user_id;
+          $continueWatch = ContinueWatch::where('entertainment_id', $video->id)->where('user_id', $user_id)->where('entertainment_type', 'video')->first();
+          $video['continue_watch'] = $continueWatch;
+          $video['user_id'] = $user_id;
+          $video['is_watch_list'] = WatchList::where('entertainment_id',$request->video_id )->where('user_id', $user_id)->where('profile_id', $request->profile_id)
+          ->where('type', 'video')->exists();
+          $video['is_likes'] = Like::where('entertainment_id', $request->video_id)->where('type', 'video')->where('user_id', $user_id)->where('profile_id', $request->profile_id)
+          ->where('is_like', 1)->exists();
+          $video['is_download'] = EntertainmentDownload::where('entertainment_id', $request->video_id)->where('device_id',$request->device_id)->where('user_id', $user_id)
+          ->where('entertainment_type', 'video')->where('is_download', 1)->exists();
+      }
+
+      $responseData = (new VideoDetailResource($video))->toArray($request);
+
+      $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
+      $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
+          ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id));
+
+      if ($ondemandChannelId > 0) {
+          $ondemandChannelQuery->where('id', $ondemandChannelId);
+      }
+
+      $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
+
+      if ($ondemandChannel) {
+          $channelVideos = $ondemandChannel->videos()
+              ->where('videos.status', 1)
+              ->whereNull('videos.deleted_at')
+              ->where('videos.id', '!=', $video->id)
+              ->orderBy('author_channel_video.created_at', 'desc')
+              ->take(12)
+              ->get();
+
+          $channelVideos->each(function ($video) use ($ondemandChannel) {
+              $video->ondemand_channel_id = $ondemandChannel->id;
+          });
+
+          $responseData['more_items'] = VideoResourceV3::collection($channelVideos)->toArray($request);
+          $responseData['ondemand_channel_context'] = [
+              'id' => $ondemandChannel->id,
+              'name' => $ondemandChannel->name,
+              'username' => $ondemandChannel->username,
+              'url' => route('author_channels.show', $ondemandChannel->username),
+          ];
+      }
+
+      return $responseData;
   }
 }

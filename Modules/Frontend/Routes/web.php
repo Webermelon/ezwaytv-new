@@ -21,6 +21,7 @@ use Modules\Entertainment\Http\Controllers\Backend\EntertainmentsController;
 use Modules\NotificationTemplate\Http\Controllers\Backend\NotificationTemplatesController;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -216,6 +217,6 @@ Route::get('/api/distribution', function () {
     if (!file_exists($path)) {
         return response()->json(['error' => 'Data not found'], 404);
     }
-    $json = file_get_contents($path);
+    $json = Cache::remember('spa:distribution:json', 3600, fn () => file_get_contents($path));
     return response($json, 200)->header('Content-Type', 'application/json');
 })->name('api.distribution');

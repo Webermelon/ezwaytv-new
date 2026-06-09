@@ -1271,6 +1271,26 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `/api/distribution` returns 22 network/platform entries.
 - No migrations were run and no database tables were altered.
 
+### Redis Cache Pass
+
+- Switched local cache driver from file to Redis and updated `.env.example` to use `CACHE_DRIVER=redis` with Predis defaults.
+- Started the Laragon Redis server locally and verified Laravel reports `cache.default` as `redis`.
+- Added Redis-backed caching for repeated public SPA reads:
+  - App settings lookup.
+  - On Demand channel list, profile, and channel videos.
+  - Distribution JSON payload.
+  - Live TV channel schedules, with cache clearing after schedule create/update/delete.
+  - Public video details payloads.
+  - Cast/crew list payloads.
+- Kept user-specific video detail requests uncached so continue-watch, watchlist, likes, and download flags stay live.
+- Verified:
+  - `php artisan config:clear` passes.
+  - `php artisan cache:clear` passes after Redis is started.
+  - `php artisan config:show cache.default` returns `redis`.
+  - PHP lint passes for touched controllers/routes.
+  - `npm.cmd run react:build` passes.
+- No migrations were run and no database tables were altered.
+
 ### Distribution Partner Card Styling
 
 - User requested Network Partners use a card style.

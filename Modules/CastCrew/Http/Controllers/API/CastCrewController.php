@@ -12,55 +12,78 @@ use Modules\CastCrew\Transformers\CastDetailResourceV3;
 use Modules\Entertainment\Models\Entertainment;
 use \Modules\Entertainment\Models\Review;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 class CastCrewController extends Controller
 {
     public function castCrewList(Request $request){
 
         $perPage = $request->input('per_page', 10);
-        $castcrew_list = CastCrew::query();
+        $cacheKey = 'spa:castcrew:list:' . md5(json_encode([
+            'page' => $request->input('page', 1),
+            'per_page' => $perPage,
+            'search' => $request->input('search'),
+            'type' => $request->input('type'),
+            'entertainment_id' => $request->input('entertainment_id'),
+            'is_ajax' => $request->input('is_ajax'),
+        ]));
 
-        if ($request->has('search')) {
-            $searchTerm = $request->search;
-            $castcrew_list->where(function ($query) use ($searchTerm) {
-                $query->where('name', 'like', "%{$searchTerm}%");
-            });
-        }
-
-        if($request->has('type')){
-            $castcrew_list->where('type', $request->type);
-        }
-
-        if($request->has('entertainment_id') && $request->entertainment_id !=null){
-            $talentIds=EntertainmentTalentMapping::where('entertainment_id',$request->entertainment_id)->pluck('talent_id');
-            $castcrew_list->whereIn('id',$talentIds);
-        }
-        if($request->has('entertainment_id') && $request->entertainment_id =='all'){
+        $cachedResult = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
             $castcrew_list = CastCrew::query();
-        }
 
-        $castcrew = $castcrew_list->where('deleted_at',null)->orderBy('updated_at', 'desc');
-        $castcrew = $castcrew->paginate($perPage);
-
-        $responseData = CastCrewListResource::collection($castcrew);
-
-        if ($request->has('is_ajax') && $request->is_ajax == 1) {
-            $html = '';
-
-            foreach ($responseData->toArray($request) as $castcrewData) {
-                $html .= view('frontend::components.card.card_castcrew_details', ['data' => $castcrewData])->render();
+            if ($request->has('search')) {
+                $searchTerm = $request->search;
+                $castcrew_list->where(function ($query) use ($searchTerm) {
+                    $query->where('name', 'like', "%{$searchTerm}%");
+                });
             }
 
-            $hasMore = $castcrew->hasMorePages();
+            if($request->has('type')){
+                $castcrew_list->where('type', $request->type);
+            }
 
+            if($request->has('entertainment_id') && $request->entertainment_id !=null){
+                $talentIds=EntertainmentTalentMapping::where('entertainment_id',$request->entertainment_id)->pluck('talent_id');
+                $castcrew_list->whereIn('id',$talentIds);
+            }
+            if($request->has('entertainment_id') && $request->entertainment_id =='all'){
+                $castcrew_list = CastCrew::query();
+            }
+
+            $castcrew = $castcrew_list->where('deleted_at',null)->orderBy('updated_at', 'desc');
+            $castcrew = $castcrew->paginate($perPage);
+
+            $responseData = CastCrewListResource::collection($castcrew);
+
+            if ($request->has('is_ajax') && $request->is_ajax == 1) {
+                $html = '';
+
+                foreach ($responseData->toArray($request) as $castcrewData) {
+                    $html .= view('frontend::components.card.card_castcrew_details', ['data' => $castcrewData])->render();
+                }
+
+                return [
+                    'ajax' => true,
+                    'html' => $html,
+                    'hasMore' => $castcrew->hasMorePages(),
+                ];
+            }
+
+            return [
+                'ajax' => false,
+                'data' => $responseData->toArray($request),
+            ];
+        });
+
+        if ($cachedResult['ajax']) {
             return ApiResponse::success(
                 null,
                 __('movie.movie_list'),
                 200,
-                ['html' => $html, 'hasMore' => $hasMore]
+                ['html' => $cachedResult['html'], 'hasMore' => $cachedResult['hasMore']]
             );
         }
 
-        return ApiResponse::success($responseData, __('castcrew.castcrew_list'), 200);
+        return ApiResponse::success($cachedResult['data'], __('castcrew.castcrew_list'), 200);
     }
     public function castCrewDetailsV3(Request $request){
         $castcrewId = $request->id;

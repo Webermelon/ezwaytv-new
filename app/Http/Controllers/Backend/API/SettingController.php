@@ -12,6 +12,7 @@ use App\Models\MobileSetting;
 use Modules\Subscriptions\Models\Subscription;
 use App\Models\Device;
 use Modules\Subscriptions\Models\PlanLimitation;
+use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
 {
@@ -19,7 +20,7 @@ class SettingController extends Controller
     {
         $header = request()->headers->all();
         $device_type = !empty($header['device-type'])? $header['device-type'][0] : []; //for tv
-        $settings = Setting::all()->pluck('val', 'name');
+        $settings = Cache::remember('settings:all_by_name', 600, fn () => Setting::all()->pluck('val', 'name'));
 
         $response = [];
         // Define the specific names you want to include
@@ -221,7 +222,7 @@ class SettingController extends Controller
     {
         $header = request()->headers->all();
         $device_type = !empty($header['device-type'])? $header['device-type'][0] : []; //for tv
-        $settings = Setting::all()->pluck('val', 'name');
+        $settings = Cache::remember('settings:all_by_name', 600, fn () => Setting::all()->pluck('val', 'name'));
 
         $response = [];
 
