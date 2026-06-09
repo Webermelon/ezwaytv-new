@@ -51,17 +51,23 @@ class LiveTvController extends Controller
         $livetvId = $id;
         $userId = Auth::id();
 
-        $livetvGuard = LiveTvChannel::where('slug', $livetvId)->first();
+        $livetvGuard = LiveTvChannel::where(function ($query) use ($livetvId) {
+            $query->where('slug', $livetvId);
+
+            if (ctype_digit($livetvId)) {
+                $query->orWhere('id', (int) $livetvId);
+            }
+        })->first();
         if (empty($livetvGuard) || (int) ($livetvGuard->status) !== 1 || $livetvGuard->deleted_at !== null) {
             return redirect()->route('user.login');
         }
 
-        $livetv = LiveTvChannel::where('slug', '=', $livetvId)
+        $livetv = LiveTvChannel::where('id', $livetvGuard->id)
             ->with('TvCategory', 'plan', 'TvChannelStreamContentMappings')
             ->first();
 
         $suggestions = LiveTvChannel::where('category_id', $livetv->category_id)
-            ->where('slug', '!=', $livetvId)
+            ->where('id', '!=', $livetv->id)
             ->where('status', 1)
             ->whereNull('deleted_at')
             ->with('TvCategory')

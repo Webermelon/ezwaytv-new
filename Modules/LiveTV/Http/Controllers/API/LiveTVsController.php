@@ -68,7 +68,7 @@ class LiveTVsController extends Controller
 
         $device_type = getDeviceType($request);
 
-        $channelId = $request->channel_id;
+        $channelId = $request->channel_id ?? $request->id;
         $userId = $request->user_id ?? auth()->id();
 
         $cacheKey = 'livetv_details_v3_'. md5(json_encode([
@@ -78,7 +78,21 @@ class LiveTVsController extends Controller
         ]));
 
         $cachedResult = cacheApiResponse($cacheKey, 300, function () use ($request, $channelId, $userId, $device_type) {
-           $channelData = LiveTvChannel::where('id', $channelId)->with('TvCategory','plan','TvChannelStreamContentMappings')->first();
+           $channelData = LiveTvChannel::query()
+               ->with('TvCategory','plan','TvChannelStreamContentMappings')
+               ->where(function ($query) use ($channelId) {
+                   if (is_numeric($channelId)) {
+                       $query->where('id', (int) $channelId);
+                   }
+
+                   $query->orWhere('slug', $channelId);
+               })
+               ->first();
+
+           if (! $channelData) {
+               return null;
+           }
+
            $channelData['video_qualities'] = $channelData ? [[
                     'url_type' => $channelData['TvChannelStreamContentMappings']['stream_type'],
                     'url'      => $channelData['TvChannelStreamContentMappings']['stream_type'] == 'Embedded' ? $channelData['TvChannelStreamContentMappings']['embedded'] : $channelData['TvChannelStreamContentMappings']['server_url'],
@@ -124,6 +138,10 @@ class LiveTVsController extends Controller
             $responseData = new LiveTvChannelDetailsResourceV3($channelData);
             return $responseData;
         });
+
+        if (! $cachedResult['data']) {
+            return ApiResponse::error(__('livetv.livetv_not_found'), 404);
+        }
 
         return ApiResponse::success($cachedResult['data'], __('livetv.livetv_details'), 200);
     }
