@@ -10,60 +10,86 @@
         $data = $data['data'];
         $ondemandChannelId = (int) request()->query('ondemand_channel', 0);
         $ondemandChannel = null;
+
         if ($ondemandChannelId > 0 && !empty($data['author_channels'])) {
             $ondemandChannel = collect($data['author_channels'])->firstWhere('id', $ondemandChannelId);
         }
+
         $statsContentType = $ondemandChannel ? 'ondemand_video' : 'video';
-    @endphp
+        $moreItems = [];
 
-    <div id="thumbnail-section">
-        @if ($continue_watch === true)
-            @include('frontend::components.section.thumbnail', [
-                'data' => $data['video_url_input'],
-                'type' => $data['video_upload_type'],
-                'thumbnail_image' => $data['poster_image'],
-                'watched_time' => $data['watched_time'],
-                'subtitle_info' => $data['subtitle_info'],
-                'dataAccess' => $data['access'],
-                'plan_id' => $data['plan_id'] ?? null,
-                'content_type' => 'video',
-                'content_id' => $data['id'],
-                'stat_content_type' => $statsContentType,
-                'stat_channel_id' => $ondemandChannel['id'] ?? null,
-                'is_trailer' => false,
-                'video_type' => $data['video_upload_type'],
-                'content_video_type' => 'video',
-            ])
-        @else
-            @include('frontend::components.section.thumbnail', [
-                'data' => $data['trailer_url'],
-                'type' => $data['trailer_url_type'],
-                'thumbnail_image' => $data['poster_image'],
-                'watched_time' => 0,
-                'subtitle_info' => $data['subtitle_info'],
-                'dataAccess' => $data['access'],
-                'plan_id' => $data['plan_id'] ?? null,
-                'content_type' => 'video',
-                'content_id' => $data['id'],
-                'stat_content_type' => $statsContentType,
-                'stat_channel_id' => $ondemandChannel['id'] ?? null,
-                'is_trailer' => true,
-                'video_type' => $data['video_upload_type'],
-                'content_video_type' => 'trailer',
-            ])
-        @endif
-    </div>
+        if (!empty($data['more_items'])) {
+            $moreItems = method_exists($data['more_items'], 'toArray')
+                ? $data['more_items']->toArray(request())
+                : (array) $data['more_items'];
+        }
 
- 
+        $reactVideo = $data;
+        $reactVideo['more_items'] = $moreItems;
+        $reactVideo['ondemand_channel_context'] = $data['ondemand_channel_context'] ?? null;
 
-    <div id="detail-section">
-        @include('frontend::components.section.video_data', [
-            'data' => $data,
-            'subtitle_info' => $data['subtitle_info'],
+        $payPerViewUrl = null;
+        if (($data['access'] ?? null) === 'pay-per-view' && !\Modules\Entertainment\Models\Entertainment::isPurchased($data['id'], 'video')) {
+            $payPerViewUrl = route('pay-per-view.paymentform', ['id' => $data['id'], 'type' => 'video']);
+        }
+
+        $reactPayload = [
+            'video' => $reactVideo,
             'statsContentType' => $statsContentType,
             'statsChannelId' => $ondemandChannel['id'] ?? null,
-        ])
-    </div>
+            'continueWatch' => (bool) $continue_watch,
+            'currentUrl' => request()->fullUrl(),
+            'legacyVideosUrl' => route('videos'),
+            'payPerViewUrl' => $payPerViewUrl,
+        ];
+    @endphp
+
+    <script>
+        window.__EZWAY_VIDEO_DETAIL__ = @json($reactPayload);
+    </script>
+
+    <section class="ez-react-video-player-shell">
+        <div id="thumbnail-section">
+            @if ($continue_watch === true)
+                @include('frontend::components.section.thumbnail', [
+                    'data' => $data['video_url_input'],
+                    'type' => $data['video_upload_type'],
+                    'thumbnail_image' => $data['poster_image'],
+                    'watched_time' => $data['watched_time'],
+                    'subtitle_info' => $data['subtitle_info'],
+                    'dataAccess' => $data['access'],
+                    'plan_id' => $data['plan_id'] ?? null,
+                    'content_type' => 'video',
+                    'content_id' => $data['id'],
+                    'stat_content_type' => $statsContentType,
+                    'stat_channel_id' => $ondemandChannel['id'] ?? null,
+                    'is_trailer' => false,
+                    'video_type' => $data['video_upload_type'],
+                    'content_video_type' => 'video',
+                ])
+            @else
+                @include('frontend::components.section.thumbnail', [
+                    'data' => $data['trailer_url'],
+                    'type' => $data['trailer_url_type'],
+                    'thumbnail_image' => $data['poster_image'],
+                    'watched_time' => 0,
+                    'subtitle_info' => $data['subtitle_info'],
+                    'dataAccess' => $data['access'],
+                    'plan_id' => $data['plan_id'] ?? null,
+                    'content_type' => 'video',
+                    'content_id' => $data['id'],
+                    'stat_content_type' => $statsContentType,
+                    'stat_channel_id' => $ondemandChannel['id'] ?? null,
+                    'is_trailer' => true,
+                    'video_type' => $data['video_upload_type'],
+                    'content_video_type' => 'trailer',
+                ])
+            @endif
+        </div>
+    </section>
+
+    <div id="react-modernization-root"></div>
+    @vite('resources/react/main.tsx')
 
     @if($data['is_clips_enabled'])
         @include('frontend::components.section.clips_trailers', ['clips' => $data['clips'] ?? []])
@@ -77,17 +103,8 @@
                 'content_type' => $data['type'] ?? '',
                 'category_id' => $data['category_id'] ?? '',
             ])
-            <div id="more-like-this">
-                @include('frontend::components.section.video', [
-                    'data' => $data['more_items']->toArray(request()),
-                    'title' => !empty($data['ondemand_channel_context'])
-                        ? ('More from ' . $data['ondemand_channel_context']['name'])
-                        : __('frontend.more_like_this'),
-                ])
-            </div>
         </div>
     </div>
-
 
     <div class="modal fade" id="DeviceSupport" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -111,75 +128,6 @@
     </div>
 
 @endsection
-
-@push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-                    function fetchCustomVideoDetailAd() {
-                        fetch(`${window.envURL || ''}/api/custom-ads/get-active`)
-                            .then(response => response.json())
-                            .then(data => {
-                                    if (data.success && Array.isArray(data.data)) {
-                                        // Filter for video_detail_page placement
-                                        const ads = data.data.filter(item => item.placement === 'video_detail_page');
-                                        if (ads.length > 0) {
-                                            let adHtml = `
-                            <div class="custom-ad-slider">
-                                ${ads.map(ad => {
-                                    let content = '';
-                                    if (ad.type === 'image') {
-                                        let imgSrc = ad.url_type === 'local' ? `${ad.media}` : ad.media;
-                                        content = `
-                                                                <div class="custom-ad-content">
-                                                                    ${ad.redirect_url ? `
-                                                    <a href="${ad.redirect_url}" class="ad-link" target="_blank" rel="noopener noreferrer">
-                                                        <img src="${imgSrc}" alt="${ad.name}" class="ad-image">
-                                                        <div class="ad-overlay"></div>
-                                                    </a>
-                                                ` : `
-                                                    <img src="${imgSrc}" alt="${ad.name}" class="ad-image">
-                                                    <div class="ad-overlay"></div>
-                                                `}
-                                                                </div>
-                                                            `;
-                                    }
-                                    return ` < div class = "custom-ad-wrapper" > $ {
-                                                content
-                                            } < /div>`;
-                                    }).join('')
-                            } <
-                            /div>
-                            `;
-                                            const adSection = document.getElementById('custom-video-detail-ad-section');
-                                            if (adSection) {
-                                                adSection.innerHTML = adHtml;
-                                                adSection.classList.remove('section-hidden');
-                                                adSection.classList.add('section-visible');
-                                                // Initialize Slick slider if available
-                                                if (window.$ && typeof $.fn.slick === 'function') {
-                                                    $('.custom-ad-slider').slick({
-                                                        dots: true,
-                                                        arrows: false,
-                                                        infinite: ads.length > 1,
-                                                        slidesToShow: 1,
-                                                        slidesToScroll: 1,
-                                                        adaptiveHeight: true,
-                                                        autoplay: true,
-                                                        autoplaySpeed: 5000
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Error fetching custom video detail ad:', error);
-                                });
-                        }
-                        fetchCustomVideoDetailAd();
-                    });
-    </script>
-@endpush
 
 @push('ezstats-meta')
 <script>
