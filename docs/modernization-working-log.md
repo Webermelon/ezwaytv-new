@@ -1644,3 +1644,15 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Distribution Mobile Title Responsiveness
+
+- User reported the eZWay Distribution title was too large and overlapping on mobile.
+- Updated `resources/react/modules/distribution/DistributionPage.tsx`:
+  - Reduced the Distribution hero title size on mobile while preserving larger desktop sizes.
+  - Reduced mobile section heading sizes and allowed safer word wrapping.
+  - Reduced the Los Angeles station title size on mobile.
+  - Reduced Network Partner card title size on mobile to prevent overflow.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

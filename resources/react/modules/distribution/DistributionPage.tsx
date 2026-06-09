@@ -21,13 +21,13 @@ export function DistributionPage() {
     <main className="min-h-screen bg-[#0d0d0d] text-[#e8e2d9]">
       <AppHeader active="distribution" />
 
-      <section className="relative overflow-hidden px-4 py-20 text-center sm:px-8 lg:px-12">
+      <section className="relative overflow-hidden px-4 py-14 text-center sm:px-8 sm:py-20 lg:px-12">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(212,168,67,0.10)_0%,transparent_70%),repeating-linear-gradient(0deg,transparent,transparent_39px,rgba(212,168,67,0.04)_40px),repeating-linear-gradient(90deg,transparent,transparent_39px,rgba(212,168,67,0.04)_40px)]" />
         <div className="relative mx-auto max-w-5xl">
-          <div className="mb-6 inline-flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.25em] text-[#d4a843] before:block before:h-px before:w-8 before:bg-[#d4a843]/60 after:block after:h-px after:w-8 after:bg-[#d4a843]/60">
+          <div className="mb-5 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d4a843] before:block before:h-px before:w-5 before:bg-[#d4a843]/60 after:block after:h-px after:w-5 after:bg-[#d4a843]/60 sm:mb-6 sm:gap-3 sm:text-[11px] sm:tracking-[0.25em] sm:before:w-8 sm:after:w-8">
             eZWay Network
           </div>
-          <h1 className="text-6xl font-black uppercase leading-[0.92] tracking-[0.04em] text-white sm:text-7xl lg:text-8xl">
+          <h1 className="break-words text-[2.35rem] font-black uppercase leading-[0.96] tracking-normal text-white min-[390px]:text-[2.8rem] sm:text-7xl sm:tracking-[0.04em] lg:text-8xl">
             eZWay <span className="text-[#d4a843]">TV</span>
             <br />
             Distribution
@@ -54,11 +54,11 @@ export function DistributionPage() {
         <SectionHead title="Los Angeles Station" />
 
         <article className="mb-20 grid overflow-hidden rounded border border-[#d4a843]/20 border-l-4 border-l-[#d4a843] bg-[#161616] lg:grid-cols-2">
-          <div className="p-8 sm:p-11">
-            <span className="inline-block rounded-sm bg-[#d4a843] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#0d0d0d]">
+          <div className="p-5 sm:p-11">
+            <span className="inline-block rounded-sm bg-[#d4a843] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#0d0d0d] sm:tracking-[0.18em]">
               OTA - Over-the-Air
             </span>
-            <h2 className="mt-5 text-5xl font-black uppercase leading-none tracking-[0.04em] text-white">
+            <h2 className="mt-5 break-words text-3xl font-black uppercase leading-tight tracking-normal text-white sm:text-5xl sm:leading-none sm:tracking-[0.04em]">
               eZWay
               <br />
               Los Angeles
@@ -124,22 +124,22 @@ export function DistributionPage() {
 
 function SectionHead({ title }: { title: string }) {
   return (
-    <div className="flex items-baseline gap-5 pb-10 pt-18">
-      <h2 className="text-4xl font-black uppercase tracking-[0.05em] text-white sm:text-5xl">{title}</h2>
-      <div className="h-px flex-1 bg-[linear-gradient(to_right,#8a6b28,transparent)]" />
+    <div className="flex min-w-0 items-baseline gap-4 pb-7 pt-12 sm:gap-5 sm:pb-10 sm:pt-18">
+      <h2 className="min-w-0 max-w-full break-words text-2xl font-black uppercase leading-tight tracking-normal text-white sm:text-5xl sm:tracking-[0.05em]">{title}</h2>
+      <div className="hidden h-px flex-1 bg-[linear-gradient(to_right,#8a6b28,transparent)] min-[420px]:block" />
     </div>
   )
 }
 
 function NetworkCard({ network }: { network: DistributionNetwork }) {
   return (
-    <article className="group relative flex min-h-[300px] flex-col gap-4 overflow-hidden rounded-md border border-[#d4a843]/14 bg-[#161616] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-[#d4a843]/50 hover:bg-[#1b1b1b]">
+    <article className="group relative flex min-h-[300px] flex-col gap-4 overflow-hidden rounded-md border border-[#d4a843]/14 bg-[#161616] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-[#d4a843]/50 hover:bg-[#1b1b1b] sm:p-7">
       <div className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-[#d4a843] transition duration-300 group-hover:scale-x-100" />
       <div className="flex items-center gap-4">
         <div className="flex h-[58px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded border border-white/8 bg-[#242424]">
           {network.image ? <img src={network.image} alt={network.name} className="max-h-10 max-w-16 object-contain" loading="lazy" /> : null}
         </div>
-        <h3 className="text-2xl font-black uppercase leading-none tracking-[0.05em] text-white">{network.name}</h3>
+        <h3 className="min-w-0 break-words text-lg font-black uppercase leading-tight tracking-normal text-white sm:text-2xl sm:leading-none sm:tracking-[0.05em]">{network.name}</h3>
       </div>
       {network.description ? <p className="flex-1 text-sm leading-7 text-[#bdb5a8]">{network.description}</p> : null}
       {network.tag ? (
