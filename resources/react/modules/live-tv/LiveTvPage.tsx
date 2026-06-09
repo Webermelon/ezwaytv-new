@@ -257,8 +257,8 @@ function LiveTvDetailPage({
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_38%,rgba(5,5,5,0.42)_76%,#050505_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] to-transparent" />
 
-        <div className="relative z-10 grid min-h-[76vh] items-center gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-12">
-          <section className="min-w-0 py-10">
+        <div className="relative z-10 grid min-h-[76vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-8 lg:px-12 lg:py-8">
+          <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
             <a href="/livetv" className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-white/62 hover:text-white">
               <ArrowLeft className="h-4 w-4" />
               Live TV
@@ -271,7 +271,7 @@ function LiveTvDetailPage({
               {category ? <Badge className="rounded-sm bg-white/14 text-white">{category}</Badge> : null}
               {channel?.details?.access ? <Badge className="rounded-sm bg-white/14 text-white">{channel.details.access}</Badge> : null}
             </div>
-            <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
+            <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -295,7 +295,7 @@ function LiveTvDetailPage({
             </div>
           </section>
 
-          <div className="livetv-player min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl">
+          <div className="livetv-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
             {stream && playerStarted ? (
               <VideoJsPlayer
                 source={stream.url}

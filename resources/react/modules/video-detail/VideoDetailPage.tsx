@@ -134,15 +134,15 @@ export function VideoDetailPage() {
             <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.92)_40%,rgba(5,5,5,0.68)_76%,#050505_100%)]" />
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
 
-            <div className="relative z-10 grid min-h-[72vh] items-center gap-8 px-4 py-8 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:px-12">
-              <section className="min-w-0 py-10">
+            <div className="relative z-10 grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-8">
+              <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
                 <div className="mb-4 flex flex-wrap gap-2">
                   <Badge className="rounded-sm bg-primary text-white">{video.access ?? 'video'}</Badge>
                   {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
                   {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
                 </div>
 
-                <h1 className="max-w-4xl text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
+                <h1 className="max-w-4xl text-2xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
                   {video.name}
                 </h1>
 
@@ -208,7 +208,7 @@ export function VideoDetailPage() {
                 </div>
               </section>
 
-              <aside className="video-detail-player min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl">
+              <aside className="video-detail-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
                 {isPayPerViewLocked ? (
                   <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black p-8 text-center">
                     <Lock className="h-10 w-10 text-primary" />
@@ -344,46 +344,55 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
     {
       label: 'Facebook',
       icon: Share2,
+      tone: 'hover:border-[#1877f2]/70 hover:bg-[#1877f2]/18',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
     },
     {
       label: 'X',
       icon: Send,
+      tone: 'hover:border-white/50 hover:bg-white/14',
       href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
     },
     {
       label: 'WhatsApp',
       icon: MessageCircle,
+      tone: 'hover:border-[#25d366]/70 hover:bg-[#25d366]/18',
       href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
     },
     {
       label: 'Telegram',
       icon: Send,
+      tone: 'hover:border-[#2aabee]/70 hover:bg-[#2aabee]/18',
       href: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
     },
     {
       label: 'LinkedIn',
       icon: Link,
+      tone: 'hover:border-[#0a66c2]/70 hover:bg-[#0a66c2]/18',
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
     },
     {
       label: 'Reddit',
       icon: MessageCircle,
+      tone: 'hover:border-[#ff4500]/70 hover:bg-[#ff4500]/18',
       href: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`,
     },
     {
       label: 'Pinterest',
       icon: Link,
+      tone: 'hover:border-[#e60023]/70 hover:bg-[#e60023]/18',
       href: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(title)}`,
     },
     {
       label: 'Email',
       icon: Mail,
+      tone: 'hover:border-primary/70 hover:bg-primary/18',
       href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
     },
     {
       label: 'SMS',
       icon: MessageCircle,
+      tone: 'hover:border-primary/70 hover:bg-primary/18',
       href: `sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
     },
   ]
@@ -394,37 +403,46 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
         <Share2 className="h-5 w-5" />
         Share
       </Button>
-      <div className="invisible absolute left-0 top-full z-30 mt-3 w-[min(20rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111] p-3 opacity-0 shadow-2xl transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100">
-        <div className="grid grid-cols-2 gap-2">
-          {shareTargets.map(({ label, icon: Icon, href }) => (
+      <div className="invisible absolute right-0 top-full z-30 mt-3 w-[min(16rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 opacity-0 shadow-2xl shadow-black/50 backdrop-blur transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100 sm:left-0 sm:right-auto">
+        <div className="grid grid-cols-5 gap-2">
+          {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
               key={label}
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
               rel={href.startsWith('http') ? 'noreferrer' : undefined}
-              className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+              aria-label={`Share on ${label}`}
+              title={label}
+              className={[
+                'inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
+                tone,
+              ].join(' ')}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{label}</span>
+              <Icon className="h-4.5 w-4.5 shrink-0" />
+              <span className="sr-only">{label}</span>
             </a>
           ))}
           {typeof navigator.share === 'function' ? (
             <button
               type="button"
               onClick={() => navigator.share({ title, text: shareText, url: shareUrl }).catch(() => undefined)}
-              className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+              aria-label="Share with device"
+              title="Device share"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/18 hover:text-white"
             >
-              <Share2 className="h-4 w-4 shrink-0" />
-              <span className="truncate">Device</span>
+              <Share2 className="h-4.5 w-4.5 shrink-0" />
+              <span className="sr-only">Device</span>
             </button>
           ) : null}
           <button
             type="button"
             onClick={onCopy}
-            className="inline-flex h-10 items-center gap-2 rounded-sm border border-white/10 bg-white/[0.06] px-3 text-sm font-semibold text-white/84 hover:border-primary/60 hover:bg-primary/16"
+            aria-label={copied ? 'Link copied' : 'Copy link'}
+            title={copied ? 'Copied' : 'Copy link'}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/18 hover:text-white"
           >
-            {copied ? <Check className="h-4 w-4 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
-            <span className="truncate">{copied ? 'Copied' : 'Copy Link'}</span>
+            {copied ? <Check className="h-4.5 w-4.5 shrink-0" /> : <Copy className="h-4.5 w-4.5 shrink-0" />}
+            <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
         </div>
       </div>
@@ -434,13 +452,13 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
 
 function VideoDetailSkeleton() {
   return (
-    <section className="grid min-h-[72vh] items-center gap-8 px-4 py-10 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:px-12">
-      <div>
+    <section className="grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-10">
+      <div className="order-2 lg:order-1">
         <div className="h-6 w-24 animate-pulse rounded-sm bg-white/10" />
         <div className="mt-5 h-16 max-w-2xl animate-pulse rounded-md bg-white/10" />
         <div className="mt-4 h-24 max-w-3xl animate-pulse rounded-md bg-white/8" />
       </div>
-      <div className="aspect-video self-center animate-pulse rounded-md bg-white/8" />
+      <div className="order-1 aspect-video self-center animate-pulse rounded-md bg-white/8 lg:order-2" />
     </section>
   )
 }

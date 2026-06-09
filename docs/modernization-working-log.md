@@ -1411,3 +1411,37 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Mobile Video Detail Layout Reorder
+
+- User reported the mobile video detail page felt disorganized because the title/details appeared before the video player.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Reordered the mobile layout so the video player appears first.
+  - Kept the desktop two-column order unchanged with title/details on the left and player on the right.
+  - Reduced mobile hero padding/gap so the player and details sit together more cleanly.
+  - Matched the loading skeleton order to the new mobile layout.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Video Detail Title Size Adjustment
+
+- User requested the video detail title be reduced a bit on mobile.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Reduced the mobile title size from `text-3xl` to `text-2xl`.
+  - Kept tablet and desktop title sizing unchanged.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Live TV Detail Layout Reorder
+
+- User requested the same mobile organization cleanup for live channel detail pages.
+- Updated `resources/react/modules/live-tv/LiveTvPage.tsx`:
+  - Reordered the mobile live channel detail layout so the player appears before the title/details.
+  - Reduced the live channel detail title from `text-3xl` to `text-2xl` on mobile.
+  - Kept the desktop two-column order and larger title sizing unchanged.
+  - Reduced mobile hero padding/gap to match the video detail page treatment.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
