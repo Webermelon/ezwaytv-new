@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { RadioTower } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -7,24 +8,12 @@ import { loadDistribution, type DistributionNetwork } from './distributionApi'
 const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
 
 export function DistributionPage() {
-  const [networks, setNetworks] = useState<DistributionNetwork[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let mounted = true
-
-    loadDistribution()
-      .then((data) => {
-        if (mounted) setNetworks(data.networks)
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const distributionQuery = useQuery({
+    queryKey: ['distribution'],
+    queryFn: loadDistribution,
+    staleTime: 5 * 60_000,
+  })
+  const networks = distributionQuery.data?.networks ?? []
 
   const platformNames = useMemo(() => networks.slice(0, 13).map((item) => item.name), [networks])
 
@@ -106,7 +95,7 @@ export function DistributionPage() {
       <section className="mx-auto max-w-[1240px] px-4 sm:px-8">
         <SectionHead title="Network Partners" />
 
-        {loading ? (
+        {distributionQuery.isLoading ? (
           <NetworkSkeleton />
         ) : networks.length > 0 ? (
           <div className="mb-20 grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">

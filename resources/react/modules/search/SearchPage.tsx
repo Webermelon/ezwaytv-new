@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Search, SlidersHorizontal } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -24,39 +25,16 @@ export function SearchPage() {
   const [query, setQuery] = useState(initialQuery)
   const [submittedQuery, setSubmittedQuery] = useState(initialQuery)
   const [activeFilter, setActiveFilter] = useState<SearchKind | 'all'>(initialType)
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(Boolean(initialQuery))
   const [searched, setSearched] = useState(Boolean(initialQuery))
-
-  useEffect(() => {
-    let mounted = true
-    const term = submittedQuery.trim()
-
-    if (!term) {
-      setResults([])
-      setLoading(false)
-      return () => {
-        mounted = false
-      }
-    }
-
-    setLoading(true)
-    setSearched(true)
-    loadSearchResults(term, activeFilter === 'all' ? [] : [activeFilter])
-      .then((items) => {
-        if (mounted) setResults(items)
-      })
-      .catch(() => {
-        if (mounted) setResults([])
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [activeFilter, submittedQuery])
+  const trimmedSubmittedQuery = submittedQuery.trim()
+  const searchTypes = activeFilter === 'all' ? [] : [activeFilter]
+  const searchQuery = useQuery({
+    queryKey: ['search-results', trimmedSubmittedQuery, activeFilter],
+    queryFn: () => loadSearchResults(trimmedSubmittedQuery, searchTypes),
+    enabled: Boolean(trimmedSubmittedQuery),
+    staleTime: 30_000,
+  })
+  const results = searchQuery.data ?? []
 
   const filteredResults = useMemo(
     () => activeFilter === 'all' ? results : results.filter((item) => item.searchKind === activeFilter),
@@ -144,7 +122,7 @@ export function SearchPage() {
           {searched ? <span className="text-sm text-white/50">{filteredResults.length} shown</span> : null}
         </div>
 
-        {loading ? (
+        {searchQuery.isFetching ? (
           <SearchSkeleton />
         ) : filteredResults.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">

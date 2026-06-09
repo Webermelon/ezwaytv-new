@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, Search, UserRound } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
@@ -21,25 +22,12 @@ const navItems = [
 
 export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
-  const [navData, setNavData] = useState<{
-    videos: MediaItem[]
-    liveTv: MediaItem[]
-    ondemand: MediaItem[]
-  }>({ videos: [], liveTv: [], ondemand: [] })
-
-  useEffect(() => {
-    let mounted = true
-
-    loadHeaderNavData()
-      .then((data) => {
-        if (mounted) setNavData(data)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const navQuery = useQuery({
+    queryKey: ['header-nav'],
+    queryFn: loadHeaderNavData,
+    staleTime: 5 * 60_000,
+  })
+  const navData = navQuery.data ?? { videos: [], liveTv: [], ondemand: [] }
 
   const dropdowns = useMemo(() => ({
     videos: navData.videos,

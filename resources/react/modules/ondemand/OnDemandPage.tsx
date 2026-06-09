@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Clapperboard, Play, Search } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -9,59 +10,30 @@ import { useSpaNavigate } from '@/lib/spa-router'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandChannels, loadOnDemandProfile } from './ondemandApi'
 
-type ProfileState = {
-  profile: MediaItem | null
-  videos: MediaItem[]
-}
-
 export function OnDemandPage() {
   const initialUsername = getUsernameFromPath()
   const navigate = useSpaNavigate()
-  const [channels, setChannels] = useState<MediaItem[]>([])
   const [selectedUsername, setSelectedUsername] = useState(initialUsername)
-  const [profileState, setProfileState] = useState<ProfileState>({ profile: null, videos: [] })
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [profileLoading, setProfileLoading] = useState(Boolean(initialUsername))
+  const channelsQuery = useQuery({
+    queryKey: ['ondemand-channels'],
+    queryFn: loadOnDemandChannels,
+    staleTime: 5 * 60_000,
+  })
+  const channels = channelsQuery.data ?? []
 
   useEffect(() => {
-    let mounted = true
-
-    loadOnDemandChannels()
-      .then((items) => {
-        if (!mounted) return
-        setChannels(items)
-        if (!selectedUsername && items[0]?.username) {
-          setSelectedUsername(items[0].username)
-        }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
+    if (!selectedUsername && channels[0]?.username) {
+      setSelectedUsername(channels[0].username)
     }
-  }, [])
-
-  useEffect(() => {
-    if (!selectedUsername) return
-
-    let mounted = true
-    setProfileLoading(true)
-
-    loadOnDemandProfile(selectedUsername)
-      .then((data) => {
-        if (mounted) setProfileState(data)
-      })
-      .finally(() => {
-        if (mounted) setProfileLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [selectedUsername])
+  }, [channels, selectedUsername])
+  const profileQuery = useQuery({
+    queryKey: ['ondemand-profile', selectedUsername],
+    queryFn: () => loadOnDemandProfile(selectedUsername),
+    enabled: Boolean(selectedUsername),
+    staleTime: 60_000,
+  })
+  const profileState = profileQuery.data ?? { profile: null, videos: [] }
 
   const filteredChannels = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -97,7 +69,7 @@ export function OnDemandPage() {
             </div>
 
             <div className="mt-5 grid gap-3">
-              {loading ? (
+              {channelsQuery.isLoading ? (
                 <ChannelSkeleton />
               ) : filteredChannels.length > 0 ? (
                 filteredChannels.map((channel) => (
@@ -133,7 +105,7 @@ export function OnDemandPage() {
           </aside>
 
           <section className="min-w-0">
-            <ProfilePanel loading={profileLoading} profile={profileState.profile} videos={profileState.videos} />
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
           </section>
         </div>
       </section>

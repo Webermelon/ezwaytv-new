@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Calendar, Film, MapPin, Star, Tv } from 'lucide-react'
 
 import { MediaThumbnail } from '@/components/MediaThumbnail'
@@ -10,31 +10,19 @@ import { loadCastCrewDetail, type CastCrewDetail } from './castCrewApi'
 export function CastCrewDetailPage() {
   const id = getIdFromPath()
   const type = new URLSearchParams(window.location.search).get('type')
-  const [detail, setDetail] = useState<CastCrewDetail | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let mounted = true
-
-    setLoading(true)
-    loadCastCrewDetail(id, type)
-      .then((data) => {
-        if (mounted) setDetail(data)
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [id, type])
+  const detailQuery = useQuery({
+    queryKey: ['castcrew-detail', id, type],
+    queryFn: () => loadCastCrewDetail(id, type),
+    enabled: Boolean(id),
+    staleTime: 5 * 60_000,
+  })
+  const detail = detailQuery.data
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="castcrew" />
 
-      {loading ? (
+      {detailQuery.isLoading ? (
         <section className="grid min-h-[72vh] items-center gap-8 px-4 py-16 sm:px-8 lg:grid-cols-[320px_1fr] lg:px-12">
           <div className="aspect-square animate-pulse rounded-full bg-white/[0.06]" />
           <div>

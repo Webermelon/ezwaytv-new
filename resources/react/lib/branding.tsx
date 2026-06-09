@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from './api'
 
@@ -43,42 +44,36 @@ const presetPrimaryColors: Record<string, string> = {
 const BrandingContext = createContext<BrandingState>(fallbackBranding)
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
-  const [branding, setBranding] = useState<BrandingState>(fallbackBranding)
+  const brandingQuery = useQuery({
+    queryKey: ['app-configuration'],
+    queryFn: () => api.get<AppConfiguration>('/api/v3/app-configuration'),
+    staleTime: 10 * 60_000,
+  })
+  const settings = brandingQuery.data
 
   useEffect(() => {
-    let mounted = true
+    if (!settings) return
 
-    api.get<AppConfiguration>('/api/v3/app-configuration')
-      .then((settings) => {
-        if (!mounted) return
+    const primaryColor = resolvePrimaryColor(settings)
+    applyPrimaryColor(primaryColor)
+    applyFavicon(settings.app_favicon)
+    document.title = cleanString(settings.app_name) ?? fallbackBranding.appName
+  }, [settings])
 
-        const primaryColor = resolvePrimaryColor(settings)
-        applyPrimaryColor(primaryColor)
-        applyFavicon(settings.app_favicon)
-        const appName = cleanString(settings.app_name) ?? fallbackBranding.appName
-        document.title = appName
-
-        setBranding({
-          appName,
-          logo: cleanString(settings.app_logo) ?? cleanString(settings.app_light_logo),
-          miniLogo: cleanString(settings.app_mini_logo),
-          favicon: cleanString(settings.app_favicon),
-          themeColor: primaryColor,
-          loading: false,
-        })
-      })
-      .catch(() => {
-        if (mounted) {
-          setBranding({ ...fallbackBranding, loading: false })
-        }
-      })
-
-    return () => {
-      mounted = false
+  const value = useMemo<BrandingState>(() => {
+    if (!settings) {
+      return { ...fallbackBranding, loading: brandingQuery.isLoading }
     }
-  }, [])
 
-  const value = useMemo(() => branding, [branding])
+    return {
+      appName: cleanString(settings.app_name) ?? fallbackBranding.appName,
+      logo: cleanString(settings.app_logo) ?? cleanString(settings.app_light_logo),
+      miniLogo: cleanString(settings.app_mini_logo),
+      favicon: cleanString(settings.app_favicon),
+      themeColor: resolvePrimaryColor(settings),
+      loading: brandingQuery.isLoading,
+    }
+  }, [brandingQuery.isLoading, settings])
 
   return <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>
 }

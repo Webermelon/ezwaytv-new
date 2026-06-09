@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Calendar, Check, Clock, Copy, Link, Lock, Mail, MessageCircle, Play, Send, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -51,64 +52,62 @@ export function VideoDetailPage() {
   const slug = getSlugFromPath()
   const ondemandChannel = getQueryValue('ondemand_channel')
   const autoplay = getQueryValue('autoplay') === '1'
-  const [video, setVideo] = useState<VideoDetail | null>(null)
-  const [ads, setAds] = useState<{ vast: VideoAd[]; custom: VideoAd[] }>({ vast: [], custom: [] })
-  const [adsLoading, setAdsLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
-
-  useEffect(() => {
-    let mounted = true
-
-    setLoading(true)
-    setError(null)
-    loadVideoDetail(slug, ondemandChannel)
-      .then((data) => {
-        if (!mounted) return
-
-        if (!data) {
-          setError('Video details could not be loaded.')
-          return
-        }
-
-        setVideo(data as VideoDetail)
-        setAds({ vast: [], custom: [] })
-        setAdsLoading(true)
-        trackVideoView(data, ondemandChannel).catch(() => undefined)
-        loadVideoAds(data.id)
-          .then((nextAds) => {
-            if (mounted) setAds(nextAds)
-          })
-          .catch(() => undefined)
-          .finally(() => {
-            if (mounted) setAdsLoading(false)
-          })
-      })
-      .catch(() => {
-        if (mounted) setError('Video details could not be loaded.')
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [ondemandChannel, slug])
+  const trackedViewKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     playIdRef.current = playId
   }, [playId])
 
+  const videoQuery = useQuery({
+    queryKey: ['video-detail', slug, ondemandChannel],
+    queryFn: () => loadVideoDetail(slug, ondemandChannel),
+    enabled: Boolean(slug),
+  })
+  const video = videoQuery.data as VideoDetail | null | undefined
+  const videoId = video?.id
+  const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
+  const adsQuery = useQuery({
+    queryKey: ['video-ads', videoId],
+    queryFn: () => loadVideoAds(videoId as string | number),
+    enabled: Boolean(videoId),
+    staleTime: 30_000,
+  })
+  const ads = adsQuery.data ?? { vast: [], custom: [] }
+  const trackViewMutation = useMutation({
+    mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
+      trackVideoView(nextVideo, nextChannelId)
+    ),
+  })
+  const trackPlayMutation = useMutation({
+    mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
+      trackVideoPlay(nextVideo, nextChannelId)
+    ),
+    onSuccess: (result) => {
+      if (result?.play_id) setPlayId(result.play_id)
+    },
+  })
+  const updateWatchTimeMutation = useMutation({
+    mutationFn: ({ nextPlayId, seconds }: { nextPlayId: number; seconds: number }) => updateWatchTime(nextPlayId, seconds),
+  })
+
+  useEffect(() => {
+    if (!video?.id) return
+
+    const viewKey = `${video.id}:${channelId ?? 'video'}`
+    if (trackedViewKeyRef.current === viewKey) return
+
+    trackedViewKeyRef.current = viewKey
+    trackViewMutation.mutate({ nextVideo: video, nextChannelId: channelId })
+  }, [channelId, trackViewMutation, video])
+
   const related = video?.more_items ?? []
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
   const playerUrl = video ? resolvePlayerUrl(video) : null
-  const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
 
   if (!slug) {
     return <PublicPage />
@@ -118,11 +117,13 @@ export function VideoDetailPage() {
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader />
 
-      {loading ? (
+      {videoQuery.isLoading ? (
         <VideoDetailSkeleton />
-      ) : error || !video ? (
+      ) : videoQuery.isError || !video ? (
         <section className="px-4 py-16 sm:px-8 lg:px-12">
-          <div className="rounded-md border border-white/10 bg-white/[0.04] p-8 text-white/68">{error ?? 'Video not found.'}</div>
+          <div className="rounded-md border border-white/10 bg-white/[0.04] p-8 text-white/68">
+            {videoQuery.isError ? 'Video details could not be loaded.' : 'Video not found.'}
+          </div>
         </section>
       ) : (
         <>
@@ -215,7 +216,7 @@ export function VideoDetailPage() {
                     <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
                   </div>
                 ) : playerUrl ? (
-                  adsLoading ? (
+                  adsQuery.isLoading ? (
                     <PlayerPreparing poster={video.poster_image} />
                   ) : (
                     <VideoJsPlayer
@@ -226,14 +227,12 @@ export function VideoDetailPage() {
                       vastAds={ads.vast}
                       onPlay={() => {
                         if (playIdRef.current) return
-                        trackVideoPlay(video, channelId).then((result) => {
-                          if (result?.play_id) setPlayId(result.play_id)
-                        }).catch(() => undefined)
+                        trackPlayMutation.mutate({ nextVideo: video, nextChannelId: channelId })
                       }}
                       onTimeUpdate={(seconds) => {
                         if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
                           lastWatchUpdateRef.current = seconds
-                          updateWatchTime(playIdRef.current, seconds).catch(() => undefined)
+                          updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
                         }
                       }}
                     />

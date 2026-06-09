@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { Filter, Play, Search } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -11,57 +12,27 @@ import { loadVideosPage } from './videosApi'
 const accessFilters = ['all', 'free', 'paid', 'pay-per-view'] as const
 
 export function VideosPage() {
-  const [videos, setVideos] = useState<MediaItem[]>([])
   const [query, setQuery] = useState('')
   const [access, setAccess] = useState<(typeof accessFilters)[number]>('all')
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [hasMore, setHasMore] = useState(true)
-  const [page, setPage] = useState(1)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const categorySlug = getCategoryFromPath()
-
-  const loadPage = useCallback((nextPage: number, mode: 'replace' | 'append') => {
-    if (mode === 'replace') {
-      setLoading(true)
-    } else {
-      setLoadingMore(true)
-    }
-
-    return loadVideosPage(categorySlug, nextPage)
-      .then((result) => {
-        setVideos((current) => {
-          const nextVideos = mode === 'replace' ? result.items : [...current, ...result.items]
-          return uniqueById(nextVideos)
-        })
-        setHasMore(result.hasMore)
-        setPage(nextPage)
-      })
-      .finally(() => {
-        if (mode === 'replace') {
-          setLoading(false)
-        } else {
-          setLoadingMore(false)
-        }
-      })
-  }, [categorySlug])
-
-  useEffect(() => {
-    let mounted = true
-
-    setVideos([])
-    setHasMore(true)
-    loadPage(1, 'replace').catch(() => {
-      if (mounted) {
-        setHasMore(false)
-        setLoading(false)
-      }
-    })
-
-    return () => {
-      mounted = false
-    }
-  }, [categorySlug, loadPage])
+  const videosQuery = useInfiniteQuery({
+    queryKey: ['videos-page', categorySlug],
+    queryFn: ({ pageParam }) => loadVideosPage(categorySlug, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => lastPage.hasMore ? allPages.length + 1 : undefined,
+    staleTime: 60_000,
+  })
+  const videos = useMemo(
+    () => uniqueById(videosQuery.data?.pages.flatMap((pageData) => pageData.items) ?? []),
+    [videosQuery.data],
+  )
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = videosQuery
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -69,9 +40,9 @@ export function VideosPage() {
 
     const observer = new IntersectionObserver((entries) => {
       const entry = entries[0]
-      if (!entry?.isIntersecting || loading || loadingMore || !hasMore) return
+      if (!entry?.isIntersecting || isLoading || isFetchingNextPage || !hasNextPage) return
 
-      loadPage(page + 1, 'append').catch(() => setHasMore(false))
+      fetchNextPage()
     }, { rootMargin: '600px 0px' })
 
     observer.observe(sentinel)
@@ -79,7 +50,7 @@ export function VideosPage() {
     return () => {
       observer.disconnect()
     }
-  }, [hasMore, loadPage, loading, loadingMore, page])
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
   const filteredVideos = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -158,10 +129,10 @@ export function VideosPage() {
 
         <div className="mb-3 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-bold">{categorySlug ? `Category: ${categorySlug}` : 'All Videos'}</h2>
-          <span className="text-sm text-white/50">{filteredVideos.length} shown{hasMore ? ' - loading more as you scroll' : ''}</span>
+          <span className="text-sm text-white/50">{filteredVideos.length} shown{hasNextPage ? ' - loading more as you scroll' : ''}</span>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <VideoGridSkeleton />
         ) : filteredVideos.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
@@ -175,20 +146,20 @@ export function VideosPage() {
           </div>
         )}
         <div ref={sentinelRef} className="mt-8 flex min-h-14 items-center justify-center">
-          {loadingMore ? (
+          {isFetchingNextPage ? (
             <div className="flex items-center gap-3 text-sm font-semibold text-white/58">
               <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
               Loading more videos
             </div>
-          ) : hasMore && !loading ? (
+          ) : hasNextPage && !isLoading ? (
             <button
               type="button"
-              onClick={() => loadPage(page + 1, 'append').catch(() => setHasMore(false))}
+              onClick={() => fetchNextPage()}
               className="rounded-md border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-bold text-white/72 hover:bg-white/[0.1] hover:text-white"
             >
               Load more
             </button>
-          ) : !loading && videos.length > 0 ? (
+          ) : !isLoading && videos.length > 0 ? (
             <span className="text-sm text-white/38">End of videos</span>
           ) : null}
         </div>

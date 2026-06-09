@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, RefreshCcw, Tags } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -18,52 +19,20 @@ type GenreRecord = {
   [key: string]: unknown
 }
 
-type LoadState = {
-  loading: boolean
-  error: string | null
-  records: GenreRecord[]
-}
-
 export function GenresPilot() {
-  const [state, setState] = useState<LoadState>({
-    loading: true,
-    error: null,
-    records: [],
+  const genresQuery = useQuery({
+    queryKey: ['genres'],
+    queryFn: loadGenres,
+    staleTime: 5 * 60_000,
   })
-
-  const visibleRecords = useMemo(() => state.records.slice(0, 6), [state.records])
-
-  async function loadGenres() {
-    setState((current) => ({ ...current, loading: true, error: null }))
-
-    try {
-      const payload = await api.get<unknown>('/api/genre-list')
-      const records = normalizeRecords(payload)
-
-      setState({
-        loading: false,
-        error: null,
-        records,
-      })
-    } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `API returned ${error.status}`
-          : error instanceof Error
-            ? error.message
-            : 'Unable to load genres'
-
-      setState({
-        loading: false,
-        error: message,
-        records: [],
-      })
-    }
-  }
-
-  useEffect(() => {
-    void loadGenres()
-  }, [])
+  const records = genresQuery.data ?? []
+  const visibleRecords = useMemo(() => records.slice(0, 6), [records])
+  const errorMessage =
+    genresQuery.error instanceof ApiError
+      ? `API returned ${genresQuery.error.status}`
+      : genresQuery.error instanceof Error
+        ? genresQuery.error.message
+        : 'Unable to load genres'
 
   return (
     <section className="rounded-md border border-white/10 bg-card/70 p-5 shadow-2xl">
@@ -77,25 +46,25 @@ export function GenresPilot() {
             <p className="text-sm text-muted-foreground">Live data from existing API: /api/genre-list</p>
           </div>
         </div>
-        <Button variant="secondary" className="bg-white/10 text-white hover:bg-white/20" onClick={loadGenres} disabled={state.loading}>
-          <RefreshCcw className={state.loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+        <Button variant="secondary" className="bg-white/10 text-white hover:bg-white/20" onClick={() => genresQuery.refetch()} disabled={genresQuery.isFetching}>
+          <RefreshCcw className={genresQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           Refresh
         </Button>
       </div>
 
       <div className="mt-6">
-        {state.loading ? (
+        {genresQuery.isLoading ? (
           <div className="flex gap-3 overflow-hidden">
             {Array.from({ length: 6 }).map((_, index) => (
               <div key={index} className="h-44 min-w-44 animate-pulse rounded-md bg-muted" />
             ))}
           </div>
-        ) : state.error ? (
+        ) : genresQuery.isError ? (
           <div className="flex gap-3 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-medium">Genres API is not available right now.</p>
-              <p className="mt-1 text-destructive/80">{state.error}</p>
+              <p className="mt-1 text-destructive/80">{errorMessage}</p>
             </div>
           </div>
         ) : visibleRecords.length ? (
@@ -130,6 +99,12 @@ export function GenresPilot() {
       </div>
     </section>
   )
+}
+
+async function loadGenres() {
+  const payload = await api.get<unknown>('/api/genre-list')
+
+  return normalizeRecords(payload)
 }
 
 function getPoster(record: GenreRecord) {

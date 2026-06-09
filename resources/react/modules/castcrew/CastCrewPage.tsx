@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Search, UsersRound } from 'lucide-react'
 
 import { MediaThumbnail } from '@/components/MediaThumbnail'
@@ -9,27 +10,14 @@ import { loadCastCrewList, type CastCrewItem } from './castCrewApi'
 const filters = ['all', 'actor', 'director'] as const
 
 export function CastCrewPage() {
-  const [items, setItems] = useState<CastCrewItem[]>([])
   const [query, setQuery] = useState('')
   const [type, setType] = useState<(typeof filters)[number]>(getTypeFromPath())
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let mounted = true
-
-    setLoading(true)
-    loadCastCrewList({ search: query, type, perPage: 80 })
-      .then((data) => {
-        if (mounted) setItems(data)
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [query, type])
+  const castCrewQuery = useQuery({
+    queryKey: ['castcrew-list', query, type],
+    queryFn: () => loadCastCrewList({ search: query, type, perPage: 80 }),
+    staleTime: 60_000,
+  })
+  const items = castCrewQuery.data ?? []
 
   const featured = useMemo(() => items[0], [items])
 
@@ -85,7 +73,7 @@ export function CastCrewPage() {
           <span className="text-sm text-white/50">{items.length} shown</span>
         </div>
 
-        {loading ? (
+        {castCrewQuery.isLoading ? (
           <CastCrewSkeleton />
         ) : items.length > 0 ? (
           <div className="grid gap-x-4 gap-y-8 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 2xl:grid-cols-10">

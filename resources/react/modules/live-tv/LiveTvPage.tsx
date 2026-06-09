@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CalendarClock, ChevronDown, MessageCircle, Play, Radio, Search, Send } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
@@ -26,29 +27,14 @@ import {
 export function LiveTvPage() {
   const path = useSpaPath()
   const channelKey = decodeURIComponent(path.split('?')[0].replace(/^\/(?:spa\/live-tv|livetv)\/?/, '')).replace(/^\/+|\/+$/g, '')
-  const [dashboard, setDashboard] = useState<LiveTvDashboard>({})
-  const [detail, setDetail] = useState<MediaItem | null>(null)
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [detailLoading, setDetailLoading] = useState(false)
-
-  useEffect(() => {
-    let mounted = true
-
-    setLoading(true)
-    loadLiveTvDashboard()
-      .then((data) => {
-        if (mounted) setDashboard(data)
-      })
-      .finally(() => {
-        if (mounted) setLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const dashboardQuery = useQuery({
+    queryKey: ['livetv-dashboard'],
+    queryFn: loadLiveTvDashboard,
+    staleTime: 60_000,
+  })
+  const dashboard = dashboardQuery.data ?? {}
 
   const categories = dashboard.category_data ?? []
   const allChannels = useMemo(() => categories.flatMap((category) => category.channel_data ?? []), [categories])
@@ -57,34 +43,14 @@ export function LiveTvPage() {
     [allChannels, channelKey, dashboard.slider],
   )
 
-  useEffect(() => {
-    let mounted = true
-
-    setDetail(null)
-
-    if (!channelKey) {
-      return () => {
-        mounted = false
-      }
-    }
-
-    const lookupId = matchedChannel?.id ?? channelKey
-    setDetailLoading(true)
-    loadLiveTvDetail(lookupId)
-      .then((data) => {
-        if (mounted && data) setDetail(data)
-      })
-      .catch(() => {
-        if (mounted) setDetail(null)
-      })
-      .finally(() => {
-        if (mounted) setDetailLoading(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [channelKey, matchedChannel?.id])
+  const detailLookupId = matchedChannel?.id ?? channelKey
+  const detailQuery = useQuery({
+    queryKey: ['livetv-detail', detailLookupId],
+    queryFn: () => loadLiveTvDetail(detailLookupId),
+    enabled: Boolean(channelKey),
+    staleTime: 30_000,
+  })
+  const detail = detailQuery.data ?? null
 
   const channels = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -107,7 +73,7 @@ export function LiveTvPage() {
       <LiveTvDetailPage
         channel={detail ?? matchedChannel}
         fallbackKey={channelKey}
-        loading={loading || detailLoading}
+        loading={dashboardQuery.isLoading || detailQuery.isLoading}
         suggestions={detail?.suggested_content ?? relatedChannels(allChannels, detail ?? matchedChannel)}
       />
     )
@@ -183,7 +149,7 @@ export function LiveTvPage() {
           <span className="text-sm text-white/50">{channels.length} shown</span>
         </div>
 
-        {loading ? (
+        {dashboardQuery.isLoading ? (
           <ChannelGridSkeleton />
         ) : channels.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
@@ -217,19 +183,49 @@ function LiveTvDetailPage({
   const description = channel?.details?.description ?? channel?.description ?? 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
-  const [ads, setAds] = useState<{ vast: VideoAd[]; custom: VideoAd[] }>({ vast: [], custom: [] })
-  const [chat, setChat] = useState<LiveTvChatState | null>(null)
-  const [schedule, setSchedule] = useState<LiveTvScheduleItem[]>([])
-  const [scheduleLoading, setScheduleLoading] = useState(false)
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
-  const scheduleChannelIdRef = useRef<string | number | null>(null)
+  const trackedViewKeyRef = useRef<string | number | null>(null)
+  const channelId = channel?.id
+  const adsQuery = useQuery({
+    queryKey: ['livetv-ads', channelId],
+    queryFn: () => loadLiveTvAds(channelId as string | number),
+    enabled: Boolean(channelId),
+    staleTime: 30_000,
+  })
+  const chatQuery = useQuery({
+    queryKey: ['livetv-chat', channelId],
+    queryFn: () => loadLiveTvChat(channelId as string | number),
+    enabled: Boolean(channelId),
+    staleTime: 10_000,
+  })
   const detailSchedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
+  const scheduleQuery = useQuery({
+    queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
+    queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),
+    enabled: Boolean(channelId) && detailSchedule.length === 0,
+    staleTime: 60_000,
+  })
+  const ads = adsQuery.data ?? { vast: [], custom: [] }
+  const chat = chatQuery.data ?? null
+  const schedule = scheduleQuery.data ?? []
   const displayedSchedule = detailSchedule.length > 0 ? detailSchedule : schedule
-  const hasScheduleUi = Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleLoading)
+  const hasScheduleUi = Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
+  const trackViewMutation = useMutation({
+    mutationFn: (nextChannel: MediaItem) => trackLiveTvView(nextChannel),
+  })
+  const trackPlayMutation = useMutation({
+    mutationFn: (nextChannel: MediaItem) => trackLiveTvPlay(nextChannel),
+    onSuccess: (result) => {
+      if (result?.play_id) setPlayId(result.play_id)
+    },
+  })
+  const updateWatchTimeMutation = useMutation({
+    mutationFn: ({ nextPlayId, seconds }: { nextPlayId: number; seconds: number }) => updateLiveTvWatchTime(nextPlayId, seconds),
+  })
 
   useEffect(() => {
     playIdRef.current = playId
@@ -247,42 +243,11 @@ function LiveTvDetailPage({
   useEffect(() => {
     if (!channel?.id) return
 
-    let cancelled = false
+    if (trackedViewKeyRef.current === channel.id) return
 
-    const channelId = String(channel.id)
-    const apiSchedule = Array.isArray(channel.full_schedule) ? channel.full_schedule : []
-    if (apiSchedule.length > 0) {
-      scheduleChannelIdRef.current = channelId
-      setSchedule(apiSchedule)
-      setScheduleLoading(false)
-    } else {
-      if (scheduleChannelIdRef.current !== channelId) {
-        setSchedule([])
-      }
-      setScheduleLoading(true)
-    }
-
-    trackLiveTvView(channel).catch(() => undefined)
-    loadLiveTvAds(channel.id).then(setAds).catch(() => undefined)
-    loadLiveTvChat(channel.id).then(setChat).catch(() => undefined)
-    if (apiSchedule.length === 0) {
-      loadLiveTvSchedule(channel.id, channel.schedules_url)
-        .then((items) => {
-          if (!cancelled) {
-            scheduleChannelIdRef.current = channelId
-            setSchedule(items)
-          }
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          if (!cancelled) setScheduleLoading(false)
-        })
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [channel?.id, channel?.full_schedule, channel?.schedules_url])
+    trackedViewKeyRef.current = channel.id
+    trackViewMutation.mutate(channel)
+  }, [channel, trackViewMutation])
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
@@ -341,14 +306,12 @@ function LiveTvDetailPage({
                 vastAds={ads.vast}
                 onPlay={() => {
                   if (!channel || playIdRef.current) return
-                  trackLiveTvPlay(channel).then((result) => {
-                    if (result?.play_id) setPlayId(result.play_id)
-                  }).catch(() => undefined)
+                  trackPlayMutation.mutate(channel)
                 }}
                 onTimeUpdate={(seconds) => {
                   if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
                     lastWatchUpdateRef.current = seconds
-                    updateLiveTvWatchTime(playIdRef.current, seconds).catch(() => undefined)
+                    updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
                   }
                 }}
               />
@@ -378,10 +341,10 @@ function LiveTvDetailPage({
                 now={channel?.now_playing}
                 next={channel?.next_playing}
                 items={displayedSchedule}
-                loading={loading || scheduleLoading}
+                loading={loading || scheduleQuery.isLoading}
               />
             ) : null}
-            {channel?.id && chat?.enabled ? <LiveTvChat channelId={channel.id} chat={chat} onChatChange={setChat} /> : null}
+            {channel?.id && chat?.enabled ? <LiveTvChat channelId={channel.id} chat={chat} /> : null}
           </div>
         </section>
       ) : null}
@@ -613,14 +576,23 @@ function ChannelGridSkeleton() {
 function LiveTvChat({
   channelId,
   chat,
-  onChatChange,
 }: {
   channelId: string | number
   chat: LiveTvChatState | null
-  onChatChange: (chat: LiveTvChatState) => void
 }) {
   const [message, setMessage] = useState('')
-  const [sending, setSending] = useState(false)
+  const queryClient = useQueryClient()
+  const sendMessageMutation = useMutation({
+    mutationFn: (nextMessage: string) => sendLiveTvChatMessage(channelId, nextMessage),
+    onSuccess: (response) => {
+      queryClient.setQueryData<LiveTvChatState | null>(['livetv-chat', channelId], (current) => {
+        if (!current) return current
+
+        return { ...current, messages: [...(current.messages ?? []), response.message] }
+      })
+      setMessage('')
+    },
+  })
 
   return (
     <section className="rounded-md border border-white/10 bg-white/[0.045] p-5">
@@ -655,15 +627,7 @@ function LiveTvChat({
           const nextMessage = message.trim()
           if (!nextMessage) return
 
-          setSending(true)
-          sendLiveTvChatMessage(channelId, nextMessage)
-            .then((response) => {
-              if (chat) {
-                onChatChange({ ...chat, messages: [...(chat.messages ?? []), response.message] })
-              }
-              setMessage('')
-            })
-            .finally(() => setSending(false))
+          sendMessageMutation.mutate(nextMessage)
         }}
       >
         <input
@@ -672,7 +636,7 @@ function LiveTvChat({
           placeholder="Message live chat"
           className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/38 px-3 text-sm text-white outline-none placeholder:text-white/40"
         />
-        <Button type="submit" size="icon" disabled={sending} aria-label="Send message">
+        <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} aria-label="Send message">
           <Send className="h-4 w-4" />
         </Button>
       </form>

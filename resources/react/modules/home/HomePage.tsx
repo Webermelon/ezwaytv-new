@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Info, Play } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -25,35 +26,12 @@ const emptyState: HomeState = {
 }
 
 export function HomePage() {
-  const [state, setState] = useState<HomeState>(emptyState)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let mounted = true
-
-    loadHomeModule()
-      .then((data) => {
-        if (mounted) {
-          setState(data)
-          setError(null)
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setError('Some home APIs did not respond. Existing backend remains untouched.')
-        }
-      })
-      .finally(() => {
-        if (mounted) {
-          setLoading(false)
-        }
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const homeQuery = useQuery({
+    queryKey: ['home-module'],
+    queryFn: loadHomeModule,
+    staleTime: 60_000,
+  })
+  const state = homeQuery.data ?? emptyState
 
   const liveChannels = useMemo(
     () => state.liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? [],
@@ -64,12 +42,12 @@ export function HomePage() {
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
-      <Hero featured={featured} loading={loading} />
+      <Hero featured={featured} loading={homeQuery.isLoading} />
 
       <section className="relative z-10 -mt-14 space-y-9 px-4 pb-16 sm:px-8 lg:px-12">
-        {error ? (
+        {homeQuery.isError ? (
           <div className="rounded-md border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
-            {error}
+            Some home APIs did not respond. Existing backend remains untouched.
           </div>
         ) : null}
 
