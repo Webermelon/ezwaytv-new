@@ -1445,3 +1445,27 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Video Detail Share UI Cleanup
+
+- User reported the video detail share popover looked broken and requested icon-based share actions instead of visible social network names.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Reworked the share popover into a compact icon-only grid.
+  - Kept accessible labels and browser tooltips through `aria-label`, `title`, and screen-reader-only text.
+  - Reduced the popover width and anchored it safely on mobile so it does not spill off the viewport.
+  - Added subtle per-network hover treatments while keeping the implementation dependency-free with existing lucide icons.
+  - Kept device share and copy-link actions as icon buttons.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Video Detail Share Brand Icon Fix
+
+- User reported the icon and share site did not match after the first icon-only pass.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Replaced generic lucide social icons with local inline brand marks for Facebook, X, WhatsApp, Telegram, LinkedIn, Reddit, and Pinterest.
+  - Kept lucide icons for non-brand actions: email, SMS, device share, and copy link.
+  - Avoided adding a new icon dependency.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

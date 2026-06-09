@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Copy, Link, Lock, Mail, MessageCircle, Play, Send, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Copy, Lock, Mail, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +17,10 @@ type AuthorChannel = {
   username?: string
   avatar?: string
   avatar_image_url?: string
+}
+
+type ShareIconProps = {
+  className?: string
 }
 
 type VideoDetail = MediaItem & {
@@ -343,56 +347,56 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
   const shareTargets = [
     {
       label: 'Facebook',
-      icon: Share2,
+      icon: FacebookIcon,
       tone: 'hover:border-[#1877f2]/70 hover:bg-[#1877f2]/18',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
     },
     {
       label: 'X',
-      icon: Send,
+      icon: XIcon,
       tone: 'hover:border-white/50 hover:bg-white/14',
       href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
     },
     {
       label: 'WhatsApp',
-      icon: MessageCircle,
+      icon: WhatsAppIcon,
       tone: 'hover:border-[#25d366]/70 hover:bg-[#25d366]/18',
       href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
     },
     {
       label: 'Telegram',
-      icon: Send,
+      icon: TelegramIcon,
       tone: 'hover:border-[#2aabee]/70 hover:bg-[#2aabee]/18',
       href: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
     },
     {
       label: 'LinkedIn',
-      icon: Link,
+      icon: LinkedInIcon,
       tone: 'hover:border-[#0a66c2]/70 hover:bg-[#0a66c2]/18',
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
     },
     {
       label: 'Reddit',
-      icon: MessageCircle,
+      icon: RedditIcon,
       tone: 'hover:border-[#ff4500]/70 hover:bg-[#ff4500]/18',
       href: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}`,
     },
     {
       label: 'Pinterest',
-      icon: Link,
+      icon: PinterestIcon,
       tone: 'hover:border-[#e60023]/70 hover:bg-[#e60023]/18',
       href: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&description=${encodeURIComponent(title)}`,
     },
     {
       label: 'Email',
       icon: Mail,
-      tone: 'hover:border-primary/70 hover:bg-primary/18',
+      tone: 'hover:border-primary/70 hover:bg-primary/16',
       href: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`,
     },
     {
       label: 'SMS',
       icon: MessageCircle,
-      tone: 'hover:border-primary/70 hover:bg-primary/18',
+      tone: 'hover:border-primary/70 hover:bg-primary/16',
       href: `sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
     },
   ]
@@ -418,7 +422,7 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
                 tone,
               ].join(' ')}
             >
-              <Icon className="h-4.5 w-4.5 shrink-0" />
+              <Icon className="h-[18px] w-[18px] shrink-0" />
               <span className="sr-only">{label}</span>
             </a>
           ))}
@@ -428,9 +432,9 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
               onClick={() => navigator.share({ title, text: shareText, url: shareUrl }).catch(() => undefined)}
               aria-label="Share with device"
               title="Device share"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/18 hover:text-white"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
             >
-              <Share2 className="h-4.5 w-4.5 shrink-0" />
+              <Share2 className="h-[18px] w-[18px] shrink-0" />
               <span className="sr-only">Device</span>
             </button>
           ) : null}
@@ -439,14 +443,70 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
             onClick={onCopy}
             aria-label={copied ? 'Link copied' : 'Copy link'}
             title={copied ? 'Copied' : 'Copy link'}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/18 hover:text-white"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
           >
-            {copied ? <Check className="h-4.5 w-4.5 shrink-0" /> : <Copy className="h-4.5 w-4.5 shrink-0" />}
+            {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+function FacebookIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M14.2 8.1V6.6c0-.7.5-.9.9-.9h2.2V2.2L14.2 2c-3.4 0-4.2 2.1-4.2 4.1v2H7.3v3.9H10V22h4.2v-10h3.1l.5-3.9h-3.6Z" />
+    </svg>
+  )
+}
+
+function XIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M13.8 10.5 21 2h-1.7l-6.2 7.3L8.1 2H2.3l7.6 11.1L2.3 22h1.7l6.7-7.8 5.3 7.8h5.8l-8-11.5Zm-2.4 2.8-.8-1.1L4.5 3.3h2.8l4.9 7 .8 1.1 6.4 9.2h-2.8l-5.2-7.3Z" />
+    </svg>
+  )
+}
+
+function WhatsAppIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M12 2.2A9.7 9.7 0 0 0 3.7 17L2.5 21.8l4.9-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.5c-1.6 0-3.1-.5-4.4-1.3l-.3-.2-2.9.8.8-2.8-.2-.3a7.8 7.8 0 1 1 7 3.8Zm4.3-5.8c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.7.9c-.1.2-.3.2-.5.1a6.4 6.4 0 0 1-1.9-1.2 7.4 7.4 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.2.2-.4.1-.1 0-.3 0-.4l-.7-1.6c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.4c.1.2 1.7 2.7 4.2 3.7.6.3 1 .4 1.4.5.6.2 1.1.1 1.5.1.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1 0-.2-.2-.3-.4-.4Z" />
+    </svg>
+  )
+}
+
+function TelegramIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M21.6 4.4 18.3 20c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L5.7 13.5l-5-1.6c-1.1-.3-1.1-1.1.2-1.6L20.4 2.8c.9-.3 1.7.2 1.2 1.6Z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M5.3 8.9H2.1V22h3.2V8.9ZM3.7 2.5a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8Zm18.2 12.2V22h-3.2v-6.8c0-1.7-.6-2.8-2.1-2.8-1.2 0-1.8.8-2.1 1.5-.1.3-.1.7-.1 1V22h-3.2s.1-11.5 0-12.7h3.2v1.8c.4-.7 1.2-1.6 3-1.6 2.2 0 4.5 1.4 4.5 5.2Z" />
+    </svg>
+  )
+}
+
+function RedditIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M21.8 11.2a2.4 2.4 0 0 0-4-1.8 10.7 10.7 0 0 0-4.8-1.5l.9-4.1 2.8.6a1.8 1.8 0 1 0 .3-1.4l-3.5-.7c-.4-.1-.7.1-.8.5l-1.1 5.1a10.7 10.7 0 0 0-5.3 1.5 2.4 2.4 0 1 0-2.6 3.9 4.4 4.4 0 0 0-.1 1c0 3.5 3.8 6.3 8.5 6.3s8.5-2.8 8.5-6.3c0-.4 0-.7-.1-1a2.4 2.4 0 0 0 1.3-2.1ZM8.1 13.1a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6Zm7.3 4.1c-.9.9-2.5 1.3-3.4 1.3-.9 0-2.5-.4-3.4-1.3-.2-.2-.2-.6 0-.8.2-.2.6-.2.8 0 .6.6 1.8.9 2.6.9.8 0 2-.3 2.6-.9.2-.2.6-.2.8 0 .2.2.2.6 0 .8Zm.5-1.5a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Z" />
+    </svg>
+  )
+}
+
+function PinterestIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M12.1 2C6.6 2 3 5.7 3 10.5c0 3.5 2 5.6 3.2 5.6.5 0 .8-1.4.8-1.8 0-.5-1.2-1.5-1.2-3.6 0-3.5 2.7-6 6.1-6 3 0 5.2 1.7 5.2 4.8 0 2.3-.9 6.6-3.9 6.6-1.1 0-2-.8-2-1.9 0-1.7 1.2-3.3 1.2-5 0-2.9-4.1-2.4-4.1 1.1 0 .7.1 1.5.4 2.1-.6 2.5-1.7 6.1-1.7 8.7 0 .8.1 1.6.2 2.4h.2c.8-1.1 1.1-1.7 1.5-3 .3-1 .8-3 1.1-4 .6 1.1 2.1 1.7 3.3 1.7 5 0 7.5-4.9 7.5-9.3C21 4.8 16.7 2 12.1 2Z" />
+    </svg>
   )
 }
 
