@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Menu, Search, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Play, Radio, Search, Send, Share2, Ticket, Tv, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,17 @@ const navItems = [
 ] as const
 
 type DropdownKey = 'videos' | 'livetv' | 'ondemand'
+
+const mobileNavItems = [
+  { key: 'home', label: 'Home', href: '/', icon: HomeIcon },
+  { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
+  { key: 'tvshows', label: 'TV Shows', href: '/tv-shows', icon: Tv },
+  { key: 'videos', label: 'Videos', href: '/videos', dropdown: 'videos', icon: Video },
+  { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand', icon: Film },
+  { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
+  { key: 'distribution', label: 'Distribution', href: '/distribution', icon: Share2 },
+  { key: 'ppv', label: 'eZWay PPV', href: '/pay-per-view', icon: Ticket },
+] as const
 
 export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
@@ -150,23 +161,23 @@ function MobileMenu({
   const [openSection, setOpenSection] = useState<DropdownKey | null>(null)
 
   return (
-    <div className="fixed inset-y-0 left-0 right-0 z-[9999] min-h-screen w-[100dvw] max-w-[100dvw] overflow-hidden bg-[#020b0d] md:hidden">
-      <nav className="flex h-screen min-h-screen w-full max-w-full flex-col overflow-hidden bg-[#020b0d]">
-        <div className="flex min-h-24 w-full min-w-0 max-w-full items-center justify-between gap-4 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(90deg,#050505,#130d08)] px-4">
-          <BrandLogo imageClassName="max-h-14 max-w-[220px]" textClassName="text-3xl" placeholderClassName="h-12 w-[210px]" />
+    <div className="fixed inset-y-0 left-0 right-0 z-[9999] min-h-screen w-[100dvw] max-w-[100dvw] overflow-hidden bg-black/72 backdrop-blur-sm md:hidden">
+      <nav className="flex h-screen min-h-screen w-full max-w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_78%_12%,rgba(212,168,67,0.16),transparent_28%),radial-gradient(circle_at_10%_76%,rgba(255,255,255,0.07),transparent_24%),linear-gradient(135deg,#050807_0%,#091011_48%,#050505_100%)] text-white shadow-2xl shadow-black">
+        <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-4 px-5 pb-4 pt-5">
+          <BrandLogo imageClassName="max-h-12 max-w-[200px]" textClassName="text-2xl" placeholderClassName="h-10 w-[180px]" />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="flex h-11 w-11 shrink-0 items-center justify-center text-white"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.07] text-white shadow-xl shadow-black/25 transition hover:bg-white/[0.12]"
           >
-            <X className="h-8 w-8" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden bg-[#020b0d] px-4 pb-7 pt-4">
+        <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden px-5 pb-6 pt-1">
           <form
-            className="mb-4 grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_64px] gap-2 border-b border-[#edc342] pb-4"
+            className="mb-4 grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_56px] gap-3"
             action="/search"
             method="get"
             onSubmit={(event) => {
@@ -177,24 +188,29 @@ function MobileMenu({
               onNavigate()
             }}
           >
-            <input
-              name="q"
-              placeholder="Search..."
-              className="h-12 min-w-0 rounded-md border border-white/15 bg-white/[0.045] px-4 text-base text-white outline-none placeholder:text-white/38 focus:border-[#edc342]"
-            />
+            <label className="flex h-12 min-w-0 items-center gap-3 rounded-xl border border-white/12 bg-white/[0.055] px-4 shadow-inner shadow-white/[0.03] focus-within:border-[#d4a843]/70">
+              <Search className="h-5 w-5 shrink-0 text-white" />
+              <input
+                name="q"
+                placeholder="Search movies, shows..."
+                className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/48"
+              />
+            </label>
             <button
               type="submit"
               aria-label="Search"
-              className="flex h-12 items-center justify-center rounded-md bg-[#edc342] text-black"
+              className="flex h-12 items-center justify-center rounded-xl bg-[#edc342] text-black shadow-xl shadow-[#d4a843]/20 transition hover:bg-[#f4ce4d]"
             >
               <Search className="h-5 w-5" />
             </button>
           </form>
 
-          <div className="grid w-full min-w-0 max-w-full gap-0 overflow-hidden">
-            {navItems.map((item) => {
+          <div className="grid w-full min-w-0 max-w-full gap-1 overflow-hidden">
+            {mobileNavItems.map((item) => {
               const items = item.dropdown ? dropdowns[item.dropdown] : []
               const isOpen = item.dropdown ? openSection === item.dropdown : false
+              const isActive = activeKey === item.key
+              const Icon = item.icon
 
               return (
                 <div key={item.key} className="w-full min-w-0 max-w-full overflow-hidden">
@@ -204,37 +220,42 @@ function MobileMenu({
                         type="button"
                         onClick={() => setOpenSection((current) => current === item.dropdown ? null : item.dropdown)}
                         className={[
-                          'flex min-h-10 w-full min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden py-2 text-left text-base font-bold',
-                          activeKey === item.key ? 'text-[#edc342]' : 'text-white',
+                          'flex min-h-12 w-full min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-4 text-left text-sm font-black transition',
+                          isActive
+                            ? 'border-[#d4a843]/45 bg-[#d4a843]/10 text-[#edc342] shadow-[0_0_24px_rgba(212,168,67,0.12)]'
+                            : 'border-transparent text-white hover:border-white/10 hover:bg-white/[0.045]',
                         ].join(' ')}
                         aria-expanded={isOpen}
                       >
-                        <span className="min-w-0 truncate">{item.label}</span>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <Icon className="h-5 w-5 shrink-0" />
+                          <span className="min-w-0 truncate">{item.label}</span>
+                        </span>
                         <ChevronDown className={['h-5 w-5 shrink-0 transition', isOpen ? 'rotate-180' : ''].join(' ')} />
                       </button>
                       {isOpen ? (
-                        <div className="w-full min-w-0 max-w-full overflow-hidden pb-3">
+                        <div className="w-full min-w-0 max-w-full overflow-hidden pb-2 pl-12 pr-2 pt-1">
                           <a
                             href={item.href}
                             onClick={onNavigate}
-                            className="block w-full min-w-0 truncate rounded-sm py-2 text-sm font-bold text-[#edc342]"
+                            className="block w-full min-w-0 truncate rounded-md py-1.5 text-xs font-black uppercase text-[#edc342]"
                           >
                             View all {item.label}
                           </a>
                           {items.length > 0 ? (
                             <div className="grid w-full min-w-0 max-w-full gap-1 overflow-hidden">
-                              {items.slice(0, 8).map((entry) => (
+                              {items.slice(0, 5).map((entry) => (
                                 <a
                                   key={`${item.dropdown}-${entry.id}`}
                                   href={navItemHref(entry, item.dropdown)}
                                   onClick={onNavigate}
-                                  className="flex min-h-11 w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-sm py-2 text-white/76"
+                                  className="flex min-h-10 w-full min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-lg py-1.5 text-white/76"
                                 >
-                                  <span className="h-8 w-12 shrink-0 overflow-hidden rounded bg-white/[0.06]">
+                                  <span className="h-7 w-10 shrink-0 overflow-hidden rounded bg-white/[0.06]">
                                     {navItemImage(entry) ? <img src={navItemImage(entry) ?? ''} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
                                   </span>
                                   <span className="min-w-0 flex-1 overflow-hidden">
-                                    <span className="block truncate text-sm font-semibold">{entry.details?.name ?? entry.name}</span>
+                                    <span className="block truncate text-xs font-semibold">{entry.details?.name ?? entry.name}</span>
                                     <span className="mt-0.5 block truncate text-xs text-white/42">{navItemMeta(entry, item.dropdown)}</span>
                                   </span>
                                 </a>
@@ -251,25 +272,62 @@ function MobileMenu({
                       href={item.href}
                       onClick={onNavigate}
                       className={[
-                        'flex min-h-10 w-full min-w-0 max-w-full items-center overflow-hidden py-2 text-base font-bold',
-                        activeKey === item.key ? 'text-[#edc342]' : 'text-white',
+                        'flex min-h-12 w-full min-w-0 max-w-full items-center justify-between overflow-hidden rounded-xl border px-4 text-sm font-black transition',
+                        isActive
+                          ? 'border-[#d4a843]/45 bg-[#d4a843]/10 text-[#edc342] shadow-[0_0_24px_rgba(212,168,67,0.12)]'
+                          : 'border-transparent text-white hover:border-white/10 hover:bg-white/[0.045]',
                       ].join(' ')}
                     >
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="flex min-w-0 items-center gap-3">
+                        <Icon className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </span>
+                      {item.key === 'home' ? null : <ChevronRight className="h-5 w-5 shrink-0" />}
                     </a>
                   )}
                 </div>
               )
             })}
-            <a
-              href="https://ezwaynetwork.com/"
-              target="_blank"
-              rel="noreferrer"
-              onClick={onNavigate}
-              className="mt-2 flex min-h-10 w-full min-w-0 max-w-full items-center overflow-hidden py-2 text-base font-black uppercase text-white"
-            >
-              <span className="min-w-0 truncate">Join Our Family</span>
-            </a>
+          </div>
+
+          <a
+            href="https://ezwaynetwork.com/"
+            target="_blank"
+            rel="noreferrer"
+            onClick={onNavigate}
+            className="mt-5 grid min-h-20 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 px-4 py-3 shadow-[0_0_28px_rgba(212,168,67,0.10)]"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342] shadow-inner shadow-[#d4a843]/20">
+              <UsersRound className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-black uppercase text-white">Join Our Family</span>
+              <span className="mt-1 block text-xs font-semibold leading-4 text-white/54">Become part of the eZWay community.</span>
+            </span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#edc342] text-black">
+              <ChevronRight className="h-5 w-5" />
+            </span>
+          </a>
+
+          <div className="mt-5 flex items-center gap-3">
+            {[
+              { label: 'Facebook', icon: Share2, href: 'https://www.facebook.com/ezwaybroadcasting' },
+              { label: 'Instagram', icon: Camera, href: 'https://www.instagram.com/ezwaytv' },
+              { label: 'X', icon: Send, href: 'https://twitter.com/ezwaytv' },
+              { label: 'YouTube', icon: Play, href: 'https://www.youtube.com/@ezwaytv' },
+            ].map(({ label, icon: Icon, href }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={label}
+                title={label}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-[#edc342] transition hover:border-[#d4a843]/50 hover:bg-[#d4a843]/12"
+              >
+                <Icon className="h-4 w-4" />
+              </a>
+            ))}
           </div>
         </div>
       </nav>

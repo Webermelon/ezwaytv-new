@@ -1592,3 +1592,44 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Mobile Navbar Premium Drawer Redesign
+
+- User provided a reference screenshot for the mobile navbar/drawer design.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Rebuilt the mobile drawer with a premium black/gold gradient surface.
+  - Enlarged the logo and close button treatment.
+  - Reworked search into a large rounded input plus gold search button.
+  - Added icon-led mobile nav rows with active gold bordered state.
+  - Added mobile-only Movies and TV Shows rows to match the reference without changing the desktop nav.
+  - Kept Videos, On Demand, and Live TV collapsible with preview items.
+  - Added a polished `Join Our Family` callout card.
+  - Added circular social shortcut buttons.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Drawer Typography Tuning
+
+- User requested decreasing the mobile navbar font size.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Reduced mobile nav row labels from `text-xl` to `text-lg`.
+  - Reduced search input text from `text-lg` to `text-base`.
+  - Reduced main nav chevrons/icons slightly.
+  - Reduced `Join Our Family` card heading from `text-xl` to `text-lg`.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Drawer Compact Typography Pass
+
+- User said the mobile drawer was still too large and requested a much smaller treatment.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Reduced mobile logo, close button, search field, search button, row heights, labels, icons, chevrons, preview rows, join card, and social buttons.
+  - Main mobile nav labels now use `text-sm`.
+  - Search input now uses `text-sm`.
+  - Drawer rows are reduced from 64px minimum height to 48px.
+  - Join card and social buttons are slimmer.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
