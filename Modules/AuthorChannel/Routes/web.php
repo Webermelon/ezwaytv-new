@@ -1,11 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\AuthorChannel\Http\Controllers\Frontend\AuthorChannelController;
-
 Route::group(['prefix' => 'on-demand', 'middleware' => ['web']], function () {
-    Route::get('/', [AuthorChannelController::class, 'index'])->name('author_channels.index');
-    Route::get('{username}', [AuthorChannelController::class, 'show'])->name('author_channels.show');
+    Route::view('/', 'react-modernization')->name('author_channels.index');
+    Route::view('{username}', 'react-modernization')->name('author_channels.show');
 });
 
 Route::group(['prefix' => 'author-channels', 'middleware' => ['web']], function () {
