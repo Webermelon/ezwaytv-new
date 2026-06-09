@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, Search, UserRound } from 'lucide-react'
+import { ChevronDown, Menu, Search, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,7 @@ const navItems = [
 
 export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navQuery = useQuery({
     queryKey: ['header-nav'],
     queryFn: loadHeaderNavData,
@@ -48,8 +49,6 @@ export function AppHeader({ active }: AppHeaderProps) {
                 <div key={item.key} className="group relative">
                   <a
                     href={item.href}
-                    target={item.external ? '_blank' : undefined}
-                    rel={item.external ? 'noreferrer' : undefined}
                     className={[
                       'inline-flex items-center gap-1.5 rounded-md px-3 py-2 transition',
                       activeKey === item.key
@@ -91,19 +90,111 @@ export function AppHeader({ active }: AppHeaderProps) {
               Join Our Family
             </a>
           </Button>
-          <Button
-            asChild
-            variant="secondary"
-            className="h-9 rounded-md border border-white/10 bg-white/[0.08] px-3 text-white hover:bg-white/[0.14]"
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] md:hidden"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((open) => !open)}
           >
-            <a href="/login">
-              <UserRound className="h-4 w-4" />
-              <span className="hidden sm:inline">Profile</span>
-            </a>
-          </Button>
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+      {mobileMenuOpen ? (
+        <MobileMenu
+          activeKey={activeKey}
+          dropdowns={dropdowns}
+          onNavigate={() => setMobileMenuOpen(false)}
+        />
+      ) : null}
     </header>
+  )
+}
+
+function MobileMenu({
+  activeKey,
+  dropdowns,
+  onNavigate,
+}: {
+  activeKey: AppHeaderProps['active']
+  dropdowns: Record<'videos' | 'livetv' | 'ondemand', MediaItem[]>
+  onNavigate: () => void
+}) {
+  return (
+    <nav className="mx-auto max-h-[calc(100vh-4rem)] max-w-[1800px] overflow-y-auto border-t border-white/8 py-3 md:hidden">
+      <div className="grid gap-2">
+        <a
+          href="/search"
+          onClick={onNavigate}
+          className="inline-flex min-h-11 items-center gap-3 rounded-md border border-white/10 bg-white/[0.07] px-3 text-sm font-bold text-white"
+        >
+          <Search className="h-4 w-4" />
+          Search
+        </a>
+        {navItems.map((item) => {
+          const items = item.dropdown ? dropdowns[item.dropdown] : []
+
+          return (
+            <div key={item.key} className="rounded-md border border-white/10 bg-white/[0.045]">
+              <a
+                href={item.href}
+                onClick={onNavigate}
+                className={[
+                  'flex min-h-11 items-center justify-between gap-3 px-3 text-sm font-bold transition',
+                  activeKey === item.key ? 'text-white' : 'text-white/72',
+                ].join(' ')}
+              >
+                <span>{item.label}</span>
+                {item.dropdown ? <ChevronDown className="h-4 w-4 text-white/44" /> : null}
+              </a>
+              {item.dropdown ? (
+                <div className="border-t border-white/8 px-2 pb-2">
+                  <a
+                    href={item.href}
+                    onClick={onNavigate}
+                    className="mt-2 block rounded-sm px-2 py-2 text-xs font-bold uppercase text-primary"
+                  >
+                    View all {item.label}
+                  </a>
+                  {items.length > 0 ? (
+                    <div className="grid gap-1">
+                      {items.slice(0, 8).map((entry) => (
+                        <a
+                          key={`${item.dropdown}-${entry.id}`}
+                          href={navItemHref(entry, item.dropdown)}
+                          onClick={onNavigate}
+                          className="flex min-h-12 items-center gap-3 rounded-sm px-2 py-2 text-white/74 hover:bg-white/[0.07] hover:text-white"
+                        >
+                          <span className="h-8 w-12 shrink-0 overflow-hidden rounded bg-white/[0.06]">
+                            {navItemImage(entry) ? <img src={navItemImage(entry) ?? ''} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-bold">{entry.details?.name ?? entry.name}</span>
+                            <span className="mt-0.5 block truncate text-xs text-white/42">{navItemMeta(entry, item.dropdown)}</span>
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-2 py-4 text-sm text-white/42">No items loaded.</div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+        <a
+          href="https://ezwaynetwork.com/"
+          target="_blank"
+          rel="noreferrer"
+          onClick={onNavigate}
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-primary px-3 text-sm font-bold text-white"
+        >
+          Join Our Family
+        </a>
+      </div>
+    </nav>
   )
 }
 
