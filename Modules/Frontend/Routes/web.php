@@ -6,6 +6,7 @@ use Modules\Frontend\Http\Controllers\FrontendController;
 use Modules\Frontend\Http\Controllers\PaymentController;
 use Modules\Frontend\Http\Controllers\LiveTvChatController;
 use Modules\Frontend\Http\Controllers\LiveTvController;
+use Modules\Frontend\Http\Controllers\ReactMetaController;
 use Modules\Frontend\Http\Controllers\Auth\AuthController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use Modules\Frontend\Http\Controllers\Auth\WordPressSsoController;
@@ -97,13 +98,13 @@ Route::post('/disable-security', function(Request $request) {
 Route::view('movies/genre/{genre_id}', 'react-modernization')->middleware('checkModule')->name('movies.genre');
 Route::view('movies/{language}', 'react-modernization')->middleware('checkModule')->name('movies.language');
 Route::view('/movies', 'react-modernization')->middleware('checkModule')->name('movies');
-Route::view('/movie-details/{id}', 'react-modernization')->middleware('checkModule')->name('movie-details');
+Route::get('/movie-details/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
 Route::view('/tv-shows', 'react-modernization')->middleware('checkModule')->name('tv-shows');
-Route::view('/tvshow-details/{id}', 'react-modernization')->middleware('checkModule')->name('tvshow-details');
-Route::view('/episode-details/{id}', 'react-modernization')->middleware('checkModule')->name('episode-details');
+Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tvshow-details');
+Route::get('/episode-details/{id}', [ReactMetaController::class, 'episodeDetails'])->middleware('checkModule')->name('episode-details');
 Route::view('/videos', 'react-modernization')->middleware('checkModule')->name('videos');
 Route::view('/videos/category/{slug}', 'react-modernization')->middleware('checkModule')->name('videos.by-category');
-Route::view('/video-details/{id}', 'react-modernization')->middleware('checkModule')->name('video-detail');
+Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
 Route::view('/pay-per-view', 'react-modernization')->name('pay-per-view');
 Route::view('/content/{type}', 'react-modernization')->middleware('checkModule')->name('content.list');
 Route::view('/section/{slug}', 'react-modernization')->name('custom-section');
@@ -111,8 +112,8 @@ Route::view('/comming-soon-details/{id}', 'react-modernization')->name('comming-
 
 
 Route::view('/comingsoon', 'react-modernization')->name('comingsoon');
-Route::view('/livetv', 'react-modernization')->middleware('checkModule')->name('livetv');
-Route::view('/livetv/{path}', 'react-modernization')->where('path', '^(?!details|channels|chat).*$')->middleware('checkModule')->name('livetv.spa-detail');
+Route::get('/livetv', [ReactMetaController::class, 'liveTvIndex'])->middleware('checkModule')->name('livetv');
+Route::get('/livetv/{path}', [ReactMetaController::class, 'liveTvShow'])->where('path', '^(?!details|channels|chat).*$')->middleware('checkModule')->name('livetv.spa-detail');
 Route::get('/livetv-details/{id}', [LiveTvController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
 Route::get('/livetv-channels/{id}', [LiveTvController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
 Route::get('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'index'])->middleware('checkModule')->name('livetv-chat.messages');
@@ -139,7 +140,7 @@ Route::view('/watch-list', 'react-modernization')->name('watchList');
 Route::view('/faq', 'react-modernization')->name('faq');
 
 Route::view('/all-review/{id}', 'react-modernization')->name('all-review');
-Route::view('/video-details/{id}', 'react-modernization')->name('video-details');
+Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->name('video-details');
 
 
 Route::post('/decrypt-url', [FrontendController::class, 'decryptUrl'])->name('decrypt.url');
