@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, ChevronDown, MessageCircle, Play, Radio, Search, Send } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, Copy, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -24,6 +24,10 @@ import {
   type LiveTvScheduleItem,
   type LiveTvChatState,
 } from './liveTvApi'
+
+type ShareIconProps = {
+  className?: string
+}
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -188,6 +192,7 @@ function LiveTvDetailPage({
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | number | null>(null)
@@ -276,7 +281,7 @@ function LiveTvDetailPage({
             <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="relative z-20 mt-7 flex flex-wrap gap-3 pb-2">
               <Button
                 type="button"
                 size="lg"
@@ -294,6 +299,16 @@ function LiveTvDetailPage({
               <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
                 <a href="/livetv">All Channels</a>
               </Button>
+              <LiveTvShareMenu
+                title={title}
+                copied={copiedShareUrl}
+                onCopy={() => {
+                  copyLiveTvShareUrl().then(() => {
+                    setCopiedShareUrl(true)
+                    window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                  }).catch(() => undefined)
+                }}
+              />
             </div>
           </section>
 
@@ -370,6 +385,115 @@ function LiveTvDetailPage({
       </section>
       <AdBannerSlider placement="livetv" />
     </main>
+  )
+}
+
+function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+  const shareUrl = currentLiveTvShareUrl()
+  const shareText = `Watch ${title} live on EZWay TV`
+  const shareTargets = [
+    {
+      label: 'LinkedIn',
+      icon: LinkedInIcon,
+      tone: 'hover:border-[#0a66c2]/70 hover:bg-[#0a66c2]/18',
+      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'Facebook',
+      icon: FacebookIcon,
+      tone: 'hover:border-[#1877f2]/70 hover:bg-[#1877f2]/18',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'X',
+      icon: XIcon,
+      tone: 'hover:border-white/50 hover:bg-white/14',
+      href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: 'WhatsApp',
+      icon: WhatsAppIcon,
+      tone: 'hover:border-[#25d366]/70 hover:bg-[#25d366]/18',
+      href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+    {
+      label: 'SMS',
+      icon: MessageCircle,
+      tone: 'hover:border-primary/70 hover:bg-primary/16',
+      href: `sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+  ]
+
+  return (
+    <div className="group/share relative max-sm:static">
+      <Button type="button" size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+        <Share2 className="h-5 w-5" />
+        Share
+      </Button>
+      <div className="invisible absolute right-0 top-full z-30 mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 opacity-0 shadow-2xl shadow-black/50 backdrop-blur transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100 max-sm:static max-sm:hidden max-sm:w-full max-sm:basis-full max-sm:opacity-100 max-sm:shadow-none max-sm:group-hover/share:block max-sm:group-focus-within/share:block sm:left-0 sm:right-auto">
+        <div className="grid grid-cols-3 gap-2">
+          {shareTargets.map(({ label, icon: Icon, href, tone }) => (
+            <a
+              key={label}
+              href={href}
+              target={href.startsWith('http') ? '_blank' : undefined}
+              rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              aria-label={`Share on ${label}`}
+              title={label}
+              className={[
+                'inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
+                tone,
+              ].join(' ')}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="sr-only">{label}</span>
+            </a>
+          ))}
+          <button
+            type="button"
+            onClick={onCopy}
+            aria-label={copied ? 'Link copied' : 'Copy link'}
+            title={copied ? 'Copied' : 'Copy link'}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
+          >
+            {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
+            <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FacebookIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M14.2 8.1V6.6c0-.7.5-.9.9-.9h2.2V2.2L14.2 2c-3.4 0-4.2 2.1-4.2 4.1v2H7.3v3.9H10V22h4.2v-10h3.1l.5-3.9h-3.6Z" />
+    </svg>
+  )
+}
+
+function XIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M13.8 10.5 21 2h-1.7l-6.2 7.3L8.1 2H2.3l7.6 11.1L2.3 22h1.7l6.7-7.8 5.3 7.8h5.8l-8-11.5Zm-2.4 2.8-.8-1.1L4.5 3.3h2.8l4.9 7 .8 1.1 6.4 9.2h-2.8l-5.2-7.3Z" />
+    </svg>
+  )
+}
+
+function WhatsAppIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M12 2.2A9.7 9.7 0 0 0 3.7 17L2.5 21.8l4.9-1.3A9.7 9.7 0 1 0 12 2.2Zm0 17.5c-1.6 0-3.1-.5-4.4-1.3l-.3-.2-2.9.8.8-2.8-.2-.3a7.8 7.8 0 1 1 7 3.8Zm4.3-5.8c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1l-.7.9c-.1.2-.3.2-.5.1a6.4 6.4 0 0 1-1.9-1.2 7.4 7.4 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.2.2-.4.1-.1 0-.3 0-.4l-.7-1.6c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 2s.8 2.3.9 2.4c.1.2 1.7 2.7 4.2 3.7.6.3 1 .4 1.4.5.6.2 1.1.1 1.5.1.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1 0-.2-.2-.3-.4-.4Z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M5.3 8.9H2.1V22h3.2V8.9ZM3.7 2.5a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8Zm18.2 12.2V22h-3.2v-6.8c0-1.7-.6-2.8-2.1-2.8-1.2 0-1.8.8-2.1 1.5-.1.3-.1.7-.1 1V22h-3.2s.1-11.5 0-12.7h3.2v1.8c.4-.7 1.2-1.6 3-1.6 2.2 0 4.5 1.4 4.5 5.2Z" />
+    </svg>
   )
 }
 
@@ -723,6 +847,29 @@ function resolveLiveTvStream(channel?: MediaItem) {
 
 function relatedChannels(channels: MediaItem[], current?: MediaItem) {
   return channels.filter((channel) => String(channel.id) !== String(current?.id)).slice(0, 12)
+}
+
+function currentLiveTvShareUrl() {
+  return window.location.href
+}
+
+async function copyLiveTvShareUrl() {
+  const url = currentLiveTvShareUrl()
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url)
+    return
+  }
+
+  const input = document.createElement('input')
+  input.value = url
+  input.setAttribute('readonly', '')
+  input.style.position = 'fixed'
+  input.style.opacity = '0'
+  document.body.appendChild(input)
+  input.select()
+  document.execCommand('copy')
+  document.body.removeChild(input)
 }
 
 function formatTime(value?: string | null) {

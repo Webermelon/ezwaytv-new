@@ -1922,3 +1922,36 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### Live TV Channel Share Link
+
+- User requested Live channel pages should have a share link.
+- Updated `resources/react/modules/live-tv/LiveTvPage.tsx`:
+  - Added a `Share` action to Live TV detail pages beside `Watch Live` and `All Channels`.
+  - Share menu includes LinkedIn, Facebook, Twitter/X, WhatsApp, SMS, and Copy Link.
+  - Mobile share menu uses the same layout-safe flow as video detail so it does not overlap following content.
+  - Copy Link uses the current `/livetv/{slugOrId}` URL.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Footer Menu Hide Coming Soon And Profile
+
+- User requested hiding `Coming Soon` and `Profile` from the mobile footer for now.
+- Updated `resources/react/components/AppFooter.tsx`:
+  - Removed `Coming Soon` and `Profile` from the mobile bottom navigation.
+  - Changed the mobile footer grid from 6 columns to 4 columns.
+  - Removed unused icon imports.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Footer On Demand Link
+
+- User requested adding On Demand to the mobile footer navigation.
+- Updated `resources/react/components/AppFooter.tsx`:
+  - Added `On Demand` with a film icon linking to `/on-demand`.
+  - Changed the mobile footer grid from 4 columns to 5 columns.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

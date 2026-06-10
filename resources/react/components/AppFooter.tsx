@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Globe2, Home, Mail, Megaphone, Phone, Search, Tv, User } from 'lucide-react'
+import { Film, Globe2, Home, Mail, Phone, Search, Tv } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { BrandLogo } from '@/components/BrandLogo'
@@ -173,15 +173,14 @@ function MobileFooterMenu() {
   const items = [
     { label: 'Home', href: '/', icon: Home },
     { label: 'Search', href: '/search', icon: Search },
-    { label: 'Coming Soon', href: '/comingsoon', icon: Megaphone },
+    { label: 'On Demand', href: '/on-demand', icon: Film },
     { label: 'Live TV', href: '/livetv', icon: Tv },
-    { label: 'Profile', href: '/account-setting', icon: User },
     { label: 'Distribution', href: '/distribution', icon: Globe2 },
   ]
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/92 px-2 py-2 text-white shadow-2xl backdrop-blur lg:hidden">
-      <ul className="grid grid-cols-6 gap-1">
+      <ul className="grid grid-cols-5 gap-1">
         {items.map((item) => {
           const Icon = item.icon
 
