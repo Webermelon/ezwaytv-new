@@ -5,6 +5,7 @@ import { Calendar, Check, Clock, Copy, Lock, Mail, MessageCircle, Play, Share2, 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import type { MediaItem } from '@/modules/home/types'
 import { PublicPage } from '@/modules/public/PublicPage'
@@ -250,6 +251,7 @@ export function VideoDetailPage() {
             </div>
           </section>
 
+          <AdBannerSlider placement="video" />
           <AdStrip ads={ads.custom} />
 
           {related.length > 0 ? (

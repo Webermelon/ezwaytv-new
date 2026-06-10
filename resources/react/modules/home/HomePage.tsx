@@ -5,6 +5,7 @@ import { ChevronRight, Info, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AppHeader } from '@/components/AppHeader'
+import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { loadHomeModule } from './homeApi'
 import type { DashboardData, LiveTvDashboard, MediaItem } from './types'
@@ -53,6 +54,7 @@ export function HomePage() {
           </div>
         ) : null}
 
+        <AdBannerSlider placement="home" className="-mx-4 -mt-2 sm:-mx-8 lg:-mx-12" />
         <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" />
         <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" />
         <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" />

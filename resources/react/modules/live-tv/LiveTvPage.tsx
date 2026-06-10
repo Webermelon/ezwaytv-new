@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CalendarClock, ChevronDown, MessageCircle, Play, Radio, Search, Send } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
+import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
@@ -116,6 +117,8 @@ export function LiveTvPage() {
           </div>
         </div>
       </section>
+
+      <AdBannerSlider placement="livetv" />
 
       <section className="px-4 pb-16 sm:px-8 lg:px-12">
         <div className="mb-6 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
@@ -331,6 +334,7 @@ function LiveTvDetailPage({
         </div>
       </section>
 
+      <AdBannerSlider placement="livetv" />
       <AdStrip ads={ads.custom} />
 
       {hasScheduleUi || (channel?.id && chat?.enabled) ? (

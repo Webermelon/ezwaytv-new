@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 use Modules\CastCrew\Http\Controllers\API\CastCrewController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use Modules\Frontend\Http\Controllers\API\DistributionController;
+use Modules\Frontend\Http\Controllers\API\FooterController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -120,6 +121,7 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('livetv-dashboard', [LiveTVsController::class, 'liveTvDashboardV3']);
     Route::get('pay-per-view-list', [DashboardController::class, 'getPayPerViewUnlockedContentV3']);
     Route::get('banner-data', [DashboardController::class, 'getEntertainmentDataV3']);
+    Route::get('footer-data', [FooterController::class, 'show'])->name('api.v3.footer-data');
     // Ad banner sliders (public)
     Route::get('ad-banner-sliders', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.ad-banner-sliders');
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');

@@ -168,11 +168,7 @@
         </ul>
       </li>
       @endif
-       <li class="nav-item">
-        <a class="nav-link {{ request()->routeIs('livetv') ? 'active text-primary' : '' }}" target="_blank"  href="https://ppv.ezway.tv/">
-          <span class="item-name" style="text-transform: none;">eZWay PPV</span>
-        </a>
-      </li>
+      {{-- eZWay PPV is hidden temporarily. --}}
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('distribution') ? 'active text-primary' : '' }}" href="{{ route('distribution') }}">
           <span class="item-name">Distribution</span>
