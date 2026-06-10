@@ -321,7 +321,7 @@
                 url: '{{ route('backend.vastads.index_data') }}',
                 finalColumns,
                 orderColumn: [
-                    [8, "desc"]
+                    [7, "desc"]
                 ],
 
                 advanceFilter: () => {

@@ -199,7 +199,7 @@
     
     <script src="{{ mix('js/backend.js') }}"></script>
     <script src="{{ asset('js/iqonic-script/utility.js') }}"></script>
-    <script src="{{ asset('js/app.min.js') }}"></script>
+    <script src="{{ mix('js/app.min.js') }}"></script>
     <script src="{{ asset('js/vue.js') }}"></script>
 
 
@@ -254,7 +254,7 @@
         }
 
         function getNotificationCounts() {
-            var url = "{{ route('notification.counts') }}";
+            var url = "{{ route('notification.counts', [], false) }}";
 
             $.ajax({
                 type: 'get',
@@ -768,7 +768,7 @@
         window.currencyFormat = currencyFormat
         window.defaultCurrencySymbol = @json(Currency::defaultSymbol())
 
-        const clearCacheConfigUrl = '{{ route('backend.config_clear') }}'; // Use named route helper
+        const clearCacheConfigUrl = '{{ route('backend.config_clear', [], false) }}'; // Use named route helper
 
         fetch(clearCacheConfigUrl, {
                 method: 'POST',

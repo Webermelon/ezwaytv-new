@@ -290,7 +290,7 @@
         }
 
         function getNotificationCounts(){
-            var url = "{{ route('notification.counts') }}";
+            var url = "{{ route('notification.counts', [], false) }}";
             $.ajax({
                 type: 'get',
                 url: url,

@@ -452,7 +452,9 @@ function normalizeVastUrl(url?: string | null) {
     const localHosts = ['127.0.0.1', 'localhost']
     const productionHosts = ['ezway.tv', 'www.ezway.tv']
 
-    if (localHosts.includes(window.location.hostname) && productionHosts.includes(parsed.hostname)) {
+    const isSameEzwayNetwork = window.location.hostname === 'react.ezway.tv' && productionHosts.includes(parsed.hostname)
+
+    if ((localHosts.includes(window.location.hostname) || isSameEzwayNetwork) && productionHosts.includes(parsed.hostname)) {
       return `${window.location.origin}${parsed.pathname}${parsed.search}`
     }
   } catch {

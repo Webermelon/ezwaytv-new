@@ -1656,3 +1656,77 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### VAST Ad Timezone and Test-Domain Playback Check
+
+- User reported VAST ads were not showing on:
+  - `/video-details/eric-zuley-xspannsion-interview?autoplay=1&is_search=1`
+- Diagnosis:
+  - The video slug resolves to video ID `193`.
+  - The only matching VAST ad row targets `[193,266,267]`.
+  - That VAST ad row has `start_date` `2026-06-02` and `end_date` `2026-06-06`.
+  - Current site date is `2026-06-09`, so `/api/vast-ads/get-active?type=video&content_id=193&video_type=full` correctly returns an empty list.
+  - The configured site timezone is `America/Los_Angeles`, while the VAST API previously used Laravel's app timezone date.
+  - The VAST XML URL in the row points to `https://ezway.tv/api/vast-xml/generate/1`; from `react.ezway.tv`, that live-domain XML response can fail browser CORS.
+- Updated `Modules/Ad/Http/Controllers/API/VastAdsController.php`:
+  - VAST active-date checks now use the configured `default_time_zone` setting when available.
+  - Logs now include the timezone used for active-date checks.
+- Updated `resources/react/modules/video-detail/VideoJsPlayer.tsx`:
+  - Rewrites eZWay live-domain VAST XML URLs to the current `react.ezway.tv` origin on the test domain so browser fetches stay same-origin.
+- Verified:
+  - `php -l Modules/Ad/Http/Controllers/API/VastAdsController.php` passes.
+  - `npm run react:build` passes and generated fresh Vite assets.
+  - The VAST XML endpoint works on `react.ezway.tv`.
+  - The active VAST API still returns an empty list until the matching ad row is extended/reactivated.
+- No migrations were run and no database tables were altered.
+
+### Workspace Folder Permission Fix
+
+- User reported an `Error loading folder contents` issue in the editor.
+- Diagnosis:
+  - Laravel runtime folders `storage` and `bootstrap/cache` were owned by `nobody:nogroup` with no access for other users.
+  - Workspace tools could not list those folders, which also caused Git status permission warnings.
+- Updated permissions:
+  - Kept existing owner/group on runtime folders.
+  - Added read/traverse permissions for other users with `chmod -R o+rX storage bootstrap/cache`.
+- Verified:
+  - `ls -la storage bootstrap/cache` can list both folders.
+  - `git status --short` no longer reports permission errors for `storage` or `bootstrap/cache`.
+- No migrations were run and no database tables were altered.
+
+### VAST Admin Listing Visibility Fix
+
+- User reported `/app/vastads` did not show the existing ad even though the test DB has one VAST ad setting.
+- Diagnosis:
+  - The `vast_ads_setting` table has one row: ID `12`, name `Test`.
+  - The row targets video IDs `[193,266,267]`.
+  - The row is expired because `end_date` is `2026-06-06` and the current date is `2026-06-09`.
+  - The admin DataTables endpoint was mutating data just by listing the page, silently setting expired active ads to inactive.
+- Updated `Modules/Ad/Http/Controllers/Backend/VastAdsSettingController.php`:
+  - Removed the auto-deactivate update from `index_data()`.
+  - Uses the configured `default_time_zone` setting for admin expired-date checks.
+  - Expired ads now still appear in the admin table with an `Expired` badge and reactivation toggle behavior.
+- Verified:
+  - `php -l Modules/Ad/Http/Controllers/Backend/VastAdsSettingController.php` passes.
+  - Reproduced the authenticated DataTables JSON in Laravel; it returns `recordsTotal: 1`, `recordsFiltered: 1`, and row name `Test`.
+- No migrations were run and no database tables were altered.
+
+### Backend Admin DataTables Asset Fix
+
+- User reported backend admin pages were not showing any data.
+- Diagnosis:
+  - Backend admin pages load the legacy Laravel Mix bundle `public/js/app.min.js`, not the React Vite bundle.
+  - The shared DataTables source in `resources/js/app.js` could call `window.renderedDataTable.ajax.reload()` before a table existed.
+  - If the global search/filter handlers fired early, that JavaScript error could stop admin table initialization.
+  - The DataTables page length also had no fallback if the `data_table_limit` setting/meta value was empty.
+- Updated `resources/js/app.js`:
+  - Added guards before calling `window.renderedDataTable.ajax.reload()`.
+  - Added a default page length fallback of `10`.
+- Rebuilt legacy admin assets:
+  - `npm run development`
+  - `npm run production`
+  - `public/mix-manifest.json` now points to cache-busted backend assets, including the rebuilt `app.min.js`.
+- Verified:
+  - The rebuilt `public/js/app.min.js` contains the DataTables guards.
+  - The VAST admin DataTables endpoint still returns the existing `Test` row.
+- No migrations were run and no database tables were altered.

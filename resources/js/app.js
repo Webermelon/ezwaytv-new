@@ -1,11 +1,55 @@
 (function () {
   "use strict";
+  const normalizeSameHostUrl = (url) => {
+    if (typeof url !== 'string' || !url || window.location.protocol !== 'https:') {
+      return url;
+    }
+
+    try {
+      const parsedUrl = new URL(url, window.location.origin);
+      if (parsedUrl.protocol === 'http:' && parsedUrl.host === window.location.host) {
+        parsedUrl.protocol = 'https:';
+        return parsedUrl.toString();
+      }
+    } catch (e) {
+      return url;
+    }
+
+    return url;
+  };
+
+  window.normalizeSameHostUrl = normalizeSameHostUrl;
+
+  $.ajaxPrefilter(function (options) {
+    options.url = normalizeSameHostUrl(options.url);
+  });
+
+  if (window.fetch) {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (resource, init) => {
+      if (typeof resource === 'string') {
+        resource = normalizeSameHostUrl(resource);
+      } else if (resource instanceof Request) {
+        const normalizedUrl = normalizeSameHostUrl(resource.url);
+        if (normalizedUrl !== resource.url) {
+          resource = new Request(normalizedUrl, resource);
+        }
+      }
+
+      return nativeFetch(resource, init);
+    };
+  }
+
   $(document).on('change', '.datatable-filter [data-filter="select"]', function () {
-    window.renderedDataTable.ajax.reload(null, false)
+    if (window.renderedDataTable?.ajax) {
+      window.renderedDataTable.ajax.reload(null, false)
+    }
   })
 
   $(document).on('input', '.dt-search', function () {
-    window.renderedDataTable.ajax.reload(null, false)
+    if (window.renderedDataTable?.ajax) {
+      window.renderedDataTable.ajax.reload(null, false)
+    }
   })
 
   const confirmSwal = async (message, actionType = null) => {
@@ -658,8 +702,17 @@
 
   const initDatatable = ({ url, finalColumns, advanceFilter, drawCallback = undefined, orderColumn }) => {
 
-    const data_table_limit = parseInt($('meta[name="data_table_limit"]').attr('content'), 10);
+    const data_table_limit = parseInt($('meta[name="data_table_limit"]').attr('content'), 10) || 10;
     const default_date_format = $('meta[name="default_date_format"]').attr('content') || 'jS F Y';
+    const safeOrderColumn = Array.isArray(orderColumn)
+      ? orderColumn.filter(([columnIndex]) => {
+        const column = finalColumns?.[columnIndex];
+        return column && column.orderable !== false;
+      })
+      : [];
+    const resolvedOrderColumn = safeOrderColumn.length
+      ? safeOrderColumn
+      : [[Math.max(finalColumns.findLastIndex((column) => column.orderable !== false), 0), 'desc']];
 
     // Global date formatting function for tables
     window.formatDate = function (dateString) {
@@ -714,7 +767,7 @@
       autoWidth: false,
       responsive: true,
       fixedHeader: true,
-      order: orderColumn,
+      order: resolvedOrderColumn,
       pageLength: data_table_limit,
       lengthMenu: [[10, 20, 25, 50, 100], [10, 20, 25, 50, 100]],
       language: {
@@ -730,7 +783,7 @@
       dom: '<"row align-items-center"><"table-responsive my-3 mt-3 mb-2 pb-1" rt><"row align-items-center data_table_widgets" <"col-md-6" <"d-flex align-items-center flex-wrap gap-3" l i>><"col-md-6" p>><"clear">',
       ajax: {
         type: "GET",
-        url: url,
+        url: normalizeSameHostUrl(url),
         data: function (d) {
           d.search = {
             value: $('.dt-search').val()
