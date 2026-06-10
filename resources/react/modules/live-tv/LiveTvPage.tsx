@@ -731,7 +731,7 @@ function formatTime(value?: string | null) {
   const date = parseScheduleDate(value)
   if (!date) return null
 
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
 function parseScheduleDate(value?: string | null) {
@@ -755,5 +755,6 @@ function formatScheduleTime(value?: string | null) {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   })
 }
