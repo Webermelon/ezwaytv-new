@@ -118,8 +118,6 @@ export function LiveTvPage() {
         </div>
       </section>
 
-      <AdBannerSlider placement="livetv" />
-
       <section className="px-4 pb-16 sm:px-8 lg:px-12">
         <div className="mb-6 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
           <div className="flex min-h-11 items-center gap-2 rounded-md bg-black/38 px-3">
@@ -166,6 +164,7 @@ export function LiveTvPage() {
           </div>
         )}
       </section>
+      <AdBannerSlider placement="livetv" />
     </main>
   )
 }
@@ -334,7 +333,6 @@ function LiveTvDetailPage({
         </div>
       </section>
 
-      <AdBannerSlider placement="livetv" />
       <AdStrip ads={ads.custom} />
 
       {hasScheduleUi || (channel?.id && chat?.enabled) ? (
@@ -370,6 +368,7 @@ function LiveTvDetailPage({
           </div>
         )}
       </section>
+      <AdBannerSlider placement="livetv" />
     </main>
   )
 }

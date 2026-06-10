@@ -54,7 +54,6 @@ export function HomePage() {
           </div>
         ) : null}
 
-        <AdBannerSlider placement="home" className="-mx-4 -mt-2 sm:-mx-8 lg:-mx-12" />
         <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" />
         <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" />
         <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" />
@@ -65,6 +64,7 @@ export function HomePage() {
           shape="personality"
         />
         <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" />
+        <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
       </section>
     </main>
   )

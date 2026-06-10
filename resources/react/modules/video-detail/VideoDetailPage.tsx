@@ -251,7 +251,6 @@ export function VideoDetailPage() {
             </div>
           </section>
 
-          <AdBannerSlider placement="video" />
           <AdStrip ads={ads.custom} />
 
           {related.length > 0 ? (
@@ -266,6 +265,7 @@ export function VideoDetailPage() {
               </div>
             </section>
           ) : null}
+          <AdBannerSlider placement="video" />
         </>
       )}
     </main>
