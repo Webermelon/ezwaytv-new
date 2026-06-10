@@ -80,6 +80,8 @@ export type DashboardData = {
   latest_movie?: NamedRail
   popular_language?: NamedRail
   popular_movie?: NamedRail
+  popular_tvshow?: NamedRail
+  free_movie?: NamedRail
   personality?: NamedRail
   popular_personality?: NamedRail
   pay_per_view?: MediaItem[]

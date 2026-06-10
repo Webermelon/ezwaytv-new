@@ -6,7 +6,7 @@ import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { useSpaNavigate } from '@/lib/spa-router'
-import type { ApiEnvelope, LiveTvDashboard, MediaItem, PaginatedData } from '@/modules/home/types'
+import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from '@/modules/home/types'
 import { loadVideosPage } from '@/modules/videos/videosApi'
 
 type AppHeaderProps = {
@@ -44,7 +44,7 @@ export function AppHeader({ active }: AppHeaderProps) {
     queryFn: loadHeaderNavData,
     staleTime: 5 * 60_000,
   })
-  const navData = navQuery.data ?? { videos: [], liveTv: [], ondemand: [] }
+  const navData = navQuery.data ?? { videos: [], liveTv: [], ondemand: [], hasMovies: false, hasTvshows: false }
 
   const dropdowns = useMemo(() => ({
     videos: navData.videos,
@@ -134,6 +134,8 @@ export function AppHeader({ active }: AppHeaderProps) {
         <MobileMenu
           activeKey={activeKey}
           dropdowns={dropdowns}
+          hasMovies={navData.hasMovies}
+          hasTvshows={navData.hasTvshows}
           navigate={navigate}
           onNavigate={() => setMobileMenuOpen(false)}
           onClose={() => setMobileMenuOpen(false)}
@@ -146,17 +148,27 @@ export function AppHeader({ active }: AppHeaderProps) {
 function MobileMenu({
   activeKey,
   dropdowns,
+  hasMovies,
+  hasTvshows,
   navigate,
   onNavigate,
   onClose,
 }: {
   activeKey: AppHeaderProps['active']
   dropdowns: Record<DropdownKey, MediaItem[]>
+  hasMovies: boolean
+  hasTvshows: boolean
   navigate: (to: string, options?: { replace?: boolean }) => void
   onNavigate: () => void
   onClose: () => void
 }) {
   const [openSection, setOpenSection] = useState<DropdownKey | null>(null)
+  const visibleMobileNavItems = mobileNavItems.filter((item) => {
+    if (item.key === 'movies') return hasMovies
+    if (item.key === 'tvshows') return hasTvshows
+
+    return true
+  })
 
   return (
     <div className="fixed inset-y-0 left-0 right-0 z-[9999] min-h-screen w-[100dvw] max-w-[100dvw] overflow-hidden bg-black/72 backdrop-blur-sm md:hidden">
@@ -204,7 +216,7 @@ function MobileMenu({
           </form>
 
           <div className="grid w-full min-w-0 max-w-full gap-1 overflow-hidden">
-            {mobileNavItems.map((item) => {
+            {visibleMobileNavItems.map((item) => {
               const items = item.dropdown ? dropdowns[item.dropdown] : []
               const isOpen = item.dropdown ? openSection === item.dropdown : false
               const isActive = activeKey === item.key
@@ -378,11 +390,19 @@ function NavDropdown({
 }
 
 async function loadHeaderNavData() {
-  const [videos, liveTv, ondemand] = await Promise.allSettled([
+  const [videos, liveTv, ondemand, dashboard] = await Promise.allSettled([
     loadVideosPage('', 1, 14),
     api.get<ApiEnvelope<LiveTvDashboard>>('/api/v3/livetv-dashboard'),
     api.get<ApiEnvelope<PaginatedData<MediaItem>>>('/api/v3/ondemand?per_page=14'),
+    api.get<ApiEnvelope<DashboardData>>('/api/v3/dashboard-detail'),
   ])
+  const dashboardData = dashboard.status === 'fulfilled' ? dashboard.value.data : undefined
+  const movieCount = [
+    dashboardData?.latest_movie?.data,
+    dashboardData?.popular_movie?.data,
+    dashboardData?.free_movie?.data,
+  ].reduce((total, items) => total + (Array.isArray(items) ? items.length : 0), 0)
+  const tvshowCount = Array.isArray(dashboardData?.popular_tvshow?.data) ? dashboardData.popular_tvshow.data.length : 0
 
   return {
     videos: videos.status === 'fulfilled' ? videos.value.items : [],
@@ -390,6 +410,8 @@ async function loadHeaderNavData() {
       ? (liveTv.value.data?.category_data?.flatMap((category) => category.channel_data ?? []) ?? []).slice(0, 14)
       : [],
     ondemand: ondemand.status === 'fulfilled' ? ondemand.value.data?.data ?? [] : [],
+    hasMovies: movieCount > 0,
+    hasTvshows: tvshowCount > 0,
   }
 }
 

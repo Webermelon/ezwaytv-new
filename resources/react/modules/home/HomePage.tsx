@@ -54,16 +54,17 @@ export function HomePage() {
           </div>
         ) : null}
 
-        <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" />
-        <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" />
-        <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" />
+        <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} />
+        <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" index={1} />
+        <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" index={2} />
         <Rail
           title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
           items={state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []}
           href="/castcrew-list"
           shape="personality"
+          index={3}
         />
-        <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" />
+        <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" index={4} />
         <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
       </section>
     </main>
@@ -76,14 +77,15 @@ function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean })
 
   return (
     <section className="relative min-h-[70vh] overflow-hidden bg-[#050505]">
-      <img src={homeHeroImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" />
+      <img src={homeHeroImage} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover opacity-80" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_36%,rgba(5,5,5,0.58)_66%,rgba(5,5,5,0.24)_100%)]" />
+      <div className="ez-home-gold-sweep absolute inset-y-0 left-[-18%] w-[38%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(212,168,67,0.16),transparent)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] via-[#050505]/82 to-transparent" />
 
       <div className="relative z-10 flex min-h-[70vh] items-center px-4 pb-20 pt-16 sm:px-8 lg:px-12">
-        <div className="max-w-3xl">
+        <div className="ez-home-hero-copy max-w-3xl">
           <Badge className={[
-            'mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase',
+            'ez-home-badge mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase',
             loading ? 'bg-white/14 text-white' : 'bg-[#d4a843] text-black',
           ].join(' ')}>
             {loading ? 'Featured' : category}
@@ -95,13 +97,13 @@ function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean })
             Stream standout shows, live channels, and on-demand stories from the eZWay TV network.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="bg-[#d4a843] text-black hover:bg-[#edc342]">
+            <Button asChild size="lg" className="ez-home-cta-primary bg-[#d4a843] text-black hover:bg-[#edc342]">
               <a href={contentHref(featured)}>
                 <Play className="h-5 w-5 fill-current" />
                 Watch Now
               </a>
             </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/12 text-white hover:bg-white/22">
+            <Button asChild size="lg" variant="secondary" className="ez-home-cta-secondary bg-white/12 text-white hover:bg-white/22">
               <a href={contentHref(featured)}>
                 <Info className="h-5 w-5" />
                 Details
@@ -119,16 +121,18 @@ function Rail({
   items,
   href,
   shape,
+  index = 0,
 }: {
   title: string
   items: MediaItem[]
   href?: string
   shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
+  index?: number
 }) {
   if (items.length === 0) return null
 
   return (
-    <section>
+    <section className="ez-home-rail" style={{ animationDelay: `${index * 90}ms` }}>
       <div className="mb-3 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-white sm:text-2xl">{title}</h2>
         {href ? (
@@ -147,22 +151,23 @@ function Rail({
             : 'auto-cols-[minmax(220px,72vw)] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)]',
         ].join(' ')}
       >
-        {items.map((item) => (
-          <PosterCard key={`${title}-${item.id}`} item={item} shape={shape} />
+        {items.map((item, itemIndex) => (
+          <PosterCard key={`${title}-${item.id}`} item={item} shape={shape} index={itemIndex} />
         ))}
       </div>
     </section>
   )
 }
 
-function PosterCard({ item, shape }: { item: MediaItem; shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality' }) {
+function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'; index?: number }) {
   const image = item.poster_tv_image ?? item.poster_image ?? item.cover_image_url ?? item.thumbnail_url ?? item.poster_url ?? item.language_image ?? item.profile_image
   const title = item.details?.name ?? item.name
+  const cardStyle = { animationDelay: `${Math.min(index, 9) * 55}ms` }
 
   if (shape === 'personality') {
     return (
-      <a href={contentHref(item)} className="group block min-w-0 text-center">
-        <div className="mx-auto aspect-square w-[72%] overflow-hidden rounded-full border border-white/10 bg-white/[0.06] shadow-lg transition duration-300 group-hover:scale-[1.035] group-hover:border-primary/70">
+      <a href={contentHref(item)} className="ez-home-card group block min-w-0 text-center" style={cardStyle}>
+        <div className="mx-auto aspect-square w-[72%] overflow-hidden rounded-full border border-white/10 bg-white/[0.06] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:scale-[1.04] group-hover:border-primary/70 group-hover:shadow-[0_18px_46px_rgba(212,168,67,0.18)]">
           <MediaThumbnail src={image} alt={title} className="aspect-square rounded-full" />
         </div>
         <h3 className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{title}</h3>
@@ -172,11 +177,15 @@ function PosterCard({ item, shape }: { item: MediaItem; shape: 'poster' | 'video
   }
 
   return (
-    <a href={contentHref(item)} className="group block min-w-0">
+    <a href={contentHref(item)} className="ez-home-card group block min-w-0" style={cardStyle}>
       <div
-        className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:scale-[1.035] group-hover:border-primary/60"
+        className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]"
       >
         <MediaThumbnail src={image} alt={title} previewSrc={shape === 'video' ? previewHref(item) : null} />
+        <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4a843]/75 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(212,168,67,0.12),transparent_38%)]" />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-80" />
         {item.access ? (
           <Badge className="absolute left-2 top-2 rounded-sm bg-black/62 text-white backdrop-blur">

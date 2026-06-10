@@ -1039,6 +1039,146 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `GET /api/vast-ads/get-active?type=video&content_id=193&video_type=full` returns VAST ad data.
 - No migrations were run and no database tables were altered.
 
+## 2026-06-10
+
+### Admin Mixed Content And DataTables Fixes
+
+- User reported admin modules such as On Demand Channels and VAST Ads were not showing data even though the database was OK.
+- Browser console showed HTTPS pages trying to call `http://react.ezway.tv/...`, causing mixed-content blocks.
+- Updated backend/frontend URL behavior so same-host requests are normalized to HTTPS/relative URLs.
+- Updated DataTables safeguards and VAST Ads ordering configuration.
+- Updated Laravel proxy/scheme handling so generated URLs respect HTTPS when `APP_URL` is HTTPS.
+- Cleared Laravel caches after route/config changes.
+- Verified admin route/data loading behavior no longer fails from mixed-content URL generation.
+- No migrations were run and no database tables were altered.
+
+### Video Ad Skip And Autoplay Resume Pass
+
+- User reported the admin skip-after setting was not working and the UI showed `Ad playing` instead of a clickable skip button.
+- Updated React video detail ad typing and player logic:
+  - `resources/react/modules/video-detail/videoDetailApi.ts`
+  - `resources/react/modules/video-detail/VideoJsPlayer.tsx`
+- Behavior:
+  - Reads `enable_skip` and `skip_after` from existing ad data.
+  - Shows skip countdown until the configured time.
+  - Makes the skip button visibly clickable with pointer cursor.
+  - Resumes the main video after an ad completes or is skipped.
+  - Uses muted autoplay retry when the browser blocks immediate playback.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Ad Banner And Footer React Pass
+
+- User noted the ad banner module and footer were missing from the React frontend.
+- Added React ad banner slider:
+  - `resources/react/components/AdBannerSlider.tsx`
+- Updated ad banner API output:
+  - `Modules/Ad/Http/Controllers/API/AdBannerSlideApiController.php`
+  - Includes shared/all placements and `link_url`.
+- Wired the banner into public React pages and moved it to the bottom content area before the footer.
+- Added React footer:
+  - `resources/react/components/AppFooter.tsx`
+- Added footer API:
+  - `Modules/Frontend/Http/Controllers/API/FooterController.php`
+  - `GET /api/v3/footer-data`
+- Footer behavior:
+  - Uses dynamic footer settings from existing backend data.
+  - Shows top channels and Live TV channels.
+  - Shows social links, app store links, page links, and copyright.
+  - Uses TanStack Query with a localStorage fallback cache.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Header PPV Hide Pass
+
+- User requested hiding eZWay PPV for now.
+- Updated React header:
+  - `resources/react/components/AppHeader.tsx`
+- Updated legacy horizontal nav:
+  - `Modules/Frontend/Resources/views/components/partials/horizontal-nav.blade.php`
+- Behavior:
+  - PPV navigation is hidden from the public nav.
+  - Existing PPV routes are not deleted.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Share OG Image Pass
+
+- User requested OG images when sharing channel or TV links.
+- Added React meta controller:
+  - `Modules/Frontend/Http/Controllers/ReactMetaController.php`
+- Updated React shell meta tags:
+  - `resources/views/react-modernization.blade.php`
+- Updated shareable routes:
+  - `Modules/Frontend/Routes/web.php`
+  - `Modules/AuthorChannel/Routes/web.php`
+- Covered share URLs:
+  - `/on-demand/{username}`
+  - `/livetv/{slugOrId}`
+  - `/video-details/{slugOrId}`
+  - `/movie-details/{slugOrId}`
+  - `/tvshow-details/{slugOrId}`
+  - `/episode-details/{slugOrId}`
+- Behavior:
+  - Crawlers now receive server-rendered `og:title`, `og:description`, `og:image`, canonical URL, and Twitter card metadata before React loads.
+  - On Demand channels use banner/avatar images.
+  - Live TV uses poster/TV poster images.
+  - Videos and entertainment detail pages use SEO image first, then poster fallbacks.
+- Verified:
+  - `php -l Modules/Frontend/Http/Controllers/ReactMetaController.php` passes.
+  - `php artisan route:list --path=livetv` passes.
+  - `php artisan route:list --path=on-demand` passes.
+  - `php artisan route:list --path=video-details` passes.
+  - `php artisan optimize:clear` completed.
+  - Public HTML checks confirmed `og:image` appears for:
+    - `/livetv/bill-duke-live-tv`
+    - `/on-demand/ezwaytv`
+    - `/video-details/3-causes-of-fear-in-a-high-achiever-unleashed-and-unstoppable-podcast-ep-4`
+- No migrations were run and no database tables were altered.
+
+### Live TV Schedule AM/PM Display
+
+- User requested schedule times show AM/PM.
+- Updated:
+  - `resources/react/modules/live-tv/LiveTvPage.tsx`
+- Behavior:
+  - Now/Next and Full Schedule time formatting explicitly uses 12-hour time with AM/PM.
+  - Example display: `1:00 PM - 1:30 PM`.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### On Demand Mobile Profile Refinement
+
+- User reported the On Demand channel mobile profile looked bad.
+- Updated:
+  - `resources/react/modules/ondemand/OnDemandPage.tsx`
+- Behavior:
+  - Direct channel links such as `/on-demand/ezwaytv` show the channel profile first on mobile.
+  - The channel browser/sidebar moves below the profile on mobile direct-channel routes.
+  - Banner uses a better mobile ratio.
+  - Profile row no longer squeezes the avatar, title, and action button into one crowded row.
+  - Channel title can wrap on mobile.
+  - `View Channel` button becomes full width on mobile.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### On Demand Avatar Gold Ring
+
+- User requested a round avatar with a gold circle.
+- Updated:
+  - `resources/react/modules/ondemand/OnDemandPage.tsx`
+- Behavior:
+  - On Demand profile avatar is now circular.
+  - Avatar has a gold border and dark outer ring to match the branded channel style.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
 ### Video Detail VAST Request Fix
 
 - User confirmed the video plays but the VAST ad did not play.
@@ -1729,4 +1869,56 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - The rebuilt `public/js/app.min.js` contains the DataTables guards.
   - The VAST admin DataTables endpoint still returns the existing `Test` row.
+- No migrations were run and no database tables were altered.
+
+### Homepage Animation Polish Pass
+
+- User requested making the homepage a bit more animated and nice.
+- Updated `resources/react/modules/home/HomePage.tsx`:
+  - Added hero copy entrance animation hooks.
+  - Added subtle animated hero image drift.
+  - Added a soft gold sweep over the hero.
+  - Added CTA glow/float animation hooks.
+  - Added staggered rail and card reveal delays.
+  - Added richer hover motion and glow for home cards.
+- Updated `resources/react/styles.css`:
+  - Added reusable homepage keyframes.
+  - Added reduced-motion support so animations are disabled for users who prefer reduced motion.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Video Detail Share Menu Simplification
+
+- User requested the video detail share menu only show the main sharing options.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Kept LinkedIn, Facebook, Twitter/X, WhatsApp, SMS, and Copy Link.
+  - Removed Telegram, Reddit, Pinterest, Email, and device-share tiles.
+  - Reduced the share menu width and changed it to a compact 3-column grid.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Video Detail Share Menu Flow Fix
+
+- User reported the simplified share menu overlapped the `More from...` heading on mobile.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Mobile share popup now participates in normal layout flow instead of floating over the next section.
+  - The menu opens as a full-width row beneath the action buttons on small screens.
+  - Desktop keeps the compact floating dropdown behavior.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.
+
+### Mobile Header Movies And TV Shows Visibility
+
+- User requested Movies and TV Shows should not show in the mobile menu when there is no data.
+- Updated `resources/react/components/AppHeader.tsx`:
+  - Header nav data now also fetches `/api/v3/dashboard-detail`.
+  - Mobile `Movies` row only renders when `latest_movie`, `popular_movie`, or `free_movie` has data.
+  - Mobile `TV Shows` row only renders when `popular_tvshow` has data.
+- Updated `resources/react/modules/home/types.ts`:
+  - Added dashboard type fields for `popular_tvshow` and `free_movie`.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
