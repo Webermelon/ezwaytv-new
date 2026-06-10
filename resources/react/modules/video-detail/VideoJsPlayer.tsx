@@ -33,6 +33,7 @@ type VastCreative = {
   title?: string | null
   advertiser?: string | null
   durationSeconds?: number | null
+  skippable: boolean
   skipAfterSeconds?: number | null
   clickThrough?: string | null
 }
@@ -43,6 +44,9 @@ type AdUiState = {
   advertiser?: string | null
   clickThrough?: string | null
   remainingSeconds?: number | null
+  durationSeconds?: number | null
+  elapsedSeconds?: number
+  skippable: boolean
   skipAfterSeconds?: number | null
   canSkip: boolean
 }
@@ -70,7 +74,7 @@ export function VideoJsPlayer({
   const finishPrerollRef = useRef<(() => void) | null>(null)
   const onPlayRef = useRef(onPlay)
   const onTimeUpdateRef = useRef(onTimeUpdate)
-  const [adUi, setAdUi] = useState<AdUiState>({ visible: false, canSkip: false })
+  const [adUi, setAdUi] = useState<AdUiState>({ visible: false, skippable: false, canSkip: false })
   const hasVastAds = vastAds.length > 0
 
   const startPreroll = useCallback((player: VideoJsImaPlayer, creative: VastCreative) => {
@@ -93,8 +97,11 @@ export function VideoJsPlayer({
       advertiser: creative.advertiser,
       clickThrough: creative.clickThrough,
       remainingSeconds: creative.durationSeconds,
+      durationSeconds: creative.durationSeconds,
+      elapsedSeconds: 0,
+      skippable: creative.skippable,
       skipAfterSeconds: creative.skipAfterSeconds,
-      canSkip: !creative.skipAfterSeconds || creative.skipAfterSeconds <= 0,
+      canSkip: creative.skippable && (creative.skipAfterSeconds ?? 0) <= 0,
     })
 
     let finished = false
@@ -110,10 +117,10 @@ export function VideoJsPlayer({
       player.off('timeupdate', updateAdUi)
       isAdPlayingRef.current = false
       prerollStateRef.current = 'done'
-      setAdUi({ visible: false, canSkip: false })
-      player.muted(wasMuted)
+      setAdUi({ visible: false, skippable: false, canSkip: false })
+      player.muted(autoplay ? true : wasMuted)
       player.controls(true)
-      playMainSource(player, source)
+      playMainSource(player, source, wasMuted)
     }
 
     finishPrerollRef.current = finishPreroll
@@ -125,11 +132,12 @@ export function VideoJsPlayer({
       const remainingSeconds = typeof creative.durationSeconds === 'number'
         ? Math.max(0, Math.ceil(creative.durationSeconds - currentTime))
         : null
-      const canSkip = typeof creative.skipAfterSeconds !== 'number' || currentTime >= creative.skipAfterSeconds
+      const canSkip = creative.skippable && currentTime >= (creative.skipAfterSeconds ?? 0)
 
       setAdUi((current) => ({
         ...current,
         remainingSeconds,
+        elapsedSeconds: currentTime,
         canSkip,
       }))
     }
@@ -225,7 +233,8 @@ export function VideoJsPlayer({
 
   useEffect(() => {
     const player = playerRef.current
-    const adTagUrl = resolveVastTag(vastAds)
+    const selectedVastAd = resolveVastAd(vastAds)
+    const adTagUrl = normalizeVastUrl(selectedVastAd?.url ?? selectedVastAd?.vast_url ?? selectedVastAd?.redirect_url ?? null)
     let cancelled = false
 
     adTagUrlRef.current = adTagUrl
@@ -246,7 +255,7 @@ export function VideoJsPlayer({
     initializedAdTagRef.current = adTagUrl
     prerollStateRef.current = 'loading'
 
-    loadVastCreative(adTagUrl)
+    loadVastCreative(adTagUrl, selectedVastAd)
       .then((creative) => {
         if (cancelled || !playerRef.current) return
 
@@ -350,23 +359,25 @@ export function VideoJsPlayer({
             <span className="rounded-sm bg-black/60 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white/76 backdrop-blur">
               Advertisement
             </span>
-            <button
-              type="button"
-              disabled={!adUi.canSkip}
-              onClick={() => {
-                finishPrerollRef.current?.()
-              }}
-              className={[
-                'pointer-events-auto rounded-md border px-4 py-2 text-sm font-black shadow-lg transition',
-                adUi.canSkip
-                  ? 'border-white/20 bg-white text-black hover:bg-white/88'
-                  : 'border-white/12 bg-black/72 text-white/58',
-              ].join(' ')}
-            >
-              {adUi.canSkip
-                ? 'Skip Ad'
-                : `Skip in ${Math.max(0, Math.ceil((adUi.skipAfterSeconds ?? 0) - ((adUi.durationSeconds ?? 0) - (adUi.remainingSeconds ?? 0))))}`}
-            </button>
+            {adUi.skippable ? (
+              <button
+                type="button"
+                disabled={!adUi.canSkip}
+                onClick={() => {
+                  finishPrerollRef.current?.()
+                }}
+                className={[
+                  'pointer-events-auto rounded-md border px-4 py-2 text-sm font-black shadow-lg transition',
+                  adUi.canSkip
+                    ? 'cursor-pointer border-white/20 bg-white text-black hover:bg-white/88'
+                    : 'cursor-not-allowed border-white/12 bg-black/72 text-white/58',
+                ].join(' ')}
+              >
+                {adUi.canSkip
+                  ? 'Skip Ad'
+                  : `Skip in ${Math.max(0, Math.ceil((adUi.skipAfterSeconds ?? 0) - (adUi.elapsedSeconds ?? 0)))}`}
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -374,14 +385,11 @@ export function VideoJsPlayer({
   )
 }
 
-function resolveVastTag(vastAds: VideoAd[]) {
-  const first = vastAds.find((ad) => ad.url || ad.vast_url || ad.redirect_url)
-  const url = first?.url ?? first?.vast_url ?? first?.redirect_url ?? null
-
-  return normalizeVastUrl(url)
+function resolveVastAd(vastAds: VideoAd[]) {
+  return vastAds.find((ad) => ad.url || ad.vast_url || ad.redirect_url) ?? null
 }
 
-async function loadVastCreative(adTagUrl: string) {
+async function loadVastCreative(adTagUrl: string, ad?: VideoAd | null) {
   const response = await fetch(adTagUrl, {
     credentials: 'same-origin',
     headers: { Accept: 'application/xml,text/xml,*/*' },
@@ -397,26 +405,44 @@ async function loadVastCreative(adTagUrl: string) {
   const mediaUrl = mediaFile?.textContent?.trim()
   if (!mediaUrl) return null
 
+  const adminSkipAfterSeconds = parseTimecode(ad?.skip_after)
+  const adminSkipEnabled = isEnabled(ad?.enable_skip) || adminSkipAfterSeconds !== null
+  const xmlSkipAfterSeconds = parseTimecode(documentXml.getElementsByTagName('Linear')[0]?.getAttribute('skipoffset'))
+  const skippable = adminSkipEnabled || xmlSkipAfterSeconds !== null
+
   return {
     mediaUrl,
     mimeType: mediaFile?.getAttribute('type') ?? guessMimeType(mediaUrl),
     title: documentXml.getElementsByTagName('AdTitle')[0]?.textContent?.trim() ?? null,
     advertiser: documentXml.getElementsByTagName('Advertiser')[0]?.textContent?.trim() ?? null,
     durationSeconds: parseTimecode(documentXml.getElementsByTagName('Duration')[0]?.textContent?.trim()),
-    skipAfterSeconds: parseTimecode(documentXml.getElementsByTagName('Linear')[0]?.getAttribute('skipoffset')),
+    skippable,
+    skipAfterSeconds: adminSkipEnabled ? adminSkipAfterSeconds : xmlSkipAfterSeconds,
     clickThrough: documentXml.getElementsByTagName('ClickThrough')[0]?.textContent?.trim() ?? null,
   } satisfies VastCreative
 }
 
-function parseTimecode(value?: string | null) {
+function parseTimecode(value?: string | number | null) {
   if (!value) return null
-  if (/^\d+$/.test(value)) return Number(value)
-  if (value.endsWith('%')) return null
+  const normalized = String(value).trim()
+  if (!normalized) return null
+  if (/^\d+$/.test(normalized)) return Number(normalized)
+  if (normalized.endsWith('%')) return null
 
-  const parts = value.split(':').map(Number)
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return null
+  const parts = normalized.split(':').map(Number)
+  if ((parts.length !== 2 && parts.length !== 3) || parts.some(Number.isNaN)) return null
+
+  if (parts.length === 2) {
+    return (parts[0] * 60) + parts[1]
+  }
 
   return (parts[0] * 3600) + (parts[1] * 60) + parts[2]
+}
+
+function isEnabled(value: VideoAd['enable_skip']) {
+  const normalized = String(value).trim().toLowerCase()
+
+  return value === true || value === 1 || normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
 }
 
 function formatSeconds(value: number) {
@@ -427,17 +453,30 @@ function formatSeconds(value: number) {
   return `${minutes}:${rest}`
 }
 
-function playMainSource(player: VideoJsImaPlayer, source: string) {
+function playMainSource(player: VideoJsImaPlayer, source: string, preferredMuted: boolean) {
   player.src({ src: source, type: guessMimeType(source) })
   player.load()
 
   const start = () => {
     const playResult = player.play()
     if (playResult && typeof playResult.catch === 'function') {
-      playResult.catch(() => undefined)
+      playResult.catch(() => {
+        if (player.muted()) return
+
+        player.muted(true)
+        const mutedPlayResult = player.play()
+        if (mutedPlayResult && typeof mutedPlayResult.catch === 'function') {
+          mutedPlayResult.catch(() => undefined)
+        }
+      })
     }
   }
 
+  player.one('playing', () => {
+    if (preferredMuted) {
+      player.muted(true)
+    }
+  })
   player.one('loadedmetadata', start)
   player.one('canplay', start)
 

@@ -10,6 +10,8 @@ export type VideoAd = {
   redirect_url?: string
   image?: string
   image_url?: string
+  enable_skip?: boolean | number | string
+  skip_after?: string | number | null
 }
 
 export async function loadVideoDetail(slug: string, ondemandChannel?: string | null) {
