@@ -15,6 +15,7 @@ export function OnDemandPage() {
   const navigate = useSpaNavigate()
   const [selectedUsername, setSelectedUsername] = useState(initialUsername)
   const [query, setQuery] = useState('')
+  const isProfileRoute = Boolean(initialUsername)
   const channelsQuery = useQuery({
     queryKey: ['ondemand-channels'],
     queryFn: loadOnDemandChannels,
@@ -48,12 +49,14 @@ export function OnDemandPage() {
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="on-demand" />
 
-      <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:px-8 lg:px-12">
+      <section className={['relative overflow-hidden px-4 pb-10 sm:px-8 lg:px-12', isProfileRoute ? 'pt-4 sm:pt-8' : 'pt-10'].join(' ')}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_0%,rgba(229,9,20,0.28),transparent_28%)]" />
         <div className="relative grid gap-8 lg:grid-cols-[0.78fr_1.22fr]">
-          <aside className="min-w-0">
-            <Badge className="rounded-sm bg-primary text-white">On Demand</Badge>
-            <h1 className="mt-4 text-4xl font-black leading-none sm:text-5xl">Creator channels, rebuilt for React.</h1>
+          <aside className={['min-w-0', isProfileRoute ? 'order-2 lg:order-1' : 'order-1'].join(' ')}>
+            <Badge className="rounded-sm bg-primary text-white">{isProfileRoute ? 'More Channels' : 'On Demand'}</Badge>
+            <h1 className={['mt-4 font-black leading-none', isProfileRoute ? 'text-2xl sm:text-4xl lg:text-5xl' : 'text-4xl sm:text-5xl'].join(' ')}>
+              {isProfileRoute ? 'Explore more creator channels.' : 'Creator channels, rebuilt for React.'}
+            </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-white/64 sm:text-base">
               This module uses the existing On Demand APIs and keeps playback routed through the current video detail system so ads, stats, and access rules stay connected.
             </p>
@@ -104,7 +107,7 @@ export function OnDemandPage() {
             </div>
           </aside>
 
-          <section className="min-w-0">
+          <section className={['min-w-0', isProfileRoute ? 'order-1 lg:order-2' : 'order-2'].join(' ')}>
             <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
           </section>
         </div>
@@ -128,23 +131,25 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
 
   return (
     <article className="overflow-hidden rounded-md border border-white/10 bg-white/[0.045] shadow-2xl">
-      <div className="relative aspect-[21/8] min-h-56 overflow-hidden bg-white/[0.04]">
+      <div className="relative aspect-[16/9] overflow-hidden bg-white/[0.04] sm:aspect-[21/8] sm:min-h-56">
         {profile.cover_image_url ? <img src={profile.cover_image_url} alt="" className="h-full w-full object-cover" /> : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
       </div>
 
       <div className="relative px-4 pb-6 sm:px-6">
-        <div className="-mt-12 flex flex-wrap items-end gap-4">
-          <MediaThumbnail
-            src={profile.avatar_image_url ?? profile.cover_image_url}
-            alt={profile.name}
-            className="h-24 w-24 shrink-0 rounded-md border-4 border-[#050505] shadow-xl"
-          />
-          <div className="min-w-0 flex-1 pb-2">
-            <h2 className="truncate text-3xl font-black text-white">{profile.name}</h2>
-            <p className="mt-1 text-sm text-white/58">@{profile.username} · {profile.videos_count ?? videos.length} videos</p>
+        <div className="-mt-10 grid gap-4 sm:-mt-12 sm:flex sm:flex-wrap sm:items-end">
+          <div className="flex min-w-0 items-end gap-3 sm:flex-1 sm:gap-4">
+            <MediaThumbnail
+              src={profile.avatar_image_url ?? profile.cover_image_url}
+              alt={profile.name}
+              className="h-20 w-20 shrink-0 rounded-full border-4 border-[#d6a83a] shadow-xl ring-4 ring-[#050505] sm:h-24 sm:w-24"
+            />
+            <div className="min-w-0 flex-1 pb-1 sm:pb-2">
+              <h2 className="line-clamp-2 text-2xl font-black leading-tight text-white sm:truncate sm:text-3xl">{profile.name}</h2>
+              <p className="mt-1 text-sm leading-5 text-white/58">@{profile.username} · {profile.videos_count ?? videos.length} videos</p>
+            </div>
           </div>
-          <Button asChild className="mb-2 bg-white text-black hover:bg-white/85">
+          <Button asChild className="h-10 w-full bg-white text-black hover:bg-white/85 sm:mb-2 sm:w-auto">
             <a href={`/on-demand/${profile.username}`}>View Channel</a>
           </Button>
         </div>
