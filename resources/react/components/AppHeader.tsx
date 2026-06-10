@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Play, Radio, Search, Send, Share2, Ticket, Tv, UsersRound, Video, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Play, Radio, Search, Send, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,6 @@ const navItems = [
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
   { key: 'distribution', label: 'Distribution', href: '/distribution' },
-  { key: 'ppv', label: 'eZWay PPV', href: '/pay-per-view' },
 ] as const
 
 type DropdownKey = 'videos' | 'livetv' | 'ondemand'
@@ -34,7 +33,6 @@ const mobileNavItems = [
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
   { key: 'distribution', label: 'Distribution', href: '/distribution', icon: Share2 },
-  { key: 'ppv', label: 'eZWay PPV', href: '/pay-per-view', icon: Ticket },
 ] as const
 
 export function AppHeader({ active }: AppHeaderProps) {
