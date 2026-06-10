@@ -1955,3 +1955,54 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+### React Analytics Wiring Pass
+
+- User requested connecting the existing analytics system across the React frontend.
+- Existing Statistics API confirmed:
+  - `POST /api/statistics/track-view`
+  - `POST /api/statistics/track-play`
+  - `POST /api/statistics/update-watch-time`
+  - `GET /api/statistics/content-stats`
+- Added shared React analytics helper:
+  - `resources/react/lib/analytics.ts`
+- Updated `resources/react/App.tsx`:
+  - Tracks SPA page views on every React route change.
+  - Includes `page_url`, `page_name`, `route_name`, `referrer`, platform, and shared session id.
+  - De-dupes React StrictMode double page-view sends.
+- Updated video analytics:
+  - `resources/react/modules/video-detail/videoDetailApi.ts`
+  - Video detail keeps content-specific video views, plays, and watch-time updates.
+  - On Demand video context still reports `ondemand_video` with `channel_id`.
+- Updated Live TV analytics:
+  - `resources/react/modules/live-tv/liveTvApi.ts`
+  - Live TV detail keeps content-specific views, plays, and watch-time updates.
+- Added On Demand channel analytics:
+  - `resources/react/modules/ondemand/OnDemandPage.tsx`
+  - Channel profile pages now send `ondemand_channel` view events when profile data loads.
+  - De-dupes React StrictMode double sends.
+- Coverage now includes:
+  - global page views for Home, On Demand, Live TV, Videos, Search, Distribution, Cast/Crew, movie/TV/video detail routes, account/public fallback pages, and other React-owned public routes.
+  - content views/plays/watch-time for videos and Live TV.
+  - content views for On Demand channel profiles.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+  - `php artisan route:list --path=api/statistics` shows all four Statistics API routes.
+- No migrations were run and no database tables were altered.
+
+### Player Lifecycle Analytics Pass
+
+- User clarified analytics should be connected with the player.
+- Updated `resources/react/modules/video-detail/VideoJsPlayer.tsx`:
+  - Added player lifecycle callbacks for content `pause` and `ended`.
+  - Existing `play` and `timeupdate` callbacks remain intact.
+  - Time/update/pause/end callbacks now ignore preroll ad playback so ad seconds do not pollute content watch-time.
+- Updated `resources/react/modules/video-detail/VideoDetailPage.tsx`:
+  - Flushes watch-time analytics on pause.
+  - Flushes final watch-time analytics when the video ends.
+- Updated `resources/react/modules/live-tv/LiveTvPage.tsx`:
+  - Flushes Live TV watch-time analytics on pause.
+  - Flushes final watch-time analytics when playback ends.
+- Verified:
+  - `npm run react:build` passes and generated fresh Vite assets.
+- No migrations were run and no database tables were altered.

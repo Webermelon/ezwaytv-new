@@ -10,9 +10,11 @@ import { VideoDetailPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
+import { useAnalyticsPageView } from '@/lib/analytics'
 
 export default function App() {
   const path = useSpaPath()
+  useAnalyticsPageView(path)
   let page
 
   if (path === '/' || path === '/spa' || path === '/spa/' || path === '/react-home') {

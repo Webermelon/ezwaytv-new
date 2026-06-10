@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { trackPlay, trackView, updateWatchTime as updateAnalyticsWatchTime } from '@/lib/analytics'
 import type { ApiEnvelope, MediaItem } from '@/modules/home/types'
 
 export type VideoAd = {
@@ -49,44 +50,24 @@ export async function loadVideoAds(videoId: string | number) {
 }
 
 export async function trackVideoView(video: MediaItem, channelId?: string | number | null) {
-  return api.post('/api/statistics/track-view', {
+  return trackView({
     content_type: channelId ? 'ondemand_video' : 'video',
-    content_id: Number(video.id),
-    channel_id: channelId ? Number(channelId) : undefined,
-    page_url: window.location.href,
+    content_id: video.id,
+    channel_id: channelId,
     page_name: video.name,
     route_name: 'video-details',
-    platform: 'web',
-    session_id: getStatSessionId(),
   })
 }
 
 export async function trackVideoPlay(video: MediaItem, channelId?: string | number | null) {
-  return api.post<{ status?: string; play_id?: number }>('/api/statistics/track-play', {
+  return trackPlay({
     content_type: channelId ? 'ondemand_video' : 'video',
-    content_id: Number(video.id),
-    channel_id: channelId ? Number(channelId) : undefined,
-    platform: 'web',
+    content_id: video.id,
+    channel_id: channelId,
     quality: 'auto',
-    session_id: getStatSessionId(),
   })
 }
 
 export async function updateWatchTime(playId: number, watchSeconds: number) {
-  return api.post('/api/statistics/update-watch-time', {
-    play_id: playId,
-    watch_seconds: Math.max(1, Math.round(watchSeconds)),
-  })
-}
-
-function getStatSessionId() {
-  const key = 'ezway_stat_session_id'
-  const existing = window.sessionStorage.getItem(key)
-
-  if (existing) return existing
-
-  const next = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-  window.sessionStorage.setItem(key, next)
-
-  return next
+  return updateAnalyticsWatchTime(playId, watchSeconds)
 }

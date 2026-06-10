@@ -18,6 +18,8 @@ type VideoJsPlayerProps = {
   vastAds: VideoAd[]
   onPlay?: () => void
   onTimeUpdate?: (seconds: number) => void
+  onPause?: (seconds: number) => void
+  onEnded?: (seconds: number) => void
 }
 
 type VideoJsImaPlayer = videojs.Player & {
@@ -61,6 +63,8 @@ export function VideoJsPlayer({
   vastAds,
   onPlay,
   onTimeUpdate,
+  onPause,
+  onEnded,
 }: VideoJsPlayerProps) {
   const videoNodeRef = useRef<HTMLVideoElement | null>(null)
   const playerRef = useRef<VideoJsImaPlayer | null>(null)
@@ -74,6 +78,8 @@ export function VideoJsPlayer({
   const finishPrerollRef = useRef<(() => void) | null>(null)
   const onPlayRef = useRef(onPlay)
   const onTimeUpdateRef = useRef(onTimeUpdate)
+  const onPauseRef = useRef(onPause)
+  const onEndedRef = useRef(onEnded)
   const [adUi, setAdUi] = useState<AdUiState>({ visible: false, skippable: false, canSkip: false })
   const hasVastAds = vastAds.length > 0
 
@@ -155,7 +161,9 @@ export function VideoJsPlayer({
   useEffect(() => {
     onPlayRef.current = onPlay
     onTimeUpdateRef.current = onTimeUpdate
-  }, [onPlay, onTimeUpdate])
+    onPauseRef.current = onPause
+    onEndedRef.current = onEnded
+  }, [onEnded, onPause, onPlay, onTimeUpdate])
 
   useEffect(() => {
     if (!videoNodeRef.current) return
@@ -195,7 +203,21 @@ export function VideoJsPlayer({
     }
 
     const handleTimeUpdate = () => {
+      if (isAdPlayingRef.current) return
+
       onTimeUpdateRef.current?.(player.currentTime() ?? 0)
+    }
+
+    const handlePause = () => {
+      if (isAdPlayingRef.current) return
+
+      onPauseRef.current?.(player.currentTime() ?? 0)
+    }
+
+    const handleEnded = () => {
+      if (isAdPlayingRef.current) return
+
+      onEndedRef.current?.(player.currentTime() ?? player.duration() ?? 0)
     }
 
     const resumeContent = () => {
@@ -209,6 +231,8 @@ export function VideoJsPlayer({
 
     player.on('play', handlePlay)
     player.on('timeupdate', handleTimeUpdate)
+    player.on('pause', handlePause)
+    player.on('ended', handleEnded)
     player.on('adserror', resumeContent)
     player.on('adtimeout', resumeContent)
     player.on('nopreroll', resumeContent)
@@ -216,6 +240,8 @@ export function VideoJsPlayer({
     return () => {
       player.off('play', handlePlay)
       player.off('timeupdate', handleTimeUpdate)
+      player.off('pause', handlePause)
+      player.off('ended', handleEnded)
       player.off('adserror', resumeContent)
       player.off('adtimeout', resumeContent)
       player.off('nopreroll', resumeContent)

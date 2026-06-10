@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Clapperboard, Play, Search } from 'lucide-react'
 
@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { trackView } from '@/lib/analytics'
 import { useSpaNavigate } from '@/lib/spa-router'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandChannels, loadOnDemandProfile } from './ondemandApi'
@@ -15,6 +16,7 @@ export function OnDemandPage() {
   const navigate = useSpaNavigate()
   const [selectedUsername, setSelectedUsername] = useState(initialUsername)
   const [query, setQuery] = useState('')
+  const trackedProfileViewRef = useRef<string | number | null>(null)
   const isProfileRoute = Boolean(initialUsername)
   const channelsQuery = useQuery({
     queryKey: ['ondemand-channels'],
@@ -35,6 +37,21 @@ export function OnDemandPage() {
     staleTime: 60_000,
   })
   const profileState = profileQuery.data ?? { profile: null, videos: [] }
+
+  useEffect(() => {
+    const profile = profileState.profile
+    if (!profile?.id) return
+    if (trackedProfileViewRef.current === profile.id) return
+
+    trackedProfileViewRef.current = profile.id
+
+    trackView({
+      content_type: 'ondemand_channel',
+      content_id: profile.id,
+      page_name: profile.name,
+      route_name: 'ondemand.show',
+    }).catch(() => undefined)
+  }, [profileState.profile?.id])
 
   const filteredChannels = useMemo(() => {
     const term = query.trim().toLowerCase()

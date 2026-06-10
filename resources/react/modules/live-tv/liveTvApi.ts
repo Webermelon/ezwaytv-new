@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { trackPlay, trackView, updateWatchTime as updateAnalyticsWatchTime } from '@/lib/analytics'
 import type { ApiEnvelope, LiveTvDashboard, MediaItem } from '@/modules/home/types'
 import type { VideoAd } from '@/modules/video-detail/videoDetailApi'
 
@@ -65,32 +66,24 @@ export async function loadLiveTvAds(channelId: string | number) {
 }
 
 export async function trackLiveTvView(channel: MediaItem) {
-  return api.post('/api/statistics/track-view', {
+  return trackView({
     content_type: 'livetv',
-    content_id: Number(channel.id),
-    page_url: window.location.href,
+    content_id: channel.id,
     page_name: channel.details?.name ?? channel.name,
     route_name: 'livetv',
-    platform: 'web',
-    session_id: getStatSessionId(),
   })
 }
 
 export async function trackLiveTvPlay(channel: MediaItem) {
-  return api.post<{ status?: string; play_id?: number }>('/api/statistics/track-play', {
+  return trackPlay({
     content_type: 'livetv',
-    content_id: Number(channel.id),
-    platform: 'web',
+    content_id: channel.id,
     quality: 'auto',
-    session_id: getStatSessionId(),
   })
 }
 
 export async function updateLiveTvWatchTime(playId: number, watchSeconds: number) {
-  return api.post('/api/statistics/update-watch-time', {
-    play_id: playId,
-    watch_seconds: Math.max(1, Math.round(watchSeconds)),
-  })
+  return updateAnalyticsWatchTime(playId, watchSeconds)
 }
 
 export async function loadLiveTvChat(channelId: string | number) {
@@ -131,16 +124,4 @@ export async function loadLiveTvSchedule(channelId: string | number, schedulesUr
   const response = await api.get<ApiEnvelope<LiveTvScheduleItem[]>>(`/api/channel-schedules?${params.toString()}`)
 
   return response.data ?? []
-}
-
-function getStatSessionId() {
-  const key = 'ezway_stat_session_id'
-  const existing = window.sessionStorage.getItem(key)
-
-  if (existing) return existing
-
-  const next = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-  window.sessionStorage.setItem(key, next)
-
-  return next
 }

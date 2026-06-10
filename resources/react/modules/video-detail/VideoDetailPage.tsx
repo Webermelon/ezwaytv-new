@@ -240,6 +240,19 @@ export function VideoDetailPage() {
                           updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
                         }
                       }}
+                      onPause={(seconds) => {
+                        if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+
+                        lastWatchUpdateRef.current = seconds
+                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+                      }}
+                      onEnded={(seconds) => {
+                        if (!playIdRef.current) return
+
+                        const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                        lastWatchUpdateRef.current = finalSeconds
+                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                      }}
                     />
                   )
                 ) : (
