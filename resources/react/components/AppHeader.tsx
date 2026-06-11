@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Play, Radio, Search, Send, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Music2, Play, Radio, Search, Send, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedD
 import { loadVideosPage } from '@/modules/videos/videosApi'
 
 type AppHeaderProps = {
-  active?: 'home' | 'on-demand' | 'livetv' | 'videos' | 'castcrew' | 'search' | 'distribution' | 'movies' | 'tvshows' | 'ppv'
+  active?: 'home' | 'on-demand' | 'livetv' | 'videos' | 'castcrew' | 'search' | 'distribution' | 'stream-music' | 'movies' | 'tvshows' | 'ppv'
 }
 
 const navItems = [
@@ -21,6 +21,7 @@ const navItems = [
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
   { key: 'distribution', label: 'Distribution', href: '/distribution' },
+  { key: 'stream-music', label: 'Stream Your Music', href: '/music' },
 ] as const
 
 type DropdownKey = 'videos' | 'livetv' | 'ondemand'
@@ -33,6 +34,7 @@ const mobileNavItems = [
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
   { key: 'distribution', label: 'Distribution', href: '/distribution', icon: Share2 },
+  { key: 'stream-music', label: 'Stream Your Music', href: '/music', icon: Music2 },
 ] as const
 
 export function AppHeader({ active }: AppHeaderProps) {
@@ -457,6 +459,7 @@ function inferActiveKey(): AppHeaderProps['active'] {
   if (path.startsWith('/castcrew')) return 'castcrew'
   if (path.startsWith('/search')) return 'search'
   if (path.startsWith('/distribution')) return 'distribution'
+  if (path.startsWith('/music') || path.startsWith('/stream-your-music') || path.startsWith('/upload-your-videoes')) return 'stream-music'
 
   return undefined
 }

@@ -31,6 +31,7 @@ type UploadProgress = {
 }
 
 const rotationPrice = '$24.99'
+const paymentUrl = 'https://ezwaynetwork.com/ezway-tv-music-submission-purchase/'
 
 export function MusicUploadPage() {
   return (
@@ -236,6 +237,12 @@ function MusicSubmissionSection() {
               </div>
               <CreditCard className="h-9 w-9 text-[#d4a843]" />
             </div>
+            <Button asChild className="mt-5 h-11 w-full bg-[#d4a843] text-black hover:bg-[#eac45b]">
+              <a href={paymentUrl} target="_blank" rel="noreferrer">
+                <CreditCard className="h-4 w-4" />
+                Make Payment
+              </a>
+            </Button>
 
             <div className="mt-5 rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 p-4">
               <div className="text-sm font-black text-[#f1c95c]">Locked Channel</div>

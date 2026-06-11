@@ -174,6 +174,11 @@
           <span class="item-name">Distribution</span>
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link {{ request()->routeIs('music') || request()->routeIs('stream-your-music') || request()->routeIs('upload-your-videoes') ? 'active text-primary' : '' }}" href="{{ route('music') }}">
+          <span class="item-name">Stream Your Music</span>
+        </a>
+      </li>
     </ul>
   </div>
   <!-- container-fluid.// -->

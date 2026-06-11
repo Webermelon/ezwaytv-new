@@ -10,10 +10,8 @@ import {
   Film,
   Flame,
   Headphones,
-  Info,
   Mic2,
   Music2,
-  PlayCircle,
   Radio,
   Rocket,
   ShieldCheck,
@@ -29,6 +27,7 @@ import { VideoJsPlayer } from '@/modules/video-detail/VideoJsPlayer'
 
 const streamUrl = 'https://stream.ezway.tv/hls/2db69da329834ed18f1bc376a2c3a27c.m3u8'
 const uploadUrl = '/upload-your-videoes/ezway-music'
+const paymentUrl = 'https://ezwaynetwork.com/ezway-tv-music-submission-purchase/'
 
 const genres = [
   { name: 'Hip Hop', icon: Mic2, copy: 'Trap, drill, underground and old-school. We amplify every voice.', views: '480K views', videos: '640 videos' },
@@ -49,7 +48,7 @@ const platforms = [
   { name: 'Roku', pct: 72 },
   { name: 'Apple TV', pct: 58 },
   { name: 'Amazon Fire', pct: 45 },
-  { name: 'Google Play', pct: 33 },
+  { name: 'eZWay TV Live', pct: 33 },
 ]
 
 const testimonials = [
@@ -63,9 +62,9 @@ export function MusicPage() {
     <main className="min-h-screen bg-[#060606] text-white">
       <AppHeader />
       <MusicHero />
-      <AnalyticsSection />
       <GenresSection />
       <ChannelSection />
+      <AnalyticsSection />
       <HowItWorksSection />
       <CommitteeSection />
       <PricingSection />
@@ -92,7 +91,7 @@ function MusicHero() {
             <span className="block text-[#d4a843]">The eZWay</span>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-white/72 sm:text-lg">
-            Get your music video in rotation on the EZWAY Music Channel and promote it across Roku, Apple TV, Amazon Fire TV, Google Play and more.
+            Get your music video in rotation on the EZWAY Music Channel and promote it across Roku, Apple TV, Amazon Fire TV, eZWay TV Live and more.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {['Hip Hop', 'Pop', 'R&B', 'Rock', 'Gospel'].map((genre) => (
@@ -103,27 +102,20 @@ function MusicHero() {
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild size="lg" className="bg-[#d4a843] text-black hover:bg-[#eac45b]">
-              <a href={uploadUrl}>
+              <a href={paymentUrl} target="_blank" rel="noreferrer">
                 <CloudUpload className="h-5 w-5" />
-                Upload Video
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/10 text-white hover:bg-white/16">
-              <a href="#pricing">
-                <PlayCircle className="h-5 w-5" />
-                View Pricing
+                Make Payment
               </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="border-white/14 bg-transparent text-white hover:bg-white/10 hover:text-white">
-              <a href="#how-it-works">
-                <Info className="h-5 w-5" />
-                Learn More
+              <a href={uploadUrl}>
+                Upload After Payment
               </a>
             </Button>
           </div>
           <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-bold text-white/60">
             <span className="text-[#d4a843]">Watch On:</span>
-            {['Roku', 'Apple TV', 'Amazon Fire TV', 'Google Play'].map((item) => (
+            {['Roku', 'Apple TV', 'Amazon Fire TV', 'eZWay TV Live'].map((item) => (
               <span key={item} className="inline-flex items-center gap-2">
                 <Tv className="h-4 w-4" />
                 {item}
@@ -191,7 +183,7 @@ function GenresSection() {
         {genres.map((genre) => {
           const Icon = genre.icon
           return (
-            <a key={genre.name} href={uploadUrl} className="group rounded-md border border-white/10 bg-[#141414] p-5 transition hover:-translate-y-1 hover:border-[#d4a843]/60 hover:bg-[#191919]">
+            <a key={genre.name} href={paymentUrl} target="_blank" rel="noreferrer" className="group rounded-md border border-white/10 bg-[#141414] p-5 transition hover:-translate-y-1 hover:border-[#d4a843]/60 hover:bg-[#191919]">
               <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#d4a843]/14 text-[#f1c95c]">
                 <Icon className="h-6 w-6" />
               </div>
@@ -201,7 +193,7 @@ function GenresSection() {
                 <span>{genre.views}</span>
                 <span>{genre.videos}</span>
               </div>
-              <span className="mt-5 inline-flex text-sm font-black text-[#d4a843]">Submit Video</span>
+              <span className="mt-5 inline-flex text-sm font-black text-[#d4a843]">Make Payment</span>
             </a>
           )
         })}
@@ -212,28 +204,55 @@ function GenresSection() {
 
 function ChannelSection() {
   return (
-    <Section id="channel" label="Featured Channel" icon={Star} title="The Home of eZWay Music" intro="A curated streaming experience featuring music videos, concerts and live performances 24/7 across major platforms.">
-      <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
-        <div className="rounded-md border border-white/10 bg-[#141414] p-5 sm:p-8">
-          <ul className="grid gap-4 text-sm leading-6 text-white/72">
+    <section id="channel" className="bg-[#050609] px-4 py-16 sm:px-8 sm:py-24 lg:px-12">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f1c95c]">
+            <Star className="h-3.5 w-3.5 fill-current" />
+            Featured Channel
+          </div>
+          <h2 className="mt-7 max-w-xl text-5xl font-black leading-[1.04] tracking-normal text-white sm:text-7xl">
+            The Home of
+            <span className="mt-3 block text-[#f7df78]">eZWay Music</span>
+          </h2>
+          <p className="mt-7 max-w-2xl text-lg leading-8 text-[#9aa1b6]">
+            eZWay Music is the flagship channel on PerformersResource.com, a curated streaming experience featuring music videos, concerts, and live performances 24/7 across all major platforms.
+          </p>
+          <ul className="mt-8 grid gap-4 text-sm font-semibold text-[#a8aec1]">
             {['24/7 curated music video streams', 'Live concert broadcasts and replays', 'Artist spotlight and exclusive interviews', 'Available on Roku, Apple TV, Fire TV and more', 'Millions of viewers across all genres'].map((item) => (
-              <li key={item} className="flex gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#d4a843]" />
+              <li key={item} className="flex items-center gap-3">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#f1c95c] text-black">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </span>
                 <span>{item}</span>
               </li>
             ))}
           </ul>
+          <Button asChild className="mt-8 h-12 rounded-full bg-[#d4a843] px-6 text-black shadow-xl shadow-[#d4a843]/20 hover:bg-[#eac45b]">
+            <a href={paymentUrl} target="_blank" rel="noreferrer">
+              <Radio className="h-4 w-4" />
+              Get Featured on eZWay Music
+            </a>
+          </Button>
         </div>
-        <div className="overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl shadow-black/50">
-          <div className="aspect-video w-full bg-black">
-            <VideoJsPlayer source={streamUrl} poster="/music-landing/assets/images/hero.jpeg" muted vastAds={[]} />
+
+        <div className="min-w-0">
+          <div className="overflow-hidden rounded-2xl border border-[#d4a843]/28 bg-black shadow-[0_0_70px_rgba(212,168,67,0.12)]">
+            <div className="aspect-video w-full bg-black">
+              <VideoJsPlayer source={streamUrl} poster="/music-landing/assets/images/hero.jpeg" muted vastAds={[]} />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 p-3 text-center text-xs font-black text-white/72 sm:grid-cols-4">
-            {['Roku', 'Apple TV', 'Fire TV', 'Google Play'].map((item) => <span key={item} className="rounded-sm bg-white/[0.07] px-2 py-2">{item}</span>)}
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {['Roku', 'Apple TV', 'Fire TV', 'eZWay TV Live'].map((item) => (
+              <span key={item} className="flex h-12 items-center justify-center gap-2 rounded-md border border-[#6b5bea]/24 bg-[#211d44] px-3 text-xs font-black text-[#aaa7c8]">
+                <Tv className="h-4 w-4" />
+                {item}
+              </span>
+            ))}
           </div>
         </div>
       </div>
-    </Section>
+    </section>
   )
 }
 
@@ -305,7 +324,7 @@ function PriceCard({ title, badge, icon: Icon, featured, custom, cta }: { title:
       <Icon className="mt-6 h-9 w-9 text-[#d4a843]" />
       <h3 className="mt-5 text-2xl font-black">{title}</h3>
       <div className="mt-5">
-        {custom ? <span className="text-4xl font-black text-white">Custom</span> : <><span className="text-5xl font-black text-white">$24</span><span className="text-2xl font-black text-[#d4a843]">.95</span><span className="ml-2 text-sm font-bold text-white/54">/ month</span></>}
+        {custom ? <span className="text-4xl font-black text-white">Custom</span> : <><span className="text-5xl font-black text-white">$24</span><span className="text-2xl font-black text-[#d4a843]">.99</span><span className="ml-2 text-sm font-bold text-white/54">/ month</span></>}
       </div>
       <ul className="mt-6 grid gap-3 text-sm text-white/68">
         {features.map((feature) => (
@@ -316,7 +335,7 @@ function PriceCard({ title, badge, icon: Icon, featured, custom, cta }: { title:
         ))}
       </ul>
       <Button asChild className={['mt-7 w-full', featured ? 'bg-[#d4a843] text-black hover:bg-[#eac45b]' : 'bg-white/10 text-white hover:bg-white/16'].join(' ')}>
-        <a href={custom ? 'mailto:support@ezway.tv?subject=eZWay%20Music%20Channel%20Partner' : uploadUrl}>{cta}</a>
+        <a href={custom ? 'mailto:support@ezway.tv?subject=eZWay%20Music%20Channel%20Partner' : paymentUrl} target={custom ? undefined : '_blank'} rel={custom ? undefined : 'noreferrer'}>{cta}</a>
       </Button>
     </article>
   )
@@ -347,9 +366,9 @@ function FinalCta() {
       <div className="mx-auto max-w-5xl rounded-md border border-[#d4a843]/24 bg-[#d4a843]/10 p-7 text-center sm:p-10">
         <Rocket className="mx-auto h-9 w-9 text-[#d4a843]" />
         <h2 className="mt-4 text-3xl font-black sm:text-5xl">Ready to Stream The eZWay?</h2>
-        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68">Join performers already reaching fans on Roku, Apple TV, Amazon Fire TV and Google Play.</p>
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-white/68">Join performers already reaching fans on Roku, Apple TV, Amazon Fire TV and eZWay TV Live.</p>
         <Button asChild size="lg" className="mt-7 bg-[#d4a843] text-black hover:bg-[#eac45b]">
-          <a href={uploadUrl}>Add My Video - $24.99/mo</a>
+          <a href={paymentUrl} target="_blank" rel="noreferrer">Add My Video - $24.99/mo</a>
         </Button>
       </div>
     </section>

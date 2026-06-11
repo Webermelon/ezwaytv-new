@@ -178,6 +178,11 @@
                                         Distribution
                                     </a>
                                 </li>
+                                <li class="py-2 px-2">
+                                    <a href="{{ route('music') }}" class="text-decoration-none d-block {{ request()->routeIs('music') || request()->routeIs('stream-your-music') || request()->routeIs('upload-your-videoes') ? 'text-primary' : 'text-white' }}">
+                                        Stream Your Music
+                                    </a>
+                                </li>
                                 @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
                                 @if($navCategories->count() && isenablemodule('show_categories_menu'))
                                     <li class="py-2 px-2">
