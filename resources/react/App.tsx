@@ -3,6 +3,8 @@ import { CastCrewDetailPage } from '@/modules/castcrew/CastCrewDetailPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { LiveTvPage } from '@/modules/live-tv/LiveTvPage'
+import { MusicPage } from '@/modules/music/MusicPage'
+import { MusicUploadPage } from '@/modules/music/MusicUploadPage'
 import { OnDemandPage } from '@/modules/ondemand/OnDemandPage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
@@ -14,26 +16,31 @@ import { useAnalyticsPageView } from '@/lib/analytics'
 
 export default function App() {
   const path = useSpaPath()
+  const pathname = path.split(/[?#]/)[0] || '/'
   useAnalyticsPageView(path)
   let page
 
-  if (path === '/' || path === '/spa' || path === '/spa/' || path === '/react-home') {
+  if (pathname === '/' || pathname === '/spa' || pathname === '/spa/' || pathname === '/react-home') {
     page = <HomePage />
-  } else if (path.startsWith('/on-demand') || path.startsWith('/spa/ondemand') || path.startsWith('/react-ondemand')) {
+  } else if (pathname.startsWith('/on-demand') || pathname.startsWith('/spa/ondemand') || pathname.startsWith('/react-ondemand')) {
     page = <OnDemandPage />
-  } else if (path === '/livetv' || path.startsWith('/livetv/') || path.startsWith('/spa/live-tv')) {
+  } else if (pathname === '/livetv' || pathname.startsWith('/livetv/') || pathname.startsWith('/spa/live-tv')) {
     page = <LiveTvPage />
-  } else if (path === '/videos' || path.startsWith('/videos/category') || path.startsWith('/spa/videos') || path.startsWith('/react-videos')) {
+  } else if (pathname === '/videos' || pathname.startsWith('/videos/category') || pathname.startsWith('/spa/videos') || pathname.startsWith('/react-videos')) {
     page = <VideosPage />
-  } else if (path === '/search' || path.startsWith('/search?')) {
+  } else if (pathname === '/search') {
     page = <SearchPage />
-  } else if (path === '/distribution') {
+  } else if (pathname === '/distribution') {
     page = <DistributionPage />
-  } else if (path.startsWith('/video-details')) {
+  } else if (pathname === '/music') {
+    page = <MusicPage />
+  } else if (pathname.startsWith('/upload-your-videoes')) {
+    page = <MusicUploadPage />
+  } else if (pathname.startsWith('/video-details')) {
     page = <VideoDetailPage />
-  } else if (path.startsWith('/castcrew-detail')) {
+  } else if (pathname.startsWith('/castcrew-detail')) {
     page = <CastCrewDetailPage />
-  } else if (path === '/castcrew-list' || path.startsWith('/castcrew-list/')) {
+  } else if (pathname === '/castcrew-list' || pathname.startsWith('/castcrew-list/')) {
     page = <CastCrewPage />
   } else {
     page = <PublicPage />

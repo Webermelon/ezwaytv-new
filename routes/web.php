@@ -42,12 +42,11 @@ if (app()->environment('local')) {
 }
 
 Route::view('/music', 'react-modernization')->name('music');
-Route::middleware('auth')->group(function () {
-    Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
-    Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
-    Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
-    Route::post('/music/video-submissions', [MusicVideoSubmissionController::class, 'store'])->name('music.video-submissions.store');
-});
+Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
+Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
+Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
+Route::post('/music/video-submissions/verify', [MusicVideoSubmissionController::class, 'verifyPayment'])->name('music.video-submissions.verify');
+Route::post('/music/video-submissions', [MusicVideoSubmissionController::class, 'store'])->name('music.video-submissions.store');
 
 Route::get('/ezwa-music', fn () => redirect()->route('music', [], 301));
 

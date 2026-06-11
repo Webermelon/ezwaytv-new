@@ -43,6 +43,23 @@ class MusicVideoSubmissionController extends Controller
         $channel = $this->channel($data['channel_slug']);
         abort_unless($channel, 404);
 
+        if ($this->matchingSubmissionExists(
+            $channel['slug'],
+            $data['purchase_reference'] ?? null,
+            $data['submitter_email'] ?? Auth::user()?->email
+        )) {
+            $message = 'You already uploaded the video for this payment email or receipt.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'already_uploaded' => true,
+                ], 409);
+            }
+
+            return back()->withErrors(['purchase_reference' => $message])->withInput();
+        }
+
         $disk = $this->mediaDisk();
         $slug = Str::slug($data['title']) ?: 'music-video';
         $stamp = now()->format('YmdHis') . '-' . Str::random(8);
@@ -88,6 +105,32 @@ class MusicVideoSubmissionController extends Controller
         return redirect()
             ->route('upload-your-videoes', ['channel' => $channel['slug']])
             ->with('music_submission_success', 'Your music video was uploaded. Our team will review it and schedule it for the channel.');
+    }
+
+    public function verifyPayment(Request $request)
+    {
+        $data = $request->validate([
+            'channel_slug' => ['required', 'string', 'max:100'],
+            'purchase_reference' => ['required', 'string', 'max:255'],
+            'submitter_email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $channel = $this->channel($data['channel_slug']);
+        abort_unless($channel, 404);
+
+        if ($this->matchingSubmissionExists($channel['slug'], $data['purchase_reference'], $data['submitter_email'] ?? null)) {
+            return response()->json([
+                'verified' => false,
+                'already_uploaded' => true,
+                'message' => 'You already uploaded the video for this payment email or receipt.',
+            ], 409);
+        }
+
+        return response()->json([
+            'verified' => true,
+            'already_uploaded' => false,
+            'message' => 'Payment email or receipt verified. You can upload your poster and video now.',
+        ]);
     }
 
     public function adminIndex(Request $request)
@@ -257,5 +300,25 @@ class MusicVideoSubmissionController extends Controller
     private function channel(string $slug): ?array
     {
         return config("music_submission_channels.{$slug}");
+    }
+
+    private function matchingSubmissionExists(string $channelSlug, ?string $purchaseReference, ?string $submitterEmail = null): bool
+    {
+        $purchaseReference = Str::lower(trim((string) $purchaseReference));
+        $submitterEmail = Str::lower(trim((string) $submitterEmail));
+
+        return MusicVideoSubmission::query()
+            ->where('channel_slug', $channelSlug)
+            ->where(function ($query) use ($purchaseReference, $submitterEmail) {
+                if ($purchaseReference !== '') {
+                    $query->whereRaw('LOWER(TRIM(purchase_reference)) = ?', [$purchaseReference]);
+                }
+
+                if ($submitterEmail !== '') {
+                    $method = $purchaseReference !== '' ? 'orWhereRaw' : 'whereRaw';
+                    $query->{$method}('LOWER(TRIM(submitter_email)) = ?', [$submitterEmail]);
+                }
+            })
+            ->exists();
     }
 }
