@@ -63,10 +63,9 @@ export function MusicUploadPage() {
 function MusicSubmissionSection() {
   const [state, setState] = useState<SubmitState>('idle')
   const [message, setMessage] = useState('')
-  const [paymentReference, setPaymentReference] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
   const [verificationState, setVerificationState] = useState<VerificationState>('idle')
-  const [verificationMessage, setVerificationMessage] = useState('Verify your payment email or receipt to unlock media upload.')
+  const [verificationMessage, setVerificationMessage] = useState('Verify your payment email to unlock the form.')
   const [posterPreview, setPosterPreview] = useState<PreviewFile | null>(null)
   const [videoPreview, setVideoPreview] = useState<PreviewFile | null>(null)
   const [progressVisible, setProgressVisible] = useState(false)
@@ -134,7 +133,7 @@ function MusicSubmissionSection() {
 
   function resetVerification({ clearMedia = true }: { clearMedia?: boolean } = {}) {
     setVerificationState('idle')
-    setVerificationMessage('Verify your payment email or receipt to unlock media upload.')
+    setVerificationMessage('Verify your payment email to unlock the form.')
     setMessage('')
 
     if (clearMedia) {
@@ -145,32 +144,31 @@ function MusicSubmissionSection() {
   }
 
   async function verifyPayment() {
-    const reference = paymentReference.trim()
+    const email = submitterEmail.trim()
 
-    if (!reference) {
+    if (!email) {
       setVerificationState('error')
-      setVerificationMessage('Enter your payment email, order ID, or receipt ID first.')
+      setVerificationMessage('Enter the email used for payment first.')
       return
     }
 
     setVerificationState('checking')
-    setVerificationMessage('Checking payment email or receipt...')
+    setVerificationMessage('Checking FluentForm payment status...')
     setMessage('')
 
     try {
       const response = await api.post<{ message?: string; verified?: boolean }>('/music/video-submissions/verify', {
         channel_slug: 'ezway-music',
-        purchase_reference: reference,
-        submitter_email: submitterEmail.trim() || undefined,
+        submitter_email: email,
       })
 
       setVerificationState('verified')
-      setVerificationMessage(response.message || 'Payment email or receipt verified. You can upload your poster and video now.')
+      setVerificationMessage(response.message || 'Payment email verified and paid. You can upload your submission now.')
     } catch (error) {
       const errorMessage = readSubmitError(error)
       const isDuplicate = error instanceof ApiError && error.status === 409
       setVerificationState(isDuplicate ? 'duplicate' : 'error')
-      setVerificationMessage(isDuplicate ? 'You already uploaded the video for this payment email or receipt.' : errorMessage)
+      setVerificationMessage(isDuplicate ? 'You already uploaded the video for this payment email.' : errorMessage)
       setMessage(isDuplicate ? 'You already uploaded the video.' : errorMessage)
       clearPreview('poster')
       clearPreview('video')
@@ -188,7 +186,7 @@ function MusicSubmissionSection() {
 
     if (verificationState !== 'verified') {
       setState('error')
-      setMessage('Verify your payment email or receipt before uploading media.')
+      setMessage('Verify your payment email before uploading media.')
       return
     }
 
@@ -248,15 +246,15 @@ function MusicSubmissionSection() {
             <div className="mt-5 border-t border-white/10 pt-5">
               <div className="text-sm font-black text-white">Payment Verification</div>
               <label className="mt-3 block">
-                <span className="text-xs font-bold uppercase tracking-[0.08em] text-white/52">Payment email or receipt</span>
+                <span className="text-xs font-bold uppercase tracking-[0.08em] text-white/52">Payment email</span>
                 <input
-                  type="text"
-                  value={paymentReference}
+                  type="email"
+                  value={submitterEmail}
                   onChange={(event) => {
-                    setPaymentReference(event.target.value)
+                    setSubmitterEmail(event.target.value)
                     resetVerification()
                   }}
-                  placeholder="Order ID, receipt ID, or payment email"
+                  placeholder="Email used for payment"
                   className="mt-2 h-11 w-full rounded-md border border-white/10 bg-black/36 px-3 text-sm text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70"
                 />
               </label>
@@ -274,7 +272,7 @@ function MusicSubmissionSection() {
               </div>
               <Button
                 type="button"
-                disabled={verificationState === 'checking' || !paymentReference.trim()}
+                disabled={verificationState === 'checking' || !submitterEmail.trim()}
                 onClick={verifyPayment}
                 className="mt-4 h-10 w-full bg-[#d4a843] text-black hover:bg-[#eac45b]"
               >
@@ -284,7 +282,7 @@ function MusicSubmissionSection() {
             </div>
 
             <div className="mt-5 grid gap-3 text-sm text-white/68">
-              {['Payment reference is required', 'Poster image and video file are required', 'Accepted videos: MP4, MOV, M4V and WEBM'].map((item) => (
+              {['Payment email is required', 'Poster image and video file are required', 'Accepted videos: MP4, MOV, M4V and WEBM'].map((item) => (
                 <span key={item} className="flex gap-2">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
                   {item}
@@ -332,7 +330,7 @@ function MusicSubmissionSection() {
                 </div>
               </FormSection>
 
-              <input type="hidden" name="purchase_reference" value={paymentReference} />
+              <input type="hidden" name="purchase_reference" value={submitterEmail} />
               <input type="hidden" name="purchase_confirmation" value={isFormUnlocked ? '1' : ''} />
 
               <FormSection number="03" title="Media Files">
@@ -391,7 +389,7 @@ function MusicSubmissionSection() {
                   <ShieldCheck className="mx-auto h-9 w-9 text-[#d4a843]" />
                   <div className="mt-3 text-sm font-black text-white">Submission form is locked</div>
                   <div className="mt-1 max-w-sm text-xs leading-5 text-white/58">
-                    Verify your payment email or receipt in the payment summary panel to unlock every field.
+                    Verify the email used for payment in the payment summary panel to unlock every field.
                   </div>
                 </div>
               </div>
