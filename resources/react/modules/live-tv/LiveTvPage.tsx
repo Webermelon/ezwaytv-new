@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, Copy, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -16,11 +16,13 @@ import {
   loadLiveTvChat,
   loadLiveTvDashboard,
   loadLiveTvDetail,
+  loadLiveTvGuideChannel,
   loadLiveTvSchedule,
   sendLiveTvChatMessage,
   trackLiveTvPlay,
   trackLiveTvView,
   updateLiveTvWatchTime,
+  type LiveTvGuideChannel,
   type LiveTvScheduleItem,
   type LiveTvChatState,
 } from './liveTvApi'
@@ -28,6 +30,8 @@ import {
 type ShareIconProps = {
   className?: string
 }
+
+const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -91,9 +95,7 @@ export function LiveTvPage() {
       <AppHeader active="livetv" />
 
       <section className="relative min-h-[66vh] overflow-hidden">
-        {featured?.poster_tv_image || featured?.poster_image ? (
-          <img src={featured.poster_tv_image ?? featured.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-62" />
-        ) : null}
+        <img src={liveTvHeroImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-78" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.86)_34%,rgba(5,5,5,0.38)_70%,#050505_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
 
@@ -123,6 +125,8 @@ export function LiveTvPage() {
       </section>
 
       <section className="px-4 pb-16 sm:px-8 lg:px-12">
+        <TvGuide channels={allChannels} loading={dashboardQuery.isLoading} />
+
         <div className="mb-6 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
           <div className="flex min-h-11 items-center gap-2 rounded-md bg-black/38 px-3">
             <Search className="h-4 w-4 text-white/44" />
@@ -713,6 +717,182 @@ function ChannelGridSkeleton() {
   )
 }
 
+function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolean }) {
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const guideQueries = useQueries({
+    queries: channels.map((channel) => ({
+      queryKey: ['livetv-guide-channel', channel.id],
+      queryFn: () => loadLiveTvGuideChannel(channel),
+      enabled: Boolean(channel.id),
+      staleTime: 10 * 60_000,
+      gcTime: 45 * 60_000,
+    })),
+  })
+  const rows = useMemo(() => (
+    guideQueries
+      .map((query) => query.data)
+      .filter((row): row is LiveTvGuideChannel => Boolean(row))
+  ), [guideQueries])
+  const today = useMemo(() => startOfDay(new Date(currentTime)), [currentTime])
+  const visibleRows = useMemo(() => (
+    rows.filter((row) => row.schedule.some((item) => (
+      isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
+    )))
+  ), [currentTime, rows, today])
+  const programCount = visibleRows.reduce((total, row) => total + row.schedule.filter((item) => (
+    isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
+  )).length, 0)
+  const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
+  const showSkeleton = loading || (pendingCount > 0 && visibleRows.length === 0)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  if (!loading && channels.length === 0) return null
+
+  return (
+    <section className="mb-8 overflow-hidden rounded-md border border-[#d4a843]/20 bg-[#101010] shadow-2xl shadow-[#d4a843]/10">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[#d4a843]/30 bg-[#d4a843]/10 text-[#e7bd43]">
+            <CalendarClock className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-black leading-tight text-white">TV Guide</h2>
+            <p className="mt-0.5 text-xs font-semibold text-white/46">
+              {pendingCount > 0
+                ? `${rows.length} of ${channels.length} channels loaded`
+                : `${programCount} programs`}
+            </p>
+          </div>
+          <span className="hidden items-center gap-2 rounded-full bg-red-600/10 px-3 py-1 text-[11px] font-black uppercase text-red-400 sm:inline-flex">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            Live Now
+          </span>
+        </div>
+
+        <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
+          Today
+        </div>
+      </div>
+
+      <div className="max-h-[560px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {showSkeleton ? (
+          <TvGuideSkeleton />
+        ) : visibleRows.length > 0 ? (
+          <div className="divide-y divide-white/8">
+            {visibleRows.map((row) => (
+              <TvGuideRow key={row.channel.id} row={row} selectedDay={today} currentTime={currentTime} />
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center text-sm font-semibold text-white/48">No current or upcoming programs for today.</div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function TvGuideRow({ row, selectedDay, currentTime }: { row: LiveTvGuideChannel; selectedDay: Date; currentTime: number }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const name = row.channel.details?.name ?? row.channel.name
+  const programs = useMemo(() => (
+    row.schedule
+      .filter((item) => isSameScheduleDay(scheduleStart(item), selectedDay))
+      .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
+      .sort((a, b) => (parseScheduleDate(scheduleStart(a))?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b))?.getTime() ?? 0))
+  ), [currentTime, row.schedule, selectedDay])
+
+  function scrollByProgram(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
+  }
+
+  return (
+    <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[170px_minmax(0,1fr)] lg:items-center">
+      <div className="flex min-w-0 items-center justify-between gap-3 lg:block">
+        <a href={liveTvSpaHref(row.channel)} className="line-clamp-2 text-sm font-black text-[#d4a843] hover:text-[#f2d16f]">
+          {name}
+        </a>
+        <span className="shrink-0 text-xs font-semibold text-white/36 lg:mt-1 lg:block">{programs.length} programs</span>
+      </div>
+
+      <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)_32px] items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollByProgram(-1)}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f]"
+            aria-label={`Scroll ${name} schedule left`}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        <div
+          ref={scrollerRef}
+          className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          tabIndex={0}
+        >
+          {programs.map((program, index) => {
+            const onAir = isScheduleOnAir(program, currentTime)
+
+            return (
+              <article
+                key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
+                className={[
+                  'min-h-16 w-[245px] shrink-0 rounded-md border-l-4 px-3 py-2 transition',
+                  onAir
+                    ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)]'
+                    : 'border-[#d4a843] bg-[#d4a843]/10',
+                ].join(' ')}
+              >
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
+                    {[formatTime(scheduleStart(program)), formatTime(scheduleEnd(program))].filter(Boolean).join(' - ')}
+                  </span>
+                  {onAir ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      On Air
+                    </span>
+                  ) : null}
+                </div>
+                <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
+              </article>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => scrollByProgram(1)}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f]"
+          aria-label={`Scroll ${name} schedule right`}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function TvGuideSkeleton() {
+  return (
+    <div className="divide-y divide-white/8">
+      {Array.from({ length: 5 }).map((_, rowIndex) => (
+        <div key={rowIndex} className="grid gap-2 px-3 py-2.5 lg:grid-cols-[170px_minmax(0,1fr)]">
+          <div className="min-h-12">
+            <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+          </div>
+          <div className="flex gap-2 overflow-hidden">
+            {Array.from({ length: 4 }).map((__, slotIndex) => (
+              <div key={slotIndex} className="h-16 w-[245px] shrink-0 animate-pulse rounded-md bg-white/[0.06]" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function LiveTvChat({
   channelId,
   chat,
@@ -910,6 +1090,50 @@ function cleanScheduleTitle(value?: string | null) {
   }
 
   return title || 'Untitled program'
+}
+
+function startOfDay(date: Date) {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
+
+function scheduleStart(item?: LiveTvScheduleItem | ProgramInfo | null) {
+  if (!item) return null
+
+  return 'start_at' in item ? (item.start_at ?? item.start_time ?? null) : item.start_time ?? null
+}
+
+function scheduleEnd(item?: LiveTvScheduleItem | ProgramInfo | null) {
+  if (!item) return null
+
+  return 'end_at' in item ? (item.end_at ?? item.end_time ?? null) : item.end_time ?? null
+}
+
+function isSameScheduleDay(value: string | Date | null | undefined, date: Date) {
+  const next = value instanceof Date ? value : parseScheduleDate(value)
+  if (!next) return false
+
+  return startOfDay(next).getTime() === startOfDay(date).getTime()
+}
+
+function isScheduleOnAir(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
+  const start = parseScheduleDate(scheduleStart(item))?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item))?.getTime()
+
+  if (!start || !end) return false
+
+  return currentTime >= start && currentTime < end
+}
+
+function isCurrentOrUpcomingSchedule(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
+  const start = parseScheduleDate(scheduleStart(item))?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item))?.getTime()
+
+  if (end) return end > currentTime
+  if (start) return start >= currentTime
+
+  return false
 }
 
 function parseScheduleDate(value?: string | null) {
