@@ -23,6 +23,7 @@ class ReactMetaController extends Controller
         return $this->render([
             'meta_title' => 'On Demand Channels',
             'short_description' => 'Watch on demand channels on eZWay TV.',
+            'seo_image' => $this->onDemandIndexImage(),
             'canonical_url' => url('/on-demand'),
         ]);
     }
@@ -38,10 +39,13 @@ class ReactMetaController extends Controller
             return $this->render();
         }
 
+        $description = $this->description($channel->description)
+            ?: "Watch {$channel->name} on demand on eZWay TV.";
+
         return $this->render([
-            'meta_title' => $channel->name,
-            'short_description' => $this->description($channel->description),
-            'seo_image' => $this->v2Image($channel->banner ?: $channel->avatar),
+            'meta_title' => "{$channel->name} | On Demand",
+            'short_description' => $description,
+            'seo_image' => $this->authorChannelImage($channel),
             'canonical_url' => url('/on-demand/' . $channel->username),
         ]);
     }
@@ -199,6 +203,38 @@ class ReactMetaController extends Controller
     private function v2Image(?string $image): ?string
     {
         return ! empty($image) ? setBaseUrlWithFileNameV2($image) : null;
+    }
+
+    private function authorChannelImage(AuthorChannel $channel): string
+    {
+        foreach ([$channel->avatar, $channel->banner] as $image) {
+            if (! empty($image)) {
+                return setBaseUrlWithFileNameV2($image);
+            }
+        }
+
+        $video = $channel->videos()
+            ->where('status', 1)
+            ->orderByDesc('videos.updated_at')
+            ->first(['videos.id', 'videos.thumbnail_url', 'videos.poster_url', 'videos.poster_tv_url']);
+
+        foreach ([$video?->thumbnail_url, $video?->poster_tv_url, $video?->poster_url] as $image) {
+            if (! empty($image)) {
+                return setBaseUrlWithFileNameV2($image);
+            }
+        }
+
+        return asset('default-image/Default-Image.jpg');
+    }
+
+    private function onDemandIndexImage(): string
+    {
+        $channel = AuthorChannel::query()
+            ->where('is_active', 1)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        return $channel ? $this->authorChannelImage($channel) : asset('default-image/Default-Image.jpg');
     }
 
     private function description(?string $description): ?string
