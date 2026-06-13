@@ -304,16 +304,34 @@ function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
   return (
     <div className="mt-5 flex flex-wrap gap-3">
       {channels.map((channel) => (
-        <a
-          key={`${channel.id}-${channel.username}`}
-          href={channel.username ? `/on-demand/${channel.username}` : '/on-demand'}
-          className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white/82 hover:bg-white/[0.1]"
-        >
-          <Tv className="h-4 w-4 text-primary" />
-          {channel.name}
-        </a>
+        <ChannelBadge key={`${channel.id}-${channel.username}`} channel={channel} />
       ))}
     </div>
+  )
+}
+
+function ChannelBadge({ channel }: { channel: AuthorChannel }) {
+  const image = channel.avatar_image_url ?? channel.avatar ?? null
+  const name = channel.name ?? 'On Demand Channel'
+
+  return (
+    <a
+      href={channel.username ? `/on-demand/${channel.username}` : '/on-demand'}
+      className="group inline-flex min-h-14 max-w-full items-center gap-3 rounded-md border border-white/12 bg-white/[0.055] px-3 py-2 text-left shadow-lg shadow-black/20 transition hover:border-primary/55 hover:bg-white/[0.095]"
+    >
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/45 bg-primary/14 text-sm font-black text-primary ring-2 ring-black/35">
+        {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" /> : initials(name)}
+      </span>
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-primary/88">
+          <Tv className="h-3.5 w-3.5" />
+          On Demand
+        </span>
+        <span className="mt-0.5 block max-w-[240px] truncate text-sm font-black text-white group-hover:text-white">
+          {name}
+        </span>
+      </span>
+    </a>
   )
 }
 
@@ -340,6 +358,17 @@ function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string 
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug">{item.name}</h3>
     </a>
   )
+}
+
+function initials(value: string) {
+  const letters = value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+
+  return letters || 'OD'
 }
 
 function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; label?: string }) {
