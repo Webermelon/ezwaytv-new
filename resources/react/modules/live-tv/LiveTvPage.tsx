@@ -596,7 +596,7 @@ function SchedulePanel({
                     <div className="text-xs font-semibold text-white/46">
                       {[formatScheduleTime(item.start), formatScheduleTime(item.end)].filter(Boolean).join(' - ')}
                     </div>
-                    <h3 className="min-w-0 text-sm font-bold leading-5">{item.title ?? 'Untitled program'}</h3>
+                    <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
                     {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
                   </article>
                 )
@@ -625,7 +625,7 @@ function ProgramSummary({
       <div className="mb-2 text-xs font-bold uppercase text-white/42">{label}</div>
       {program?.title ? (
         <>
-          <h3 className="line-clamp-2 text-lg font-bold leading-snug text-white">{program.title}</h3>
+          <h3 className="line-clamp-2 text-lg font-bold leading-snug text-white">{cleanScheduleTitle(program.title)}</h3>
           <p className="mt-2 text-sm text-white/56">
             {[formatTime(program.start_time), formatTime(program.end_time)].filter(Boolean).join(' - ')}
           </p>
@@ -892,6 +892,24 @@ function formatTime(value?: string | null) {
   if (!date) return null
 
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function cleanScheduleTitle(value?: string | null) {
+  if (!value) return 'Untitled program'
+
+  let title = value.replace(/\s+/g, ' ').trim()
+  let previous = ''
+
+  while (title && title !== previous) {
+    previous = title
+    title = title
+      .replace(/(?:[\s_-]*\((?:converted|copy(?:[\s_-]*\d+)?)\))$/i, '')
+      .replace(/(?:[\s_-]+(?:converted|copy(?:[\s_-]*\d+)?))$/i, '')
+      .replace(/[\s_-]+$/g, '')
+      .trim()
+  }
+
+  return title || 'Untitled program'
 }
 
 function parseScheduleDate(value?: string | null) {
