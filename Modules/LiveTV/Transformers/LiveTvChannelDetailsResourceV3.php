@@ -7,6 +7,7 @@ use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Subscriptions\Models\Plan;
 use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Transformers\LiveTvChannelResource;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 class LiveTvChannelDetailsResourceV3 extends JsonResource
@@ -68,8 +69,8 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             $currentIndex = null;
 
             foreach ($schedules as $index => $item) {
-                $start = strtotime($item['start_time'] ?? '');
-                $end   = strtotime($item['end_time']   ?? '');
+                $start = $this->scheduleTimestamp($item['start_time'] ?? null);
+                $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
                 if (!$start || !$end) continue;
 
                 $fullSchedule[] = [
@@ -82,8 +83,8 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             }
 
             foreach ($fullSchedule as $index => $item) {
-                $start = strtotime($item['start_time'] ?? '');
-                $end   = strtotime($item['end_time']   ?? '');
+                $start = $this->scheduleTimestamp($item['start_time'] ?? null);
+                $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
                 if (!$start || !$end) continue;
 
                 if ($now >= $start && $now <= $end) {
@@ -113,6 +114,23 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             return [$nowPlaying, $nextPlaying, array_slice($fullSchedule, $sliceStart, 72)];
         } catch (\Throwable $e) {
             return [null, null, []];
+        }
+    }
+
+    private function scheduleTimestamp(?string $value): ?int
+    {
+        if (!$value) {
+            return null;
+        }
+
+        try {
+            $trimmed = trim($value);
+            $hasTimezone = (bool) preg_match('/(?:z|[+-]\d{2}:?\d{2})$/i', $trimmed);
+            $date = $hasTimezone ? Carbon::parse($trimmed) : Carbon::parse($trimmed, 'Asia/Dhaka');
+
+            return $date->utc()->timestamp;
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
@@ -35,7 +35,8 @@ const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/imag
 
 export function LiveTvPage() {
   const path = useSpaPath()
-  const channelKey = decodeURIComponent(path.split('?')[0].replace(/^\/(?:spa\/live-tv|livetv)\/?/, '')).replace(/^\/+|\/+$/g, '')
+  const pathname = path.split(/[?#]/)[0]
+  const channelKey = decodeURIComponent(pathname.replace(/^\/(?:spa\/live-tv|livetv)\/?/, '')).replace(/^\/+|\/+$/g, '')
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
   const dashboardQuery = useQuery({
@@ -67,14 +68,14 @@ export function LiveTvPage() {
       ? allChannels
       : categories.find((category) => String(category.id) === activeCategory)?.channel_data ?? []
 
-    if (!term) return source
+    if (!term) return pinEzWayTvFirst(source)
 
-    return source.filter((channel) => {
+    return pinEzWayTvFirst(source.filter((channel) => {
       const name = channel.details?.name ?? channel.name
       const category = channel.details?.category
 
       return [name, category].filter(Boolean).some((value) => String(value).toLowerCase().includes(term))
-    })
+    }))
   }, [activeCategory, allChannels, categories, query])
 
   if (channelKey) {
@@ -89,6 +90,11 @@ export function LiveTvPage() {
   }
 
   const featured = dashboard.slider?.[0] ?? channels[0]
+  const scrollToChannels = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    document.getElementById('channels')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    window.history.replaceState(null, '', '/livetv#channels')
+  }
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
@@ -118,7 +124,7 @@ export function LiveTvPage() {
               </a>
             </Button>
             <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/livetv">All Live TV</a>
+              <a href="/livetv#channels" onClick={scrollToChannels}>All Live TV</a>
             </Button>
           </div>
         </div>
@@ -127,7 +133,7 @@ export function LiveTvPage() {
       <section className="px-4 pb-16 sm:px-8 lg:px-12">
         <TvGuide channels={allChannels} loading={dashboardQuery.isLoading} />
 
-        <div className="mb-6 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
+        <div id="channels" className="mb-6 scroll-mt-24 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
           <div className="flex min-h-11 items-center gap-2 rounded-md bg-black/38 px-3">
             <Search className="h-4 w-4 text-white/44" />
             <input
@@ -163,7 +169,7 @@ export function LiveTvPage() {
         ) : channels.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
             {channels.map((channel) => (
-              <LiveTvCard key={`${channel.id}-${channel.details?.name}`} channel={channel} />
+              <LiveTvCard key={`${channel.id}-${channel.details?.name}`} channel={channel} channelNumber={liveTvChannelNumber(channel, allChannels)} />
             ))}
           </div>
         ) : (
@@ -190,6 +196,7 @@ function LiveTvDetailPage({
 }) {
   const title = channel?.details?.name ?? channel?.name ?? 'Live channel'
   const image = channel?.poster_tv_image ?? channel?.poster_image ?? channel?.details?.thumbnail_image
+  const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
   const description = channel?.details?.description ?? channel?.description ?? 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
@@ -264,7 +271,7 @@ function LiveTvDetailPage({
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="livetv" />
       <section className="relative overflow-hidden">
-        {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" /> : null}
+        <img src={heroBackgroundImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_38%,rgba(5,5,5,0.42)_76%,#050505_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] to-transparent" />
 
@@ -391,7 +398,7 @@ function LiveTvDetailPage({
         {suggestions.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
             {suggestions.slice(0, 12).map((item) => (
-              <LiveTvCard key={`suggestion-${item.id}`} channel={item} />
+              <LiveTvCard key={`suggestion-${item.id}`} channel={item} channelNumber={liveTvChannelNumber(item, suggestions)} />
             ))}
           </div>
         ) : (
@@ -691,18 +698,25 @@ function CategoryButton({ active, children, onClick }: { active: boolean; childr
   )
 }
 
-function LiveTvCard({ channel }: { channel: MediaItem }) {
+function LiveTvCard({ channel, channelNumber }: { channel: MediaItem; channelNumber?: number }) {
   const name = channel.details?.name ?? channel.name
+  const label = channelNumber ? channelLabel(channelNumber) : null
 
   return (
     <a href={liveTvSpaHref(channel)} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail src={channel.poster_tv_image ?? channel.poster_image ?? channel.details?.thumbnail_image} alt={name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/34 via-transparent to-transparent" />
-        <Badge className="absolute left-3 top-3 rounded-sm bg-red-600 text-white">Live</Badge>
       </div>
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{name}</h3>
-      {channel.details?.category ? <p className="mt-1 text-xs text-white/58">{channel.details.category}</p> : null}
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
+        {label ? <span className="text-[#d4a843]">{label}</span> : null}
+        <span className="inline-flex items-center gap-1 text-red-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Live
+        </span>
+        {channel.details?.category ? <span className="text-white/58">{channel.details.category}</span> : null}
+      </div>
     </a>
   )
 }
@@ -719,6 +733,7 @@ function ChannelGridSkeleton() {
 
 function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolean }) {
   const [currentTime, setCurrentTime] = useState(() => Date.now())
+  const [channelSort, setChannelSort] = useState<'asc' | 'desc'>('asc')
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
       queryKey: ['livetv-guide-channel', channel.id],
@@ -728,22 +743,28 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
       gcTime: 45 * 60_000,
     })),
   })
-  const rows = useMemo(() => (
-    guideQueries
-      .map((query) => query.data)
-      .filter((row): row is LiveTvGuideChannel => Boolean(row))
-  ), [guideQueries])
   const today = useMemo(() => startOfDay(new Date(currentTime)), [currentTime])
   const visibleRows = useMemo(() => (
-    rows.filter((row) => row.schedule.some((item) => (
-      isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
-    )))
-  ), [currentTime, rows, today])
-  const programCount = visibleRows.reduce((total, row) => total + row.schedule.filter((item) => (
+    guideQueries
+      .map((query, index) => ({ row: query.data, loadedAt: query.dataUpdatedAt || Date.now(), index }))
+      .filter((item): item is { row: LiveTvGuideChannel; loadedAt: number; index: number } => Boolean(item.row))
+      .filter(({ row }) => row.schedule.some((item) => (
+        isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
+      )))
+      .sort((a, b) => {
+        const aPinned = isEzWayTvChannel(a.row.channel) ? 0 : 1
+        const bPinned = isEzWayTvChannel(b.row.channel) ? 0 : 1
+        const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
+
+        return aPinned - bPinned || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
+      })
+  ), [channelSort, currentTime, guideQueries, today])
+  const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
+  const programCount = visibleRows.reduce((total, { row }) => total + row.schedule.filter((item) => (
     isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
   )).length, 0)
   const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
-  const showSkeleton = loading || (pendingCount > 0 && visibleRows.length === 0)
+  const showSkeleton = loading && visibleRows.length === 0
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000)
@@ -763,7 +784,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
             <h2 className="text-xl font-black leading-tight text-white">TV Guide</h2>
             <p className="mt-0.5 text-xs font-semibold text-white/46">
               {pendingCount > 0
-                ? `${rows.length} of ${channels.length} channels loaded`
+                ? `${loadedCount} of ${channels.length} channels loaded`
                 : `${programCount} programs`}
             </p>
           </div>
@@ -773,8 +794,30 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
           </span>
         </div>
 
-        <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
-          Today
+        <div className="flex items-center gap-2">
+          <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
+            Today
+          </div>
+          <div className="flex rounded-md border border-white/10 bg-white/[0.045] p-1">
+            {[
+              { value: 'asc', label: 'A-Z' },
+              { value: 'desc', label: 'Z-A' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setChannelSort(item.value as 'asc' | 'desc')}
+                className={[
+                  'h-8 rounded px-3 text-xs font-black transition',
+                  channelSort === item.value
+                    ? 'bg-[#d4a843] text-black'
+                    : 'text-white/54 hover:bg-white/[0.08] hover:text-white',
+                ].join(' ')}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -783,10 +826,19 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
           <TvGuideSkeleton />
         ) : visibleRows.length > 0 ? (
           <div className="divide-y divide-white/8">
-            {visibleRows.map((row) => (
-              <TvGuideRow key={row.channel.id} row={row} selectedDay={today} currentTime={currentTime} />
+            {visibleRows.map(({ row }) => (
+              <TvGuideRow
+                key={row.channel.id}
+                row={row}
+                selectedDay={today}
+                currentTime={currentTime}
+                channelNumber={liveTvChannelNumber(row.channel, channels)}
+              />
             ))}
+            {pendingCount > 0 ? <TvGuidePendingRows count={Math.min(pendingCount, 3)} /> : null}
           </div>
+        ) : pendingCount > 0 ? (
+          <TvGuideSkeleton />
         ) : (
           <div className="p-8 text-center text-sm font-semibold text-white/48">No current or upcoming programs for today.</div>
         )}
@@ -795,9 +847,10 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
   )
 }
 
-function TvGuideRow({ row, selectedDay, currentTime }: { row: LiveTvGuideChannel; selectedDay: Date; currentTime: number }) {
+function TvGuideRow({ row, selectedDay, currentTime, channelNumber }: { row: LiveTvGuideChannel; selectedDay: Date; currentTime: number; channelNumber?: number }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const name = row.channel.details?.name ?? row.channel.name
+  const label = channelNumber ? channelLabel(channelNumber) : null
   const programs = useMemo(() => (
     row.schedule
       .filter((item) => isSameScheduleDay(scheduleStart(item), selectedDay))
@@ -812,6 +865,7 @@ function TvGuideRow({ row, selectedDay, currentTime }: { row: LiveTvGuideChannel
   return (
     <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[170px_minmax(0,1fr)] lg:items-center">
       <div className="flex min-w-0 items-center justify-between gap-3 lg:block">
+        {label ? <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-white/40">{label}</div> : null}
         <a href={liveTvSpaHref(row.channel)} className="line-clamp-2 text-sm font-black text-[#d4a843] hover:text-[#f2d16f]">
           {name}
         </a>
@@ -836,12 +890,13 @@ function TvGuideRow({ row, selectedDay, currentTime }: { row: LiveTvGuideChannel
             const onAir = isScheduleOnAir(program, currentTime)
 
             return (
-              <article
+              <a
+                href={liveTvSpaHref(row.channel)}
                 key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
                 className={[
-                  'min-h-16 w-[245px] shrink-0 rounded-md border-l-4 px-3 py-2 transition',
+                  'min-h-16 w-[245px] shrink-0 rounded-md border-l-4 px-3 py-2 transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16',
                   onAir
-                    ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)]'
+                    ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
                     : 'border-[#d4a843] bg-[#d4a843]/10',
                 ].join(' ')}
               >
@@ -857,7 +912,7 @@ function TvGuideRow({ row, selectedDay, currentTime }: { row: LiveTvGuideChannel
                   ) : null}
                 </div>
                 <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
-              </article>
+              </a>
             )
           })}
         </div>
@@ -890,6 +945,25 @@ function TvGuideSkeleton() {
         </div>
       ))}
     </div>
+  )
+}
+
+function TvGuidePendingRows({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, rowIndex) => (
+        <div key={rowIndex} className="grid gap-2 px-3 py-2.5 opacity-70 lg:grid-cols-[170px_minmax(0,1fr)]">
+          <div className="flex min-h-12 items-center">
+            <div className="h-4 w-24 animate-pulse rounded bg-white/8" />
+          </div>
+          <div className="flex gap-2 overflow-hidden">
+            {Array.from({ length: 3 }).map((__, slotIndex) => (
+              <div key={slotIndex} className="h-16 w-[245px] shrink-0 animate-pulse rounded-md bg-white/[0.045]" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -1126,6 +1200,38 @@ function isScheduleOnAir(item: LiveTvScheduleItem | ProgramInfo, currentTime: nu
   return currentTime >= start && currentTime < end
 }
 
+function rowHasOnAirProgram(row: LiveTvGuideChannel, currentTime: number) {
+  return row.schedule.some((item) => isScheduleOnAir(item, currentTime))
+}
+
+function isEzWayTvChannel(channel: MediaItem) {
+  const name = channelName(channel).toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  return name === 'ezwaytv'
+}
+
+function channelName(channel: MediaItem) {
+  return String(channel.details?.name ?? channel.name ?? '')
+}
+
+function liveTvChannelNumber(channel: MediaItem, channels: MediaItem[]) {
+  if (isEzWayTvChannel(channel)) return 1
+
+  const channelIndex = channels
+    .filter((item) => !isEzWayTvChannel(item))
+    .findIndex((item) => String(item.id) === String(channel.id))
+
+  return channelIndex >= 0 ? channelIndex + 2 : undefined
+}
+
+function pinEzWayTvFirst(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => Number(isEzWayTvChannel(b)) - Number(isEzWayTvChannel(a)))
+}
+
+function channelLabel(index: number) {
+  return `Channel ${String(Math.max(1, index)).padStart(2, '0')}`
+}
+
 function isCurrentOrUpcomingSchedule(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
   const start = parseScheduleDate(scheduleStart(item))?.getTime()
   const end = parseScheduleDate(scheduleEnd(item))?.getTime()
@@ -1139,7 +1245,28 @@ function isCurrentOrUpcomingSchedule(item: LiveTvScheduleItem | ProgramInfo, cur
 function parseScheduleDate(value?: string | null) {
   if (!value) return null
 
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const trimmed = value.trim()
+  const hasExplicitTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(trimmed)
+
+  if (!hasExplicitTimezone) {
+    const dhakaTime = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/)
+
+    if (dhakaTime) {
+      const [, year, month, day, hour = '0', minute = '0', second = '0'] = dhakaTime
+      const date = new Date(Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour) - 6,
+        Number(minute),
+        Number(second),
+      ))
+
+      return Number.isNaN(date.getTime()) ? null : date
+    }
+  }
+
+  const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
   const date = new Date(normalized)
   if (Number.isNaN(date.getTime())) return null
 
