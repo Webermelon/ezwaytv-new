@@ -114,7 +114,11 @@ Route::view('/comming-soon-details/{id}', 'react-modernization')->name('comming-
 Route::view('/comingsoon', 'react-modernization')->name('comingsoon');
 Route::get('/livetv', [ReactMetaController::class, 'liveTvIndex'])->middleware('checkModule')->name('livetv');
 Route::get('/livetv/{path}', [ReactMetaController::class, 'liveTvShow'])->where('path', '^(?!details|channels|chat).*$')->middleware('checkModule')->name('livetv.spa-detail');
-Route::get('/livetv-details/{id}', [LiveTvController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
+Route::get('/livetv-details/{id}', function (Request $request, string $id) {
+    $query = $request->getQueryString();
+
+    return redirect('/livetv/' . ltrim($id, '/') . ($query ? '?' . $query : ''), 301);
+})->middleware('checkModule')->name('livetv-details');
 Route::get('/livetv-channels/{id}', [LiveTvController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
 Route::get('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'index'])->middleware('checkModule')->name('livetv-chat.messages');
 Route::post('/livetv-chat/{channelId}/session', [LiveTvChatController::class, 'storeGuest'])->middleware('checkModule')->name('livetv-chat.session');
