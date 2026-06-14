@@ -2006,3 +2006,267 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
 - Verified:
   - `npm run react:build` passes and generated fresh Vite assets.
 - No migrations were run and no database tables were altered.
+
+## 2026-06-14
+
+### Music Landing And Upload Conversion
+
+- Converted the eZWay Music public pages into separate React modules:
+  - `resources/react/modules/music/MusicPage.tsx`
+  - `resources/react/modules/music/MusicUploadPage.tsx`
+- Added routing in `resources/react/App.tsx` for:
+  - `/music`
+  - `/upload-your-videoes/ezway-music`
+- Kept the music upload form separate from the music landing page because upload uses payment/verification behavior.
+- Updated Music landing CTA behavior:
+  - `Upload After Payment` links to `/upload-your-videoes/ezway-music`.
+  - `Make Payment` links to `https://ezwaynetwork.com/ezway-tv-music-submission-purchase/`.
+- Set music submission pricing to `$24.99` across the landing and upload UI.
+- Added Music upload payment verification against:
+  - `https://ezwaynetwork.com/wp-json/ezway/v1/fluentform-payment-status`
+  - Static `form_id=123`
+  - Dynamic email from user input.
+- Upload form unlocks only when the external API returns valid/paid state.
+- Added locked form behavior:
+  - form is locked before payment verification.
+  - poster/video upload controls are visually blurred/disabled while locked.
+  - verified email unlocks the form.
+- Preserved legacy upload functionality expectations:
+  - poster/image preview.
+  - video preview.
+  - real-time upload progress tracking.
+  - one-upload protection messaging.
+- Refined upload page layout into a form-first page with no hero.
+- Added a TV player/music channel section to the Music landing page using the legacy music page player source.
+- Reordered Music landing sections per feedback:
+  - genre second.
+  - TV player third.
+  - real result fourth.
+- Corrected platform/result wording:
+  - removed Google Play where it was not part of results.
+  - used eZWay TV Live where applicable.
+- Added `Stream Your Music` menu entry after Distribution.
+- Updated old/source music menu link to:
+  - `https://react.ezway.tv/music`
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### On Demand Archive And Single Pages
+
+- Optimized On Demand channel UI for:
+  - `/on-demand`
+  - `/on-demand/{username}`
+- Added proper archive-to-single navigation.
+- Added play icons to video cards/player CTAs.
+- Added OG/meta support for On Demand pages in `Modules/Frontend/Http/Controllers/ReactMetaController.php`.
+- Updated On Demand channel OG image behavior:
+  - uses channel avatar/image as the primary OG image.
+  - archive page also has a suitable fallback.
+- Improved single On Demand hero channel display:
+  - uses channel avatar in the channel badge area.
+  - made channel branding look more professional.
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Live TV UI, Channel Ordering, And Guide
+
+- Continued optimizing `resources/react/modules/live-tv/LiveTvPage.tsx`.
+- Replaced low-quality eZWay hero/logo imagery on:
+  - `/livetv`
+  - `/livetv/{slug}`
+  with the clearer homepage-quality eZWay TV image.
+- Added channel numbering across Live TV channel cards and single pages.
+- Pinned eZWay TV as:
+  - `Channel 01`
+  - always first in channel ordering.
+- Added channel number badges under titles instead of hiding them under poster images.
+- Added Live TV archive behavior:
+  - only the hero `All Live TV` button scrolls down to the channels section.
+  - other Live TV links remain plain `/livetv`.
+- Added legacy route redirect:
+  - `/livetv-details/{slug}` redirects to `/livetv/{slug}` while preserving query string.
+- Added schedule title cleanup:
+  - removes `_converted`, `_copy`, `(Copy)`, and similar suffixes from schedule titles.
+- Fixed full schedule cleanup so converted/copy suffixes no longer show there either.
+- Added a dedicated TV Guide component that fetches schedules for all Live TV channels by channel key/id.
+- Improved TV Guide loading behavior:
+  - each channel row renders as soon as that channel schedule loads.
+  - the guide no longer waits for every channel schedule request before rendering.
+- Improved TV Guide layout:
+  - no empty program fields.
+  - fixed-height guide container with vertical scrolling as needed.
+  - individual channel rows have horizontal program scrolling.
+  - hidden horizontal scrollbars for cleaner UI.
+  - arrow controls for row scrolling.
+  - lower top padding inside program containers.
+  - time display made more prominent.
+- Removed week/day names from the guide and fixed it to today’s channels.
+- Schedule now starts at the currently on-air item.
+- Past items are hidden.
+- Added `On Air` badge for the current program.
+- Clicking an On Air/program card opens the corresponding Live TV channel.
+- Added A-Z/Z-A ordering toggle while keeping eZWay TV pinned first.
+- Fixed schedule timezone interpretation:
+  - schedule data is stored/sent as Asia/Dhaka when no timezone is present.
+  - React parses timezone-less schedule dates as Asia/Dhaka and displays browser-local time for American clients.
+- Updated backend schedule selection/progress in `Modules/LiveTV/Transformers/LiveTvChannelDetailsResourceV3.php`:
+  - timezone-less schedule strings are parsed as Asia/Dhaka before now/next/progress calculations.
+- Verified:
+  - `php -l Modules/LiveTV/Transformers/LiveTvChannelDetailsResourceV3.php` passes.
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Navigation Menu API
+
+- Added API controller:
+  - `Modules/Frontend/Http/Controllers/API/NavigationMenuController.php`
+- Added route:
+  - `GET /api/v3/navigation-menu`
+- API returns structured navigation data for:
+  - `bottom_nav`
+  - `burger_menu`
+  - `burger_toggle`
+  - `dropdowns.videos`
+  - `dropdowns.livetv`
+  - `dropdowns.ondemand`
+- Menu items include:
+  - `key`
+  - `label`
+  - `href`
+  - `icon`
+  - `icon_svg`
+- Live TV menu hrefs use `/livetv`.
+- Confirmed brand gold color usage around `#d4a843` / gold theme values already used across React UI.
+- Verified:
+  - PHP lint passed for the new controller.
+- No migrations were run and no database tables were altered.
+
+### React Auth Pages And Network Sign-In
+
+- Added React auth module:
+  - `resources/react/modules/auth/AuthPage.tsx`
+- Added routing in `resources/react/App.tsx` for:
+  - `/login`
+  - `/register`
+  - `/forget-password`
+- Login uses existing Laravel API:
+  - `POST /api/login?is_ajax=1`
+- Register uses existing Laravel API:
+  - `POST /api/register?is_ajax=1`
+- Forgot password uses existing Laravel API:
+  - `POST /api/forgot-password?is_ajax=1`
+- CSRF handling uses:
+  - `GET /api/csrf-token`
+  - automatic retry after token mismatch.
+- Added Network sign-in button:
+  - `https://ezwaynetwork.com?site=ezwaytvott`
+- Preserved existing WordPress/Network SSO callback:
+  - `/sso/wp/login`
+- Added auth payload to React shell in `resources/views/react-modernization.blade.php`:
+  - `window.isAuthenticated`
+  - `window.ezwayAuth`
+  - name, email, avatar, roles, user type, admin flag, subscription flag, current profile, dashboard URL, logout URL.
+- Fixed `/login` 500 error:
+  - root cause was Blade compiling a complex `@json($authUser ? [ ... ] : null)` expression into invalid PHP.
+  - moved auth data into `$authPayload` in the PHP block.
+  - output simplified to `window.ezwayAuth = @json($authPayload);`.
+- Cleared compiled views:
+  - `php artisan view:clear`
+- Verified:
+  - `php -l resources/views/react-modernization.blade.php` passes.
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Logged-In Profile Navbar Menu
+
+- Updated `resources/react/components/AppHeader.tsx`.
+- Header now detects `window.ezwayAuth`.
+- Logged-in desktop users see a profile dropdown instead of only the public join button.
+- Logged-in mobile users see an account/profile block inside the mobile menu.
+- Admin users see:
+  - `Admin Dashboard`
+  - `My Profile`
+  - `View Site`
+  - `Logout`
+- Normal users see:
+  - `My Dashboard`
+  - `Account Settings`
+  - `Watchlist`
+  - `Subscription`
+  - `Payment History`
+  - `Manage Profiles`
+  - `Logout`
+- Admin dashboard link points to:
+  - `/app/dashboard`
+- Normal dashboard/account link points to:
+  - `/account-setting`
+- Admin logout uses existing:
+  - `POST /admin/logout`
+- Normal user logout uses existing:
+  - `/logout`
+- Verified:
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
+### Network SSO Device Limit Fix
+
+- User reported Network sign-in showed:
+  - `Your device limit has been reached.`
+- Diagnosis:
+  - `Modules/Frontend/Http/Controllers/Auth/WordPressSsoController.php` called `CheckDeviceLimit()` before logging in.
+  - `Modules/Frontend/Trait/LoginTrait.php` had stricter logic than the API login flow and could block existing browser/device sign-ins.
+- Updated `Modules/Frontend/Http/Controllers/Auth/WordPressSsoController.php`:
+  - Network/WordPress SSO no longer blocks on frontend device-limit check.
+  - The successful login still records the current browser/device with `setDevice()`.
+- Updated `Modules/Frontend/Trait/LoginTrait.php`:
+  - existing devices are allowed.
+  - stale browser devices older than 2 days are cleaned up.
+  - device limit value `0` is not treated as a blocking limit.
+- Verified:
+  - `php -l Modules/Frontend/Http/Controllers/Auth/WordPressSsoController.php` passes.
+  - `php -l Modules/Frontend/Trait/LoginTrait.php` passes.
+- No migrations were run and no database tables were altered.
+
+### External eZWay Network GetPaid Subscription Handoff
+
+- User clarified:
+  - local plan records stay in this Laravel app.
+  - actual recurring payment should be handled externally by eZWay Network GetPaid.
+  - local app should save records only; external system handles payment.
+- Updated `Modules/Frontend/Http/Controllers/PaymentController.php`:
+  - `/select-plan` now validates the local active plan.
+  - Creates a local pending `subscriptions` record.
+  - Creates a local pending `subscriptions_transactions` record.
+  - Returns a JSON `redirect_url` for external GetPaid checkout.
+- Added helper logic:
+  - `createPendingExternalSubscription()`
+  - `buildExternalGetPaidUrl()`
+  - `discountedPlanPrice()`
+- Pending records use:
+  - subscription status: `pending`
+  - transaction payment type: `ezwaynetwork_getpaid`
+  - transaction payment status: `pending`
+  - transaction id placeholder: `external-pending-{subscription_id}`
+- Updated `Modules/Frontend/Resources/views/subscriptionplan.blade.php`:
+  - plan selection now redirects to `response.redirect_url`.
+  - no longer injects the old internal payment form into the page.
+- Added config in `config/services.php`:
+  - `services.ezway_getpaid.checkout_url`
+  - `services.ezway_getpaid.return_url`
+  - `services.ezway_getpaid.cancel_url`
+- Added `.env` keys:
+  - `EZWAY_NETWORK_GETPAID_CHECKOUT_URL`
+  - `EZWAY_NETWORK_GETPAID_RETURN_URL`
+  - `EZWAY_NETWORK_GETPAID_CANCEL_URL`
+- Current `.env` placeholder checkout URL:
+  - `https://ezwaynetwork.com/`
+- Follow-up needed:
+  - replace placeholder with the exact GetPaid recurring subscription checkout URL.
+  - add webhook/callback verification from eZWay Network to activate pending subscriptions after external payment succeeds.
+- Verified:
+  - `php -l Modules/Frontend/Http/Controllers/PaymentController.php` passes.
+  - `php -l config/services.php` passes.
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
