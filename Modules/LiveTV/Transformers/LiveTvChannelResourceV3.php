@@ -13,10 +13,12 @@ class LiveTvChannelResourceV3 extends JsonResource
     {
         return [
             'id' => $this->id,
+            'slug' => $this->slug,
             'poster_image' => $this->poster_image,
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','livetv'),
             'details'=>[
                 'name' => $this->name,
+                'slug' => $this->slug,
                 'type' => 'livetv',
                 'access' => $this->access,
                 'is_device_supported'=> $this->isDeviceSupported ?? null,

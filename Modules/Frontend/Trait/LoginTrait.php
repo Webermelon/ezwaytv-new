@@ -12,6 +12,24 @@ trait LoginTrait
 
     public function CheckDeviceLimit($user, $current_device)
     {
+        Device::where('user_id', $user->id)
+            ->whereIn('platform', ['Windows', 'Linux', 'Mac', 'web'])
+            ->where('updated_at', '<', now()->subDays(2))
+            ->delete();
+
+        if ($current_device) {
+            $existingDevice = Device::where('user_id', $user->id)
+                ->where('device_id', $current_device)
+                ->first();
+
+            if ($existingDevice) {
+                return [
+                    'success' => 'Your device limit is available.',
+                    'status' => 200
+                ];
+            }
+        }
+
         $count = Device::where('user_id', $user->id)->count();
 
         if($user->mobile=='+911234567890'){
@@ -42,7 +60,7 @@ trait LoginTrait
                                     $deviceLimitCount = (int)$limitData;
                                 }
 
-                                if ($count >= $deviceLimitCount) {
+                                if ($deviceLimitCount > 0 && $count >= $deviceLimitCount) {
                                     return [
                                         'error' => __('messages.device_limit_reached'),
                                         'status' => 406

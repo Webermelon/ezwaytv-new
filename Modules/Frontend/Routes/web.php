@@ -6,6 +6,7 @@ use Modules\Frontend\Http\Controllers\FrontendController;
 use Modules\Frontend\Http\Controllers\PaymentController;
 use Modules\Frontend\Http\Controllers\LiveTvChatController;
 use Modules\Frontend\Http\Controllers\LiveTvController;
+use Modules\Frontend\Http\Controllers\ReactMetaController;
 use Modules\Frontend\Http\Controllers\Auth\AuthController;
 use Modules\Frontend\Http\Controllers\Auth\OTPController;
 use Modules\Frontend\Http\Controllers\Auth\WordPressSsoController;
@@ -21,6 +22,7 @@ use Modules\Entertainment\Http\Controllers\Backend\EntertainmentsController;
 use Modules\NotificationTemplate\Http\Controllers\Backend\NotificationTemplatesController;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -42,9 +44,9 @@ Route::get('/auth/apple/callback', [AuthController::class, 'handleAppleCallback'
 
 
 // Login with OTP
-Route::get('/login', [AuthController::class, 'login'])->name('login');
+Route::view('/login', 'react-modernization')->name('login');
 
-Route::get('/otp-login', [OTPController::class, 'otpLogin'])->name('otp-login');
+Route::view('/otp-login', 'react-modernization')->name('otp-login');
 Route::post('/auth/otp-login-store', [OTPController::class, 'otpLoginStore'])->name('auth.otp-login-store');
 Route::get('/auth/check-user-exists', [OTPController::class, 'checkUserExists'])->name('check.user.exists');
 Route::post('/auth/check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('check.mobile.exists');
@@ -57,11 +59,11 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 
 
 Route::get('language/{language}', [LanguageController::class, 'switch'])->name('frontend.language.switch');
-Route::get('/login-page', [AuthController::class, 'login'])->name('login-page');
+Route::view('/login-page', 'react-modernization')->name('login-page');
 Route::get('/sso/wp/login', [WordPressSsoController::class, 'login'])->name('wordpress-sso.login');
 Route::post('/store-user', [AuthController::class, 'store'])->name('store-user');
-Route::get('/register', [AuthController::class, 'registration'])->name('register-page');
-Route::get('/forget-password', [AuthController::class, 'forgetpassword'])->name('forget-password');
+Route::view('/register', 'react-modernization')->name('register-page');
+Route::view('/forget-password', 'react-modernization')->name('forget-password');
 
 
 Route::post('/security-control', function(Request $request) {
@@ -93,25 +95,30 @@ Route::post('/disable-security', function(Request $request) {
 
 
 
-Route::get('movies/genre/{genre_id}', [MovieController::class, 'moviesListByGenre'])->middleware('checkModule')->name('movies.genre');
-Route::get('movies/{language}', [MovieController::class, 'moviesListBylanguage'])->middleware('checkModule')->name('movies.language');
-Route::get('/movies', [MovieController::class, 'movieList'])->middleware('checkModule')->name('movies');
-Route::get('/movie-details/{id}', [MovieController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
-Route::get('/tv-shows', [TvShowController::class, 'tvShowList'])->middleware('checkModule')->name('tv-shows');
-Route::get('/tvshow-details/{id}', [TvShowController::class, 'tvshowDetail'])->middleware('checkModule')->name('tvshow-details');
-Route::get('/episode-details/{id}', [TvShowController::class, 'episodeDetail'])->middleware('checkModule')->name('episode-details');
-Route::get('/videos', [VideoController::class, 'videoList'])->middleware('checkModule')->name('videos');
-Route::get('/videos/category/{slug}', [VideoController::class, 'videosByCategory'])->middleware('checkModule')->name('videos.by-category');
-Route::get('/video-details/{id}', [VideoController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
-Route::get('/pay-per-view', [PerviewPaymentController::class, 'peyPerView'])->name('pay-per-view');
-Route::get('/content/{type}', [FrontendController::class, 'contentList'])->middleware('checkModule')->name('content.list');
-Route::get('/section/{slug}', [FrontendController::class, 'customSectionList'])->name('custom-section');
-Route::get('/comming-soon-details/{id}', [EntertainmentsController::class, 'commingSoonDetail'])->name('comming-soon-details');
+Route::view('movies/genre/{genre_id}', 'react-modernization')->middleware('checkModule')->name('movies.genre');
+Route::view('movies/{language}', 'react-modernization')->middleware('checkModule')->name('movies.language');
+Route::view('/movies', 'react-modernization')->middleware('checkModule')->name('movies');
+Route::get('/movie-details/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
+Route::view('/tv-shows', 'react-modernization')->middleware('checkModule')->name('tv-shows');
+Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tvshow-details');
+Route::get('/episode-details/{id}', [ReactMetaController::class, 'episodeDetails'])->middleware('checkModule')->name('episode-details');
+Route::view('/videos', 'react-modernization')->middleware('checkModule')->name('videos');
+Route::view('/videos/category/{slug}', 'react-modernization')->middleware('checkModule')->name('videos.by-category');
+Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
+Route::view('/pay-per-view', 'react-modernization')->name('pay-per-view');
+Route::view('/content/{type}', 'react-modernization')->middleware('checkModule')->name('content.list');
+Route::view('/section/{slug}', 'react-modernization')->name('custom-section');
+Route::view('/comming-soon-details/{id}', 'react-modernization')->name('comming-soon-details');
 
 
-Route::get('/comingsoon', [MovieController::class, 'comingSoonList'])->name('comingsoon');
-Route::get('/livetv', [LiveTvController::class, 'livetvList'])->middleware('checkModule')->name('livetv');
-Route::get('/livetv-details/{id}', [LiveTvController::class, 'liveTvDetails'])->middleware('checkModule')->name('livetv-details');
+Route::view('/comingsoon', 'react-modernization')->name('comingsoon');
+Route::get('/livetv', [ReactMetaController::class, 'liveTvIndex'])->middleware('checkModule')->name('livetv');
+Route::get('/livetv/{path}', [ReactMetaController::class, 'liveTvShow'])->where('path', '^(?!details|channels|chat).*$')->middleware('checkModule')->name('livetv.spa-detail');
+Route::get('/livetv-details/{id}', function (Request $request, string $id) {
+    $query = $request->getQueryString();
+
+    return redirect('/livetv/' . ltrim($id, '/') . ($query ? '?' . $query : ''), 301);
+})->middleware('checkModule')->name('livetv-details');
 Route::get('/livetv-channels/{id}', [LiveTvController::class, 'livetvChannelsList'])->middleware('checkModule')->name('livetv-channels');
 Route::get('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, 'index'])->middleware('checkModule')->name('livetv-chat.messages');
 Route::post('/livetv-chat/{channelId}/session', [LiveTvChatController::class, 'storeGuest'])->middleware('checkModule')->name('livetv-chat.session');
@@ -119,25 +126,25 @@ Route::post('/livetv-chat/{channelId}/messages', [LiveTvChatController::class, '
 
 
 
-Route::get('/castcrew-detail/{id}', [CastCrewController::class, 'castCrewDetail'])->name('castcrew-detail');
-Route::get('/castcrew-list', [CastCrewController::class, 'castcrewList'])->name('castcrewList');
-Route::get('/castcrew-list/{type}/{id}', [CastCrewController::class, 'moviecastcrewList'])->name('movie-castcrew-list');
+Route::view('/castcrew-detail/{id}', 'react-modernization')->name('castcrew-detail');
+Route::view('/castcrew-list', 'react-modernization')->name('castcrewList');
+Route::view('/castcrew-list/{type}/{id}', 'react-modernization')->name('movie-castcrew-list');
 
-Route::get('/continuewatch-list', [FrontendController::class, 'continueWatchList'])->name('continueWatchList');
-Route::get('/language-list', [FrontendController::class, 'languageList'])->name('languageList');
-Route::get('/topchannel-list', [FrontendController::class, 'topChannelList'])->name('topChannelList');
-Route::get('/genres-list', [FrontendController::class, 'genresList'])->name('genresList');
+Route::view('/continuewatch-list', 'react-modernization')->name('continueWatchList');
+Route::view('/language-list', 'react-modernization')->name('languageList');
+Route::view('/topchannel-list', 'react-modernization')->name('topChannelList');
+Route::view('/genres-list', 'react-modernization')->name('genresList');
 Route::get('/languages-data',[FrontendController::class, 'languageData'])->name(name: 'languageData');
-Route::get('/search', [FrontendController::class, 'searchList'])->name('search');
+Route::view('/search', 'react-modernization')->name('search');
 
 
 
-Route::get('/watch-list', [FrontendController::class, 'watchList'])->name('watchList');
+Route::view('/watch-list', 'react-modernization')->name('watchList');
 
-Route::get('/faq', [FrontendController::class, 'faq'])->name('faq');
+Route::view('/faq', 'react-modernization')->name('faq');
 
-Route::get('/all-review/{id}', [FrontendController::class, 'allReview'])->name('all-review');
-Route::get('/video-details/{id}', [VideoController::class, 'VideoDetails'])->name('video-details');
+Route::view('/all-review/{id}', 'react-modernization')->name('all-review');
+Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->name('video-details');
 
 
 Route::post('/decrypt-url', [FrontendController::class, 'decryptUrl'])->name('decrypt.url');
@@ -146,28 +153,28 @@ Route::post('/get-available-promotions', [PaymentController::class, 'getAvailabl
     ->name('get-available-promotions');
 });
 
-Route::get('/trending-movies', [MovieController::class, 'getTrendingMovies'])->name('trending.movies');
+Route::view('/trending-movies', 'react-modernization')->name('trending.movies');
 
 Route::group(['middleware' => ['user']], function () {
     Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');
-    Route::get('/account-setting', [FrontendController::class, 'accountSetting'])->name('accountSetting');
+    Route::view('/account-setting', 'react-modernization')->name('accountSetting');
     // Profile management removed per request. Route disabled.
     // Route::get('/profile-management', [FrontendController::class, 'profileManagement'])->name('profile-management');
     Route::delete('/profile/delete/{profile}', [UserController::class, 'destroy'])->name('profile.destroy');
     Route::post('/device-logout', [FrontendController::class, 'deviceLogout'])->name('device-logout');
-    Route::get('/subscription-payment', [FrontendController::class, 'subscriptPayment'])->name('subscription-payment');
-    Route::get('/payment-history', [FrontendController::class, 'PaymentHistory'])->name('payment-history');
-    Route::get('/transaction-history', [FrontendController::class, 'transactionHistory'])->name('transaction-history');
-    Route::get('/pay-per-view/invoice/{id}', [FrontendController::class, 'payPerViewInvoice'])->name('payperview.invoice');
+    Route::view('/subscription-payment', 'react-modernization')->name('subscription-payment');
+    Route::view('/payment-history', 'react-modernization')->name('payment-history');
+    Route::view('/transaction-history', 'react-modernization')->name('transaction-history');
+    Route::view('/pay-per-view/invoice/{id}', 'react-modernization')->name('payperview.invoice');
     Route::post('/get-payment-details', [FrontendController::class, 'getPaymentDetails']);
     Route::get('invoice-download', [FrontendController::class, 'downloadInvoice'])->name('downloadinvoice');
-    Route::get('/subscription-plan', [FrontendController::class, 'subscriptionPlan'])->name('subscriptionPlan');
+    Route::view('/subscription-plan', 'react-modernization')->name('subscriptionPlan');
     Route::post('/process-payment', [PaymentController::class, 'processPayment'])->name('process-payment');
     Route::post('/select-plan', [PaymentController::class, 'selectPlan'])->name('select.plan');
-    Route::get('/payment/success', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
-    Route::get('/security-control', [UserController::class, 'securityControl'])->name('security-control');
-    Route::get('/manage-profile', [UserController::class, 'manageProfile'])->name('manage-profile');
+    Route::view('/payment/success', 'react-modernization')->name('payment.success');
+    Route::view('/security-control', 'react-modernization')->name('security-control');
+    Route::view('/manage-profile', 'react-modernization')->name('manage-profile');
 
 
 
@@ -190,26 +197,24 @@ Route::group(['as' => 'frontend.', 'middleware' => ['auth']], function () {
     })->name('cache_config_clear'); // Define the name for the route
 });
 
-Route::get('/payment-form/pay-per-view', [PerviewPaymentController::class, 'PayPerViewForm'])->name('pay-per-view.paymentform');
+Route::view('/payment-form/pay-per-view', 'react-modernization')->name('pay-per-view.paymentform');
 Route::post('/process-payment/pay-per-view', [PerviewPaymentController::class, 'processPayment'])->name('process-payment.payperview');
-Route::get('/payment/success/pay-per-view', [PerviewPaymentController::class, 'paymentSuccess'])->name('payperview.payment.success');
-Route::get('/unlock-videos', [PerviewPaymentController::class, 'unlockVideos'])->name('unlock.videos');
+Route::view('/payment/success/pay-per-view', 'react-modernization')->name('payperview.payment.success');
+Route::view('/unlock-videos', 'react-modernization')->name('unlock.videos');
 
 // Notification routes
-Route::get('/notifications', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+Route::view('/notifications', 'react-modernization')->name('notifications.index');
 Route::get('/notifications/mark-all-read', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
 Route::post('/notifications/{id}/mark-read', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 Route::delete('/notifications/delete-all', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteAll'])->name('notifications.deleteAll');
 Route::delete('/notifications/delete-selected', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteSelected'])->name('notifications.deleteSelected');
 
 Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
-Route::get('/update-profile', [UserController::class, 'updateProfile'])->name('update-profile');
-Route::get('/change-password', [UserController::class, 'changePassword'])->name('change-password');
+Route::view('/update-profile', 'react-modernization')->name('update-profile');
+Route::view('/change-password', 'react-modernization')->name('change-password');
 
 // Distribution page route (static view)
-Route::get('/distribution', function () {
-    return view('frontend::distribution');
-})->name('distribution');
+Route::view('/distribution', 'react-modernization')->name('distribution');
 
 // API: distribution data
 Route::get('/api/distribution', function () {
@@ -217,6 +222,6 @@ Route::get('/api/distribution', function () {
     if (!file_exists($path)) {
         return response()->json(['error' => 'Data not found'], 404);
     }
-    $json = file_get_contents($path);
+    $json = Cache::remember('spa:distribution:json', 3600, fn () => file_get_contents($path));
     return response($json, 200)->header('Content-Type', 'application/json');
 })->name('api.distribution');

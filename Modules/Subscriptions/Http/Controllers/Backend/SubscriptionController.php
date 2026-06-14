@@ -28,7 +28,7 @@ class SubscriptionController extends Controller
         }
     public function __construct(SubscriptionService $subscriptionService,Request $request)
     {
-        $routeName = $request->route()->getName();
+        $routeName = $request->route()?->getName();
 
         if ($routeName == 'backend.pay-per-view-export' || $routeName == 'backend.pay-per-view-history') {
             $this->exportClass = '\App\Exports\PayPerViewExport';

@@ -1708,6 +1708,13 @@ public function getTrandingData(Request $request){
             $payPerViewRequest = new Request(['user_id' => $user_id, 'per_page' => 20]); // Limit to 20 items
             $payPerViewContent = $this->getPayPerViewUnlockedContentV3($payPerViewRequest);
 
+            $settingPersonalityIds = MobileSetting::getNameAndValueBySlug('your-favorite-personality');
+            $personalityIds = ($settingPersonalityIds && empty($settingPersonalityIds['type'])) ? $settingPersonalityIds['value'] : null;
+            $personalityIdsArray = json_decode($personalityIds, true);
+            $personality = !empty($personalityIdsArray) && is_array($personalityIdsArray)
+                ? CastCrew::getFrontendCardsByIds(array_slice($personalityIdsArray, 0, 100))
+                : [];
+
             $today = Carbon::now()->toDateString();
             // $is_advertisement_enabled = MobileSetting::where('slug', 'advertisement')->first();
             $customAds = CustomAdsSetting::
@@ -1726,6 +1733,7 @@ public function getTrandingData(Request $request){
             $slugsWithDefaultsAdditional = [
                 'enjoy-in-your-native-tongue' => 'Popular Language',
                 'popular-movies' => 'Popular Movies',
+                'your-favorite-personality' => 'Popular Personalities',
             ];
             $settingsAdditional = MobileSetting::whereIn('slug', array_keys($slugsWithDefaultsAdditional))->pluck('name', 'slug');
             $sectionNamesAdditional = [];
@@ -1763,6 +1771,10 @@ public function getTrandingData(Request $request){
                         'popular_movie' => [
                             'name' => $sectionNamesAdditional['popular-movies'] ?? 'Popular Movies',
                             'data' => $popular_movie,
+                        ],
+                        'personality' => [
+                            'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
+                            'data' => $personality,
                         ],
                         'pay_per_view' => $payPerViewContent,
                     ];

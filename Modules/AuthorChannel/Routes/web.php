@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\AuthorChannel\Http\Controllers\Frontend\AuthorChannelController;
+use Modules\Frontend\Http\Controllers\ReactMetaController;
 
 Route::group(['prefix' => 'on-demand', 'middleware' => ['web']], function () {
-    Route::get('/', [AuthorChannelController::class, 'index'])->name('author_channels.index');
-    Route::get('{username}', [AuthorChannelController::class, 'show'])->name('author_channels.show');
+    Route::get('/', [ReactMetaController::class, 'onDemandIndex'])->name('author_channels.index');
+    Route::get('{username}', [ReactMetaController::class, 'onDemandShow'])->name('author_channels.show');
 });
 
 Route::group(['prefix' => 'author-channels', 'middleware' => ['web']], function () {

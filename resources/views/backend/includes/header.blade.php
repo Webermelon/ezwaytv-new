@@ -258,7 +258,7 @@ $navbarClass = $navbarHide ? 'd-none' : (!empty(getCustomizationSetting('navbar_
 
         function notification_count() {
 
-            var url = "{{ route('notification.counts') }}";
+            var url = "{{ route('notification.counts', [], false) }}";
             $.ajax({
                 type: 'get',
                 url: url,

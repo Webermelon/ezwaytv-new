@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Http\Responses\ApiResponse;
+use App\Models\Setting;
 
 class VastAdsController extends Controller
 {
@@ -68,12 +69,13 @@ class VastAdsController extends Controller
                     ->header('Expires', '0');
             }
 
-            $currentDate = Carbon::now()->format('Y-m-d');
+            [$currentDate, $currentTimezone] = $this->currentAdDate();
 
             Log::info('VastAds API called', [
                 'content_id' => $contentId,
                 'content_type' => $contentType,
                 'current_date' => $currentDate,
+                'timezone' => $currentTimezone,
                 'request_params' => $request->all()
             ]);
 
@@ -180,6 +182,7 @@ class VastAdsController extends Controller
                 'content_type' => $contentType,
                 'content_id' => $contentId,
                 'current_date' => $currentDate,
+                'timezone' => $currentTimezone,
                 'ads_found' => $filteredAds->count(),
                 'ads' => $filteredAds->toArray()
             ]);
@@ -201,5 +204,27 @@ class VastAdsController extends Controller
                 ->header('Pragma', 'no-cache')
                 ->header('Expires', '0');
         }
+    }
+
+    private function currentAdDate(): array
+    {
+        $timezone = config('app.timezone', 'UTC');
+
+        try {
+            $configuredTimezone = Setting::where('name', 'default_time_zone')
+                ->where('datatype', 'misc')
+                ->value('val');
+
+            if ($configuredTimezone && in_array($configuredTimezone, timezone_identifiers_list(), true)) {
+                $timezone = $configuredTimezone;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('VastAds timezone setting lookup failed', [
+                'error' => $e->getMessage(),
+                'fallback_timezone' => $timezone,
+            ]);
+        }
+
+        return [Carbon::now($timezone)->toDateString(), $timezone];
     }
 }

@@ -43,29 +43,224 @@ class PaymentController extends Controller
     public function selectPlan(Request $request)
     {
         $planId = $request->input('plan_id');
-        $promotionId = $request->input('promotionId');
-        $planName = $request->input('plan_name');
-        $plan= Plan::where('status',1)->with('planLimitation')->get();
+        $plan = Plan::where('id', $planId)->where('status', 1)->with('planLimitation')->first();
 
-        $plans = PlanResource::collection($plan);
+        if (! $plan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or inactive plan.',
+            ], 422);
+        }
 
-        $activeSubscriptions = Subscription::where('user_id', auth()->id())->where('status', 'active')->where('end_date', '>', now())->orderBy('id','desc')->first();
-        $currentPlanId = $activeSubscriptions ? $activeSubscriptions->plan_id : null;
+        $checkoutUrl = $this->getExternalGetPaidCheckoutUrl($plan);
 
-        $userProfiles = \App\Models\UserMultiProfile::where('user_id', auth()->id())->get();
-        $userProfileCount = $userProfiles->count();
+        if (empty($checkoutUrl)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'External GetPaid checkout URL is not configured.',
+            ], 422);
+        }
 
+        $pendingSubscription = $this->createPendingExternalSubscription($plan);
+        $redirectUrl = $this->buildExternalGetPaidUrl($checkoutUrl, $plan, $pendingSubscription);
 
-        $planId = $planId ?? $currentPlanId ?? Plan::first()->id ?? null;
+        return response()->json([
+            'success' => true,
+            'redirect_url' => $redirectUrl,
+            'subscription_id' => $pendingSubscription->id,
+        ]);
+    }
 
-        $promotions = Coupon::where('status', 1)
-        ->where('start_date', '<=', now())
-        ->where('expire_date', '>=', now())
-        ->get();
+    protected function createPendingExternalSubscription(Plan $plan): Subscription
+    {
+        $limitationData = PlanlimitationMappingResource::collection($plan->planLimitation);
+        $startDate = now();
+        $endDate = $this->get_plan_expiration_date($startDate, $plan->duration, $plan->duration_value);
+        $amount = $this->discountedPlanPrice($plan);
 
-        $clientKey = GetpaymentMethod('midtrans_client_id');
-        $view = view('frontend::subscriptionPayment', compact('plans', 'planId', 'currentPlanId', 'promotions', 'clientKey', 'userProfileCount','userProfiles'))->render();
-        return response()->json(['success' => true, 'view' => $view]);
+        $subscription = Subscription::create([
+            'plan_id' => $plan->id,
+            'user_id' => auth()->id(),
+            'device_id' => auth()->user()?->devices?->pluck('device_id')->first(),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => config('constant.SUBSCRIPTION_STATUS.PENDING', 'pending'),
+            'amount' => $plan->price,
+            'discount_percentage' => $plan->discount_percentage,
+            'coupon_discount' => 0,
+            'promotion_id' => null,
+            'tax_amount' => 0,
+            'total_amount' => $amount,
+            'name' => $plan->name,
+            'identifier' => $plan->identifier,
+            'type' => $plan->duration,
+            'duration' => $plan->duration_value,
+            'level' => $plan->level,
+            'plan_type' => $limitationData ? json_encode($limitationData) : null,
+            'payment_id' => null,
+        ]);
+
+        SubscriptionTransactions::create([
+            'user_id' => auth()->id(),
+            'amount' => $amount,
+            'payment_type' => 'ezwaynetwork_getpaid',
+            'payment_status' => 'pending',
+            'transaction_id' => 'external-pending-' . $subscription->id,
+            'subscriptions_id' => $subscription->id,
+            'other_transactions_details' => json_encode([
+                'provider' => 'ezwaynetwork_getpaid',
+                'checkout' => 'external',
+            ]),
+        ]);
+
+        return $subscription;
+    }
+
+    protected function buildExternalGetPaidUrl(string $checkoutUrl, Plan $plan, Subscription $subscription): string
+    {
+        $itemId = $this->getExternalGetPaidItemId($plan);
+        $query = [
+            'item' => $itemId,
+            'subs_id' => (string) $subscription->id,
+            'plan_id' => (string) $plan->id,
+        ];
+
+        if ($itemId === '') {
+            unset($query['item']);
+        }
+
+        return strtok($checkoutUrl, '?') . '?' . http_build_query($query);
+    }
+
+    public function handleGetPaidSubscriptionWebhook(Request $request)
+    {
+        $secret = (string) config('services.ezway_getpaid.webhook_secret');
+        $payload = $request->getContent();
+        $signature = (string) $request->header('X-EZWAY-SIGNATURE', '');
+
+        if ($secret === '' || $signature === '') {
+            return response()->json(['success' => false, 'message' => 'Missing webhook signature.'], 401);
+        }
+
+        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+        if (! hash_equals($expectedSignature, $signature)) {
+            return response()->json(['success' => false, 'message' => 'Invalid webhook signature.'], 401);
+        }
+
+        $data = $request->json()->all();
+        $subscriptionId = (int) ($data['subs_id'] ?? $data['local_subscription_id'] ?? 0);
+        $planId = (int) ($data['plan_id'] ?? 0);
+        $itemId = (string) ($data['item'] ?? $data['item_id'] ?? '');
+        $status = strtolower((string) ($data['status'] ?? $data['payment_status'] ?? ''));
+        $transactionId = (string) ($data['transaction_id'] ?? $data['invoice_id'] ?? $data['payment_id'] ?? '');
+
+        if ($subscriptionId <= 0 || $planId <= 0 || $transactionId === '') {
+            return response()->json(['success' => false, 'message' => 'Missing required payment data.'], 422);
+        }
+
+        if (! in_array($status, ['paid', 'complete', 'completed', 'succeeded', 'success'], true)) {
+            return response()->json(['success' => false, 'message' => 'Payment is not paid.'], 422);
+        }
+
+        $subscription = Subscription::where('id', $subscriptionId)
+            ->where('plan_id', $planId)
+            ->first();
+
+        if (! $subscription) {
+            return response()->json(['success' => false, 'message' => 'Subscription not found.'], 404);
+        }
+
+        $expectedItemId = $this->getExternalGetPaidItemId($subscription->plan);
+        if ($itemId !== '' && $expectedItemId !== '' && $itemId !== $expectedItemId) {
+            return response()->json(['success' => false, 'message' => 'Payment item does not match subscription plan.'], 422);
+        }
+
+        if ($subscription->status === config('constant.SUBSCRIPTION_STATUS.ACTIVE', 'active')) {
+            return response()->json(['success' => true, 'message' => 'Subscription already active.']);
+        }
+
+        Subscription::where('user_id', $subscription->user_id)
+            ->where('id', '!=', $subscription->id)
+            ->where('status', config('constant.SUBSCRIPTION_STATUS.ACTIVE', 'active'))
+            ->update(['status' => config('constant.SUBSCRIPTION_STATUS.INACTIVE', 'deactivated')]);
+
+        $subscription->update([
+            'status' => config('constant.SUBSCRIPTION_STATUS.ACTIVE', 'active'),
+            'start_date' => now(),
+            'end_date' => $this->get_plan_expiration_date(now(), $subscription->type, $subscription->duration),
+        ]);
+
+        SubscriptionTransactions::updateOrCreate(
+            ['subscriptions_id' => $subscription->id],
+            [
+                'user_id' => $subscription->user_id,
+                'amount' => $subscription->total_amount,
+                'payment_type' => 'ezwaynetwork_getpaid',
+                'payment_status' => 'paid',
+                'transaction_id' => $transactionId,
+                'other_transactions_details' => json_encode([
+                    'provider' => 'ezwaynetwork_getpaid',
+                    'payload' => $data,
+                ]),
+            ]
+        );
+
+        if ($subscription->user) {
+            $subscription->user->update(['is_subscribe' => 1]);
+        }
+
+        Cache::flush();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Subscription activated.',
+            'subscription_id' => $subscription->id,
+        ]);
+    }
+
+    protected function getExternalGetPaidCheckoutUrl(Plan $plan): ?string
+    {
+        $priceKey = number_format($this->discountedPlanPrice($plan), 2, '.', '');
+        $mappedUrl = config("services.ezway_getpaid.checkout_urls.{$priceKey}");
+
+        return $mappedUrl ?: config('services.ezway_getpaid.checkout_url');
+    }
+
+    protected function getExternalGetPaidItemId(?Plan $plan): string
+    {
+        if (! $plan) {
+            return '';
+        }
+
+        $priceKey = number_format($this->discountedPlanPrice($plan), 2, '.', '');
+        $itemMap = [
+            '1.99' => '38358',
+            '199.99' => '38376',
+        ];
+
+        if (isset($itemMap[$priceKey])) {
+            return $itemMap[$priceKey];
+        }
+
+        $checkoutUrl = $this->getExternalGetPaidCheckoutUrl($plan);
+        if (! $checkoutUrl) {
+            return '';
+        }
+
+        parse_str(parse_url($checkoutUrl, PHP_URL_QUERY) ?: '', $query);
+
+        return (string) ($query['item'] ?? '');
+    }
+
+    protected function discountedPlanPrice(Plan $plan): float
+    {
+        $amount = (float) $plan->price;
+
+        if ((float) $plan->discount_percentage > 0) {
+            $amount -= $amount * ((float) $plan->discount_percentage / 100);
+        }
+
+        return round(max($amount, 0), 2);
     }
 
     public function processPayment(Request $request)

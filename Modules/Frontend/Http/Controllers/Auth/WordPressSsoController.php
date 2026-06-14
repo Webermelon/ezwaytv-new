@@ -31,12 +31,6 @@ class WordPressSsoController extends Controller
         }
 
         $user = $this->findOrCreateUser($payload);
-        $deviceId = $request->getClientIp();
-        $deviceCheck = $this->CheckDeviceLimit($user, $deviceId);
-
-        if (isset($deviceCheck['error'])) {
-            return redirect('/login')->with('error', $deviceCheck['error']);
-        }
 
         Auth::login($user, true);
         $request->session()->regenerate();

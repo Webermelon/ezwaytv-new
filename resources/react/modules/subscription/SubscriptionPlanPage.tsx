@@ -1,0 +1,275 @@
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Check, CreditCard, Crown, Loader2, ShieldCheck } from 'lucide-react'
+
+import { AppHeader } from '@/components/AppHeader'
+import { api } from '@/lib/api'
+
+type Plan = {
+  plan_id: number
+  name: string
+  identifier?: string | null
+  price?: number | string | null
+  discount_percentage?: number | string | null
+  total_price?: number | string | null
+  level?: number | string | null
+  duration?: string | null
+  duration_value?: number | string | null
+  description?: string | null
+  plan_type?: PlanLimitation[]
+}
+
+type PlanLimitation = {
+  id?: number | string
+  limitation_title?: string | null
+  limitation_value?: number | boolean | string | null
+  slug?: string | null
+  limit?: { value?: string | number | null } | string | number | null
+  message?: string | null
+}
+
+type PlanListEnvelope = {
+  status?: boolean
+  data?: {
+    data?: Plan[]
+  } | Plan[]
+  message?: string
+}
+
+type CheckoutResponse = {
+  success?: boolean
+  redirect_url?: string
+  message?: string
+}
+
+export function SubscriptionPlanPage() {
+  const [selectedDuration, setSelectedDuration] = useState<'all' | 'month' | 'year'>('all')
+  const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null)
+  const [error, setError] = useState('')
+
+  const plansQuery = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: loadPlans,
+    staleTime: 5 * 60_000,
+  })
+
+  const plans = plansQuery.data ?? []
+  const filteredPlans = useMemo(() => {
+    if (selectedDuration === 'all') return plans
+    return plans.filter((plan) => String(plan.duration ?? '').toLowerCase() === selectedDuration)
+  }, [plans, selectedDuration])
+
+  async function handleChoose(plan: Plan) {
+    setError('')
+    setCheckoutPlanId(plan.plan_id)
+
+    if (!purchaseUrlForPlan(plan)) {
+      setError('No GetPaid purchase link is configured for this plan price.')
+      setCheckoutPlanId(null)
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.set('plan_id', String(plan.plan_id))
+      formData.set('plan_name', plan.name)
+
+      const response = await api.post<CheckoutResponse>('/select-plan', formData)
+
+      if (!response.success || !response.redirect_url) {
+        throw new Error(response.message || 'External checkout is not available.')
+      }
+
+      window.location.href = response.redirect_url
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to start checkout.')
+      setCheckoutPlanId(null)
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050505] text-white">
+      <AppHeader active="home" />
+
+      <section className="border-b border-white/8 bg-[radial-gradient(circle_at_78%_0%,rgba(212,168,67,0.20),transparent_28%),linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] px-4 py-10 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1500px]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">
+                <Crown className="h-4 w-4" />
+                Subscription Plans
+              </span>
+              <h1 className="mt-5 text-4xl font-black leading-none sm:text-5xl">Choose Your Plan</h1>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-base">
+                Plans are managed here. Recurring payment is completed securely on eZWay Network GetPaid.
+              </p>
+            </div>
+
+            <div className="inline-grid w-full max-w-md grid-cols-3 rounded-md border border-white/10 bg-white/[0.055] p-1 text-sm font-black sm:w-auto">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'month', label: 'Monthly' },
+                { key: 'year', label: 'Yearly' },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setSelectedDuration(item.key as 'all' | 'month' | 'year')}
+                  className={[
+                    'h-10 rounded px-4 transition',
+                    selectedDuration === item.key ? 'bg-[#d4a843] text-black' : 'text-white/62 hover:bg-white/8 hover:text-white',
+                  ].join(' ')}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-10 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1500px]">
+          {error ? (
+            <div className="mb-6 rounded-md border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100">
+              {error}
+            </div>
+          ) : null}
+
+          {plansQuery.isLoading ? (
+            <div className="flex min-h-64 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
+              <Loader2 className="h-6 w-6 animate-spin text-[#d4a843]" />
+            </div>
+          ) : filteredPlans.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredPlans.map((plan, index) => (
+                <PlanCard
+                  key={plan.plan_id}
+                  plan={plan}
+                  featured={index === 0}
+                  loading={checkoutPlanId === plan.plan_id}
+                  onChoose={() => handleChoose(plan)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-white/10 bg-white/[0.035] p-8 text-center text-white/56">
+              No active plans found for this filter.
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function PlanCard({
+  plan,
+  featured,
+  loading,
+  onChoose,
+}: {
+  plan: Plan
+  featured: boolean
+  loading: boolean
+  onChoose: () => void
+}) {
+  const price = Number(plan.total_price ?? plan.price ?? 0)
+  const rawPrice = Number(plan.price ?? price)
+  const discount = Number(plan.discount_percentage ?? 0)
+  const limitations = (plan.plan_type ?? []).filter((item) => item.message || item.limitation_title).slice(0, 6)
+  const purchaseUrl = purchaseUrlForPlan(plan)
+
+  return (
+    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+      <div className="flex min-h-12 items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d4a843]">Level {plan.level ?? '-'}</p>
+          <h2 className="mt-2 text-2xl font-black">{plan.name}</h2>
+        </div>
+        {featured ? (
+          <span className="rounded-full bg-[#d4a843] px-3 py-1 text-[11px] font-black uppercase text-black">Featured</span>
+        ) : null}
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-end gap-2">
+          <span className="text-4xl font-black">${formatMoney(price)}</span>
+          <span className="pb-1 text-sm font-bold text-white/48">/ {durationLabel(plan)}</span>
+        </div>
+        {discount > 0 ? (
+          <p className="mt-2 text-sm font-semibold text-white/48">
+            <span className="line-through">${formatMoney(rawPrice)}</span> Save {discount}%
+          </p>
+        ) : null}
+      </div>
+
+      {plan.description ? (
+        <p className="mt-5 text-sm leading-6 text-white/58">{plan.description}</p>
+      ) : null}
+
+      <ul className="mt-6 grid gap-3">
+        {(limitations.length > 0 ? limitations : fallbackFeatures()).map((item, index) => (
+          <li key={item.id ?? item.slug ?? index} className="flex gap-3 text-sm leading-5 text-white/68">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+            <span>{item.message || item.limitation_title}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        onClick={onChoose}
+        disabled={loading || !purchaseUrl}
+        className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-70', featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
+      >
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
+        {loading ? 'Opening Checkout...' : 'Subscribe with GetPaid'}
+      </button>
+
+      <p className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-white/42">
+        <ShieldCheck className="h-4 w-4 text-[#d4a843]" />
+        External recurring payment
+      </p>
+    </article>
+  )
+}
+
+async function loadPlans() {
+  const response = await api.get<PlanListEnvelope>('/api/plan-list?per_page=50')
+  const data = response.data
+
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.data)) return data.data
+
+  return []
+}
+
+function durationLabel(plan: Plan) {
+  const value = Number(plan.duration_value ?? 1)
+  const unit = String(plan.duration ?? 'month').toLowerCase()
+  const label = unit === 'year' ? 'year' : unit === 'week' ? 'week' : unit === 'day' ? 'day' : 'month'
+
+  return value > 1 ? `${value} ${label}s` : label
+}
+
+function formatMoney(value: number) {
+  return value.toFixed(2)
+}
+
+function purchaseUrlForPlan(plan: Plan) {
+  const price = Number(plan.total_price ?? plan.price ?? 0).toFixed(2)
+
+  if (price === '1.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38358'
+  if (price === '199.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38376'
+
+  return ''
+}
+
+function fallbackFeatures(): PlanLimitation[] {
+  return [
+    { id: 'streaming', message: 'Access eligible eZWay TV content.' },
+    { id: 'external', message: 'Recurring billing through eZWay Network.' },
+    { id: 'account', message: 'Plan record is saved to your local account.' },
+  ]
+}

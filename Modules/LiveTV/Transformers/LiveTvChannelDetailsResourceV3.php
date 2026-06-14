@@ -7,6 +7,7 @@ use Modules\Subscriptions\Transformers\PlanResource;
 use Modules\Subscriptions\Models\Plan;
 use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Transformers\LiveTvChannelResource;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 class LiveTvChannelDetailsResourceV3 extends JsonResource
@@ -19,9 +20,10 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
         $schedulesUrl = optional($this->TvChannelStreamContentMappings)->api_key ?? null;
         $nowPlaying   = null;
         $nextPlaying  = null;
+        $fullSchedule = [];
 
         if ($schedulesUrl) {
-            [$nowPlaying, $nextPlaying] = $this->resolveNowAndNext($schedulesUrl);
+            [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveScheduleData($schedulesUrl);
         }
 
         return [
@@ -42,57 +44,93 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             'schedules_url'    => $schedulesUrl,
             'now_playing'      => $nowPlaying,
             'next_playing'     => $nextPlaying,
+            'full_schedule'    => $fullSchedule,
             'suggested_content'=> LiveTvChannelResourceV3::collection($this->moreItems),
         ];
     }
 
-    private function resolveNowAndNext(string $url): array
+    private function resolveScheduleData(string $url): array
     {
         try {
             $response = Http::timeout(5)->get($url);
             if (!$response->successful()) {
-                return [null, null];
+                return [null, null, []];
             }
 
             $schedules = $response->json('schedules', []);
             if (empty($schedules)) {
-                return [null, null];
+                return [null, null, []];
             }
 
             $now = now()->utc()->timestamp;
             $nowPlaying  = null;
             $nextPlaying = null;
+            $fullSchedule = [];
+            $currentIndex = null;
 
             foreach ($schedules as $index => $item) {
-                $start = strtotime($item['start_time'] ?? '');
-                $end   = strtotime($item['end_time']   ?? '');
+                $start = $this->scheduleTimestamp($item['start_time'] ?? null);
+                $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
+                if (!$start || !$end) continue;
+
+                $fullSchedule[] = [
+                    'id' => $item['id'] ?? $index,
+                    'title' => $item['media']['title'] ?? $item['title'] ?? null,
+                    'start_time' => $item['start_time'],
+                    'end_time' => $item['end_time'],
+                    'duration_seconds' => $item['media']['duration_seconds'] ?? null,
+                ];
+            }
+
+            foreach ($fullSchedule as $index => $item) {
+                $start = $this->scheduleTimestamp($item['start_time'] ?? null);
+                $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
                 if (!$start || !$end) continue;
 
                 if ($now >= $start && $now <= $end) {
+                    $currentIndex = $index;
                     $nowPlaying = [
-                        'title'      => $item['media']['title'] ?? null,
+                        'title'      => $item['title'] ?? null,
                         'start_time' => $item['start_time'],
                         'end_time'   => $item['end_time'],
-                        'duration_seconds' => $item['media']['duration_seconds'] ?? null,
+                        'duration_seconds' => $item['duration_seconds'] ?? null,
                         'elapsed_seconds'  => $now - $start,
                     ];
-                    // next item
-                    if (isset($schedules[$index + 1])) {
-                        $next = $schedules[$index + 1];
+                    if (isset($fullSchedule[$index + 1])) {
+                        $next = $fullSchedule[$index + 1];
                         $nextPlaying = [
-                            'title'      => $next['media']['title'] ?? null,
+                            'title'      => $next['title'] ?? null,
                             'start_time' => $next['start_time'],
                             'end_time'   => $next['end_time'],
-                            'duration_seconds' => $next['media']['duration_seconds'] ?? null,
+                            'duration_seconds' => $next['duration_seconds'] ?? null,
                         ];
                     }
                     break;
                 }
             }
 
-            return [$nowPlaying, $nextPlaying];
+            $sliceStart = $currentIndex !== null ? max(0, $currentIndex - 8) : 0;
+
+            return [$nowPlaying, $nextPlaying, array_slice($fullSchedule, $sliceStart, 72)];
         } catch (\Throwable $e) {
-            return [null, null];
+            return [null, null, []];
+        }
+    }
+
+    private function scheduleTimestamp(?string $value): ?int
+    {
+        if (!$value) {
+            return null;
+        }
+
+        try {
+            $trimmed = trim($value);
+            $hasTimezone = (bool) preg_match('/(?:z|[+-]\d{2}:?\d{2})$/i', $trimmed);
+            $date = $hasTimezone ? Carbon::parse($trimmed) : Carbon::parse($trimmed, 'Asia/Dhaka');
+
+            return $date->utc()->timestamp;
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

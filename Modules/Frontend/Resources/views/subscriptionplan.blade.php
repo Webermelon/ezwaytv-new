@@ -105,9 +105,12 @@
                         _token: '{{ csrf_token() }}' // CSRF token for security
                     },
                     success: function(response) {
-                        $('#payment-container').empty();
-                        $('#payment-container').html(response
-                            .view); // Inject the view into a container
+                        if (response.redirect_url) {
+                            window.location.href = response.redirect_url;
+                            return;
+                        }
+
+                        alert(response.message || 'External checkout is not available.');
                     },
                     error: function(xhr) {
                         if (xhr.status === 419) {
@@ -115,7 +118,8 @@
                             window.location.href = `${baseUrl}/login`;
                         } else {
                             // Handle other errors
-                            alert('An error occurred while selecting the plan.');
+                            const response = xhr.responseJSON || {};
+                            alert(response.message || 'An error occurred while selecting the plan.');
                         }
                     }
                 });

@@ -33,22 +33,27 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
-Route::get('/music', function () {
-    return view('frontend::music');
-})->name('music');
-Route::middleware('auth')->group(function () {
-    Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
-    Route::get('/upload-your-videoes/{channel}', [MusicVideoSubmissionController::class, 'create'])->name('upload-your-videoes');
-    Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
-    Route::post('/music/video-submissions', [MusicVideoSubmissionController::class, 'store'])->name('music.video-submissions.store');
-});
+if (app()->environment('local')) {
+    Route::view('/react-modernization', 'react-modernization')->name('react-modernization');
+    Route::view('/react-home', 'react-modernization')->name('react-home');
+    Route::view('/react-ondemand/{username?}', 'react-modernization')->name('react-ondemand');
+    Route::view('/react-videos/{category?}', 'react-modernization')->name('react-videos');
+    Route::view('/spa/{path?}', 'react-modernization')->where('path', '.*')->name('react-spa');
+}
+
+Route::view('/music', 'react-modernization')->name('music');
+Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
+Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
+Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
+Route::post('/music/video-submissions/verify', [MusicVideoSubmissionController::class, 'verifyPayment'])->name('music.video-submissions.verify');
+Route::post('/music/video-submissions', [MusicVideoSubmissionController::class, 'store'])->name('music.video-submissions.store');
 
 Route::get('/ezwa-music', fn () => redirect()->route('music', [], 301));
 
 
 Route::group(['middleware' => ['checkInstallation']], function () {
 
-Route::get('/', [FrontendController::class, 'index'])->name('user.login');
+Route::view('/', 'react-modernization')->name('user.login');
 Route::get('/web-qr-status/{id}', [WebQrLoginController::class, 'checkStatus'])->name('web-qr-status');
 
 
@@ -205,18 +210,6 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
         })->name('config_clear');
     });
 
-});
-
-Route::middleware(['web'])->group(function () {
-    // Public routes
-    Route::get('login', 'Auth\LoginController@showLoginForm')->name('login');
-    Route::post('login', 'Auth\LoginController@login');
-
-    // Protected routes with auth
-    Route::middleware(['auth'])->group(function () {
-        Route::post('logout', 'Auth\LoginController@logout')->name('logout');
-        // Other protected routes...
-    });
 });
 
 });

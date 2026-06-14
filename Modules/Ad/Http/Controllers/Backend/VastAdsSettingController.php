@@ -14,6 +14,7 @@ use Modules\Video\Models\Video;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Episode\Models\Episode;
 use Illuminate\Support\Facades\Log;
+use App\Models\Setting;
 
 class VastAdsSettingController extends Controller
 {
@@ -85,12 +86,8 @@ class VastAdsSettingController extends Controller
 
     public function index_data(Datatables $datatable, Request $request)
     {
-        // Auto-deactivate expired ads before loading data
-        VastAdsSetting::where('status', 1)
-            ->where('end_date', '<', now()->toDateString())
-            ->update(['status' => 0]);
-
         $query = VastAdsSetting::query()->withTrashed();
+        [$today] = $this->currentAdDate();
 
         $filter = $request->filter;
 
@@ -159,23 +156,21 @@ class VastAdsSettingController extends Controller
             ->editColumn('frequency', function ($data) {
                 return $data->frequency ?? '--';
             })
-            ->editColumn('status', function ($row) {
-                $originalStatus = (int) $row->getOriginal('status');
-                $endDate = Carbon::parse($row->end_date)->toDateString();
-                $today = now()->toDateString();
+            ->editColumn('status', function ($row) use ($today) {
+                $endDate = $row->end_date ? Carbon::parse($row->end_date)->toDateString() : null;
+                $isExpired = $endDate && $endDate < $today;
+                $disabled = $row->trashed() ? 'disabled' : '';
 
-                if ($originalStatus === 0 && $endDate < $today) {
-                    $checked = $row->status ? 'checked' : '';
-                    $disabled = $row->trashed() ? 'disabled' : '';
+                if ($isExpired) {
                     return '<div class="form-check form-switch">
                         <input type="checkbox"
                             class="form-check-input switch-status-change"
                             data-end-date="' . $row->end_date . '"
                             data-ad-id="' . $row->id . '"
-                            ' . $checked . '
                             ' . $disabled . '
                             title="Status"
                         >
+                        <span class="badge bg-warning-subtle text-warning ms-2">Expired</span>
                     </div>';
                 }
                 else {
@@ -202,6 +197,28 @@ class VastAdsSettingController extends Controller
             ->rawColumns(['action', 'check', 'status'])
             ->orderColumns(['id'], '-:column $1')
             ->make(true);
+    }
+
+    private function currentAdDate(): array
+    {
+        $timezone = config('app.timezone', 'UTC');
+
+        try {
+            $configuredTimezone = Setting::where('name', 'default_time_zone')
+                ->where('datatype', 'misc')
+                ->value('val');
+
+            if ($configuredTimezone && in_array($configuredTimezone, timezone_identifiers_list(), true)) {
+                $timezone = $configuredTimezone;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('VastAds admin timezone setting lookup failed', [
+                'error' => $e->getMessage(),
+                'fallback_timezone' => $timezone,
+            ]);
+        }
+
+        return [Carbon::now($timezone)->toDateString(), $timezone];
     }
 
 

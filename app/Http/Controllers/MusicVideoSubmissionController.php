@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\MusicVideoSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class MusicVideoSubmissionController extends Controller
 {
+    private const PAYMENT_FORM_ID = 123;
+    private const PAYMENT_STATUS_ENDPOINT = 'https://ezwaynetwork.com/wp-json/ezway/v1/fluentform-payment-status';
+
     public function create(string $channel = 'ezway-music')
     {
         $channelData = $this->channel($channel);
@@ -31,7 +35,7 @@ class MusicVideoSubmissionController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'artist_name' => ['nullable', 'string', 'max:255'],
             'submitter_name' => ['nullable', 'string', 'max:255'],
-            'submitter_email' => ['nullable', 'email', 'max:255'],
+            'submitter_email' => ['required', 'email', 'max:255'],
             'submitter_phone' => ['nullable', 'string', 'max:50'],
             'purchase_reference' => ['required', 'string', 'max:255'],
             'purchase_confirmation' => ['accepted'],
@@ -42,6 +46,37 @@ class MusicVideoSubmissionController extends Controller
 
         $channel = $this->channel($data['channel_slug']);
         abort_unless($channel, 404);
+
+        $paymentStatus = $this->paymentStatusForEmail($data['submitter_email']);
+        if (! $paymentStatus['valid'] || ! $paymentStatus['paid']) {
+            $message = 'Payment email was not found as valid and paid.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'payment_status' => $paymentStatus,
+                ], 422);
+            }
+
+            return back()->withErrors(['submitter_email' => $message])->withInput();
+        }
+
+        if ($this->matchingSubmissionExists(
+            $channel['slug'],
+            $data['purchase_reference'] ?? null,
+            $data['submitter_email'] ?? Auth::user()?->email
+        )) {
+            $message = 'You already uploaded the video for this payment email.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'already_uploaded' => true,
+                ], 409);
+            }
+
+            return back()->withErrors(['purchase_reference' => $message])->withInput();
+        }
 
         $disk = $this->mediaDisk();
         $slug = Str::slug($data['title']) ?: 'music-video';
@@ -63,7 +98,7 @@ class MusicVideoSubmissionController extends Controller
             'title' => $data['title'],
             'artist_name' => $data['artist_name'] ?? null,
             'submitter_name' => $data['submitter_name'] ?? Auth::user()?->name,
-            'submitter_email' => $data['submitter_email'] ?? Auth::user()?->email,
+            'submitter_email' => $data['submitter_email'],
             'submitter_phone' => $data['submitter_phone'] ?? null,
             'purchase_reference' => $data['purchase_reference'] ?? null,
             'purchase_confirmed_at' => now(),
@@ -88,6 +123,43 @@ class MusicVideoSubmissionController extends Controller
         return redirect()
             ->route('upload-your-videoes', ['channel' => $channel['slug']])
             ->with('music_submission_success', 'Your music video was uploaded. Our team will review it and schedule it for the channel.');
+    }
+
+    public function verifyPayment(Request $request)
+    {
+        $data = $request->validate([
+            'channel_slug' => ['required', 'string', 'max:100'],
+            'submitter_email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $channel = $this->channel($data['channel_slug']);
+        abort_unless($channel, 404);
+
+        if ($this->matchingSubmissionExists($channel['slug'], $data['submitter_email'], $data['submitter_email'])) {
+            return response()->json([
+                'verified' => false,
+                'already_uploaded' => true,
+                'message' => 'You already uploaded the video for this payment email.',
+            ], 409);
+        }
+
+        $paymentStatus = $this->paymentStatusForEmail($data['submitter_email']);
+
+        if (! $paymentStatus['valid'] || ! $paymentStatus['paid']) {
+            return response()->json([
+                'verified' => false,
+                'already_uploaded' => false,
+                'payment_status' => $paymentStatus,
+                'message' => 'Payment email was not found as valid and paid.',
+            ], 422);
+        }
+
+        return response()->json([
+            'verified' => true,
+            'already_uploaded' => false,
+            'payment_status' => $paymentStatus,
+            'message' => 'Payment email verified and paid. You can upload your submission now.',
+        ]);
     }
 
     public function adminIndex(Request $request)
@@ -257,5 +329,59 @@ class MusicVideoSubmissionController extends Controller
     private function channel(string $slug): ?array
     {
         return config("music_submission_channels.{$slug}");
+    }
+
+    private function matchingSubmissionExists(string $channelSlug, ?string $purchaseReference, ?string $submitterEmail = null): bool
+    {
+        $purchaseReference = Str::lower(trim((string) $purchaseReference));
+        $submitterEmail = Str::lower(trim((string) $submitterEmail));
+
+        return MusicVideoSubmission::query()
+            ->where('channel_slug', $channelSlug)
+            ->where(function ($query) use ($purchaseReference, $submitterEmail) {
+                if ($purchaseReference !== '') {
+                    $query->whereRaw('LOWER(TRIM(purchase_reference)) = ?', [$purchaseReference]);
+                }
+
+                if ($submitterEmail !== '') {
+                    $method = $purchaseReference !== '' ? 'orWhereRaw' : 'whereRaw';
+                    $query->{$method}('LOWER(TRIM(submitter_email)) = ?', [$submitterEmail]);
+                }
+            })
+            ->exists();
+    }
+
+    private function paymentStatusForEmail(string $email): array
+    {
+        $response = Http::acceptJson()
+            ->timeout(12)
+            ->get(self::PAYMENT_STATUS_ENDPOINT, [
+                'email' => $email,
+                'form_id' => self::PAYMENT_FORM_ID,
+            ]);
+
+        if (! $response->successful()) {
+            return [
+                'success' => false,
+                'valid' => false,
+                'paid' => false,
+                'message' => 'Payment verification service is unavailable.',
+            ];
+        }
+
+        $payload = $response->json() ?? [];
+
+        return [
+            'success' => $this->truthy($payload['success'] ?? false),
+            'valid' => $this->truthy($payload['valid'] ?? false),
+            'paid' => $this->truthy($payload['paid'] ?? false),
+            'count' => (int) ($payload['count'] ?? 0),
+            'form_id' => self::PAYMENT_FORM_ID,
+        ];
+    }
+
+    private function truthy(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

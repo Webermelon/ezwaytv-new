@@ -7,6 +7,7 @@ use App\Http\Responses\ApiResponse;
 use App\Models\AuthorChannel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 
 class AuthorChannelAPIController extends Controller
@@ -24,20 +25,30 @@ class AuthorChannelAPIController extends Controller
         $perPage = (int) $request->input('per_page', 15);
         $perPage = min($perPage, 100);
 
-        $query = AuthorChannel::where('is_active', 1)
-            ->withCount('videos');
+        $cacheKey = 'spa:ondemand:index:' . md5(json_encode([
+            'page' => $request->input('page', 1),
+            'per_page' => $perPage,
+            'search' => $request->input('search'),
+        ]));
 
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('username', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
+        $channels = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
+            $query = AuthorChannel::where('is_active', 1)
+                ->withCount('videos');
 
-        $channels = $query->orderBy('name')->paginate($perPage);
+            if ($search = $request->input('search')) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('username', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%");
+                });
+            }
 
-        $channels->getCollection()->transform(fn ($ch) => $this->formatChannel($ch));
+            $channels = $query->orderBy('name')->paginate($perPage);
+
+            $channels->getCollection()->transform(fn ($ch) => $this->formatChannel($ch));
+
+            return $channels;
+        });
 
         return ApiResponse::success($channels, 'Author channel list');
     }
@@ -48,16 +59,20 @@ class AuthorChannelAPIController extends Controller
      */
     public function show($username)
     {
-        $channel = AuthorChannel::where('username', $username)
-            ->where('is_active', 1)
-            ->withCount('videos')
-            ->first();
+        $channel = Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
+            $channel = AuthorChannel::where('username', $username)
+                ->where('is_active', 1)
+                ->withCount('videos')
+                ->first();
+
+            return $channel ? $this->formatChannel($channel, true) : null;
+        });
 
         if (!$channel) {
             return ApiResponse::error('Channel not found.', 404);
         }
 
-        return ApiResponse::success($this->formatChannel($channel, true), 'Author channel details');
+        return ApiResponse::success($channel, 'Author channel details');
     }
 
     /**
@@ -77,29 +92,39 @@ class AuthorChannelAPIController extends Controller
         $perPage = (int) $request->input('per_page', 15);
         $perPage = min($perPage, 50);
 
-        $videos = $channel->videos()
-            ->whereNull('videos.deleted_at')
-            ->where('videos.status', 1)
-            ->select(
-                'videos.id',
-                'videos.name',
-                'videos.slug',
-                'videos.description',
-                'videos.thumbnail_url',
-                'videos.poster_url',
-                'videos.trailer_url',
-                'videos.trailer_url_type',
-                'videos.video_url_input',
-                'videos.video_upload_type',
-                'videos.access',
-                'videos.duration',
-                'videos.release_date',
-                'videos.status'
-            )
-            ->orderBy('author_channel_video.created_at', 'desc')
-            ->paginate($perPage);
+        $cacheKey = 'spa:ondemand:videos:' . md5(json_encode([
+            'username' => $username,
+            'page' => $request->input('page', 1),
+            'per_page' => $perPage,
+        ]));
 
-        $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
+        $videos = Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
+            $videos = $channel->videos()
+                ->whereNull('videos.deleted_at')
+                ->where('videos.status', 1)
+                ->select(
+                    'videos.id',
+                    'videos.name',
+                    'videos.slug',
+                    'videos.description',
+                    'videos.thumbnail_url',
+                    'videos.poster_url',
+                    'videos.trailer_url',
+                    'videos.trailer_url_type',
+                    'videos.video_url_input',
+                    'videos.video_upload_type',
+                    'videos.access',
+                    'videos.duration',
+                    'videos.release_date',
+                    'videos.status'
+                )
+                ->orderBy('author_channel_video.created_at', 'desc')
+                ->paginate($perPage);
+
+            $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
+
+            return $videos;
+        });
 
         return ApiResponse::success($videos, 'Channel videos');
     }

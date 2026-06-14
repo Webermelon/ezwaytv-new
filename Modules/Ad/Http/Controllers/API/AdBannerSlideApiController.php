@@ -24,8 +24,11 @@ class AdBannerSlideApiController extends Controller
         if (!empty($placements)) {
             $placementArr = array_map('trim', explode(',', $placements));
             $query->where(function($q) use ($placementArr) {
+                $q->whereJsonContains('placements', 'all');
                 foreach ($placementArr as $p) {
-                    $q->orWhereJsonContains('placements', $p);
+                    if ($p !== '') {
+                        $q->orWhereJsonContains('placements', $p);
+                    }
                 }
             });
         }
@@ -36,7 +39,8 @@ class AdBannerSlideApiController extends Controller
                 'title' => $s->title,
                 'description' => $s->description,
                 'image' => $s->image,
-                'link' => $s->link ?? null,
+                'link' => $s->link_url ?? null,
+                'link_url' => $s->link_url ?? null,
                 'placements' => $s->placements,
             ];
         });
