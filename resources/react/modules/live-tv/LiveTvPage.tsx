@@ -82,6 +82,7 @@ export function LiveTvPage() {
     return (
       <LiveTvDetailPage
         channel={detail ?? matchedChannel}
+        channelNumber={liveTvChannelNumber(detail ?? matchedChannel, allChannels)}
         fallbackKey={channelKey}
         loading={dashboardQuery.isLoading || detailQuery.isLoading}
         suggestions={detail?.suggested_content ?? relatedChannels(allChannels, detail ?? matchedChannel)}
@@ -185,11 +186,13 @@ export function LiveTvPage() {
 
 function LiveTvDetailPage({
   channel,
+  channelNumber,
   fallbackKey,
   loading,
   suggestions,
 }: {
   channel?: MediaItem
+  channelNumber?: number
   fallbackKey: string
   loading: boolean
   suggestions: MediaItem[]
@@ -197,6 +200,7 @@ function LiveTvDetailPage({
   const title = channel?.details?.name ?? channel?.name ?? 'Live channel'
   const image = channel?.poster_tv_image ?? channel?.poster_image ?? channel?.details?.thumbnail_image
   const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
+  const channelBadge = channelNumber ? channelLabel(channelNumber) : null
   const description = channel?.details?.description ?? channel?.description ?? 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
@@ -282,6 +286,7 @@ function LiveTvDetailPage({
               Live TV
             </a>
             <div className="flex flex-wrap gap-2">
+              {channelBadge ? <Badge className="w-fit rounded-sm bg-[#d4a843] text-black">{channelBadge}</Badge> : null}
               <Badge className="w-fit rounded-sm bg-red-600 text-white">
                 <Radio className="mr-1 h-3.5 w-3.5" />
                 Live
@@ -1214,7 +1219,8 @@ function channelName(channel: MediaItem) {
   return String(channel.details?.name ?? channel.name ?? '')
 }
 
-function liveTvChannelNumber(channel: MediaItem, channels: MediaItem[]) {
+function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
+  if (!channel) return undefined
   if (isEzWayTvChannel(channel)) return 1
 
   const channelIndex = channels
