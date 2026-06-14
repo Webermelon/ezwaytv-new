@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\API\NotificationsController;
 use App\Http\Controllers\Backend\API\InvoiceController;
 
 use App\Http\Controllers\Backend\API\SettingController as APISettingController;
+use Modules\Frontend\Http\Controllers\PaymentController;
 use Modules\Frontend\Http\Controllers\PerviewPaymentController;
 use Modules\Frontend\Http\Controllers\QueryOptimizeController;
 
@@ -51,6 +52,7 @@ Route::controller(AuthController::class)->group(function () {
 });
 
 Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('api.check.mobile.exists');
+Route::post('ezway-network/subscription-paid', [PaymentController::class, 'handleGetPaidSubscriptionWebhook'])->name('api.ezway-network.subscription-paid');
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);
 Route::get('get-tranding-data', [DashboardController::class, 'getTrandingData']);

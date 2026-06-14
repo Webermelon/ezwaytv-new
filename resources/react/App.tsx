@@ -8,6 +8,7 @@ import { MusicUploadPage } from '@/modules/music/MusicUploadPage'
 import { OnDemandPage } from '@/modules/ondemand/OnDemandPage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
+import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
 import { VideoDetailPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
@@ -30,8 +31,12 @@ export default function App() {
     page = <VideosPage />
   } else if (pathname === '/search') {
     page = <SearchPage />
+  } else if (pathname === '/login' || pathname === '/register' || pathname === '/forget-password') {
+    page = <HomePage />
   } else if (pathname === '/distribution') {
     page = <DistributionPage />
+  } else if (pathname === '/subscription-plan') {
+    page = <SubscriptionPlanPage />
   } else if (pathname === '/music') {
     page = <MusicPage />
   } else if (pathname.startsWith('/upload-your-videoes')) {
