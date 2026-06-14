@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, Menu, Music2, Play, Radio, Search, Send, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, LogOut, Menu, Music2, Play, Radio, Search, Send, Settings, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,31 @@ import { loadVideosPage } from '@/modules/videos/videosApi'
 
 type AppHeaderProps = {
   active?: 'home' | 'on-demand' | 'livetv' | 'videos' | 'castcrew' | 'search' | 'distribution' | 'stream-music' | 'movies' | 'tvshows' | 'ppv'
+}
+
+type AuthUser = {
+  id: number
+  name?: string | null
+  email?: string | null
+  avatar?: string | null
+  user_type?: string | null
+  roles?: string[]
+  is_admin?: boolean
+  is_subscribe?: boolean
+  current_profile?: {
+    id?: number | null
+    name?: string | null
+    is_child_profile?: boolean
+  } | null
+  dashboard_url?: string | null
+  logout_url?: string | null
+}
+
+declare global {
+  interface Window {
+    ezwayAuth?: AuthUser | null
+    isAuthenticated?: boolean
+  }
 }
 
 const navItems = [
@@ -41,6 +66,7 @@ export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useSpaNavigate()
+  const authUser = getAuthUser()
   const navQuery = useQuery({
     queryKey: ['header-nav'],
     queryFn: loadHeaderNavData,
@@ -114,12 +140,13 @@ export function AppHeader({ active }: AppHeaderProps) {
             </a>
             <Button
               asChild
-              className="hidden h-9 rounded-md bg-primary px-3 text-white hover:bg-primary/90 lg:inline-flex"
+              className={['hidden h-9 rounded-md bg-primary px-3 text-white hover:bg-primary/90 lg:inline-flex', authUser ? 'lg:hidden' : ''].join(' ')}
             >
               <a href="https://ezwaynetwork.com/" target="_blank" rel="noreferrer">
                 Join Our Family
               </a>
             </Button>
+            {authUser ? <ProfileMenu user={authUser} /> : null}
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] md:hidden"
@@ -138,6 +165,7 @@ export function AppHeader({ active }: AppHeaderProps) {
           dropdowns={dropdowns}
           hasMovies={navData.hasMovies}
           hasTvshows={navData.hasTvshows}
+          authUser={authUser}
           navigate={navigate}
           onNavigate={() => setMobileMenuOpen(false)}
           onClose={() => setMobileMenuOpen(false)}
@@ -152,6 +180,7 @@ function MobileMenu({
   dropdowns,
   hasMovies,
   hasTvshows,
+  authUser,
   navigate,
   onNavigate,
   onClose,
@@ -160,6 +189,7 @@ function MobileMenu({
   dropdowns: Record<DropdownKey, MediaItem[]>
   hasMovies: boolean
   hasTvshows: boolean
+  authUser: AuthUser | null
   navigate: (to: string, options?: { replace?: boolean }) => void
   onNavigate: () => void
   onClose: () => void
@@ -302,24 +332,28 @@ function MobileMenu({
             })}
           </div>
 
-          <a
-            href="https://ezwaynetwork.com/"
-            target="_blank"
-            rel="noreferrer"
-            onClick={onNavigate}
-            className="mt-5 grid min-h-20 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 px-4 py-3 shadow-[0_0_28px_rgba(212,168,67,0.10)]"
-          >
-            <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342] shadow-inner shadow-[#d4a843]/20">
-              <UsersRound className="h-5 w-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-black uppercase text-white">Join Our Family</span>
-              <span className="mt-1 block text-xs font-semibold leading-4 text-white/54">Become part of the eZWay community.</span>
-            </span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#edc342] text-black">
-              <ChevronRight className="h-5 w-5" />
-            </span>
-          </a>
+          {authUser ? (
+            <MobileProfileMenu user={authUser} onNavigate={onNavigate} />
+          ) : (
+            <a
+              href="https://ezwaynetwork.com/"
+              target="_blank"
+              rel="noreferrer"
+              onClick={onNavigate}
+              className="mt-5 grid min-h-20 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 px-4 py-3 shadow-[0_0_28px_rgba(212,168,67,0.10)]"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342] shadow-inner shadow-[#d4a843]/20">
+                <UsersRound className="h-5 w-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-black uppercase text-white">Join Our Family</span>
+                <span className="mt-1 block text-xs font-semibold leading-4 text-white/54">Become part of the eZWay community.</span>
+              </span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#edc342] text-black">
+                <ChevronRight className="h-5 w-5" />
+              </span>
+            </a>
+          )}
 
           <div className="mt-5 flex items-center gap-3">
             {[
@@ -345,6 +379,176 @@ function MobileMenu({
       </nav>
     </div>
   )
+}
+
+function ProfileMenu({ user }: { user: AuthUser }) {
+  const menuItems = profileMenuItems(user)
+
+  return (
+    <div className="group relative hidden lg:block">
+      <button
+        type="button"
+        className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] pl-2 pr-3 text-left text-sm font-bold text-white transition hover:bg-white/[0.14]"
+      >
+        <UserAvatar user={user} sizeClassName="h-7 w-7" />
+        <span className="max-w-[120px] truncate">{displayUserName(user)}</span>
+        <ChevronDown className="h-4 w-4 text-white/54 transition group-hover:rotate-180" />
+      </button>
+
+      <div className="invisible absolute right-0 top-full z-50 w-[320px] translate-y-2 pt-3 opacity-0 transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="overflow-hidden rounded-md border border-white/10 bg-[#101010] shadow-2xl shadow-black/45">
+          <div className="border-b border-white/8 bg-white/[0.035] p-4">
+            <div className="flex items-center gap-3">
+              <UserAvatar user={user} sizeClassName="h-12 w-12" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black text-white">{displayUserName(user)}</div>
+                <div className="mt-1 truncate text-xs font-semibold text-white/48">{user.email ?? 'Signed in'}</div>
+                <div className="mt-2 inline-flex rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#edc342]">
+                  {user.is_admin ? 'Admin' : user.is_subscribe ? 'Subscriber' : 'Member'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-1 p-2">
+            {menuItems.map(({ label, href, icon: Icon }) => (
+              <a
+                key={label}
+                href={href}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-bold text-white/76 transition hover:bg-white/[0.07] hover:text-white"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <Icon className="h-4 w-4 shrink-0 text-[#d4a843]" />
+                  <span className="truncate">{label}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-white/28" />
+              </a>
+            ))}
+            <button
+              type="button"
+              onClick={() => logoutUser(user)}
+              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm font-bold text-red-100 transition hover:bg-red-500/12"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <LogOut className="h-4 w-4 shrink-0 text-red-300" />
+                <span className="truncate">Logout</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MobileProfileMenu({ user, onNavigate }: { user: AuthUser; onNavigate: () => void }) {
+  const menuItems = profileMenuItems(user)
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 shadow-[0_0_28px_rgba(212,168,67,0.10)]">
+      <div className="grid min-h-20 grid-cols-[48px_minmax(0,1fr)] items-center gap-3 px-4 py-3">
+        <UserAvatar user={user} sizeClassName="h-11 w-11" />
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-black uppercase text-white">{displayUserName(user)}</span>
+          <span className="mt-1 block truncate text-xs font-semibold leading-4 text-white/54">{user.email ?? (user.is_admin ? 'Admin account' : 'Member account')}</span>
+        </span>
+      </div>
+      <div className="grid border-t border-white/8 p-2">
+        {menuItems.map(({ label, href, icon: Icon }) => (
+          <a
+            key={label}
+            href={href}
+            onClick={onNavigate}
+            className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-black text-white/78 transition hover:bg-white/[0.07] hover:text-white"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <Icon className="h-4 w-4 shrink-0 text-[#edc342]" />
+              <span className="truncate">{label}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-white/32" />
+          </a>
+        ))}
+        <button
+          type="button"
+          onClick={() => logoutUser(user)}
+          className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-black text-red-100 transition hover:bg-red-500/12"
+        >
+          <LogOut className="h-4 w-4 shrink-0 text-red-300" />
+          Logout
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function UserAvatar({ user, sizeClassName }: { user: AuthUser; sizeClassName: string }) {
+  const initials = displayUserName(user)
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
+  return (
+    <span className={`${sizeClassName} flex shrink-0 overflow-hidden rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342]`}>
+      {user.avatar ? (
+        <img src={user.avatar} alt="" className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center text-xs font-black">{initials || 'EZ'}</span>
+      )}
+    </span>
+  )
+}
+
+function profileMenuItems(user: AuthUser) {
+  if (user.is_admin) {
+    return [
+      { label: 'Admin Dashboard', href: user.dashboard_url || '/app/dashboard', icon: HomeIcon },
+      { label: 'My Profile', href: '/app/my-profile', icon: Settings },
+      { label: 'View Site', href: '/', icon: Tv },
+    ]
+  }
+
+  return [
+    { label: 'My Dashboard', href: user.dashboard_url || '/account-setting', icon: HomeIcon },
+    { label: 'Account Settings', href: '/account-setting', icon: Settings },
+    { label: 'Watchlist', href: '/watch-list', icon: Film },
+    { label: 'Subscription', href: '/subscription-plan', icon: Radio },
+    { label: 'Payment History', href: '/payment-history', icon: Share2 },
+    { label: 'Manage Profiles', href: '/manage-profile', icon: UsersRound },
+  ]
+}
+
+function displayUserName(user: AuthUser) {
+  return user.current_profile?.name || user.name || user.email || 'My Account'
+}
+
+function getAuthUser() {
+  if (typeof window === 'undefined') return null
+  return window.ezwayAuth && window.isAuthenticated !== false ? window.ezwayAuth : null
+}
+
+function logoutUser(user: AuthUser) {
+  if (user.is_admin) {
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = user.logout_url || '/admin/logout'
+
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+    if (csrfToken) {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = '_token'
+      input.value = csrfToken
+      form.appendChild(input)
+    }
+
+    document.body.appendChild(form)
+    form.submit()
+    return
+  }
+
+  window.location.href = user.logout_url || '/logout'
 }
 
 function NavDropdown({

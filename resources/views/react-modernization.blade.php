@@ -44,6 +44,52 @@
     <meta name="twitter:title" content="{{ $title }}">
     <meta name="twitter:description" content="{{ $description }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
+    @php
+        $authUser = auth()->user();
+        $authProfile = null;
+        $authAvatar = null;
+        $authRoles = [];
+        $authIsAdmin = false;
+        $authPayload = null;
+
+        if ($authUser) {
+            $authRoles = method_exists($authUser, 'getRoleNames') ? $authUser->getRoleNames()->values()->all() : [];
+            $authIsAdmin = (method_exists($authUser, 'hasRole') && $authUser->hasRole(['admin', 'super-admin', 'demo_admin']))
+                || in_array($authUser->user_type, ['admin', 'super-admin', 'super_admin', 'demo_admin'], true);
+            $authAvatar = $authUser->file_url
+                ? setBaseUrlWithFileName($authUser->file_url, 'image', 'users')
+                : asset('dummy-images/avatars/icon1.png');
+
+            if (function_exists('getCurrentProfileSession')) {
+                $authProfile = getCurrentProfileSession();
+                if ($authProfile && !empty($authProfile->avatar)) {
+                    $authAvatar = setBaseUrlWithFileName($authProfile->avatar);
+                }
+            }
+
+            $authPayload = [
+                'id' => $authUser->id,
+                'name' => $authUser->full_name ?? $authUser->name ?? trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? '')),
+                'email' => $authUser->email,
+                'avatar' => $authAvatar,
+                'user_type' => $authUser->user_type,
+                'roles' => $authRoles,
+                'is_admin' => $authIsAdmin,
+                'is_subscribe' => (bool) $authUser->is_subscribe,
+                'current_profile' => $authProfile ? [
+                    'id' => $authProfile->id ?? null,
+                    'name' => $authProfile->name ?? null,
+                    'is_child_profile' => (bool) ($authProfile->is_child_profile ?? false),
+                ] : null,
+                'dashboard_url' => $authIsAdmin ? url('/app/dashboard') : url('/account-setting'),
+                'logout_url' => $authIsAdmin ? url('/admin/logout') : url('/logout'),
+            ];
+        }
+    @endphp
+    <script>
+        window.isAuthenticated = {{ $authUser ? 'true' : 'false' }};
+        window.ezwayAuth = @json($authPayload);
+    </script>
     <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     @vite('resources/react/main.tsx')
 </head>
