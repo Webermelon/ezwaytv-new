@@ -1,4 +1,13 @@
 <!-- Horizontal Menu Start -->
+@php
+  $showHomeMenu = isFrontendMenuVisible('show_home_menu');
+  $showAllContentMenu = isFrontendMenuVisible('show_all_content_menu');
+  $showLiveTvMenu = isFrontendMenuVisible('show_livetv_menu');
+  $showVideoMenu = isFrontendMenuVisible('show_video_menu');
+  $showOnDemandMenu = isFrontendMenuVisible('show_ondemand_menu');
+  $showDistributionMenu = isFrontendMenuVisible('show_distribution_menu');
+  $showStreamMusicMenu = isFrontendMenuVisible('show_stream_music_menu');
+@endphp
 <nav id="navbar_main" class="offcanvas mobile-offcanvas nav navbar navbar-expand-xl hover-nav horizontal-nav py-xl-0">
   <div class="container-fluid p-lg-0">
     <div class="offcanvas-header">
@@ -10,11 +19,14 @@
       <button type="button" class="btn-close p-0" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <ul class="navbar-nav iq-nav-menu  list-unstyled" id="header-menu">
+      @if($showHomeMenu)
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('user.login') ? 'active text-primary' : '' }}"  href="{{route('user.login')}}">
           <span class="item-name">{{__('frontend.home')}}</span>
         </a>
       </li>
+      @endif
+      @if($showAllContentMenu)
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs(['movies', 'movie-details', 'tv-shows', 'tvshow-details', 'episode-details', 'videos', 'video-details', 'video-detail']) ? 'active text-primary' : '' }}" href="#">
           <span class="item-name">{{__('frontend.all_content')}}</span>
@@ -43,6 +55,7 @@
           @endif
         </ul>
       </li>
+      @endif
       <!-- @if(isenablemodule('movie'))
       <li class="nav-item">
         <a class="nav-link"  href="{{ route('movies') }}">
@@ -70,7 +83,7 @@
         </a>
       </li> -->
 
-      @if(isenablemodule('livetv'))
+      @if($showLiveTvMenu && isenablemodule('livetv'))
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('topChannelList') || request()->routeIs('livetv') ? 'active text-primary' : '' }}" href="{{ route('topChannelList') }}">
           <span class="item-name">{{__('frontend.livetv')}}</span>
@@ -97,7 +110,7 @@
       </li>
       
       @endif
-      @if(isenablemodule('video'))
+      @if($showVideoMenu && isenablemodule('video'))
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'active text-primary' : '' }}" href="#">
           <span class="item-name">{{__('frontend.video')}}</span>
@@ -124,6 +137,7 @@
         </ul>
       </li>
       @endif
+      @if($showOnDemandMenu)
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs(['author_channels.index', 'author_channels.show']) ? 'active text-primary' : '' }}" href="{{ route('author_channels.index') }}">
           <span class="item-name">On Demand</span>
@@ -150,6 +164,7 @@
           @endforeach
         </ul>
       </li>
+      @endif
       @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
       @if($navCategories->count() && isenablemodule('show_categories_menu'))
       <li class="nav-item">
@@ -169,16 +184,20 @@
       </li>
       @endif
       {{-- eZWay PPV is hidden temporarily. --}}
+      @if($showDistributionMenu)
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('distribution') ? 'active text-primary' : '' }}" href="{{ route('distribution') }}">
           <span class="item-name">Distribution</span>
         </a>
       </li>
+      @endif
+      @if($showStreamMusicMenu)
       <li class="nav-item">
         <a class="nav-link {{ request()->routeIs('music') || request()->routeIs('stream-your-music') || request()->routeIs('upload-your-videoes') ? 'active text-primary' : '' }}" href="{{ route('music') }}">
           <span class="item-name">Stream Your Music</span>
         </a>
       </li>
+      @endif
     </ul>
   </div>
   <!-- container-fluid.// -->

@@ -85,10 +85,25 @@
                 'logout_url' => $authIsAdmin ? url('/admin/logout') : url('/logout'),
             ];
         }
+
+        $visibleMenuKeys = collect([
+            'show_home_menu' => 'home',
+            'show_livetv_menu' => 'livetv',
+            'show_video_menu' => 'videos',
+            'show_ondemand_menu' => 'on-demand',
+            'show_distribution_menu' => 'distribution',
+            'show_stream_music_menu' => 'stream-music',
+        ])->filter(fn ($menuKey, $settingKey) => isFrontendMenuVisible($settingKey))->values()->all();
+
+        if (isFrontendMenuVisible('show_all_content_menu')) {
+            $visibleMenuKeys[] = 'movies';
+            $visibleMenuKeys[] = 'tvshows';
+        }
     @endphp
     <script>
         window.isAuthenticated = {{ $authUser ? 'true' : 'false' }};
         window.ezwayAuth = @json($authPayload);
+        window.ezwayVisibleMenuKeys = @json($visibleMenuKeys);
     </script>
     <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     @vite('resources/react/main.tsx')

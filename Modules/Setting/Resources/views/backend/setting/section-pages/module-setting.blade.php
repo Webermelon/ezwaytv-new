@@ -122,6 +122,44 @@
             </div>
         </div>
 
+        {{-- Public Menu Visibility --}}
+        <div class="form-group border-bottom pb-3">
+            <h5 class="mb-3">Public Menu Visibility</h5>
+            @php
+                $publicMenuItems = [
+                    'show_home_menu' => 'Home',
+                    'show_all_content_menu' => 'All Content',
+                    'show_livetv_menu' => 'Live TV',
+                    'show_video_menu' => 'Videos',
+                    'show_ondemand_menu' => 'On Demand',
+                    'show_distribution_menu' => 'Distribution',
+                    'show_stream_music_menu' => 'Stream Your Music',
+                ];
+            @endphp
+            <div class="row g-3">
+                @foreach($publicMenuItems as $menuKey => $menuLabel)
+                    @php $menuStatus = old($menuKey, $settings[$menuKey] ?? 1); @endphp
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label m-0" for="{{ $menuKey }}">Show {{ $menuLabel }}</label>
+                            @if($isDemoAdmin)
+                                <span class="badge {{ $menuStatus == 1 ? 'bg-success-subtle' : 'bg-danger-subtle' }}">
+                                    {{ $menuStatus == 1 ? __('messages.active') : __('messages.inactive') }}
+                                </span>
+                                <input type="hidden" value="{{ $menuStatus }}" name="{{ $menuKey }}">
+                            @else
+                                <input type="hidden" value="0" name="{{ $menuKey }}">
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" value="1" name="{{ $menuKey }}" id="{{ $menuKey }}"
+                                        type="checkbox" {{ $menuStatus == 1 ? 'checked' : '' }} />
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- Show Subscribe Button in Menu --}}
         <div class="form-group border-bottom pb-3">
             <div class="d-flex justify-content-between align-items-center">
