@@ -8,6 +8,13 @@
         'pay-per-view.paymentform',
         'pay-per-view',
     ];
+    $showHomeMenu = isFrontendMenuVisible('show_home_menu');
+    $showAllContentMenu = isFrontendMenuVisible('show_all_content_menu');
+    $showLiveTvMenu = isFrontendMenuVisible('show_livetv_menu');
+    $showVideoMenu = isFrontendMenuVisible('show_video_menu');
+    $showOnDemandMenu = isFrontendMenuVisible('show_ondemand_menu');
+    $showDistributionMenu = isFrontendMenuVisible('show_distribution_menu');
+    $showStreamMusicMenu = isFrontendMenuVisible('show_stream_music_menu');
 @endphp
 <header
     class="{{ $currentRoute === 'user.login' && !in_array($currentRoute, $noAbsoluteRoutes) ? 'header-absolute' : '' }}">
@@ -49,26 +56,28 @@
                             
                             {{-- Navigation Menu --}}
                             <ul class="list-unstyled mb-0 border-top border-secondary pt-3">
+                                @if($showHomeMenu)
                                 <li class="py-2 px-2">
                                     <a href="{{route('user.login')}}" class="text-decoration-none d-block {{ request()->routeIs('user.login') ? 'text-primary' : 'text-white' }}">
                                         {{__('frontend.home')}}
                                     </a>
                                 </li>
-                                @if(isenablemodule('movie'))
+                                @endif
+                                @if($showAllContentMenu && isenablemodule('movie'))
                                 <li class="py-2 px-2">
                                     <a href="{{ route('movies') }}" class="text-decoration-none d-block {{ request()->routeIs(['movies', 'movie-details']) ? 'text-primary' : 'text-white' }}">
                                         {{__('frontend.movies')}}
                                     </a>
                                 </li>
                                 @endif
-                                @if(isenablemodule('tvshow'))
+                                @if($showAllContentMenu && isenablemodule('tvshow'))
                                 <li class="py-2 px-2">
                                     <a href="{{ route('tv-shows') }}" class="text-decoration-none d-block {{ request()->routeIs(['tv-shows', 'tvshow-details', 'episode-details']) ? 'text-primary' : 'text-white' }}">
                                         {{__('frontend.tvshows')}}
                                     </a>
                                 </li>
                                 @endif
-                                @if(isenablemodule('video'))
+                                @if($showVideoMenu && isenablemodule('video'))
                                 <li class="py-2 px-2">
                                     <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs(['videos', 'video-details', 'video-detail']) ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#videosSubmenu" role="button" aria-expanded="false">
                                         <span>{{__('frontend.video')}}</span>
@@ -106,6 +115,7 @@
                                     </div>
                                 </li>
                                 @endif
+                                @if($showOnDemandMenu)
                                 <li class="py-2 px-2">
                                     <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs(['author_channels.index','author_channels.show']) ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#authorChannelsSubmenu" role="button" aria-expanded="false">
                                         <span>On Demand</span>
@@ -136,7 +146,8 @@
                                         </div>
                                     </div>
                                 </li>
-                                @if(isenablemodule('livetv'))
+                                @endif
+                                @if($showLiveTvMenu && isenablemodule('livetv'))
                                 <li class="py-2 px-2">
                                     <a class="text-white d-flex align-items-center justify-content-between {{ request()->routeIs('livetv') ? 'text-primary' : '' }}" data-bs-toggle="collapse" href="#liveTvChannelsSubmenu" role="button" aria-expanded="false">
                                         <span>{{__('frontend.livetv')}}</span>
@@ -173,16 +184,20 @@
                                     </div>
                                 </li>
                                 @endif
+                                @if($showDistributionMenu)
                                 <li class="py-2 px-2">
                                     <a href="{{ route('distribution') }}" class="text-decoration-none d-block {{ request()->routeIs('distribution') ? 'text-primary' : 'text-white' }}">
                                         Distribution
                                     </a>
                                 </li>
+                                @endif
+                                @if($showStreamMusicMenu)
                                 <li class="py-2 px-2">
                                     <a href="{{ route('music') }}" class="text-decoration-none d-block {{ request()->routeIs('music') || request()->routeIs('stream-your-music') || request()->routeIs('upload-your-videoes') ? 'text-primary' : 'text-white' }}">
                                         Stream Your Music
                                     </a>
                                 </li>
+                                @endif
                                 @php $navCategories = \Modules\Categories\Models\Category::where('status',1)->orderBy('name')->get(); @endphp
                                 @if($navCategories->count() && isenablemodule('show_categories_menu'))
                                     <li class="py-2 px-2">

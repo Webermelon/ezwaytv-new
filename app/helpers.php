@@ -992,6 +992,22 @@ function isenablemodule($key)
     return $setting !== null ? $setting : 0;
 }
 
+function isFrontendMenuVisible($key)
+{
+    try {
+        $setting = Setting::where('name', $key)->value('val');
+    } catch (\Throwable $e) {
+        Log::warning('Unable to read frontend menu setting.', [
+            'key' => $key,
+            'error' => $e->getMessage(),
+        ]);
+
+        return true;
+    }
+
+    return $setting === null ? true : (int) $setting === 1;
+}
+
 function gettmdbapiKey()
 {
     $tbdb_key = Setting::where('name', 'tmdb_api_key')->value('val');

@@ -74,7 +74,26 @@ class SettingsController extends Controller
      */
     public function moduleSetting()
     {
-        $fields = ['movie', 'tvshow', 'livetv', 'video', 'show_categories_menu', 'show_subscribe_button','show_login_button', 'demo_login', 'enable_tmdb_api', 'tmdb_api_key', 'show_login_button'];
+        $fields = [
+            'movie',
+            'tvshow',
+            'livetv',
+            'video',
+            'show_categories_menu',
+            'show_home_menu',
+            'show_all_content_menu',
+            'show_livetv_menu',
+            'show_video_menu',
+            'show_ondemand_menu',
+            'show_distribution_menu',
+            'show_stream_music_menu',
+            'show_subscribe_button',
+            'show_login_button',
+            'demo_login',
+            'enable_tmdb_api',
+            'tmdb_api_key',
+            'show_login_button',
+        ];
         $settings = $this->fieldsData($fields);
 
         return view('setting::backend.setting.section-pages.module-setting', compact('settings'));
@@ -693,6 +712,10 @@ class SettingsController extends Controller
         // If business/general settings are updated, clear cached footer data
         if ($tab === 'business') {
             Cache::forget('footer_data');
+        }
+
+        if ($tab === 'module') {
+            Cache::forget('api:v3:navigation-menu:v4');
         }
 
         if ($tab === 'storage') {

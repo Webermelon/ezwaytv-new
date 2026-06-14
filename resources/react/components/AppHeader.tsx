@@ -31,10 +31,24 @@ type AuthUser = {
   logout_url?: string | null
 }
 
+type HeaderNavData = {
+  videos: MediaItem[]
+  liveTv: MediaItem[]
+  ondemand: MediaItem[]
+  hasMovies: boolean
+  hasTvshows: boolean
+  visibleMenuKeys: string[] | null
+}
+
+type NavigationMenuResponse = {
+  burger_menu?: Array<{ key: string }>
+}
+
 declare global {
   interface Window {
     ezwayAuth?: AuthUser | null
     isAuthenticated?: boolean
+    ezwayVisibleMenuKeys?: string[]
   }
 }
 
@@ -72,7 +86,15 @@ export function AppHeader({ active }: AppHeaderProps) {
     queryFn: loadHeaderNavData,
     staleTime: 5 * 60_000,
   })
-  const navData = navQuery.data ?? { videos: [], liveTv: [], ondemand: [], hasMovies: false, hasTvshows: false }
+  const navData: HeaderNavData = navQuery.data ?? {
+    videos: [],
+    liveTv: [],
+    ondemand: [],
+    hasMovies: false,
+    hasTvshows: false,
+    visibleMenuKeys: getInitialVisibleMenuKeys(),
+  }
+  const visibleNavItems = navItems.filter((item) => isMenuVisible(navData.visibleMenuKeys, item.key))
 
   const dropdowns = useMemo(() => ({
     videos: navData.videos,
@@ -98,7 +120,7 @@ export function AppHeader({ active }: AppHeaderProps) {
           <div className="flex min-w-0 items-center gap-6">
             <BrandLogo imageClassName="max-h-11 max-w-[190px]" textClassName="text-2xl" placeholderClassName="h-10 w-[170px]" />
             <nav className="hidden items-center gap-1 text-sm font-semibold text-white/62 md:flex">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const items = item.dropdown ? dropdowns[item.dropdown] : []
 
                 return (
@@ -165,6 +187,7 @@ export function AppHeader({ active }: AppHeaderProps) {
           dropdowns={dropdowns}
           hasMovies={navData.hasMovies}
           hasTvshows={navData.hasTvshows}
+          visibleMenuKeys={navData.visibleMenuKeys}
           authUser={authUser}
           navigate={navigate}
           onNavigate={() => setMobileMenuOpen(false)}
@@ -180,6 +203,7 @@ function MobileMenu({
   dropdowns,
   hasMovies,
   hasTvshows,
+  visibleMenuKeys,
   authUser,
   navigate,
   onNavigate,
@@ -189,6 +213,7 @@ function MobileMenu({
   dropdowns: Record<DropdownKey, MediaItem[]>
   hasMovies: boolean
   hasTvshows: boolean
+  visibleMenuKeys: string[] | null
   authUser: AuthUser | null
   navigate: (to: string, options?: { replace?: boolean }) => void
   onNavigate: () => void
@@ -196,6 +221,7 @@ function MobileMenu({
 }) {
   const [openSection, setOpenSection] = useState<DropdownKey | null>(null)
   const visibleMobileNavItems = mobileNavItems.filter((item) => {
+    if (!isMenuVisible(visibleMenuKeys, item.key)) return false
     if (item.key === 'movies') return hasMovies
     if (item.key === 'tvshows') return hasTvshows
 
@@ -596,13 +622,15 @@ function NavDropdown({
 }
 
 async function loadHeaderNavData() {
-  const [videos, liveTv, ondemand, dashboard] = await Promise.allSettled([
+  const [videos, liveTv, ondemand, dashboard, navigationMenu] = await Promise.allSettled([
     loadVideosPage('', 1, 14),
     api.get<ApiEnvelope<LiveTvDashboard>>('/api/v3/livetv-dashboard'),
     api.get<ApiEnvelope<PaginatedData<MediaItem>>>('/api/v3/ondemand?per_page=14'),
     api.get<ApiEnvelope<DashboardData>>('/api/v3/dashboard-detail'),
+    api.get<ApiEnvelope<NavigationMenuResponse>>('/api/v3/navigation-menu'),
   ])
   const dashboardData = dashboard.status === 'fulfilled' ? dashboard.value.data : undefined
+  const navigationMenuData = navigationMenu.status === 'fulfilled' ? navigationMenu.value.data : undefined
   const movieCount = [
     dashboardData?.latest_movie?.data,
     dashboardData?.popular_movie?.data,
@@ -618,7 +646,16 @@ async function loadHeaderNavData() {
     ondemand: ondemand.status === 'fulfilled' ? ondemand.value.data?.data ?? [] : [],
     hasMovies: movieCount > 0,
     hasTvshows: tvshowCount > 0,
+    visibleMenuKeys: navigationMenuData?.burger_menu?.map((item) => item.key) ?? null,
   }
+}
+
+function isMenuVisible(visibleMenuKeys: string[] | null, key: string) {
+  return visibleMenuKeys === null || visibleMenuKeys.includes(key)
+}
+
+function getInitialVisibleMenuKeys() {
+  return Array.isArray(window.ezwayVisibleMenuKeys) ? window.ezwayVisibleMenuKeys : null
 }
 
 function navItemHref(item: MediaItem, kind: 'videos' | 'livetv' | 'ondemand') {

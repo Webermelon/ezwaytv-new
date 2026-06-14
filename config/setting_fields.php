@@ -328,6 +328,83 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'show_home_menu',
+                'label' => 'Show Home in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Home item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_all_content_menu',
+                'label' => 'Show All Content in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the All Content dropdown in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_livetv_menu',
+                'label' => 'Show Live TV in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Live TV item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_video_menu',
+                'label' => 'Show Videos in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Videos item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_ondemand_menu',
+                'label' => 'Show On Demand in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the On Demand item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_distribution_menu',
+                'label' => 'Show Distribution in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Distribution item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
+                'name' => 'show_stream_music_menu',
+                'label' => 'Show Stream Your Music in Menu',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Show the Stream Your Music item in the frontend navigation menu.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'show_subscribe_button',
                 'label' => 'Show Subscribe Button in Menu',
                 'rules' => 'boolean',

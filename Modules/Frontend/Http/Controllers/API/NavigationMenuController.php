@@ -15,6 +15,14 @@ class NavigationMenuController extends Controller
     public function show()
     {
         $data = Cache::remember('api:v3:navigation-menu:v4', 300, function () {
+            $showHomeMenu = isFrontendMenuVisible('show_home_menu');
+            $showAllContentMenu = isFrontendMenuVisible('show_all_content_menu');
+            $showLiveTvMenu = isFrontendMenuVisible('show_livetv_menu');
+            $showVideoMenu = isFrontendMenuVisible('show_video_menu');
+            $showOnDemandMenu = isFrontendMenuVisible('show_ondemand_menu');
+            $showDistributionMenu = isFrontendMenuVisible('show_distribution_menu');
+            $showStreamMusicMenu = isFrontendMenuVisible('show_stream_music_menu');
+
             $videos = Video::query()
                 ->where('status', 1)
                 ->orderByDesc('updated_at')
@@ -51,24 +59,28 @@ class NavigationMenuController extends Controller
                 ->whereIn('type', ['tv_show', 'tvshow'])
                 ->exists();
 
+            $bottomNav = [
+                $this->menuItem('home', 'Home', '/', 'home', ['visible' => $showHomeMenu]),
+                $this->menuItem('search', 'Search', '/search', 'search'),
+                $this->menuItem('on-demand', 'On Demand', '/on-demand', 'film', ['visible' => $showOnDemandMenu]),
+                $this->menuItem('livetv', 'Live TV', '/livetv', 'tv', ['visible' => $showLiveTvMenu]),
+                $this->menuItem('distribution', 'Distribution', '/distribution', 'globe', ['visible' => $showDistributionMenu]),
+            ];
+
+            $burgerMenu = [
+                $this->menuItem('home', 'Home', '/', 'home', ['visible' => $showHomeMenu]),
+                $this->menuItem('movies', 'Movies', '/movies', 'film', ['visible' => $showAllContentMenu && $hasMovies]),
+                $this->menuItem('tvshows', 'TV Shows', '/tv-shows', 'tv', ['visible' => $showAllContentMenu && $hasTvShows]),
+                $this->menuItem('videos', 'Videos', '/videos', 'video', ['dropdown' => 'videos', 'visible' => $showVideoMenu]),
+                $this->menuItem('on-demand', 'On Demand', '/on-demand', 'film', ['dropdown' => 'ondemand', 'visible' => $showOnDemandMenu]),
+                $this->menuItem('livetv', 'Live TV', '/livetv', 'radio', ['dropdown' => 'livetv', 'visible' => $showLiveTvMenu]),
+                $this->menuItem('distribution', 'Distribution', '/distribution', 'share', ['visible' => $showDistributionMenu]),
+                $this->menuItem('stream-music', 'Stream Your Music', '/music', 'music', ['visible' => $showStreamMusicMenu]),
+            ];
+
             return [
-                'bottom_nav' => [
-                    $this->menuItem('home', 'Home', '/', 'home'),
-                    $this->menuItem('search', 'Search', '/search', 'search'),
-                    $this->menuItem('on-demand', 'On Demand', '/on-demand', 'film'),
-                    $this->menuItem('livetv', 'Live TV', '/livetv', 'tv'),
-                    $this->menuItem('distribution', 'Distribution', '/distribution', 'globe'),
-                ],
-                'burger_menu' => [
-                    $this->menuItem('home', 'Home', '/', 'home'),
-                    $this->menuItem('movies', 'Movies', '/movies', 'film', ['visible' => $hasMovies]),
-                    $this->menuItem('tvshows', 'TV Shows', '/tv-shows', 'tv', ['visible' => $hasTvShows]),
-                    $this->menuItem('videos', 'Videos', '/videos', 'video', ['dropdown' => 'videos', 'visible' => true]),
-                    $this->menuItem('on-demand', 'On Demand', '/on-demand', 'film', ['dropdown' => 'ondemand', 'visible' => true]),
-                    $this->menuItem('livetv', 'Live TV', '/livetv', 'radio', ['dropdown' => 'livetv', 'visible' => true]),
-                    $this->menuItem('distribution', 'Distribution', '/distribution', 'share', ['visible' => true]),
-                    $this->menuItem('stream-music', 'Stream Your Music', '/music', 'music', ['visible' => true]),
-                ],
+                'bottom_nav' => array_values(array_filter($bottomNav, fn (array $item) => ($item['visible'] ?? true) !== false)),
+                'burger_menu' => array_values(array_filter($burgerMenu, fn (array $item) => ($item['visible'] ?? true) !== false)),
                 'burger_toggle' => [
                     'default_open' => false,
                     'open_icon' => 'menu',

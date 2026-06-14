@@ -9,8 +9,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="baseUrl" content="{{ url('/') }}" />
+    @php
+        $visibleMenuKeys = collect([
+            'show_home_menu' => 'home',
+            'show_livetv_menu' => 'livetv',
+            'show_video_menu' => 'videos',
+            'show_ondemand_menu' => 'on-demand',
+            'show_distribution_menu' => 'distribution',
+            'show_stream_music_menu' => 'stream-music',
+        ])->filter(fn ($menuKey, $settingKey) => isFrontendMenuVisible($settingKey))->values()->all();
+
+        if (isFrontendMenuVisible('show_all_content_menu')) {
+            $visibleMenuKeys[] = 'movies';
+            $visibleMenuKeys[] = 'tvshows';
+        }
+    @endphp
     <script>
         window.isAuthenticated = {{ auth()->check() ? 'true' : 'false' }};
+        window.ezwayVisibleMenuKeys = @json($visibleMenuKeys);
     </script>
     @php
         $faviconUrl = GetSettingValue('favicon')
