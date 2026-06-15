@@ -66,6 +66,7 @@ export function VideosPage() {
   }, [access, query, videos])
 
   const featured = filteredVideos[0] ?? videos[0]
+  const featuredDescription = featured ? stripHtml(String(featured.short_desc || featured.description || '')) : ''
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
@@ -81,9 +82,11 @@ export function VideosPage() {
           <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">
             {featured?.name ?? 'Videos'}
           </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-            React browsing for the existing video library. Playback still opens the current Laravel video detail page, preserving VAST, custom ads, stats, and access logic.
-          </p>
+          {featuredDescription ? (
+            <p className="mt-5 line-clamp-3 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
+              {featuredDescription}
+            </p>
+          ) : null}
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
               <a href={videoHref(featured)}>

@@ -715,7 +715,7 @@ class SettingsController extends Controller
         }
 
         if ($tab === 'module') {
-            Cache::forget('api:v3:navigation-menu:v4');
+            Cache::forget('api:v3:navigation-menu:v5');
         }
 
         if ($tab === 'storage') {

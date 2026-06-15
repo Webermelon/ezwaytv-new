@@ -13,6 +13,18 @@ class LiveTvChannel extends BaseModel
 
     use SoftDeletes;
 
+    private const FEATURED_CHANNEL_SLUG_GROUPS = [
+        ['ezway-tv'],
+        ['music-channel', 'ezway-music-channel', 'ezway-music'],
+        ['xo-tv'],
+        ['xpn-tv'],
+        ['bill-duke-tv'],
+        ['kate-linder-tv'],
+        ['movie-channel'],
+        ['podstream-tv'],
+        ['the-womens-channel'],
+    ];
+
     /**
      * The attributes that are mass assignable.
      */
@@ -100,6 +112,26 @@ class LiveTvChannel extends BaseModel
         return $this->hasMany(ChannelSchedule::class, 'live_tv_channel_id');
     }
 
+    public function scopeFeaturedFirst($query, string $table = 'live_tv_channel')
+    {
+        $caseParts = [];
+        $bindings = [];
+        $slugExpression = "LOWER(TRIM(COALESCE(NULLIF({$table}.slug, ''), REPLACE(REPLACE({$table}.name, '''', ''), ' ', '-'))))";
+
+        foreach (self::FEATURED_CHANNEL_SLUG_GROUPS as $index => $slugs) {
+            $placeholders = implode(',', array_fill(0, count($slugs), '?'));
+            $caseParts[] = "WHEN {$slugExpression} IN ({$placeholders}) THEN {$index}";
+            array_push($bindings, ...$slugs);
+        }
+
+        $featuredOrder = count(self::FEATURED_CHANNEL_SLUG_GROUPS);
+
+        return $query->orderByRaw(
+            'CASE ' . implode(' ', $caseParts) . " ELSE {$featuredOrder} END",
+            $bindings
+        );
+    }
+
     public static function get_top_channel($channelIdsArray)
     {
         $channelIdsArray = is_array($channelIdsArray) ? $channelIdsArray : (array) $channelIdsArray;
@@ -120,6 +152,7 @@ class LiveTvChannel extends BaseModel
         ->whereIn('id', $channelIdsArray)
         ->where('status', 1)
         ->where('deleted_at', null)
+        ->featuredFirst()
         ->get();
 
         return $items->map(function ($item) {
@@ -146,6 +179,7 @@ class LiveTvChannel extends BaseModel
         ])
         ->where('status',1)
         ->where('deleted_at',null)
+        ->featuredFirst()
         ->orderBy('updated_at', 'desc')
         ->take(6)
         ->get();
@@ -174,6 +208,7 @@ class LiveTvChannel extends BaseModel
         ])
         ->where('category_id',$category)
         ->where('status',1)
+        ->featuredFirst()
         ->orderBy('updated_at', 'desc')
         ->get();
 

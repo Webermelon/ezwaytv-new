@@ -872,7 +872,7 @@ class FrontendController extends Controller
                 });
             }
 
-            $liveTVList = $liveTVList->orderBy('updated_at', 'desc')->get();
+            $liveTVList = $liveTVList->featuredFirst()->orderBy('updated_at', 'desc')->get();
             $liveTVData = LiveTvChannelResourceV3::collection($liveTVList);
         }
 
@@ -1748,7 +1748,7 @@ public function getPaymentDetails(Request $request)
                     ->where('status', 1)
                     ->whereNull('deleted_at');
 
-                $channelQuery->orderByRaw('FIELD(id, ' . implode(',', $ids) . ')');
+                $channelQuery->featuredFirst()->orderByRaw('FIELD(id, ' . implode(',', $ids) . ')');
                 $channels = $channelQuery->paginate($perPage);
                 $transformedChannels = LiveTvChannelResourceV3::collection($channels->items())->toArray($request);
 
@@ -2112,4 +2112,3 @@ public function getPaymentDetails(Request $request)
     }
 
 }
-

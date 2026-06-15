@@ -4,7 +4,7 @@ namespace Modules\Frontend\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
-use Illuminate\Support\Facades\DB;
+use App\Models\AuthorChannel;
 use Modules\LiveTV\Models\LiveTvChannel;
 
 class FooterController extends Controller
@@ -31,7 +31,7 @@ class FooterController extends Controller
             'copyright_text' => $copyrightText,
             'premium_shows' => $this->mapContentItems($footerData['premiumShows'] ?? []),
             'top_movies' => $this->mapContentItems($footerData['topMovies'] ?? []),
-            'top_channels' => $this->mapChannels($this->topLiveTvChannels()),
+            'top_channels' => $this->mapOnDemandChannels($this->topOnDemandChannels()),
             'live_tv_channels' => $this->mapChannels($this->recentLiveTvChannels()),
             'pages' => $this->mapPages($footerData['pages'] ?? []),
         ], 'Footer data retrieved', 200);
@@ -64,19 +64,14 @@ class FooterController extends Controller
         ])->filter(fn ($page) => !empty($page['name']) && !empty($page['slug']))->values()->all();
     }
 
-    private function topLiveTvChannels()
+    private function topOnDemandChannels()
     {
-        return LiveTvChannel::query()
-            ->leftJoin('stat_page_views', function ($join) {
-                $join->on('live_tv_channel.id', '=', 'stat_page_views.content_id')
-                    ->where('stat_page_views.content_type', 'livetv');
-            })
-            ->select('live_tv_channel.*', DB::raw('COUNT(stat_page_views.id) as total_views'))
-            ->where('live_tv_channel.status', 1)
-            ->whereNull('live_tv_channel.deleted_at')
-            ->groupBy('live_tv_channel.id')
-            ->orderByDesc('total_views')
-            ->orderByDesc('live_tv_channel.updated_at')
+        return AuthorChannel::query()
+            ->withCount(['videos' => fn ($query) => $query->where('status', 1)])
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->orderByDesc('videos_count')
+            ->orderByDesc('updated_at')
             ->take(4)
             ->get();
     }
@@ -86,6 +81,7 @@ class FooterController extends Controller
         return LiveTvChannel::query()
             ->where('status', 1)
             ->whereNull('deleted_at')
+            ->featuredFirst()
             ->orderByDesc('updated_at')
             ->take(4)
             ->get();
@@ -100,5 +96,16 @@ class FooterController extends Controller
             'type' => 'livetv',
             'url' => '/livetv/' . ($channel->slug ?? $channel->id),
         ])->filter(fn ($channel) => !empty($channel['name']) && (!empty($channel['slug']) || !empty($channel['id'])))->values()->all();
+    }
+
+    private function mapOnDemandChannels($channels): array
+    {
+        return collect($channels)->map(fn ($channel) => [
+            'id' => $channel->id ?? null,
+            'name' => $channel->name ?? null,
+            'slug' => $channel->username ?? null,
+            'type' => 'ondemand',
+            'url' => '/on-demand/' . ($channel->username ?? ''),
+        ])->filter(fn ($channel) => !empty($channel['name']) && !empty($channel['slug']))->values()->all();
     }
 }

@@ -32,6 +32,17 @@ type ShareIconProps = {
 }
 
 const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
+const featuredLiveTvSlugGroups = [
+  ['ezway-tv'],
+  ['music-channel', 'ezway-music-channel', 'ezway-music'],
+  ['xo-tv'],
+  ['xpn-tv'],
+  ['bill-duke-tv'],
+  ['kate-linder-tv'],
+  ['movie-channel'],
+  ['podstream-tv'],
+  ['the-womens-channel'],
+]
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -68,9 +79,9 @@ export function LiveTvPage() {
       ? allChannels
       : categories.find((category) => String(category.id) === activeCategory)?.channel_data ?? []
 
-    if (!term) return pinEzWayTvFirst(source)
+    if (!term) return sortFeaturedLiveTvFirst(source)
 
-    return pinEzWayTvFirst(source.filter((channel) => {
+    return sortFeaturedLiveTvFirst(source.filter((channel) => {
       const name = channel.details?.name ?? channel.name
       const category = channel.details?.category
 
@@ -274,7 +285,7 @@ function LiveTvDetailPage({
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="livetv" />
-      <section className="relative overflow-hidden">
+      <section className="relative z-30 overflow-visible">
         <img src={heroBackgroundImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_38%,rgba(5,5,5,0.42)_76%,#050505_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] to-transparent" />
@@ -297,7 +308,7 @@ function LiveTvDetailPage({
             <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
 
-            <div className="relative z-20 mt-7 flex flex-wrap gap-3 pb-2">
+            <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
               <Button
                 type="button"
                 size="lg"
@@ -418,6 +429,8 @@ function LiveTvDetailPage({
 }
 
 function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentLiveTvShareUrl()
   const shareText = `Watch ${title} live on EZWay TV`
   const shareTargets = [
@@ -453,13 +466,50 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
     },
   ]
 
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   return (
-    <div className="group/share relative max-sm:static">
-      <Button type="button" size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+    <div ref={menuRef} className="relative z-[90] max-sm:static">
+      <Button
+        type="button"
+        size="lg"
+        variant="secondary"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="bg-white/14 text-white hover:bg-white/24"
+      >
         <Share2 className="h-5 w-5" />
         Share
       </Button>
-      <div className="invisible absolute right-0 top-full z-30 mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 opacity-0 shadow-2xl shadow-black/50 backdrop-blur transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100 max-sm:static max-sm:hidden max-sm:w-full max-sm:basis-full max-sm:opacity-100 max-sm:shadow-none max-sm:group-hover/share:block max-sm:group-focus-within/share:block sm:left-0 sm:right-auto">
+      <div
+        role="menu"
+        className={[
+          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
+          'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
+          open ? 'max-sm:block' : 'max-sm:hidden',
+        ].join(' ')}
+      >
         <div className="grid grid-cols-3 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
@@ -467,6 +517,8 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
               rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              role="menuitem"
+              onClick={() => setOpen(false)}
               aria-label={`Share on ${label}`}
               title={label}
               className={[
@@ -480,7 +532,11 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
           ))}
           <button
             type="button"
-            onClick={onCopy}
+            role="menuitem"
+            onClick={() => {
+              onCopy()
+              setOpen(false)
+            }}
             aria-label={copied ? 'Link copied' : 'Copy link'}
             title={copied ? 'Copied' : 'Copy link'}
             className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
@@ -757,11 +813,12 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
         isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
       )))
       .sort((a, b) => {
-        const aPinned = isEzWayTvChannel(a.row.channel) ? 0 : 1
-        const bPinned = isEzWayTvChannel(b.row.channel) ? 0 : 1
+        const aFeatured = featuredLiveTvOrder(a.row.channel)
+        const bFeatured = featuredLiveTvOrder(b.row.channel)
         const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
+        const featuredCompare = aFeatured - bFeatured
 
-        return aPinned - bPinned || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
+        return featuredCompare || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
       })
   ), [channelSort, currentTime, guideQueries, today])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
@@ -1210,9 +1267,7 @@ function rowHasOnAirProgram(row: LiveTvGuideChannel, currentTime: number) {
 }
 
 function isEzWayTvChannel(channel: MediaItem) {
-  const name = channelName(channel).toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  return name === 'ezwaytv'
+  return featuredLiveTvOrder(channel) === 0
 }
 
 function channelName(channel: MediaItem) {
@@ -1221,17 +1276,40 @@ function channelName(channel: MediaItem) {
 
 function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
   if (!channel) return undefined
-  if (isEzWayTvChannel(channel)) return 1
+  const featuredOrder = featuredLiveTvOrder(channel)
 
-  const channelIndex = channels
-    .filter((item) => !isEzWayTvChannel(item))
+  if (featuredOrder < featuredLiveTvSlugGroups.length) return featuredOrder + 1
+
+  const channelIndex = sortFeaturedLiveTvFirst(channels)
+    .filter((item) => featuredLiveTvOrder(item) >= featuredLiveTvSlugGroups.length)
     .findIndex((item) => String(item.id) === String(channel.id))
 
-  return channelIndex >= 0 ? channelIndex + 2 : undefined
+  return channelIndex >= 0 ? channelIndex + featuredLiveTvSlugGroups.length + 1 : undefined
 }
 
-function pinEzWayTvFirst(channels: MediaItem[]) {
-  return [...channels].sort((a, b) => Number(isEzWayTvChannel(b)) - Number(isEzWayTvChannel(a)))
+function sortFeaturedLiveTvFirst(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => {
+    const featuredCompare = featuredLiveTvOrder(a) - featuredLiveTvOrder(b)
+    if (featuredCompare !== 0) return featuredCompare
+
+    return 0
+  })
+}
+
+function featuredLiveTvOrder(channel: MediaItem) {
+  const values = [
+    channel.slug,
+    channel.details?.slug,
+    channelName(channel),
+  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value)))
+
+  const index = featuredLiveTvSlugGroups.findIndex((slugs) => slugs.some((slug) => values.includes(slug)))
+
+  return index >= 0 ? index : featuredLiveTvSlugGroups.length
+}
+
+function normalizeLiveTvSlug(value: string) {
+  return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
 function channelLabel(index: number) {

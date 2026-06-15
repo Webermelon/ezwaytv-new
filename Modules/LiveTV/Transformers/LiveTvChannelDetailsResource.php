@@ -20,7 +20,7 @@ class LiveTvChannelDetailsResource extends JsonResource
         if($plan){
             $plans = Plan::where('level', '<=', $plan->level)->get();
         }
-        $moreItems = LiveTvChannel::where('category_id', $this->category_id)->get()->except($this->id);
+        $moreItems = LiveTvChannel::where('category_id', $this->category_id)->featuredFirst()->get()->except($this->id);
 
         return [
             'id' => $this->id,

@@ -156,6 +156,7 @@
                                     <div class="collapse" id="liveTvChannelsSubmenu">
                                         @php
                                             $liveTvChannels = \Modules\LiveTV\Models\LiveTvChannel::where('status', 1)
+                                                ->featuredFirst()
                                                 ->orderBy('name')
                                                 ->get();
                                         @endphp

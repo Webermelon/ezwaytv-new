@@ -21,6 +21,7 @@ class LiveTvController extends Controller
     {
         $channelData = LiveTvChannel::with('TvCategory', 'plan', 'TvChannelStreamContentMappings')
             ->where('status', 1)
+            ->featuredFirst()
             ->orderBy('updated_at', 'desc')
             ->take(6)
             ->get();
@@ -71,6 +72,7 @@ class LiveTvController extends Controller
             ->where('status', 1)
             ->whereNull('deleted_at')
             ->with('TvCategory')
+            ->featuredFirst()
             ->get();
 
         $suggestions = LiveTvChannelResourceV3::collection($suggestions)->toArray(request());

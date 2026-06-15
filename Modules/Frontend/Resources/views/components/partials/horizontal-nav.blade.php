@@ -91,6 +91,7 @@
         <ul class="sub-menu list-unstyled scroll-thin" style="max-height: 400px; overflow-y: auto;">
           @php
             $liveTvChannels = \Modules\LiveTV\Models\LiveTvChannel::where('status', 1)
+                ->featuredFirst()
                 ->orderBy('name')
                 ->get();
           @endphp

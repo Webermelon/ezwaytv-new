@@ -27,6 +27,17 @@ const emptyState: HomeState = {
 }
 
 const homeHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
+const featuredLiveTvSlugGroups = [
+  ['ezway-tv'],
+  ['music-channel', 'ezway-music-channel', 'ezway-music'],
+  ['xo-tv'],
+  ['xpn-tv'],
+  ['bill-duke-tv'],
+  ['kate-linder-tv'],
+  ['movie-channel'],
+  ['podstream-tv'],
+  ['the-womens-channel'],
+]
 
 export function HomePage() {
   const homeQuery = useQuery({
@@ -37,7 +48,7 @@ export function HomePage() {
   const state = homeQuery.data ?? emptyState
 
   const liveChannels = useMemo(
-    () => state.liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? [],
+    () => sortFeaturedLiveTvFirst(state.liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? []),
     [state.liveTv.category_data],
   )
   const featured = state.liveTv.slider?.[0] ?? state.videos[0] ?? liveChannels[0]
@@ -252,4 +263,25 @@ function shapeIsPersonality(item: MediaItem) {
 
 function previewHref(item: MediaItem) {
   return item.video_url_input ?? item.video_url ?? item.trailer_url ?? null
+}
+
+function sortFeaturedLiveTvFirst(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => featuredLiveTvOrder(a) - featuredLiveTvOrder(b))
+}
+
+function featuredLiveTvOrder(channel: MediaItem) {
+  const values = [
+    channel.slug,
+    channel.details?.slug,
+    channel.details?.name,
+    channel.name,
+  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value)))
+
+  const index = featuredLiveTvSlugGroups.findIndex((slugs) => slugs.some((slug) => values.includes(slug)))
+
+  return index >= 0 ? index : featuredLiveTvSlugGroups.length
+}
+
+function normalizeLiveTvSlug(value: string) {
+  return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }

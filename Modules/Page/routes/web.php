@@ -22,8 +22,9 @@ use Modules\Page\Http\Controllers\Backend\PagesController;
 * --------------------------------------------------------------------
 */
 
-Route::get('pages/{slug}', [PagesController::class, 'show'])->name('page.show');
+Route::view('pages/{slug}', 'react-modernization')->name('page.show');
 Route::get('page/{slug}', [PagesController::class, 'redirectLegacyPageUrl'])->name('page.legacy.copy');
+Route::view('/faq', 'react-modernization')->name('faq');
 Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','admin']], function () {
     /*
     * These routes need view-backend permission
