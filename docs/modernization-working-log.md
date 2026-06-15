@@ -2270,3 +2270,42 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `php -l config/services.php` passes.
   - `npm run react:build` passes.
 - No migrations were run and no database tables were altered.
+
+## 2026-06-15
+
+### Current Frontend Progress
+
+- Added public menu visibility controls in backend settings.
+  - Frontend header/menu API now respects hidden menu settings.
+  - React header receives initial visible menu keys to avoid a brief hidden-item flash.
+- Updated Live TV channel ordering across homepage, Live TV pages, schedules, guide, footer/API lists, and backend/API query paths.
+  - Featured network channels are pinned first where Live TV channels are shown.
+  - Schedule/guide ordering follows the same featured-channel order.
+- Added homepage Open Graph image fallback for `https://ezway.tv/`.
+- Improved video and Live TV share menus.
+  - Fixed z-index/layout stacking so share buttons no longer fall behind page content.
+  - Reworked hover behavior into click/tap controlled share menus.
+- Updated footer Top Channels behavior.
+  - Footer now uses On Demand channels for the On Demand/Top Channels area.
+  - React footer cache key was bumped to avoid stale footer data.
+- Converted public policy/help pages back into React-owned routes.
+  - `/pages/privacy-policy`
+  - `/pages/terms-conditions`
+  - `/faq`
+  - Added `GET /api/page-detail/{slug}` for CMS page content.
+  - React `PublicPage` now renders CMS page HTML and FAQ items instead of old Blade views.
+  - Fixed public page content readability by overriding dark CMS inline styles inside `.public-content`.
+- Cleaned visible development copy from public React pages.
+  - Removed internal Videos page text about React/Laravel playback.
+  - Replaced Cast/Crew page API wording with user-facing personality copy.
+- Refined On Demand channel pages.
+  - Removed the large all-channel card from mobile channel pages.
+  - Kept a `View All Channels` button.
+  - Restored the all-channel sidebar for desktop XL layouts to fill the wide screen.
+  - Added project-style channel sharing menu with LinkedIn, Facebook, X, WhatsApp, SMS, and copy link.
+  - Removed native browser share behavior per request.
+- Verified:
+  - `npm run react:build` passes after each React UI pass.
+  - PHP lint passed for changed route/API files during the public pages pass.
+  - `php artisan optimize:clear` was run after route/cache-sensitive changes.
+- No migrations were run and no database tables were altered.
