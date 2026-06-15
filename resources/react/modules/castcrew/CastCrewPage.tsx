@@ -35,7 +35,7 @@ export function CastCrewPage() {
           </Badge>
           <h1 className="mt-4 text-4xl font-black leading-none sm:text-5xl">Popular Personalities</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-base">
-            Browse the existing cast and crew directory from the current Laravel API.
+            Discover featured actors, directors, hosts, and creators across eZWay TV.
           </p>
         </div>
       </section>
