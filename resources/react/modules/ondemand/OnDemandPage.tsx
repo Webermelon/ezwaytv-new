@@ -175,7 +175,7 @@ function ChannelSidebar({
   onQueryChange: (value: string) => void
 }) {
   return (
-    <aside className="hidden min-w-0 rounded-md border border-white/10 bg-[#111]/86 p-4 shadow-2xl shadow-black/30 xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
+    <aside className="hidden min-w-0 self-start rounded-md border border-white/10 bg-[#111]/86 p-4 shadow-2xl shadow-black/30 xl:block xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
       <Button asChild variant="outline" className="mb-4 h-10 w-full border-white/12 bg-white/[0.04] text-white hover:bg-white/[0.09]">
         <a href="/on-demand">
           <ArrowLeft className="mr-2 h-4 w-4" />
