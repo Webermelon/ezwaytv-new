@@ -78,7 +78,7 @@ export function AppFooter() {
           <div className="hidden w-px bg-white/10 lg:block" />
 
           <section className="grid gap-8 sm:grid-cols-3">
-            <FooterColumn title="Top Channels" links={footer?.top_channels ?? []} fallbackPrefix="/livetv/" />
+            <FooterColumn title="On Demand Channels" links={footer?.top_channels ?? []} fallbackPrefix="/on-demand/" />
             <FooterColumn title="Live TV Channels" links={footer?.live_tv_channels ?? []} fallbackPrefix="/livetv/" />
             <section>
               <h2 className="text-base font-black text-white">Download App</h2>
@@ -206,7 +206,7 @@ async function loadFooterData() {
 
 function readCachedFooterData() {
   try {
-    const cached = window.localStorage.getItem('ezway_footer_data_v2')
+    const cached = window.localStorage.getItem('ezway_footer_data_v3')
 
     return cached ? JSON.parse(cached) as FooterData : undefined
   } catch {
@@ -216,7 +216,7 @@ function readCachedFooterData() {
 
 function writeCachedFooterData(footer: FooterData) {
   try {
-    window.localStorage.setItem('ezway_footer_data_v2', JSON.stringify(footer))
+    window.localStorage.setItem('ezway_footer_data_v3', JSON.stringify(footer))
   } catch {
     // Ignore storage failures; the live API data is still rendered.
   }
