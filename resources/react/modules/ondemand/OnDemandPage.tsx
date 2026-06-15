@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Clapperboard, Play, Search, Tv } from 'lucide-react'
+import { ArrowLeft, Check, Clapperboard, Copy, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,10 @@ import { trackView } from '@/lib/analytics'
 import { useSpaPath } from '@/lib/spa-router'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandChannels, loadOnDemandProfile } from './ondemandApi'
+
+type ShareIconProps = {
+  className?: string
+}
 
 export function OnDemandPage() {
   const path = useSpaPath()
@@ -171,7 +175,7 @@ function ChannelSidebar({
   onQueryChange: (value: string) => void
 }) {
   return (
-    <aside className="min-w-0 rounded-md border border-white/10 bg-[#111]/86 p-4 shadow-2xl shadow-black/30 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
+    <aside className="hidden min-w-0 rounded-md border border-white/10 bg-[#111]/86 p-4 shadow-2xl shadow-black/30 xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
       <Button asChild variant="outline" className="mb-4 h-10 w-full border-white/12 bg-white/[0.04] text-white hover:bg-white/[0.09]">
         <a href="/on-demand">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -202,6 +206,8 @@ function ChannelSidebar({
 }
 
 function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile: MediaItem | null; videos: MediaItem[] }) {
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+
   if (loading) {
     return <div className="min-h-[620px] animate-pulse rounded-md border border-white/10 bg-white/[0.04]" />
   }
@@ -239,12 +245,24 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
               <p className="mt-1 text-sm leading-5 text-white/58">@{profile.username} · {profile.videos_count ?? videos.length} videos</p>
             </div>
           </div>
-          <Button asChild variant="outline" className="h-10 w-full border-white/12 bg-white/[0.04] text-white hover:bg-white/[0.09] sm:mb-2 sm:w-auto xl:hidden">
-            <a href="/on-demand">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              All Channels
-            </a>
-          </Button>
+          <div className="grid gap-2 sm:mb-2 sm:flex sm:w-auto">
+            <OnDemandShareMenu
+              profile={profile}
+              copied={copiedShareUrl}
+              onCopy={() => {
+                copyText(channelShareUrl(profile)).then(() => {
+                  setCopiedShareUrl(true)
+                  window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                })
+              }}
+            />
+            <Button asChild variant="outline" className="h-10 w-full border-white/12 bg-white/[0.04] text-white hover:bg-white/[0.09] sm:w-auto">
+              <a href="/on-demand">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                View All Channels
+              </a>
+            </Button>
+          </div>
         </div>
 
         {profile.description ? (
@@ -272,6 +290,157 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
         </div>
       </div>
     </article>
+  )
+}
+
+function OnDemandShareMenu({ profile, copied, onCopy }: { profile: MediaItem; copied: boolean; onCopy: () => void }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const shareUrl = channelShareUrl(profile)
+  const shareText = `Watch ${profile.name ?? 'this channel'} on eZWay TV`
+  const shareTargets = [
+    {
+      label: 'LinkedIn',
+      icon: LinkedInIcon,
+      tone: 'hover:border-[#0a66c2]/70 hover:bg-[#0a66c2]/18',
+      href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'Facebook',
+      icon: FacebookIcon,
+      tone: 'hover:border-[#1877f2]/70 hover:bg-[#1877f2]/18',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+    },
+    {
+      label: 'X',
+      icon: XIcon,
+      tone: 'hover:border-white/50 hover:bg-white/14',
+      href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: 'WhatsApp',
+      icon: WhatsAppIcon,
+      tone: 'hover:border-[#25d366]/70 hover:bg-[#25d366]/18',
+      href: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+    {
+      label: 'SMS',
+      icon: MessageCircle,
+      tone: 'hover:border-primary/70 hover:bg-primary/16',
+      href: `sms:?&body=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+    },
+  ]
+
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={menuRef} className="relative z-[90]">
+      <Button
+        type="button"
+        variant="outline"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="h-10 w-full border-white/12 bg-white/[0.04] text-white hover:bg-white/[0.09] sm:w-auto"
+      >
+        <Share2 className="mr-2 h-4 w-4" />
+        Share Channel
+      </Button>
+      <div
+        role="menu"
+        className={[
+          'absolute left-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
+          open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
+        ].join(' ')}
+      >
+        <div className="grid grid-cols-3 gap-2">
+          {shareTargets.map(({ label, icon: Icon, href, tone }) => (
+            <a
+              key={label}
+              href={href}
+              target={href.startsWith('http') ? '_blank' : undefined}
+              rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              aria-label={`Share on ${label}`}
+              title={label}
+              className={[
+                'inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
+                tone,
+              ].join(' ')}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="sr-only">{label}</span>
+            </a>
+          ))}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onCopy()
+              setOpen(false)
+            }}
+            aria-label={copied ? 'Link copied' : 'Copy link'}
+            title={copied ? 'Copied' : 'Copy link'}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
+          >
+            {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
+            <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FacebookIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M14.2 8.1V6.6c0-.7.5-.9.9-.9h2.2V2.2L14.2 2c-3.4 0-4.2 2.1-4.2 4.1v2H7.3v3.9H10V22h4.2v-10h3.1l.5-3.9h-3.6Z" />
+    </svg>
+  )
+}
+
+function XIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M18.2 2h3.3l-7.2 8.2L22.7 22h-6.6l-5.2-6.8L5 22H1.7l7.7-8.8L1.3 2h6.8l4.7 6.2L18.2 2Zm-1.1 17.9h1.8L7.1 4H5.2l11.9 15.9Z" />
+    </svg>
+  )
+}
+
+function WhatsAppIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M12 2a9.8 9.8 0 0 0-8.5 14.7L2.3 22l5.4-1.4A9.9 9.9 0 1 0 12 2Zm0 18.1a8 8 0 0 1-4.1-1.1l-.3-.2-3.2.8.9-3.1-.2-.3A8.1 8.1 0 1 1 12 20.1Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1c-.2.2-.7.8-.8 1-.2.2-.3.2-.6.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.3 0-.4.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-1 1-1 2.4s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.7.6.7.2 1.3.2 1.8.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.5-.3Z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon({ className }: ShareIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5ZM.3 8.2h4.4V23H.3V8.2ZM8 8.2h4.2v2h.1c.6-1.1 2-2.3 4.2-2.3 4.5 0 5.3 3 5.3 6.8V23h-4.4v-7.4c0-1.8 0-4-2.4-4s-2.8 1.9-2.8 3.9V23H8V8.2Z" />
+    </svg>
   )
 }
 
@@ -393,6 +562,27 @@ function channelAvatarThumb(channel: MediaItem) {
     ?? channel.poster_image
     ?? channel.thumbnail_url
     ?? null
+}
+
+function channelShareUrl(profile: MediaItem) {
+  return `${window.location.origin}/on-demand/${encodeURIComponent(String(profile.username ?? ''))}`
+}
+
+async function copyText(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textArea = document.createElement('textarea')
+  textArea.value = value
+  textArea.setAttribute('readonly', '')
+  textArea.style.position = 'fixed'
+  textArea.style.top = '-9999px'
+  document.body.appendChild(textArea)
+  textArea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textArea)
 }
 
 function videoThumb(video: MediaItem) {
