@@ -26,6 +26,16 @@ class PagesController extends Controller
       $items = PageResource::collection($page);
       return ApiResponse::success($items, 'Page List', 200);
   }
+
+  public function pageDetail(string $slug)
+  {
+      $page = Page::where('status', 1)
+          ->where('slug', $slug)
+          ->firstOrFail();
+
+      return ApiResponse::success(new PageResource($page), 'Page Detail', 200);
+  }
+
   public function faqList(Request $request)
   {
       $perPage = $request->input('per_page', 10);

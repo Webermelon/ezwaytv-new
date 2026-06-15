@@ -1,148 +1,182 @@
-import { ArrowLeft, Lock, Play } from 'lucide-react'
+import * as React from 'react'
+import { AlertCircle, ChevronDown, Loader2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { api } from '@/lib/api'
+import { useSpaPath } from '@/lib/spa-router'
+import type { ApiEnvelope } from '@/modules/home/types'
+
+type CmsPage = {
+  id: number | string
+  slug: string
+  name: string
+  description?: string | null
+  content_type?: string | null
+  embed_code?: string | null
+}
+
+type FaqItem = {
+  id: number | string
+  question: string
+  answer: string
+}
+
+type PublicState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'page'; page: CmsPage }
+  | { status: 'faq'; items: FaqItem[] }
 
 export function PublicPage() {
-  const path = window.location.pathname
-  const meta = pageMeta(path)
+  const path = useSpaPath()
+  const pathname = path.split(/[?#]/)[0] || '/'
+  const [state, setState] = React.useState<PublicState>({ status: 'loading' })
+
+  React.useEffect(() => {
+    const controller = new AbortController()
+
+    setState({ status: 'loading' })
+
+    loadPublicContent(pathname, controller.signal)
+      .then(setState)
+      .catch((error) => {
+        if (controller.signal.aborted) return
+
+        setState({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'This page could not be loaded.',
+        })
+      })
+
+    return () => controller.abort()
+  }, [pathname])
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader />
 
-      <section className="relative min-h-[70vh] overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_0%,rgba(229,9,20,0.28),transparent_28%),linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_36%,rgba(5,5,5,0.48)_74%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] to-transparent" />
-
-        <div className="relative z-10 flex min-h-[70vh] max-w-4xl flex-col justify-end px-4 pb-16 pt-24 sm:px-8 lg:px-12">
-          <a href="/" className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-white/58 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-            Home
-          </a>
-          <Badge className="w-fit rounded-sm bg-primary text-white">{meta.badge}</Badge>
-          <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">{meta.title}</h1>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{meta.description}</p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            {meta.primaryHref ? (
-              <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-                <a href={meta.primaryHref}>
-                  <Play className="h-5 w-5 fill-current" />
-                  {meta.primaryLabel}
-                </a>
-              </Button>
-            ) : null}
-            <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/">
-                Browse Home
-              </a>
-            </Button>
-          </div>
+      <section className="border-b border-white/10 bg-[#080808] px-4 pb-10 pt-28 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">eZWay TV</p>
+          <h1 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">
+            {pageTitle(pathname, state)}
+          </h1>
         </div>
       </section>
 
-      <section className="px-4 pb-16 sm:px-8 lg:px-12">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {meta.panels.map((panel) => (
-            <article key={panel.title} className="rounded-md border border-white/10 bg-white/[0.045] p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <Lock className="h-4 w-4 text-primary" />
-                <h2 className="font-bold">{panel.title}</h2>
-              </div>
-              <p className="text-sm leading-6 text-white/58">{panel.body}</p>
-            </article>
-          ))}
+      <section className="px-4 py-10 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-5xl">
+          {state.status === 'loading' ? <LoadingState /> : null}
+          {state.status === 'error' ? <ErrorState message={state.message} /> : null}
+          {state.status === 'page' ? <CmsPageContent page={state.page} /> : null}
+          {state.status === 'faq' ? <FaqContent items={state.items} /> : null}
         </div>
       </section>
     </main>
   )
 }
 
-function pageMeta(path: string) {
-  if (path.startsWith('/login') || path.startsWith('/register') || path.startsWith('/forget-password')) {
+async function loadPublicContent(pathname: string, signal: AbortSignal): Promise<PublicState> {
+  if (pathname === '/faq') {
+    const response = await api.get<ApiEnvelope<FaqItem[]>>('/api/faq-list', { signal })
+
     return {
-      badge: 'Account',
-      title: path.startsWith('/register') ? 'Create your account' : path.startsWith('/forget-password') ? 'Reset password' : 'Sign in',
-      description: 'Account screens are now routed through the React SPA shell. Backend auth endpoints remain available for the form integration pass.',
-      primaryLabel: 'Home',
-      primaryHref: '/',
-      panels: servicePanels('Auth'),
+      status: 'faq',
+      items: response.data ?? [],
     }
   }
 
-  if (path.startsWith('/movies') || path.startsWith('/movie-details')) {
-    return {
-      badge: 'Movies',
-      title: path.startsWith('/movie-details') ? 'Movie details' : 'Movies',
-      description: 'The movies area is React-owned at the route level and ready for the next API-connected content rail implementation.',
-      primaryLabel: 'Videos',
-      primaryHref: '/videos',
-      panels: servicePanels('Movies'),
-    }
+  const slug = getPageSlug(pathname)
+
+  if (!slug) {
+    throw new Error('This public page is not available yet.')
   }
 
-  if (path.startsWith('/tv-shows') || path.startsWith('/tvshow-details') || path.startsWith('/episode-details')) {
-    return {
-      badge: 'TV Shows',
-      title: path.startsWith('/episode-details') ? 'Episode details' : 'TV Shows',
-      description: 'TV show routes now stay in the SPA shell while the existing backend remains the data and playback service layer.',
-      primaryLabel: 'Live TV',
-      primaryHref: '/livetv',
-      panels: servicePanels('TV Shows'),
-    }
-  }
+  const response = await api.get<ApiEnvelope<CmsPage>>(`/api/page-detail/${encodeURIComponent(slug)}`, { signal })
 
-  if (path.startsWith('/pay-per-view') || path.startsWith('/unlock-videos')) {
-    return {
-      badge: 'Pay Per View',
-      title: 'Pay Per View',
-      description: 'Purchase and entitlement pages are routed through React. Payment processing routes are kept intact as service endpoints.',
-      primaryLabel: 'Videos',
-      primaryHref: '/videos',
-      panels: servicePanels('Payments'),
-    }
-  }
-
-  if (path.startsWith('/search')) {
-    return {
-      badge: 'Search',
-      title: 'Search',
-      description: 'Search now lives in the React app surface and can be wired to the existing search APIs without bringing Blade back.',
-      primaryLabel: 'Videos',
-      primaryHref: '/videos',
-      panels: servicePanels('Search'),
-    }
+  if (!response.data) {
+    throw new Error('This page could not be found.')
   }
 
   return {
-    badge: 'eZWay TV',
-    title: readableTitle(path),
-    description: 'This public frontend route is now owned by the React SPA shell. Backend controllers remain as APIs and service endpoints where needed.',
-    primaryLabel: 'Browse Videos',
-    primaryHref: '/videos',
-    panels: servicePanels('Frontend'),
+    status: 'page',
+    page: response.data,
   }
 }
 
-function servicePanels(scope: string) {
-  return [
-    {
-      title: `${scope} route is SPA-owned`,
-      body: 'Navigation stays inside React for public frontend pages, so the browser no longer jumps back into Blade for normal browsing.',
-    },
-    {
-      title: 'Backend remains intact',
-      body: 'Database, APIs, admin modules, ads, stats, streams, and payment endpoints are preserved as service contracts.',
-    },
-    {
-      title: 'Next module pass',
-      body: 'This route is ready for a dedicated API-connected React screen without changing database tables.',
-    },
-  ]
+function CmsPageContent({ page }: { page: CmsPage }) {
+  const isEmbed = page.content_type === 'embed'
+  const html = isEmbed ? page.embed_code : page.description
+
+  if (!html) {
+    return <EmptyState message="No content has been added to this page yet." />
+  }
+
+  return (
+    <article
+      className={isEmbed ? 'public-content public-content-embed' : 'public-content'}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
 
-function readableTitle(path: string) {
-  const segment = path.split('/').filter(Boolean).at(0) ?? 'Home'
-  return segment.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+function FaqContent({ items }: { items: FaqItem[] }) {
+  if (items.length === 0) {
+    return <EmptyState message="No FAQs are available yet." />
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <details key={item.id} className="group rounded-md border border-white/10 bg-white/[0.045] px-5 py-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-bold text-white">
+            <span>{item.question}</span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-primary transition-transform group-open:rotate-180" />
+          </summary>
+          <div
+            className="public-content mt-4 border-t border-white/10 pt-4"
+            dangerouslySetInnerHTML={{ __html: item.answer }}
+          />
+        </details>
+      ))}
+    </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="flex min-h-48 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
+      <Loader2 className="h-7 w-7 animate-spin text-primary" />
+    </div>
+  )
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-red-500/30 bg-red-500/10 p-5 text-red-100">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <p>{message}</p>
+    </div>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-md border border-white/10 bg-white/[0.035] p-6 text-white/70">
+      {message}
+    </div>
+  )
+}
+
+function getPageSlug(pathname: string) {
+  if (!pathname.startsWith('/pages/')) return ''
+
+  return decodeURIComponent(pathname.replace('/pages/', '').split('/')[0] ?? '')
+}
+
+function pageTitle(pathname: string, state: PublicState) {
+  if (state.status === 'page') return state.page.name
+  if (pathname === '/faq') return 'FAQ'
+
+  return getPageSlug(pathname).replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Page'
 }
