@@ -9,7 +9,12 @@
         $description = $meta->short_description ?? optional($seo)->short_description ?? optional($seo)->meta_description ?? 'Watch live TV, on-demand channels, movies, and videos on eZWay TV.';
         $keywords = $meta->meta_keywords ?? optional($seo)->meta_keywords ?? null;
         $canonical = $meta->canonical_url ?? url()->current();
+        $homeShareImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_(1)_6a16d2697b16e_6a21ca461f0e2.jpg';
         $ogImage = $meta->seo_image ?? optional($seo)->seo_image ?? asset('img/logo/logo.png');
+
+        if (request()->is('/') && empty($meta->seo_image)) {
+            $ogImage = $homeShareImage;
+        }
 
         if (! filter_var($ogImage, FILTER_VALIDATE_URL)) {
             $seoPath = 'storage/uploads/seo/' . basename((string) $ogImage);
@@ -40,10 +45,12 @@
     <meta property="og:image:secure_url" content="{{ $ogImage }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ $siteName }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $title }}">
     <meta name="twitter:description" content="{{ $description }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
+    <meta name="twitter:image:alt" content="{{ $siteName }}">
     @php
         $authUser = auth()->user();
         $authProfile = null;

@@ -132,7 +132,7 @@ export function VideoDetailPage() {
         </section>
       ) : (
         <>
-          <section className="relative overflow-hidden">
+          <section className="relative z-30 overflow-visible">
             {video.poster_tv_image || video.poster_image ? (
               <img src={video.poster_tv_image ?? video.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-34" />
             ) : null}
@@ -178,7 +178,7 @@ export function VideoDetailPage() {
                   {stripHtml(video.description ?? video.short_desc ?? '')}
                 </p>
 
-                <div className="relative z-20 mt-7 flex flex-wrap gap-3 pb-2">
+                <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
                   {isPayPerViewLocked ? (
                     <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
                       <a href="/pay-per-view">
@@ -393,6 +393,8 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
 }
 
 function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentShareUrl()
   const shareText = `Watch ${title} on EZWay TV`
   const shareTargets = [
@@ -428,13 +430,50 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
     },
   ]
 
+  useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   return (
-    <div className="group/share relative max-sm:static">
-      <Button type="button" size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+    <div ref={menuRef} className="relative z-[90] max-sm:static">
+      <Button
+        type="button"
+        size="lg"
+        variant="secondary"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="bg-white/14 text-white hover:bg-white/24"
+      >
         <Share2 className="h-5 w-5" />
         Share
       </Button>
-      <div className="invisible absolute right-0 top-full z-30 mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 opacity-0 shadow-2xl shadow-black/50 backdrop-blur transition group-hover/share:visible group-hover/share:opacity-100 group-focus-within/share:visible group-focus-within/share:opacity-100 max-sm:static max-sm:hidden max-sm:w-full max-sm:basis-full max-sm:opacity-100 max-sm:shadow-none max-sm:group-hover/share:block max-sm:group-focus-within/share:block sm:left-0 sm:right-auto">
+      <div
+        role="menu"
+        className={[
+          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
+          'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
+          open ? 'max-sm:block' : 'max-sm:hidden',
+        ].join(' ')}
+      >
         <div className="grid grid-cols-3 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
@@ -442,6 +481,8 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
               href={href}
               target={href.startsWith('http') ? '_blank' : undefined}
               rel={href.startsWith('http') ? 'noreferrer' : undefined}
+              role="menuitem"
+              onClick={() => setOpen(false)}
               aria-label={`Share on ${label}`}
               title={label}
               className={[
@@ -455,7 +496,11 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
           ))}
           <button
             type="button"
-            onClick={onCopy}
+            role="menuitem"
+            onClick={() => {
+              onCopy()
+              setOpen(false)
+            }}
             aria-label={copied ? 'Link copied' : 'Copy link'}
             title={copied ? 'Copied' : 'Copy link'}
             className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
