@@ -231,10 +231,52 @@ class ReactMetaController extends Controller
     {
         $channel = AuthorChannel::query()
             ->where('is_active', 1)
-            ->orderByDesc('updated_at')
+            ->where(function ($query) {
+                $query->whereIn('username', ['ezwaytv', 'ezway-tv', 'ezway'])
+                    ->orWhereRaw('LOWER(name) IN (?, ?)', ['ezway tv', 'ezway tv channel'])
+                    ->orWhereRaw('LOWER(name) LIKE ?', ['%ezway%tv%']);
+            })
+            ->orderByRaw("
+                CASE
+                    WHEN username = 'ezwaytv' THEN 0
+                    WHEN username = 'ezway-tv' THEN 1
+                    WHEN LOWER(name) = 'ezway tv channel' THEN 2
+                    WHEN LOWER(name) = 'ezway tv' THEN 3
+                    ELSE 4
+                END
+            ")
             ->first();
 
-        return $channel ? $this->authorChannelImage($channel) : asset('default-image/Default-Image.jpg');
+        if (! $channel) {
+            $channel = AuthorChannel::query()
+                ->where('is_active', 1)
+                ->orderByDesc('updated_at')
+                ->first();
+        }
+
+        return $channel ? $this->authorChannelPosterImage($channel) : asset('default-image/Default-Image.jpg');
+    }
+
+    private function authorChannelPosterImage(AuthorChannel $channel): string
+    {
+        foreach ([$channel->banner, $channel->avatar] as $image) {
+            if (! empty($image)) {
+                return setBaseUrlWithFileNameV2($image);
+            }
+        }
+
+        $video = $channel->videos()
+            ->where('status', 1)
+            ->orderByDesc('videos.updated_at')
+            ->first(['videos.id', 'videos.poster_tv_url', 'videos.poster_url', 'videos.thumbnail_url']);
+
+        foreach ([$video?->poster_tv_url, $video?->poster_url, $video?->thumbnail_url] as $image) {
+            if (! empty($image)) {
+                return setBaseUrlWithFileNameV2($image);
+            }
+        }
+
+        return asset('default-image/Default-Image.jpg');
     }
 
     private function description(?string $description): ?string
