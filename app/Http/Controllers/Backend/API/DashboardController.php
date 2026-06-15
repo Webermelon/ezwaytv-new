@@ -1362,6 +1362,7 @@ public function getTrandingData(Request $request){
                     ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'trailer_url', 'access', 'category_id'])
                         ->where('status', 1)
                         ->whereNull('deleted_at')
+                        ->featuredFirst()
                         ->get();
 
                     $data->each(function ($channel) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
@@ -1411,7 +1412,7 @@ public function getTrandingData(Request $request){
         $profile_id = $request->profile_id ?? null;
 
         // OPTIMIZATION: Simple cache key without expensive queries - move MobileSetting queries inside callback
-        $baseCacheKey = 'dashboard_detail_v3_'.md5(json_encode([
+        $baseCacheKey = 'dashboard_detail_v3_featured_livetv_order_'.md5(json_encode([
             'user_id' => $user_id,
             'profile_id' => $profile_id,
             'device_type' => $device_type

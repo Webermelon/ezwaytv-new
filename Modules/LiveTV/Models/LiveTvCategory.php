@@ -40,6 +40,6 @@ class LiveTvCategory extends BaseModel
 
     public function tvChannels()
     {
-        return $this->hasMany(LiveTvChannel::class,'category_id')->where('status', 1)->with('TvChannelStreamContentMappings');
+        return $this->hasMany(LiveTvChannel::class,'category_id')->where('status', 1)->with('TvChannelStreamContentMappings')->featuredFirst();
     }
 }

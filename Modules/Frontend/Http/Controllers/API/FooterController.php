@@ -75,6 +75,7 @@ class FooterController extends Controller
             ->where('live_tv_channel.status', 1)
             ->whereNull('live_tv_channel.deleted_at')
             ->groupBy('live_tv_channel.id')
+            ->featuredFirst()
             ->orderByDesc('total_views')
             ->orderByDesc('live_tv_channel.updated_at')
             ->take(4)
@@ -86,6 +87,7 @@ class FooterController extends Controller
         return LiveTvChannel::query()
             ->where('status', 1)
             ->whereNull('deleted_at')
+            ->featuredFirst()
             ->orderByDesc('updated_at')
             ->take(4)
             ->get();

@@ -32,6 +32,17 @@ type ShareIconProps = {
 }
 
 const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
+const featuredLiveTvSlugGroups = [
+  ['ezway-tv'],
+  ['music-channel', 'ezway-music-channel', 'ezway-music'],
+  ['xo-tv'],
+  ['xpn-tv'],
+  ['bill-duke-tv'],
+  ['kate-linder-tv'],
+  ['movie-channel'],
+  ['podstream-tv'],
+  ['the-womens-channel'],
+]
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -68,9 +79,9 @@ export function LiveTvPage() {
       ? allChannels
       : categories.find((category) => String(category.id) === activeCategory)?.channel_data ?? []
 
-    if (!term) return pinEzWayTvFirst(source)
+    if (!term) return sortFeaturedLiveTvFirst(source)
 
-    return pinEzWayTvFirst(source.filter((channel) => {
+    return sortFeaturedLiveTvFirst(source.filter((channel) => {
       const name = channel.details?.name ?? channel.name
       const category = channel.details?.category
 
@@ -757,11 +768,12 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
         isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
       )))
       .sort((a, b) => {
-        const aPinned = isEzWayTvChannel(a.row.channel) ? 0 : 1
-        const bPinned = isEzWayTvChannel(b.row.channel) ? 0 : 1
+        const aFeatured = featuredLiveTvOrder(a.row.channel)
+        const bFeatured = featuredLiveTvOrder(b.row.channel)
         const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
+        const featuredCompare = aFeatured - bFeatured
 
-        return aPinned - bPinned || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
+        return featuredCompare || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
       })
   ), [channelSort, currentTime, guideQueries, today])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
@@ -1210,9 +1222,7 @@ function rowHasOnAirProgram(row: LiveTvGuideChannel, currentTime: number) {
 }
 
 function isEzWayTvChannel(channel: MediaItem) {
-  const name = channelName(channel).toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  return name === 'ezwaytv'
+  return featuredLiveTvOrder(channel) === 0
 }
 
 function channelName(channel: MediaItem) {
@@ -1221,17 +1231,40 @@ function channelName(channel: MediaItem) {
 
 function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
   if (!channel) return undefined
-  if (isEzWayTvChannel(channel)) return 1
+  const featuredOrder = featuredLiveTvOrder(channel)
 
-  const channelIndex = channels
-    .filter((item) => !isEzWayTvChannel(item))
+  if (featuredOrder < featuredLiveTvSlugGroups.length) return featuredOrder + 1
+
+  const channelIndex = sortFeaturedLiveTvFirst(channels)
+    .filter((item) => featuredLiveTvOrder(item) >= featuredLiveTvSlugGroups.length)
     .findIndex((item) => String(item.id) === String(channel.id))
 
-  return channelIndex >= 0 ? channelIndex + 2 : undefined
+  return channelIndex >= 0 ? channelIndex + featuredLiveTvSlugGroups.length + 1 : undefined
 }
 
-function pinEzWayTvFirst(channels: MediaItem[]) {
-  return [...channels].sort((a, b) => Number(isEzWayTvChannel(b)) - Number(isEzWayTvChannel(a)))
+function sortFeaturedLiveTvFirst(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => {
+    const featuredCompare = featuredLiveTvOrder(a) - featuredLiveTvOrder(b)
+    if (featuredCompare !== 0) return featuredCompare
+
+    return 0
+  })
+}
+
+function featuredLiveTvOrder(channel: MediaItem) {
+  const values = [
+    channel.slug,
+    channel.details?.slug,
+    channelName(channel),
+  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value)))
+
+  const index = featuredLiveTvSlugGroups.findIndex((slugs) => slugs.some((slug) => values.includes(slug)))
+
+  return index >= 0 ? index : featuredLiveTvSlugGroups.length
+}
+
+function normalizeLiveTvSlug(value: string) {
+  return value.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
 function channelLabel(index: number) {

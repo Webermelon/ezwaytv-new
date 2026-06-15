@@ -14,7 +14,7 @@ class NavigationMenuController extends Controller
 {
     public function show()
     {
-        $data = Cache::remember('api:v3:navigation-menu:v4', 300, function () {
+        $data = Cache::remember('api:v3:navigation-menu:v5', 300, function () {
             $showHomeMenu = isFrontendMenuVisible('show_home_menu');
             $showAllContentMenu = isFrontendMenuVisible('show_all_content_menu');
             $showLiveTvMenu = isFrontendMenuVisible('show_livetv_menu');
@@ -34,6 +34,7 @@ class NavigationMenuController extends Controller
             $liveTv = LiveTvChannel::query()
                 ->with('TvCategory')
                 ->where('status', 1)
+                ->featuredFirst()
                 ->orderByDesc('updated_at')
                 ->limit(14)
                 ->get()

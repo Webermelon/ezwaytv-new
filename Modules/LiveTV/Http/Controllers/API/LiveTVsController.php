@@ -46,7 +46,7 @@ class LiveTVsController extends Controller
 
     public function liveTvDashboard(Request $request){
 
-        $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->orderBy('updated_at', 'desc')->take(6)->get();
+        $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->featuredFirst()->orderBy('updated_at', 'desc')->take(6)->get();
         $categoryData = LiveTvCategory::with('tvChannels')->where('status',1)->orderBy('updated_at', 'desc')->get();
 
         $responseData['slider'] = LiveTvChannelResource::collection($channelData);
@@ -72,7 +72,7 @@ class LiveTVsController extends Controller
         $channelId = $request->channel_id ?? $request->id;
         $userId = $request->user_id ?? auth()->id();
 
-        $cacheKey = 'livetv_details_v3_'. md5(json_encode([
+        $cacheKey = 'livetv_details_v3_featured_order_'. md5(json_encode([
             'channel_id' => $channelId,
             'user_id' => $userId,
             'device_type' => $device_type
@@ -115,7 +115,7 @@ class LiveTVsController extends Controller
 
             $channelData['poster_image'] =  $device_type == 'tv' ? $channelData->poster_tv_url : $channelData->poster_url ?? null;
             // Get more items and apply setContentAccess to each
-            $moreItems = LiveTvChannel::where('category_id', $channelData->category_id)->where('deleted_at', null)->where('status',1)->get()->except($channelData->id);
+            $moreItems = LiveTvChannel::where('category_id', $channelData->category_id)->where('deleted_at', null)->where('status',1)->featuredFirst()->get()->except($channelData->id);
 
             // Apply setContentAccess to each item in moreItems
             $moreItems = $moreItems->map(function ($item) use ($userId, $userPlanId, $deviceTypeResponse, $device_type) {
@@ -161,11 +161,12 @@ class LiveTVsController extends Controller
             })
             ->select('live_tv_channel.*', \DB::raw('COUNT(stat_page_views.id) as total_views'))
             ->groupBy('live_tv_channel.id')
+            ->featuredFirst()
             ->orderByDesc('total_views');
         } elseif ($request->input('sort') === 'alpha') {
-            $channelData = $channelData->orderBy('name', 'asc');
+            $channelData = $channelData->featuredFirst()->orderBy('name', 'asc');
         } else {
-            $channelData = $channelData->orderBy('updated_at', 'desc');
+            $channelData = $channelData->featuredFirst()->orderBy('updated_at', 'desc');
         }
         if(!empty($request->category_id)){
             $channelData = $channelData->where('category_id',$request->category_id);
@@ -209,7 +210,7 @@ class LiveTVsController extends Controller
         $profile_id = getCurrentProfile($userId, $request);
         $device_type = getDeviceType($request);
         $perPage = $request->input('per_page', 10);
-        $cacheKey = 'channel_list_v3_'. md5(json_encode([
+        $cacheKey = 'channel_list_v3_featured_order_'. md5(json_encode([
             'user_id' => $userId,
             'device_type' => $device_type,
             'profile_id' => $profile_id,
@@ -229,9 +230,9 @@ class LiveTVsController extends Controller
             $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->where('deleted_at',null);
             // support alphabetic sorting
             if ($request->input('sort') === 'alpha') {
-                $channelData = $channelData->orderBy('name', 'asc');
+                $channelData = $channelData->featuredFirst()->orderBy('name', 'asc');
             } else {
-                $channelData = $channelData->orderBy('id', 'desc');
+                $channelData = $channelData->featuredFirst()->orderBy('id', 'desc');
             }
             if(!empty($request->category_id)){
                 $channelData = $channelData->where('category_id',$request->category_id);
@@ -313,7 +314,7 @@ class LiveTVsController extends Controller
 
         $device_type = getDeviceType($request);
 
-        $baseCacheKey = 'livetv_dashboard_v3_'.md5(json_encode([
+        $baseCacheKey = 'livetv_dashboard_v3_featured_order_'.md5(json_encode([
             'user_id' => $user_id,
             'device_type' => $device_type
         ]));
@@ -341,6 +342,7 @@ class LiveTVsController extends Controller
             ])
             ->where('status',1)
             ->where('deleted_at',null)
+            ->featuredFirst()
             ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function ($item) {

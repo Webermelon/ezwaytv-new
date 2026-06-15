@@ -1433,7 +1433,7 @@ class EntertainmentsController extends Controller
             if ($request->has('access') && !empty($request->access)) {
                 $channelList->where('access', $request->access);
             }
-            $channelList = $channelList->orderBy('updated_at', 'desc')->get();
+            $channelList = $channelList->featuredFirst()->orderBy('updated_at', 'desc')->get();
 
             if ($user_id) {
                 $channelList = $channelList->map(function ($item) use ($request, $deviceTypeResponse, $user_id, $userPlanId, $purchasedIds) {

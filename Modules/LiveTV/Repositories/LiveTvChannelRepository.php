@@ -10,6 +10,7 @@ class LiveTvChannelRepository implements LiveTvChannelRepositoryInterface
     public function all()
     {
         return LiveTvChannel::where('status', 1)
+            ->featuredFirst()
             ->orderBy('updated_at', 'desc')
             ->get();
     }
@@ -94,6 +95,7 @@ class LiveTvChannelRepository implements LiveTvChannelRepositoryInterface
         }
 
         $query->where('status', 1)
+            ->featuredFirst()
             ->orderBy('updated_at', 'desc');
 
         return $query->paginate($perPage);
