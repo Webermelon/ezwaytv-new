@@ -227,8 +227,14 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
-      <div className="relative aspect-[16/9] overflow-hidden bg-white/[0.04] sm:aspect-[21/8] sm:min-h-72">
-        {profile.cover_image_url ? <img src={profile.cover_image_url} alt="" className="h-full w-full object-cover" /> : null}
+      <div className="relative aspect-[16/9] overflow-hidden bg-black sm:aspect-[21/8] sm:min-h-72">
+        {profile.cover_image_url ? (
+          <img
+            src={profile.cover_image_url}
+            alt=""
+            className="h-full w-full object-contain sm:object-cover"
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-black/25 to-black/10" />
       </div>
 
