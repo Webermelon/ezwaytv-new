@@ -17,13 +17,15 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
      */
     public function toArray($request): array
     {
-        $schedulesUrl = optional($this->TvChannelStreamContentMappings)->api_key ?? null;
+        $schedulesUrl = $this->resolveSchedulesUrl(optional($this->TvChannelStreamContentMappings)->api_key ?? null);
         $nowPlaying   = null;
         $nextPlaying  = null;
         $fullSchedule = [];
 
         if ($schedulesUrl) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveScheduleData($schedulesUrl);
+        } elseif ($this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
+            [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveStoredScheduleData($this->schedules);
         }
 
         return [
@@ -78,23 +80,38 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                     'title' => $item['media']['title'] ?? $item['title'] ?? null,
                     'start_time' => $item['start_time'],
                     'end_time' => $item['end_time'],
+                    'timezone' => $item['timezone'] ?? null,
+                    'status' => $item['status'] ?? null,
                     'duration_seconds' => $item['media']['duration_seconds'] ?? null,
                 ];
             }
+
+            usort($fullSchedule, function (array $left, array $right) {
+                return ($this->scheduleTimestamp($left['start_time'] ?? null) ?? 0) <=> ($this->scheduleTimestamp($right['start_time'] ?? null) ?? 0);
+            });
 
             foreach ($fullSchedule as $index => $item) {
                 $start = $this->scheduleTimestamp($item['start_time'] ?? null);
                 $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
                 if (!$start || !$end) continue;
 
-                if ($now >= $start && $now <= $end) {
+                if ($this->isScheduleStatusPlaying($item['status'] ?? null) || ($now >= $start && $now <= $end)) {
                     $currentIndex = $index;
+                    $duration = (int) ($item['duration_seconds'] ?? max(0, $end - $start));
+                    $elapsed = max(0, $now - $start);
+
+                    if ($this->isScheduleStatusPlaying($item['status'] ?? null) && $duration > 0) {
+                        $elapsed = $elapsed % $duration;
+                    }
+
                     $nowPlaying = [
                         'title'      => $item['title'] ?? null,
                         'start_time' => $item['start_time'],
                         'end_time'   => $item['end_time'],
-                        'duration_seconds' => $item['duration_seconds'] ?? null,
-                        'elapsed_seconds'  => $now - $start,
+                        'timezone'   => $item['timezone'] ?? null,
+                        'status'     => $item['status'] ?? null,
+                        'duration_seconds' => $duration ?: null,
+                        'elapsed_seconds'  => $elapsed,
                     ];
                     if (isset($fullSchedule[$index + 1])) {
                         $next = $fullSchedule[$index + 1];
@@ -102,6 +119,8 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                             'title'      => $next['title'] ?? null,
                             'start_time' => $next['start_time'],
                             'end_time'   => $next['end_time'],
+                            'timezone'   => $next['timezone'] ?? null,
+                            'status'     => $next['status'] ?? null,
                             'duration_seconds' => $next['duration_seconds'] ?? null,
                         ];
                     }
@@ -115,6 +134,98 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
         } catch (\Throwable $e) {
             return [null, null, []];
         }
+    }
+
+    private function resolveStoredScheduleData($schedules): array
+    {
+        $fullSchedule = [];
+
+        foreach ($schedules as $index => $item) {
+            $startValue = optional($item->start_at)->toIso8601String() ?? $item->start_at ?? null;
+            $endValue = optional($item->end_at)->toIso8601String() ?? $item->end_at ?? null;
+            $start = $this->scheduleTimestamp($startValue);
+            $end = $this->scheduleTimestamp($endValue);
+
+            if (!$start || !$end) {
+                continue;
+            }
+
+            $fullSchedule[] = [
+                'id' => $item->id ?? $index,
+                'title' => $item->title ?? null,
+                'start_time' => $startValue,
+                'end_time' => $endValue,
+                'duration_seconds' => max(0, $end - $start),
+            ];
+        }
+
+        usort($fullSchedule, function (array $left, array $right) {
+            return ($this->scheduleTimestamp($left['start_time'] ?? null) ?? 0) <=> ($this->scheduleTimestamp($right['start_time'] ?? null) ?? 0);
+        });
+
+        $now = now()->utc()->timestamp;
+        $nowPlaying = null;
+        $nextPlaying = null;
+        $currentIndex = null;
+
+        foreach ($fullSchedule as $index => $item) {
+            $start = $this->scheduleTimestamp($item['start_time'] ?? null);
+            $end   = $this->scheduleTimestamp($item['end_time'] ?? null);
+            if (!$start || !$end) continue;
+
+            if ($now >= $start && $now <= $end) {
+                $currentIndex = $index;
+                $nowPlaying = [
+                    'title' => $item['title'] ?? null,
+                    'start_time' => $item['start_time'],
+                    'end_time' => $item['end_time'],
+                    'duration_seconds' => $item['duration_seconds'] ?? null,
+                    'elapsed_seconds' => $now - $start,
+                ];
+
+                if (isset($fullSchedule[$index + 1])) {
+                    $next = $fullSchedule[$index + 1];
+                    $nextPlaying = [
+                        'title' => $next['title'] ?? null,
+                        'start_time' => $next['start_time'],
+                        'end_time' => $next['end_time'],
+                        'duration_seconds' => $next['duration_seconds'] ?? null,
+                    ];
+                }
+
+                break;
+            }
+        }
+
+        $sliceStart = $currentIndex !== null ? max(0, $currentIndex - 8) : 0;
+
+        return [$nowPlaying, $nextPlaying, array_slice($fullSchedule, $sliceStart, 72)];
+    }
+
+    private function resolveSchedulesUrl(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $trimmed)) {
+            return $trimmed;
+        }
+
+        return 'https://stream.ezway.tv/api/public/schedules/' . rawurlencode($trimmed);
+    }
+
+    private function isScheduleStatusPlaying(?string $status): bool
+    {
+        $normalized = strtolower(trim((string) $status));
+
+        return in_array($normalized, ['playing', 'on_air', 'on air', 'on-air', 'looping'], true);
     }
 
     private function scheduleTimestamp(?string $value): ?int

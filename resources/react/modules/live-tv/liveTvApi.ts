@@ -39,6 +39,8 @@ export type LiveTvScheduleItem = {
   end_at?: string | null
   start_time?: string | null
   end_time?: string | null
+  timezone?: string | null
+  status?: string | null
   duration_seconds?: number | null
   meta?: Record<string, unknown> | null
 }
@@ -116,6 +118,8 @@ export async function loadLiveTvSchedule(channelId: string | number, schedulesUr
             title: item.media?.title ?? item.title ?? null,
             start_at: item.start_at ?? item.start_time ?? null,
             end_at: item.end_at ?? item.end_time ?? null,
+            timezone: item.timezone ?? null,
+            status: item.status ?? null,
             meta: item.media ?? item.meta ?? null,
           })) as LiveTvScheduleItem[]
         }
@@ -143,9 +147,11 @@ export async function loadLiveTvGuide(channels: MediaItem[]) {
 
 export async function loadLiveTvGuideChannel(channel: MediaItem) {
   const detail = await loadLiveTvDetail(channel.id)
-  const schedule = Array.isArray(detail?.full_schedule) && detail.full_schedule.length > 0
-    ? detail.full_schedule
-    : await loadLiveTvSchedule(channel.id, detail?.schedules_url)
+  const schedule = detail?.schedules_url
+    ? await loadLiveTvSchedule(channel.id, detail.schedules_url)
+    : Array.isArray(detail?.full_schedule) && detail.full_schedule.length > 0
+      ? detail.full_schedule
+      : await loadLiveTvSchedule(channel.id, detail?.schedules_url)
 
   return {
     channel: { ...channel, ...detail },

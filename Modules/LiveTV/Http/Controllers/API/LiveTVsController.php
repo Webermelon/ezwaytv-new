@@ -72,7 +72,7 @@ class LiveTVsController extends Controller
         $channelId = $request->channel_id ?? $request->id;
         $userId = $request->user_id ?? auth()->id();
 
-        $cacheKey = 'livetv_details_v3_featured_order_'. md5(json_encode([
+        $cacheKey = 'livetv_details_v4_schedule_status_'. md5(json_encode([
             'channel_id' => $channelId,
             'user_id' => $userId,
             'device_type' => $device_type

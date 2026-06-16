@@ -46,7 +46,10 @@ class LiveTvChannel extends BaseModel
 
     public function TvChannelStreamContentMappings()
     {
-        return $this->hasOne(TvChannelStreamContentMapping::class,'tv_channel_id','id');
+        return $this->hasOne(TvChannelStreamContentMapping::class,'tv_channel_id','id')
+            ->orderByRaw("CASE WHEN api_key IS NOT NULL AND api_key <> '' THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN server_url IS NOT NULL AND server_url <> '' THEN 0 ELSE 1 END")
+            ->orderBy('id');
     }
     protected static function boot()
     {

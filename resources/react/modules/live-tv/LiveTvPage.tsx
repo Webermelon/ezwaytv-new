@@ -666,7 +666,7 @@ function SchedulePanel({
                     ].join(' ')}
                   >
                     <div className="text-xs font-semibold text-white/46">
-                      {[formatScheduleTime(item.start), formatScheduleTime(item.end)].filter(Boolean).join(' - ')}
+                      {[formatScheduleTime(item.start, item.timezone), formatScheduleTime(item.end, item.timezone)].filter(Boolean).join(' - ')}
                     </div>
                     <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
                     {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
@@ -699,7 +699,7 @@ function ProgramSummary({
         <>
           <h3 className="line-clamp-2 text-lg font-bold leading-snug text-white">{cleanScheduleTitle(program.title)}</h3>
           <p className="mt-2 text-sm text-white/56">
-            {[formatTime(program.start_time), formatTime(program.end_time)].filter(Boolean).join(' - ')}
+            {[formatTime(program.start_time, program.timezone), formatTime(program.end_time, program.timezone)].filter(Boolean).join(' - ')}
           </p>
           {progress > 0 ? (
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/12">
@@ -797,7 +797,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
   const [channelSort, setChannelSort] = useState<'asc' | 'desc'>('asc')
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
-      queryKey: ['livetv-guide-channel', channel.id],
+      queryKey: ['livetv-guide-channel-full', channel.id],
       queryFn: () => loadLiveTvGuideChannel(channel),
       enabled: Boolean(channel.id),
       staleTime: 10 * 60_000,
@@ -810,7 +810,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
       .map((query, index) => ({ row: query.data, loadedAt: query.dataUpdatedAt || Date.now(), index }))
       .filter((item): item is { row: LiveTvGuideChannel; loadedAt: number; index: number } => Boolean(item.row))
       .filter(({ row }) => row.schedule.some((item) => (
-        isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
+        isSameScheduleDay(scheduleStart(item), today, item.timezone) && isCurrentOrUpcomingSchedule(item, currentTime)
       )))
       .sort((a, b) => {
         const aFeatured = featuredLiveTvOrder(a.row.channel)
@@ -823,7 +823,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
   ), [channelSort, currentTime, guideQueries, today])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
   const programCount = visibleRows.reduce((total, { row }) => total + row.schedule.filter((item) => (
-    isSameScheduleDay(scheduleStart(item), today) && isCurrentOrUpcomingSchedule(item, currentTime)
+    isSameScheduleDay(scheduleStart(item), today, item.timezone) && isCurrentOrUpcomingSchedule(item, currentTime)
   )).length, 0)
   const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
   const showSkeleton = loading && visibleRows.length === 0
@@ -915,9 +915,9 @@ function TvGuideRow({ row, selectedDay, currentTime, channelNumber }: { row: Liv
   const label = channelNumber ? channelLabel(channelNumber) : null
   const programs = useMemo(() => (
     row.schedule
-      .filter((item) => isSameScheduleDay(scheduleStart(item), selectedDay))
+      .filter((item) => isSameScheduleDay(scheduleStart(item), selectedDay, item.timezone))
       .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
-      .sort((a, b) => (parseScheduleDate(scheduleStart(a))?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b))?.getTime() ?? 0))
+      .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
   ), [currentTime, row.schedule, selectedDay])
 
   function scrollByProgram(direction: -1 | 1) {
@@ -964,7 +964,7 @@ function TvGuideRow({ row, selectedDay, currentTime, channelNumber }: { row: Liv
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
-                    {[formatTime(scheduleStart(program)), formatTime(scheduleEnd(program))].filter(Boolean).join(' - ')}
+                    {[formatTime(scheduleStart(program), program.timezone), formatTime(scheduleEnd(program), program.timezone)].filter(Boolean).join(' - ')}
                   </span>
                   {onAir ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
@@ -1101,7 +1101,7 @@ function LiveTvChat({
 }
 
 function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo | null) {
-  const threshold = parseScheduleDate(now?.start_time)?.getTime() ?? Date.now()
+  const threshold = parseScheduleDate(now?.start_time, now?.timezone)?.getTime() ?? Date.now()
 
   return items
     .map((item) => ({
@@ -1111,15 +1111,15 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
     }))
     .filter((item) => item.title || item.start)
     .filter((item) => {
-      const endTime = parseScheduleDate(item.end)?.getTime()
-      const startTime = parseScheduleDate(item.start)?.getTime()
+      const endTime = parseScheduleDate(item.end, item.timezone)?.getTime()
+      const startTime = parseScheduleDate(item.start, item.timezone)?.getTime()
 
       if (endTime) return endTime >= threshold
       if (startTime) return startTime >= threshold
 
       return true
     })
-    .sort((a, b) => (parseScheduleDate(a.start)?.getTime() ?? 0) - (parseScheduleDate(b.start)?.getTime() ?? 0))
+    .sort((a, b) => (parseScheduleDate(a.start, a.timezone)?.getTime() ?? 0) - (parseScheduleDate(b.start, b.timezone)?.getTime() ?? 0))
 }
 
 function AdStrip({ ads }: { ads: VideoAd[] }) {
@@ -1201,13 +1201,13 @@ async function copyLiveTvShareUrl() {
   document.body.removeChild(input)
 }
 
-function formatTime(value?: string | null) {
+function formatTime(value?: string | null, timezone?: string | null) {
   if (!value) return null
 
-  const date = parseScheduleDate(value)
+  const date = parseScheduleDate(value, timezone)
   if (!date) return null
 
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
+  return date.toLocaleTimeString([], { timeZone: scheduleDisplayTimeZone(timezone), hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
 function cleanScheduleTitle(value?: string | null) {
@@ -1246,16 +1246,19 @@ function scheduleEnd(item?: LiveTvScheduleItem | ProgramInfo | null) {
   return 'end_at' in item ? (item.end_at ?? item.end_time ?? null) : item.end_time ?? null
 }
 
-function isSameScheduleDay(value: string | Date | null | undefined, date: Date) {
-  const next = value instanceof Date ? value : parseScheduleDate(value)
+function isSameScheduleDay(value: string | Date | null | undefined, date: Date, timezone?: string | null) {
+  const next = value instanceof Date ? value : parseScheduleDate(value, timezone)
   if (!next) return false
 
   return startOfDay(next).getTime() === startOfDay(date).getTime()
 }
 
 function isScheduleOnAir(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
-  const start = parseScheduleDate(scheduleStart(item))?.getTime()
-  const end = parseScheduleDate(scheduleEnd(item))?.getTime()
+  if ('status' in item && isScheduleStatusPlaying(item.status)) return true
+
+  const timezone = 'timezone' in item ? item.timezone : null
+  const start = parseScheduleDate(scheduleStart(item), timezone)?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item), timezone)?.getTime()
 
   if (!start || !end) return false
 
@@ -1317,8 +1320,11 @@ function channelLabel(index: number) {
 }
 
 function isCurrentOrUpcomingSchedule(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
-  const start = parseScheduleDate(scheduleStart(item))?.getTime()
-  const end = parseScheduleDate(scheduleEnd(item))?.getTime()
+  if ('status' in item && isScheduleStatusPlaying(item.status)) return true
+
+  const timezone = 'timezone' in item ? item.timezone : null
+  const start = parseScheduleDate(scheduleStart(item), timezone)?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item), timezone)?.getTime()
 
   if (end) return end > currentTime
   if (start) return start >= currentTime
@@ -1326,7 +1332,13 @@ function isCurrentOrUpcomingSchedule(item: LiveTvScheduleItem | ProgramInfo, cur
   return false
 }
 
-function parseScheduleDate(value?: string | null) {
+function isScheduleStatusPlaying(status?: string | null) {
+  const normalized = String(status ?? '').trim().toLowerCase()
+
+  return ['playing', 'on_air', 'on air', 'on-air', 'looping'].includes(normalized)
+}
+
+function parseScheduleDate(value?: string | null, timezone?: string | null) {
   if (!value) return null
 
   const trimmed = value.trim()
@@ -1350,6 +1362,14 @@ function parseScheduleDate(value?: string | null) {
     }
   }
 
+  if (timezone?.toUpperCase() === 'UTC') {
+    const normalizedUtc = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+    const date = new Date(`${normalizedUtc.endsWith('Z') ? normalizedUtc : `${normalizedUtc}Z`}`)
+    if (Number.isNaN(date.getTime())) return null
+
+    return date
+  }
+
   const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
   const date = new Date(normalized)
   if (Number.isNaN(date.getTime())) return null
@@ -1357,17 +1377,22 @@ function parseScheduleDate(value?: string | null) {
   return date
 }
 
-function formatScheduleTime(value?: string | null) {
+function formatScheduleTime(value?: string | null, timezone?: string | null) {
   if (!value) return null
 
-  const date = parseScheduleDate(value)
+  const date = parseScheduleDate(value, timezone)
   if (!date) return null
 
   return date.toLocaleString([], {
+    timeZone: scheduleDisplayTimeZone(timezone),
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
   })
+}
+
+function scheduleDisplayTimeZone(_timezone?: string | null) {
+  return 'Asia/Dhaka'
 }

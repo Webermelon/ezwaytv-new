@@ -63,6 +63,8 @@ export type ProgramInfo = {
   title?: string | null
   start_time?: string | null
   end_time?: string | null
+  timezone?: string | null
+  status?: string | null
   duration_seconds?: number | null
   elapsed_seconds?: number | null
 }
