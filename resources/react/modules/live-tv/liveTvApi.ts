@@ -148,11 +148,9 @@ export async function loadLiveTvGuide(channels: MediaItem[]) {
 
 export async function loadLiveTvGuideChannel(channel: MediaItem) {
   const detail = await loadLiveTvDetail(channel.id)
-  const schedule = detail?.schedules_url
-    ? await loadLiveTvSchedule(channel.id, detail.schedules_url)
-    : Array.isArray(detail?.full_schedule) && detail.full_schedule.length > 0
-      ? detail.full_schedule
-      : await loadLiveTvSchedule(channel.id, detail?.schedules_url)
+  const schedule = Array.isArray(detail?.full_schedule) && detail.full_schedule.length > 0
+    ? detail.full_schedule
+    : await loadLiveTvSchedule(channel.id, detail?.schedules_url)
 
   return {
     channel: { ...channel, ...detail },

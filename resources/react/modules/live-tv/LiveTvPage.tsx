@@ -804,14 +804,11 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
       gcTime: 45 * 60_000,
     })),
   })
-  const today = useMemo(() => startOfDay(new Date(currentTime)), [currentTime])
   const visibleRows = useMemo(() => (
     guideQueries
       .map((query, index) => ({ row: query.data, loadedAt: query.dataUpdatedAt || Date.now(), index }))
       .filter((item): item is { row: LiveTvGuideChannel; loadedAt: number; index: number } => Boolean(item.row))
-      .filter(({ row }) => row.schedule.some((item) => (
-        isSameScheduleDay(scheduleStart(item), today, item.timezone) && isCurrentOrUpcomingSchedule(item, currentTime)
-      )))
+      .filter(({ row }) => tvGuidePrograms(row, currentTime).length > 0)
       .sort((a, b) => {
         const aFeatured = featuredLiveTvOrder(a.row.channel)
         const bFeatured = featuredLiveTvOrder(b.row.channel)
@@ -820,11 +817,9 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
 
         return featuredCompare || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
       })
-  ), [channelSort, currentTime, guideQueries, today])
+  ), [channelSort, currentTime, guideQueries])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
-  const programCount = visibleRows.reduce((total, { row }) => total + row.schedule.filter((item) => (
-    isSameScheduleDay(scheduleStart(item), today, item.timezone) && isCurrentOrUpcomingSchedule(item, currentTime)
-  )).length, 0)
+  const programCount = visibleRows.reduce((total, { row }) => total + tvGuidePrograms(row, currentTime).length, 0)
   const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
   const showSkeleton = loading && visibleRows.length === 0
 
@@ -858,7 +853,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
 
         <div className="flex items-center gap-2">
           <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
-            Today
+            Now + Next
           </div>
           <div className="flex rounded-md border border-white/10 bg-white/[0.045] p-1">
             {[
@@ -892,7 +887,6 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
               <TvGuideRow
                 key={row.channel.id}
                 row={row}
-                selectedDay={today}
                 currentTime={currentTime}
                 channelNumber={liveTvChannelNumber(row.channel, channels)}
               />
@@ -902,23 +896,18 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
         ) : pendingCount > 0 ? (
           <TvGuideSkeleton />
         ) : (
-          <div className="p-8 text-center text-sm font-semibold text-white/48">No current or upcoming programs for today.</div>
+          <div className="p-8 text-center text-sm font-semibold text-white/48">No guide programs available.</div>
         )}
       </div>
     </section>
   )
 }
 
-function TvGuideRow({ row, selectedDay, currentTime, channelNumber }: { row: LiveTvGuideChannel; selectedDay: Date; currentTime: number; channelNumber?: number }) {
+function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChannel; currentTime: number; channelNumber?: number }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const name = row.channel.details?.name ?? row.channel.name
   const label = channelNumber ? channelLabel(channelNumber) : null
-  const programs = useMemo(() => (
-    row.schedule
-      .filter((item) => isSameScheduleDay(scheduleStart(item), selectedDay, item.timezone))
-      .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
-      .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
-  ), [currentTime, row.schedule, selectedDay])
+  const programs = useMemo(() => tvGuidePrograms(row, currentTime), [currentTime, row])
 
   function scrollByProgram(direction: -1 | 1) {
     scrollerRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
@@ -1122,6 +1111,17 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
     .sort((a, b) => (parseScheduleDate(a.start, a.timezone)?.getTime() ?? 0) - (parseScheduleDate(b.start, b.timezone)?.getTime() ?? 0))
 }
 
+function tvGuidePrograms(row: LiveTvGuideChannel, currentTime: number) {
+  const normalized = normalizeScheduleItems(row.schedule, row.channel.now_playing)
+
+  if (normalized.length > 0) return normalized
+
+  return row.schedule
+    .filter((item) => item.title || scheduleStart(item))
+    .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
+    .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
+}
+
 function AdStrip({ ads }: { ads: VideoAd[] }) {
   if (ads.length === 0) return null
 
@@ -1228,12 +1228,6 @@ function cleanScheduleTitle(value?: string | null) {
   return title || 'Untitled program'
 }
 
-function startOfDay(date: Date) {
-  const next = new Date(date)
-  next.setHours(0, 0, 0, 0)
-  return next
-}
-
 function scheduleStart(item?: LiveTvScheduleItem | ProgramInfo | null) {
   if (!item) return null
 
@@ -1244,13 +1238,6 @@ function scheduleEnd(item?: LiveTvScheduleItem | ProgramInfo | null) {
   if (!item) return null
 
   return 'end_at' in item ? (item.end_at ?? item.end_time ?? null) : item.end_time ?? null
-}
-
-function isSameScheduleDay(value: string | Date | null | undefined, date: Date, timezone?: string | null) {
-  const next = value instanceof Date ? value : parseScheduleDate(value, timezone)
-  if (!next) return false
-
-  return startOfDay(next).getTime() === startOfDay(date).getTime()
 }
 
 function isScheduleOnAir(item: LiveTvScheduleItem | ProgramInfo, currentTime: number) {
