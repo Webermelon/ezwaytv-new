@@ -120,6 +120,7 @@ export async function loadLiveTvSchedule(channelId: string | number, schedulesUr
             end_at: item.end_at ?? item.end_time ?? null,
             timezone: item.timezone ?? null,
             status: item.status ?? null,
+            duration_seconds: item.media?.duration_seconds ?? item.duration_seconds ?? null,
             meta: item.media ?? item.meta ?? null,
           })) as LiveTvScheduleItem[]
         }
