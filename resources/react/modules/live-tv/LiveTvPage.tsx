@@ -797,7 +797,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
   const [channelSort, setChannelSort] = useState<'asc' | 'desc'>('asc')
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
-      queryKey: ['livetv-guide-channel-full', channel.id],
+      queryKey: ['livetv-guide-channel-detail-schedule-v3', channel.id],
       queryFn: () => loadLiveTvGuideChannel(channel),
       enabled: Boolean(channel.id),
       staleTime: 10 * 60_000,
@@ -920,7 +920,6 @@ function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChann
         <a href={liveTvSpaHref(row.channel)} className="line-clamp-2 text-sm font-black text-[#d4a843] hover:text-[#f2d16f]">
           {name}
         </a>
-        <span className="shrink-0 text-xs font-semibold text-white/36 lg:mt-1 lg:block">{programs.length} programs</span>
       </div>
 
       <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)_32px] items-center gap-2">
@@ -1114,12 +1113,13 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
 function tvGuidePrograms(row: LiveTvGuideChannel, currentTime: number) {
   const normalized = normalizeScheduleItems(row.schedule, row.channel.now_playing)
 
-  if (normalized.length > 0) return normalized
+  if (normalized.length > 0) return normalized.slice(0, 100)
 
   return row.schedule
     .filter((item) => item.title || scheduleStart(item))
     .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
     .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
+    .slice(0, 100)
 }
 
 function AdStrip({ ads }: { ads: VideoAd[] }) {
@@ -1331,6 +1331,14 @@ function parseScheduleDate(value?: string | null, timezone?: string | null) {
   const trimmed = value.trim()
   const hasExplicitTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(trimmed)
 
+  if (timezone?.toUpperCase() === 'UTC') {
+    const normalizedUtc = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+    const date = new Date(`${normalizedUtc.endsWith('Z') ? normalizedUtc : `${normalizedUtc}Z`}`)
+    if (Number.isNaN(date.getTime())) return null
+
+    return date
+  }
+
   if (!hasExplicitTimezone) {
     const dhakaTime = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?$/)
 
@@ -1347,14 +1355,6 @@ function parseScheduleDate(value?: string | null, timezone?: string | null) {
 
       return Number.isNaN(date.getTime()) ? null : date
     }
-  }
-
-  if (timezone?.toUpperCase() === 'UTC') {
-    const normalizedUtc = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
-    const date = new Date(`${normalizedUtc.endsWith('Z') ? normalizedUtc : `${normalizedUtc}Z`}`)
-    if (Number.isNaN(date.getTime())) return null
-
-    return date
   }
 
   const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
