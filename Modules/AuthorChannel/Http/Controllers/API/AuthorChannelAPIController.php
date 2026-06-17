@@ -31,7 +31,19 @@ class AuthorChannelAPIController extends Controller
             'search' => $request->input('search'),
         ]));
 
-        $channels = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
+        try {
+            $channels = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
+                return $this->buildChannelIndex($request, $perPage);
+            });
+        } catch (\Throwable $e) {
+            $channels = $this->buildChannelIndex($request, $perPage);
+        }
+
+        return ApiResponse::success($channels, 'Author channel list');
+    }
+
+    private function buildChannelIndex(Request $request, int $perPage)
+    {
             $query = AuthorChannel::where('is_active', 1)
                 ->withCount('videos');
 
@@ -48,9 +60,6 @@ class AuthorChannelAPIController extends Controller
             $channels->getCollection()->transform(fn ($ch) => $this->formatChannel($ch));
 
             return $channels;
-        });
-
-        return ApiResponse::success($channels, 'Author channel list');
     }
 
     /**
@@ -59,20 +68,29 @@ class AuthorChannelAPIController extends Controller
      */
     public function show($username)
     {
-        $channel = Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
-            $channel = AuthorChannel::where('username', $username)
-                ->where('is_active', 1)
-                ->withCount('videos')
-                ->first();
-
-            return $channel ? $this->formatChannel($channel, true) : null;
-        });
+        try {
+            $channel = Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
+                return $this->buildChannelShow($username);
+            });
+        } catch (\Throwable $e) {
+            $channel = $this->buildChannelShow($username);
+        }
 
         if (!$channel) {
             return ApiResponse::error('Channel not found.', 404);
         }
 
         return ApiResponse::success($channel, 'Author channel details');
+    }
+
+    private function buildChannelShow(string $username): ?array
+    {
+            $channel = AuthorChannel::where('username', $username)
+                ->where('is_active', 1)
+                ->withCount('videos')
+                ->first();
+
+            return $channel ? $this->formatChannel($channel, true) : null;
     }
 
     /**
@@ -98,7 +116,19 @@ class AuthorChannelAPIController extends Controller
             'per_page' => $perPage,
         ]));
 
-        $videos = Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
+        try {
+            $videos = Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
+                return $this->buildChannelVideos($channel, $perPage);
+            });
+        } catch (\Throwable $e) {
+            $videos = $this->buildChannelVideos($channel, $perPage);
+        }
+
+        return ApiResponse::success($videos, 'Channel videos');
+    }
+
+    private function buildChannelVideos(AuthorChannel $channel, int $perPage)
+    {
             $videos = $channel->videos()
                 ->whereNull('videos.deleted_at')
                 ->where('videos.status', 1)
@@ -124,9 +154,6 @@ class AuthorChannelAPIController extends Controller
             $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
 
             return $videos;
-        });
-
-        return ApiResponse::success($videos, 'Channel videos');
     }
 
     // -------------------------------------------------------------------------

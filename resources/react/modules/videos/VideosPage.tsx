@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Filter, Play, Search } from 'lucide-react'
+import { Filter, Lock, Play, Search } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -90,8 +90,8 @@ export function VideosPage() {
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
               <a href={videoHref(featured)}>
-                <Play className="h-5 w-5 fill-current" />
-                Play
+                {isPremiumVideoCard(featured) ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+                {isPremiumVideoCard(featured) ? 'View Premium' : 'Play'}
               </a>
             </Button>
             <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
@@ -182,15 +182,26 @@ function uniqueById(items: MediaItem[]) {
 }
 
 function VideoCard({ video }: { video: MediaItem }) {
+  const locked = isPremiumVideoCard(video)
+
   return (
     <a href={videoHref(video)} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail src={video.poster_image} alt={video.name} previewSrc={previewHref(video)} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
-        <div className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
-          <Play className="h-5 w-5 fill-white text-white" />
+        {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
+        <div className={[
+          'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
+          locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
+        ].join(' ')}>
+          {locked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
         </div>
-        {video.access ? <Badge className="absolute right-3 top-3 rounded-sm bg-black/70 text-white">{video.access}</Badge> : null}
+        {locked ? (
+          <Badge className="absolute right-3 top-3 rounded-sm bg-primary text-black">
+            <Lock className="mr-1 h-3.5 w-3.5" />
+            Premium
+          </Badge>
+        ) : video.access ? <Badge className="absolute right-3 top-3 rounded-sm bg-black/70 text-white">{video.access}</Badge> : null}
         {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
@@ -223,6 +234,16 @@ function videoHref(video?: MediaItem) {
 
 function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
+}
+
+function isPremiumVideoCard(video?: MediaItem) {
+  if (!video || video.access !== 'paid') return false
+
+  if (typeof video.has_content_access !== 'undefined' && video.has_content_access !== null) {
+    return !Boolean(video.has_content_access)
+  }
+
+  return true
 }
 
 function getCategoryFromPath() {

@@ -20,6 +20,14 @@ export type MediaItem = {
   profile_image?: string
   duration?: string | null
   access?: string
+  has_content_access?: number | boolean | null
+  is_premium?: number | boolean | null
+  show_premium_badge?: number | boolean | null
+  plan_id?: number | string | null
+  plan_level?: number | string | null
+  required_plan_level?: number | string | null
+  required_plan_name?: string | null
+  current_plan_level?: number | string | null
   username?: string
   profile_url?: string
   ondemand_channel_id?: number | string | null
@@ -56,6 +64,7 @@ export type MediaItem = {
     is_device_supported?: number | boolean | null
     has_content_access?: number | boolean | null
     required_plan_level?: number | string | null
+    required_plan_name?: string | null
   }
 }
 

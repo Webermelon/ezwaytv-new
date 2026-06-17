@@ -38,6 +38,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                 'is_device_supported'=> $this->isDeviceSupported ?? null,
                 "has_content_access"=> $this->has_content_access,
                 "required_plan_level"=> $this->required_plan_level ?? 0,
+                "required_plan_name"=> optional($this->plan)->name,
                 'description' => strip_tags($this->description),
                 "thumbnail_image" => setBaseUrlWithFileName($this->poster_url,'image','livetv'),
                 'category' => $this->TvCategory->name ?? null,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Check, Clapperboard, Copy, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
+import { ArrowLeft, Check, Clapperboard, Copy, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -508,17 +508,28 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
 function VideoCard({ video, channelId }: { video: MediaItem; channelId: string | number }) {
   const image = videoThumb(video)
   const href = `/video-details/${video.slug}?autoplay=1&ondemand_channel=${channelId}`
+  const locked = isPremiumVideoCard(video)
 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.02] group-hover:border-primary/60">
         <MediaThumbnail src={image} alt={video.name} previewSrc={previewHref(video)} />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/82 to-transparent" />
+        {locked ? <div className="absolute inset-0 bg-black/38" /> : null}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/92 text-black shadow-xl ring-1 ring-black/20 transition duration-200 group-hover:scale-110 group-hover:bg-primary group-hover:text-white">
-            <Play className="ml-0.5 h-6 w-6 fill-current" />
+          <span className={[
+            'flex h-12 w-12 items-center justify-center rounded-full shadow-xl ring-1 ring-black/20 transition duration-200 group-hover:scale-110',
+            locked ? 'bg-primary text-black group-hover:bg-primary group-hover:text-black' : 'bg-white/92 text-black group-hover:bg-primary group-hover:text-white',
+          ].join(' ')}>
+            {locked ? <Lock className="h-6 w-6" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}
           </span>
         </div>
+        {locked ? (
+          <Badge className="absolute left-3 top-3 rounded-sm bg-primary text-black">
+            <Lock className="mr-1 h-3.5 w-3.5" />
+            Premium
+          </Badge>
+        ) : null}
         {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
       <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h4>
@@ -641,6 +652,16 @@ function stripHtml(value: string) {
 
 function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
+}
+
+function isPremiumVideoCard(video: MediaItem) {
+  if (video.access !== 'paid') return false
+
+  if (typeof video.has_content_access !== 'undefined' && video.has_content_access !== null) {
+    return !Boolean(video.has_content_access)
+  }
+
+  return true
 }
 
 function updatePageMeta({ title, description, image, url }: { title: string; description: string; image: string | null; url: string }) {

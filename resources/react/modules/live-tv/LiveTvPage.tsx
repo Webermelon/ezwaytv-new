@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -216,6 +216,7 @@ function LiveTvDetailPage({
   const description = channel?.details?.description ?? channel?.description ?? 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
+  const isSubscriptionLocked = isPremiumMediaLocked(channel)
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
@@ -305,25 +306,32 @@ function LiveTvDetailPage({
               </Badge>
               {category ? <Badge className="rounded-sm bg-white/14 text-white">{category}</Badge> : null}
               {channel?.details?.access ? <Badge className="rounded-sm bg-white/14 text-white">{channel.details.access}</Badge> : null}
+              {isSubscriptionLocked ? <Badge variant="outline" className="border-[#d4a843]/50 bg-[#d4a843]/10 text-[#f2d16f]">Premium</Badge> : null}
             </div>
             <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
 
+            {isSubscriptionLocked ? <LiveTvPremiumNotice channel={channel} /> : null}
+
             <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
-              <Button
-                type="button"
-                size="lg"
-                className="bg-white text-black hover:bg-white/85"
-                disabled={!stream && !loading}
-                onClick={() => {
-                  setPlayerStarted(true)
-                  setPlayTrigger((value) => value + 1)
-                  document.querySelector<HTMLElement>('.livetv-player')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }}
-              >
-                <Play className="h-5 w-5 fill-current" />
-                Watch Live
-              </Button>
+              {isSubscriptionLocked ? (
+                <PremiumActionButton />
+              ) : (
+                <Button
+                  type="button"
+                  size="lg"
+                  className="bg-white text-black hover:bg-white/85"
+                  disabled={!stream && !loading}
+                  onClick={() => {
+                    setPlayerStarted(true)
+                    setPlayTrigger((value) => value + 1)
+                    document.querySelector<HTMLElement>('.livetv-player')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }}
+                >
+                  <Play className="h-5 w-5 fill-current" />
+                  Watch Live
+                </Button>
+              )}
               <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
                 <a href="/livetv">All Channels</a>
               </Button>
@@ -341,7 +349,13 @@ function LiveTvDetailPage({
           </section>
 
           <div className="livetv-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
-            {stream && playerStarted ? (
+            {isSubscriptionLocked ? (
+              <PremiumPlayerLock
+                image={image}
+                title={title}
+                label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
+              />
+            ) : stream && playerStarted ? (
               <VideoJsPlayer
                 source={stream.url}
                 poster={image}
@@ -1089,6 +1103,66 @@ function LiveTvChat({
   )
 }
 
+function LiveTvPremiumNotice({ channel }: { channel?: MediaItem }) {
+  return (
+    <div className="mt-6 max-w-2xl rounded-md border border-[#d4a843]/26 bg-[#d4a843]/10 p-4 text-sm text-white/76">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#d4a843] text-black">
+          <Lock className="h-4 w-4" />
+        </span>
+        <div>
+          <h2 className="text-base font-black text-white">Premium plan required</h2>
+          <p className="mt-1 leading-6">
+            This live channel is included with {requiredPlanLabel(channel)}. Upgrade your plan to unlock live playback.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PremiumActionButton() {
+  if (!isAuthenticated()) {
+    return (
+      <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+        <a href={`/login?redirect=${encodeURIComponent(window.location.href)}`}>
+          <Lock className="h-5 w-5" />
+          Sign In to Watch
+        </a>
+      </Button>
+    )
+  }
+
+  return (
+    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+      <a href="/subscription-plan">
+        <Lock className="h-5 w-5" />
+        Upgrade Plan
+      </a>
+    </Button>
+  )
+}
+
+function PremiumPlayerLock({ image, title, label }: { image?: string | null; title: string; label: string }) {
+  return (
+    <div className="relative flex aspect-video min-h-[260px] flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
+      {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" /> : null}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,168,67,0.18),transparent_36%),linear-gradient(180deg,rgba(0,0,0,0.50),#000_100%)]" />
+      <div className="relative flex max-w-md flex-col items-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[#d4a843]/40 bg-[#d4a843]/14 text-[#f2d16f] shadow-2xl shadow-[#d4a843]/15">
+          <Lock className="h-7 w-7" />
+        </span>
+        <h2 className="mt-5 text-2xl font-black">Premium Content</h2>
+        <p className="mt-2 text-sm font-semibold text-white/76">{title}</p>
+        <p className="mt-3 text-sm leading-6 text-white/62">{isAuthenticated() ? label : 'Sign in or choose a subscription plan to play this channel.'}</p>
+        <div className="mt-6">
+          <PremiumActionButton />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo | null) {
   const threshold = parseScheduleDate(now?.start_time, now?.timezone)?.getTime() ?? Date.now()
 
@@ -1173,6 +1247,33 @@ function resolveLiveTvStream(channel?: MediaItem) {
   if (!url || stream?.url_type === 'Embedded') return null
 
   return { url, type: stream?.url_type ?? 'HLS' }
+}
+
+function isPremiumMediaLocked(item?: MediaItem | null) {
+  if (!item) return false
+  const access = item.details?.access ?? item.access
+  if (access !== 'paid') return false
+
+  const hasAccess = item.details?.has_content_access ?? item.has_content_access
+  if (typeof hasAccess !== 'undefined' && hasAccess !== null) {
+    return !Boolean(hasAccess)
+  }
+
+  return !Boolean(isAuthenticated() && window.ezwayAuth?.is_subscribe)
+}
+
+function isAuthenticated() {
+  return window.isAuthenticated === true && Boolean(window.ezwayAuth)
+}
+
+function requiredPlanLabel(item?: MediaItem | null) {
+  const requiredName = item?.details?.required_plan_name ?? item?.required_plan_name
+  if (requiredName) return requiredName
+
+  const requiredLevel = item?.details?.required_plan_level ?? item?.required_plan_level ?? item?.plan_level
+  if (requiredLevel) return `Plan Level ${requiredLevel}`
+
+  return 'a premium plan'
 }
 
 function relatedChannels(channels: MediaItem[], current?: MediaItem) {
