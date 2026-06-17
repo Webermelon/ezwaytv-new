@@ -207,7 +207,7 @@ class ReactMetaController extends Controller
 
     private function authorChannelImage(AuthorChannel $channel): string
     {
-        foreach ([$channel->avatar, $channel->banner] as $image) {
+        foreach ([$channel->banner, $channel->avatar] as $image) {
             if (! empty($image)) {
                 return setBaseUrlWithFileNameV2($image);
             }
@@ -218,7 +218,7 @@ class ReactMetaController extends Controller
             ->orderByDesc('videos.updated_at')
             ->first(['videos.id', 'videos.thumbnail_url', 'videos.poster_url', 'videos.poster_tv_url']);
 
-        foreach ([$video?->thumbnail_url, $video?->poster_tv_url, $video?->poster_url] as $image) {
+        foreach ([$video?->poster_tv_url, $video?->poster_url, $video?->thumbnail_url] as $image) {
             if (! empty($image)) {
                 return setBaseUrlWithFileNameV2($image);
             }

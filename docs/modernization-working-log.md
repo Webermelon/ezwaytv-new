@@ -2309,3 +2309,44 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - PHP lint passed for changed route/API files during the public pages pass.
   - `php artisan optimize:clear` was run after route/cache-sensitive changes.
 - No migrations were run and no database tables were altered.
+
+## 2026-06-17
+
+### Current Frontend and Access-Control Progress
+
+- Fixed Live TV schedule alignment between public React pages and backend/API on-air state.
+  - Single-channel schedule now respects the current backend on-air program.
+  - Full TV Guide now loads the expanded schedule data instead of only the first few visible programs.
+  - TV Guide display was limited to the next 100 schedule items per channel for performance/readability.
+  - Removed the visible total-program count label from the guide cards.
+- Updated Live TV ordering after content changes.
+  - Moved Patrion TV closer to the top featured Live TV group.
+  - Kept featured eZWay network channels pinned before general channels.
+- Added premium-content handling for React video detail pages.
+  - Locked videos now show a premium UI instead of `Video details could not be loaded`.
+  - Premium actions guide guests to sign in/join and subscribed users to upgrade.
+  - Video detail API now returns required plan/access metadata needed by the React lock state.
+- Added premium handling for Live TV and On Demand React pages.
+  - Paid Live TV channels show a lock panel when the user does not have the required plan.
+  - Paid videos inside On Demand channels show lock badges/overlays.
+  - Public channel/card lists show premium indicators where access metadata is available.
+- Added Free/Paid plan settings for On Demand channels.
+  - Added `access` and `plan_id` columns to `author_channels`.
+  - Updated `app/Models/AuthorChannel.php` with fillable fields, casts, and `plan()` relation.
+  - Added Free/Paid radio controls and Subscription Plan selector to On Demand channel create/edit admin pages.
+  - Added an Access badge column to the On Demand channel admin list.
+  - Made the Subscription Plan selector visible on the form and enabled when Paid is selected.
+  - On Demand channel API now returns channel-level access, plan, required-plan, and `has_content_access` data.
+  - Authenticated API responses bypass guest cache where access state is user-specific.
+  - Paid On Demand channels show a premium lock panel and hide videos until the user has the selected plan.
+- Updated subscription plan cleanup.
+  - Deleting a plan now resets linked On Demand channels back to free with no plan.
+- Verification:
+  - `php -l` passed for edited PHP model/controller files.
+  - `npm run react:build` passed after React access UI changes.
+  - `php artisan migrate --pretend` confirmed the On Demand channel migration SQL.
+  - `php artisan migrate --force` applied `2026_06_17_000002_add_access_fields_to_author_channels_table`.
+  - `php artisan view:clear` was run after admin Blade updates.
+- Notes:
+  - The worktree still reports permission warnings for `storage/` and `bootstrap/cache/` during Git status checks.
+  - No commit was made after these changes.
