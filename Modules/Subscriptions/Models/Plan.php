@@ -9,6 +9,7 @@ use Modules\Entertainment\Models\Entertainment;
 use Modules\Season\Models\Season;
 use Modules\Episode\Models\Episode;
 use Modules\Video\Models\Video;
+use App\Models\AuthorChannel;
 
 class Plan extends BaseModel
 {
@@ -53,9 +54,13 @@ class Plan extends BaseModel
                 Video::where('plan_id', $plan->id)
                     ->update(['access' => 'free', 'plan_id' => null]);
             }
+
+            if (class_exists(AuthorChannel::class)) {
+                AuthorChannel::where('plan_id', $plan->id)
+                    ->update(['access' => 'free', 'plan_id' => null]);
+            }
         });
     }
 
 
 }
-

@@ -126,6 +126,38 @@
                     </select>
                 </div>
 
+                {{-- Access --}}
+                <div class="col-md-3">
+                    <label class="form-label">Access <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-4 pt-2">
+                        <label class="form-check">
+                            <input class="form-check-input" type="radio" name="access" value="free"
+                                {{ old('access', 'free') === 'free' ? 'checked' : '' }}>
+                            <span class="form-check-label">Free</span>
+                        </label>
+                        <label class="form-check">
+                            <input class="form-check-input" type="radio" name="access" value="paid"
+                                {{ old('access') === 'paid' ? 'checked' : '' }}>
+                            <span class="form-check-label">Paid</span>
+                        </label>
+                    </div>
+                    @error('access')<span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
+                <div class="col-md-6" id="planSelection" data-plan-selection>
+                    <label class="form-label">Subscription Plan <span class="text-danger">*</span></label>
+                    <select name="plan_id" id="plan_id" class="form-control select2" data-plan-select>
+                        <option value="">-- Select Plan --</option>
+                        @foreach($plans as $plan)
+                            <option value="{{ $plan->id }}" {{ old('plan_id') == $plan->id ? 'selected' : '' }}>
+                                {{ $plan->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted d-block mt-1">Required when Access is Paid.</small>
+                    @error('plan_id')<span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
                 <div class="col-12 mt-2">
                     <button type="submit" class="btn btn-primary">
                         <i class="ph ph-floppy-disk"></i> Create On Demand Channel
@@ -167,5 +199,39 @@ if (nameInput && usernameInput) {
         usernameInput.dataset.manuallyEdited = '1';
     });
 }
+
+const accessInputs = document.querySelectorAll('input[name="access"]');
+const planSelection = document.getElementById('planSelection');
+const planSelect = document.getElementById('plan_id');
+function syncPlanSelection() {
+    const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
+    if (!planSelection) return;
+    const isPaid = selectedAccess === 'paid';
+    planSelection.classList.toggle('opacity-50', !isPaid);
+    if (planSelect) {
+        planSelect.disabled = !isPaid;
+    }
+    if (planSelect && !isPaid) {
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery(planSelect).prop('disabled', true);
+        }
+    }
+    if (planSelect && isPaid && window.jQuery && jQuery.fn.select2) {
+        jQuery(planSelect).prop('disabled', false);
+    }
+}
+document.addEventListener('DOMContentLoaded', function () {
+    syncPlanSelection();
+    if (window.jQuery && jQuery.fn.select2 && planSelect) {
+        jQuery(planSelect).on('select2:open', function () {
+            if (document.querySelector('input[name="access"]:checked')?.value !== 'paid') {
+                jQuery(planSelect).select2('close');
+            }
+        });
+        }
+    }
+});
+accessInputs.forEach((input) => input.addEventListener('change', syncPlanSelection));
+syncPlanSelection();
 </script>
 @endsection

@@ -32,7 +32,7 @@ class AuthorChannelAPIController extends Controller
         ]));
 
         try {
-            $channels = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
+            $channels = Auth::check() ? $this->buildChannelIndex($request, $perPage) : Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
                 return $this->buildChannelIndex($request, $perPage);
             });
         } catch (\Throwable $e) {
@@ -45,6 +45,7 @@ class AuthorChannelAPIController extends Controller
     private function buildChannelIndex(Request $request, int $perPage)
     {
             $query = AuthorChannel::where('is_active', 1)
+                ->with('plan:id,name,level')
                 ->withCount('videos');
 
             if ($search = $request->input('search')) {
@@ -69,7 +70,7 @@ class AuthorChannelAPIController extends Controller
     public function show($username)
     {
         try {
-            $channel = Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
+            $channel = Auth::check() ? $this->buildChannelShow($username) : Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
                 return $this->buildChannelShow($username);
             });
         } catch (\Throwable $e) {
@@ -87,6 +88,7 @@ class AuthorChannelAPIController extends Controller
     {
             $channel = AuthorChannel::where('username', $username)
                 ->where('is_active', 1)
+                ->with('plan:id,name,level')
                 ->withCount('videos')
                 ->first();
 
@@ -101,6 +103,7 @@ class AuthorChannelAPIController extends Controller
     {
         $channel = AuthorChannel::where('username', $username)
             ->where('is_active', 1)
+            ->with('plan:id,name,level')
             ->first();
 
         if (!$channel) {
@@ -117,7 +120,7 @@ class AuthorChannelAPIController extends Controller
         ]));
 
         try {
-            $videos = Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
+            $videos = Auth::check() ? $this->buildChannelVideos($channel, $perPage) : Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
                 return $this->buildChannelVideos($channel, $perPage);
             });
         } catch (\Throwable $e) {
@@ -130,6 +133,7 @@ class AuthorChannelAPIController extends Controller
     private function buildChannelVideos(AuthorChannel $channel, int $perPage)
     {
             $videos = $channel->videos()
+                ->with('plan:id,name,level')
                 ->whereNull('videos.deleted_at')
                 ->where('videos.status', 1)
                 ->select(
@@ -144,6 +148,7 @@ class AuthorChannelAPIController extends Controller
                     'videos.video_url_input',
                     'videos.video_upload_type',
                     'videos.access',
+                    'videos.plan_id',
                     'videos.duration',
                     'videos.release_date',
                     'videos.status'
@@ -168,6 +173,7 @@ class AuthorChannelAPIController extends Controller
     {
         $userId   = Auth::id();
         $channels = AuthorChannel::where('user_id', $userId)
+            ->with('plan:id,name,level')
             ->withCount('videos')
             ->get()
             ->map(fn ($ch) => $this->formatChannel($ch, true));
@@ -258,6 +264,11 @@ class AuthorChannelAPIController extends Controller
 
     private function formatChannel(AuthorChannel $channel, bool $includeDescription = false): array
     {
+        $access = $channel->access ?: 'free';
+        $requiredPlanLevel = (int) optional($channel->plan)->level;
+        $currentPlanLevel = $this->currentPlanLevel();
+        $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
+
         $data = [
             'id'           => $channel->id,
             'name'         => $channel->name,
@@ -267,6 +278,15 @@ class AuthorChannelAPIController extends Controller
             'videos_count' => $channel->videos_count ?? $channel->videos()->count(),
             'is_active'    => (bool) $channel->is_active,
             'profile_url'  => url('/on-demand/' . $channel->username),
+            'access'       => $access,
+            'plan_id'      => $channel->plan_id,
+            'plan_level'   => $requiredPlanLevel,
+            'required_plan_level' => $requiredPlanLevel,
+            'required_plan_name'  => optional($channel->plan)->name,
+            'current_plan_level'  => $currentPlanLevel,
+            'has_content_access'  => $hasContentAccess,
+            'is_premium'          => $access === 'paid',
+            'show_premium_badge'  => $access === 'paid' && ! $hasContentAccess,
         ];
 
         if ($includeDescription) {
@@ -279,6 +299,10 @@ class AuthorChannelAPIController extends Controller
     private function formatVideo($video): array
     {
         $thumb = $video->thumbnail_url ?: $video->poster_url;
+        $access = $video->access ?: 'free';
+        $requiredPlanLevel = (int) optional($video->plan)->level;
+        $currentPlanLevel = $this->currentPlanLevel();
+        $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
 
         return [
             'id'            => $video->id,
@@ -294,11 +318,34 @@ class AuthorChannelAPIController extends Controller
                                 ? setBaseUrlWithFileName($video->video_url_input, 'video', 'video')
                                 : $video->video_url_input,
             'video_type'    => $video->video_upload_type,
-            'access'        => $video->access,
+            'access'        => $access,
+            'plan_id'       => $video->plan_id,
+            'plan_level'    => $requiredPlanLevel,
+            'required_plan_level' => $requiredPlanLevel,
+            'required_plan_name'  => optional($video->plan)->name,
+            'current_plan_level'  => $currentPlanLevel,
+            'has_content_access'  => $hasContentAccess,
+            'is_premium'          => $access === 'paid',
+            'show_premium_badge'  => $access === 'paid' && ! $hasContentAccess,
             'duration'      => $video->duration,
             'release_date'  => $video->release_date,
             'language'      => $video->language,
             'status'        => $video->status,
         ];
+    }
+
+    private function currentPlanLevel(): int
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return 0;
+        }
+
+        if (! $user->relationLoaded('subscriptionPackage')) {
+            $user->load('subscriptionPackage:id,user_id,level,name,status');
+        }
+
+        return (int) optional($user->subscriptionPackage)->level;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Modules\Subscriptions\Models\Plan;
 
 class AuthorChannel extends Model
 {
@@ -18,6 +19,12 @@ class AuthorChannel extends Model
         'avatar',
         'banner',
         'is_active',
+        'access',
+        'plan_id',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -52,5 +59,10 @@ class AuthorChannel extends Model
     {
         // Video model lives in the Video module
         return $this->belongsToMany(\Modules\Video\Models\Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class, 'plan_id');
     }
 }

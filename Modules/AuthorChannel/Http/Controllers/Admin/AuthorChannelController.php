@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Traits\ModuleTrait;
 use Illuminate\Http\Request;
 use App\Models\AuthorChannel;
+use Illuminate\Validation\Rule;
+use Modules\Subscriptions\Models\Plan;
 use Modules\Video\Models\Video;
 use Yajra\DataTables\DataTables;
 
@@ -45,6 +47,12 @@ class AuthorChannelController extends Controller
             })
             ->addColumn('username_col', fn($data) => '@' . $data->username)
             ->addColumn('videos_count', fn($data) => $data->videos()->count())
+            ->addColumn('access_col', function ($data) {
+                $access = $data->access === 'paid' ? 'Paid' : 'Free';
+                $class = $data->access === 'paid' ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success';
+
+                return '<span class="badge ' . $class . '">' . $access . '</span>';
+            })
             ->editColumn('status', function ($data) {
                 $checked  = $data->is_active ? 'checked="checked"' : '';
                 $disabled = $data->trashed() ? 'disabled' : '';
@@ -61,7 +69,7 @@ class AuthorChannelController extends Controller
                 return view('authorchannel::admin.action', compact('data'))->render();
             })
             ->editColumn('updated_at', fn($data) => $data->updated_at ? $data->updated_at->diffForHumans() : '-')
-            ->rawColumns(['check', 'image', 'status', 'action'])
+            ->rawColumns(['check', 'image', 'access_col', 'status', 'action'])
             ->orderColumns(['id'], '-:column $1')
             ->make(true);
     }
@@ -103,7 +111,9 @@ class AuthorChannelController extends Controller
 
     public function create()
     {
-        return view('authorchannel::admin.create');
+        $plans = Plan::where('status', 1)->orderBy('level')->orderBy('name')->get();
+
+        return view('authorchannel::admin.create', compact('plans'));
     }
 
     public function store(Request $request)
@@ -116,7 +126,12 @@ class AuthorChannelController extends Controller
             'avatar'      => 'nullable|string|max:500',
             'banner'      => 'nullable|string|max:500',
             'is_active'   => 'nullable|boolean',
+            'access'      => ['required', Rule::in(['free', 'paid'])],
+            'plan_id'     => 'nullable|required_if:access,paid|integer|exists:plan,id',
         ]);
+        if (($data['access'] ?? 'free') === 'free') {
+            $data['plan_id'] = null;
+        }
         if (empty($data['username'])) {
             $data['username'] = AuthorChannel::generateUsername($data['name']);
         }
@@ -126,7 +141,8 @@ class AuthorChannelController extends Controller
 
     public function edit($id)
     {
-        $channel = AuthorChannel::with('videos')->findOrFail($id);
+        $channel = AuthorChannel::with(['videos', 'plan'])->findOrFail($id);
+        $plans = Plan::where('status', 1)->orderBy('level')->orderBy('name')->get();
 
         $assignedIds = $channel->videos->pluck('id')->toArray();
         $availableVideos = Video::whereNotIn('id', $assignedIds)
@@ -135,7 +151,7 @@ class AuthorChannelController extends Controller
             ->select('id', 'name')
             ->get();
 
-        return view('authorchannel::admin.edit', compact('channel', 'availableVideos'));
+        return view('authorchannel::admin.edit', compact('channel', 'availableVideos', 'plans'));
     }
 
     public function update(Request $request, $id)
@@ -149,7 +165,12 @@ class AuthorChannelController extends Controller
             'avatar'      => 'nullable|string|max:500',
             'banner'      => 'nullable|string|max:500',
             'is_active'   => 'nullable|boolean',
+            'access'      => ['required', Rule::in(['free', 'paid'])],
+            'plan_id'     => 'nullable|required_if:access,paid|integer|exists:plan,id',
         ]);
+        if (($data['access'] ?? 'free') === 'free') {
+            $data['plan_id'] = null;
+        }
         if (empty($data['username'])) {
             $data['username'] = AuthorChannel::generateUsername($data['name'], $id);
         }

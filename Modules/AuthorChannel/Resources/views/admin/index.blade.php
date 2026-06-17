@@ -108,6 +108,13 @@
                 searchable: false,
             },
             {
+                data: 'access_col',
+                name: 'access',
+                title: 'Access',
+                orderable: true,
+                searchable: false,
+            },
+            {
                 data: 'status',
                 name: 'is_active',
                 title: "{{ __('messages.lbl_status') }}",
@@ -137,7 +144,7 @@
             initDatatable({
                 url: '{{ route('backend.author_channels.index_data') }}',
                 finalColumns,
-                orderColumn: [[6, 'desc']],
+                orderColumn: [[7, 'desc']],
                 advanceFilter: () => ({
                     column_status: $('#column_status').val(),
                 })

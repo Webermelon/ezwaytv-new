@@ -225,6 +225,8 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
     )
   }
 
+  const channelLocked = isPremiumChannelLocked(profile)
+
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
       <div className="relative aspect-[16/9] overflow-hidden bg-black sm:aspect-[21/8] sm:min-h-72">
@@ -247,7 +249,15 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
               className="h-20 w-20 shrink-0 rounded-full border-4 border-[#d6a83a] shadow-xl ring-4 ring-[#050505] sm:h-24 sm:w-24"
             />
             <div className="min-w-0 flex-1 pb-1 sm:pb-2">
-              <h2 className="line-clamp-2 text-2xl font-black leading-tight text-white sm:truncate sm:text-3xl">{profile.name}</h2>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h2 className="line-clamp-2 text-2xl font-black leading-tight text-white sm:truncate sm:text-3xl">{profile.name}</h2>
+                {profile.access === 'paid' ? (
+                  <Badge className="rounded-sm bg-primary text-black">
+                    <Lock className="mr-1 h-3.5 w-3.5" />
+                    Premium
+                  </Badge>
+                ) : null}
+              </div>
               <p className="mt-1 text-sm leading-5 text-white/58">@{profile.username} · {profile.videos_count ?? videos.length} videos</p>
             </div>
           </div>
@@ -275,13 +285,20 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
           <p className="mt-5 line-clamp-3 max-w-4xl text-sm leading-6 text-white/64">{stripHtml(profile.description)}</p>
         ) : null}
 
+        {channelLocked ? <OnDemandPremiumPanel item={profile} /> : null}
+
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-xl font-bold">Videos</h3>
             <Badge variant="outline" className="border-white/16 text-white/70">{videos.length} videos</Badge>
           </div>
 
-          {videos.length > 0 ? (
+          {channelLocked ? (
+            <div className="rounded-md border border-primary/30 bg-primary/10 p-8 text-center text-white/72">
+              <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
+              <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+            </div>
+          ) : videos.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {videos.map((video) => (
                 <VideoCard key={video.id} video={video} channelId={profile.id} />
@@ -296,6 +313,44 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
         </div>
       </div>
     </article>
+  )
+}
+
+function OnDemandPremiumPanel({ item }: { item: MediaItem }) {
+  return (
+    <div className="mt-6 rounded-md border border-primary/30 bg-[linear-gradient(135deg,rgba(214,168,58,0.18),rgba(229,9,20,0.12))] p-5 shadow-xl shadow-black/20">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="flex min-w-0 gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-black">
+            <Lock className="h-6 w-6" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-xl font-black leading-tight text-white">Premium On Demand Channel</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">
+              This channel is included with {requiredPlanLabel(item)}. Sign in or upgrade your plan to watch its videos.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:flex md:justify-end">
+          <PremiumActionButton item={item} />
+          <Button asChild variant="outline" className="border-white/14 bg-white/[0.04] text-white hover:bg-white/[0.09]">
+            <a href="/login">Sign In</a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PremiumActionButton({ item }: { item: MediaItem }) {
+  const isSignedIn = Number(item.current_plan_level ?? 0) > 0
+
+  return (
+    <Button asChild className="bg-primary text-black hover:bg-primary/90">
+      <a href={isSignedIn ? '/subscription-plan' : '/register'}>
+        {isSignedIn ? 'Upgrade Plan' : 'Join to Watch'}
+      </a>
+    </Button>
   )
 }
 
@@ -463,6 +518,12 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
         />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/88 to-transparent" />
         <Badge className="absolute bottom-3 left-3 rounded-sm bg-black/70 text-white">{channel.videos_count ?? 0} videos</Badge>
+        {channel.access === 'paid' ? (
+          <Badge className="absolute right-3 top-3 rounded-sm bg-primary text-black">
+            <Lock className="mr-1 h-3.5 w-3.5" />
+            Premium
+          </Badge>
+        ) : null}
       </div>
       <div className="grid min-h-24 grid-cols-[56px_minmax(0,1fr)] gap-3 p-4">
         <MediaThumbnail
@@ -498,7 +559,10 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
         className="h-16 w-24 shrink-0 rounded-md"
       />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-bold">{channel.name}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="block min-w-0 truncate text-sm font-bold">{channel.name}</span>
+          {channel.access === 'paid' ? <Lock className="h-3.5 w-3.5 shrink-0 text-primary" /> : null}
+        </span>
         <span className="mt-1 block truncate text-xs text-white/52">@{channel.username} · {channel.videos_count ?? 0} videos</span>
       </span>
     </a>
@@ -662,6 +726,20 @@ function isPremiumVideoCard(video: MediaItem) {
   }
 
   return true
+}
+
+function isPremiumChannelLocked(item: MediaItem) {
+  if (item.access !== 'paid') return false
+
+  if (typeof item.has_content_access !== 'undefined' && item.has_content_access !== null) {
+    return !Boolean(item.has_content_access)
+  }
+
+  return true
+}
+
+function requiredPlanLabel(item: MediaItem) {
+  return item.required_plan_name ? `${item.required_plan_name} plan` : 'a premium plan'
 }
 
 function updatePageMeta({ title, description, image, url }: { title: string; description: string; image: string | null; url: string }) {
