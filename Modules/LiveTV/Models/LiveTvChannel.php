@@ -23,6 +23,7 @@ class LiveTvChannel extends BaseModel
         ['movie-channel'],
         ['podstream-tv'],
         ['the-womens-channel'],
+        ['patrion-tv', 'patrion'],
     ];
 
     /**

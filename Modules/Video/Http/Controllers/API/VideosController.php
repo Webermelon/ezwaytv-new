@@ -202,13 +202,19 @@ class VideosController extends Controller
 
 
   public function videoDetails(Request $request){
-      if (! $request->has('user_id')) {
+      if (! $request->has('user_id') && ! auth()->check()) {
           $cacheKey = 'spa:video:details:' . md5(json_encode([
               'video' => $request->video_id ?? $request->id ?? $request->slug,
               'ondemand_channel' => $request->query('ondemand_channel', 0),
           ]));
 
-          $cachedResult = cacheApiResponse($cacheKey, 300, fn () => $this->buildVideoDetailsPayload($request));
+          try {
+              $cachedResult = cacheApiResponse($cacheKey, 300, fn () => $this->buildVideoDetailsPayload($request));
+          } catch (\Throwable $e) {
+              $cachedResult = [
+                  'data' => $this->buildVideoDetailsPayload($request),
+              ];
+          }
 
           if (! $cachedResult['data']) {
               return ApiResponse::error(__('video.video_not_found'), 404);

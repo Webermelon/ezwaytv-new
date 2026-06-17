@@ -27,6 +27,25 @@ class VideoDetailResource extends JsonResource
             $plans = Plan::where('level', '<=', $plan->level)->get();
         }
 
+        $userId = $request->input('user_id') ?? auth()->id();
+        $currentUser = auth()->user();
+
+        if (! $currentUser && $userId) {
+            $currentUser = \App\Models\User::with('subscriptionPackage:id,level,name')
+                ->where('id', $userId)
+                ->first();
+        } elseif ($currentUser && ! $currentUser->relationLoaded('subscriptionPackage')) {
+            $currentUser->load('subscriptionPackage:id,level,name');
+        }
+
+        $requiredPlanLevel = optional($plan)->level ?? 0;
+        $currentPlanLevel = optional(optional($currentUser)->subscriptionPackage)->level ?? 0;
+        $isPurchased = Entertainment::isPurchased($this->id, 'video', $userId);
+        $hasContentAccess = $this->access === 'free'
+            || ($this->access === 'paid' && $currentPlanLevel >= $requiredPlanLevel)
+            || ($this->access === 'pay-per-view' && $isPurchased);
+        $isPremiumLocked = $this->access === 'paid' && ! $hasContentAccess;
+
 
 
       $more_items = Video::where('status', 1)
@@ -68,6 +87,12 @@ class VideoDetailResource extends JsonResource
             'access' => $this->access,
             'plan_id' => $this->plan_id,
             'plan_level' => $this->plan->level ?? 0,
+            'required_plan_level' => $requiredPlanLevel,
+            'required_plan_name' => optional($plan)->name,
+            'current_plan_level' => $currentPlanLevel,
+            'has_content_access' => $hasContentAccess,
+            'is_premium' => $isPremiumLocked,
+            'show_premium_badge' => $isPremiumLocked,
             'imdb_rating' => $this->IMDb_rating,
             'content_rating' => $this->content_rating,
             'watched_time' => optional($this->continue_watch)->watched_time ?? null,
@@ -106,7 +131,7 @@ class VideoDetailResource extends JsonResource
             'access_duration' => $this->access_duration,
             'discount'=> (float)$this->discount,
             'available_for' => $this->available_for,
-            'is_purchased' => Entertainment::isPurchased($this->id,'video',$this->user_id),
+            'is_purchased' => $isPurchased,
             'intro_starts_at' => $this->start_time ?? null,
             'intro_ends_at' => $this->end_time ?? null,
             'is_clips_enabled' => $this->enable_clips,

@@ -29,10 +29,18 @@ type VideoDetail = MediaItem & {
   categories?: Array<{ id?: number | string; name?: string; slug?: string }>
   genres?: Array<{ id?: number | string; name?: string; slug?: string }>
   is_restricted?: boolean | number
+  has_content_access?: boolean | number | null
+  is_premium?: boolean | number | null
+  show_premium_badge?: boolean | number | null
   is_pay_per_view?: boolean
   is_purchased?: boolean
   price?: string | number
   discounted_price?: string | number
+  plan_id?: string | number | null
+  plan_level?: string | number | null
+  required_plan_level?: string | number | null
+  required_plan_name?: string | null
+  current_plan_level?: string | number | null
   release_date?: string | null
   more_items?: MediaItem[]
   video_upload_type?: string | null
@@ -112,6 +120,8 @@ export function VideoDetailPage() {
 
   const related = video?.more_items ?? []
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
+  const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
+  const isLocked = isPayPerViewLocked || isSubscriptionLocked
   const playerUrl = video ? resolvePlayerUrl(video) : null
 
   if (!slug) {
@@ -143,6 +153,7 @@ export function VideoDetailPage() {
               <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
                 <div className="mb-4 flex flex-wrap gap-2">
                   <Badge className="rounded-sm bg-primary text-white">{video.access ?? 'video'}</Badge>
+                  {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
                   {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
                   {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
                 </div>
@@ -178,6 +189,8 @@ export function VideoDetailPage() {
                   {stripHtml(video.description ?? video.short_desc ?? '')}
                 </p>
 
+                {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
+
                 <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
                   {isPayPerViewLocked ? (
                     <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
@@ -186,6 +199,8 @@ export function VideoDetailPage() {
                         Rent / Buy
                       </a>
                     </Button>
+                  ) : isSubscriptionLocked ? (
+                    <PremiumActionButton video={video} />
                   ) : (
                     <Button
                       type="button"
@@ -214,13 +229,15 @@ export function VideoDetailPage() {
               </section>
 
               <aside className="video-detail-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
-                {isPayPerViewLocked ? (
+                {isSubscriptionLocked ? (
+                  <PremiumPlayerLock video={video} />
+                ) : isPayPerViewLocked ? (
                   <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black p-8 text-center">
                     <Lock className="h-10 w-10 text-primary" />
                     <h2 className="text-2xl font-bold">Purchase required</h2>
                     <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
                   </div>
-                ) : playerUrl ? (
+                ) : playerUrl && !isLocked ? (
                   adsQuery.isLoading ? (
                     <PlayerPreparing poster={video.poster_image} />
                   ) : (
@@ -293,6 +310,81 @@ function PlayerPreparing({ poster }: { poster?: string | null }) {
       <div className="relative flex items-center gap-3 text-sm font-semibold text-white/72">
         <span className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
         Preparing player
+      </div>
+    </div>
+  )
+}
+
+function PremiumAccessNotice({ video }: { video: VideoDetail }) {
+  return (
+    <div className="mt-6 max-w-3xl rounded-md border border-primary/26 bg-primary/10 p-4 text-sm text-white/76">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-black">
+          <Lock className="h-4 w-4" />
+        </span>
+        <div>
+          <h2 className="text-base font-black text-white">Premium plan required</h2>
+          <p className="mt-1 leading-6">
+            This video is included with {requiredPlanLabel(video)}. Upgrade your plan to unlock playback.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-white/58">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1">
+              <Check className="h-3.5 w-3.5 text-primary" />
+              Premium video access
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1">
+              <Check className="h-3.5 w-3.5 text-primary" />
+              Watch on supported devices
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PremiumActionButton({ video }: { video: VideoDetail }) {
+  if (!isAuthenticated()) {
+    return (
+      <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+        <a href={`/login?redirect=${encodeURIComponent(window.location.href)}`}>
+          <Lock className="h-5 w-5" />
+          Sign In to Watch
+        </a>
+      </Button>
+    )
+  }
+
+  return (
+    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+      <a href="/subscription-plan">
+        <Lock className="h-5 w-5" />
+        Upgrade Plan
+      </a>
+    </Button>
+  )
+}
+
+function PremiumPlayerLock({ video }: { video: VideoDetail }) {
+  return (
+    <div className="relative flex aspect-video min-h-[260px] flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
+      {video.poster_image || video.poster_tv_image ? (
+        <img src={video.poster_image ?? video.poster_tv_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
+      ) : null}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,168,67,0.18),transparent_36%),linear-gradient(180deg,rgba(0,0,0,0.50),#000_100%)]" />
+      <div className="relative flex max-w-md flex-col items-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-primary/14 text-primary shadow-2xl shadow-primary/15">
+          <Lock className="h-7 w-7" />
+        </span>
+        <h2 className="mt-5 text-2xl font-black">Premium Content</h2>
+        <p className="mt-3 text-sm leading-6 text-white/62">
+          {isAuthenticated()
+            ? `${requiredPlanLabel(video)} is required to play this video.`
+            : 'Sign in or choose a subscription plan to play this video.'}
+        </p>
+        <div className="mt-6">
+          <PremiumActionButton video={video} />
+        </div>
       </div>
     </div>
   )
@@ -577,6 +669,29 @@ function resolvePlayerUrl(video: VideoDetail) {
     : null
 
   return video.video_url_input ?? qualitySource?.url ?? qualitySource?.server_url ?? video.trailer_url ?? null
+}
+
+function hasVideoAccess(video: VideoDetail) {
+  if (video.access === 'free') return true
+  if (video.access === 'pay-per-view') return Boolean(video.is_purchased)
+  if (video.access !== 'paid') return true
+
+  if (typeof video.has_content_access !== 'undefined' && video.has_content_access !== null) {
+    return Boolean(video.has_content_access)
+  }
+
+  return Boolean(isAuthenticated() && window.ezwayAuth?.is_subscribe)
+}
+
+function isAuthenticated() {
+  return window.isAuthenticated === true && Boolean(window.ezwayAuth)
+}
+
+function requiredPlanLabel(video: VideoDetail) {
+  if (video.required_plan_name) return video.required_plan_name
+  if (video.required_plan_level || video.plan_level) return `Plan Level ${video.required_plan_level ?? video.plan_level}`
+
+  return 'a premium plan'
 }
 
 function buildVideoHref(video: MediaItem, channelId?: string | number | null) {

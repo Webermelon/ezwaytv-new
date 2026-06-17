@@ -37,6 +37,7 @@ const featuredLiveTvSlugGroups = [
   ['movie-channel'],
   ['podstream-tv'],
   ['the-womens-channel'],
+  ['patrion-tv', 'patrion'],
 ]
 
 export function HomePage() {
