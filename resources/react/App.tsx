@@ -1,11 +1,16 @@
 import { CastCrewPage } from '@/modules/castcrew/CastCrewPage'
 import { CastCrewDetailPage } from '@/modules/castcrew/CastCrewDetailPage'
+import { AccountSettingPage } from '@/modules/account/AccountSettingPage'
+import { ChangePasswordPage } from '@/modules/account/ChangePasswordPage'
+import { ProfileDetailsPage } from '@/modules/account/ProfileDetailsPage'
+import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { LiveTvPage } from '@/modules/live-tv/LiveTvPage'
 import { MusicPage } from '@/modules/music/MusicPage'
 import { MusicUploadPage } from '@/modules/music/MusicUploadPage'
 import { OnDemandPage } from '@/modules/ondemand/OnDemandPage'
+import { ManageProfilePage } from '@/modules/profile/ManageProfilePage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
@@ -13,6 +18,7 @@ import { VideoDetailPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
+import { AuthPage } from '@/modules/auth/AuthPage'
 import { useAnalyticsPageView } from '@/lib/analytics'
 
 export default function App() {
@@ -32,11 +38,21 @@ export default function App() {
   } else if (pathname === '/search') {
     page = <SearchPage />
   } else if (pathname === '/login' || pathname === '/register' || pathname === '/forget-password') {
-    page = <HomePage />
+    page = <AuthPage />
   } else if (pathname === '/distribution') {
     page = <DistributionPage />
   } else if (pathname === '/subscription-plan') {
     page = <SubscriptionPlanPage />
+  } else if (pathname === '/account-setting') {
+    page = <AccountSettingPage />
+  } else if (pathname === '/watch-list') {
+    page = <WatchlistPage />
+  } else if (pathname === '/update-profile') {
+    page = <ProfileDetailsPage />
+  } else if (pathname === '/change-password') {
+    page = <ChangePasswordPage />
+  } else if (pathname === '/manage-profile') {
+    page = <ManageProfilePage />
   } else if (pathname === '/music') {
     page = <MusicPage />
   } else if (pathname.startsWith('/upload-your-videoes')) {

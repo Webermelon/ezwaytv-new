@@ -156,6 +156,11 @@ Route::post('/get-available-promotions', [PaymentController::class, 'getAvailabl
 Route::view('/trending-movies', 'react-modernization')->name('trending.movies');
 
 Route::group(['middleware' => ['user']], function () {
+    Route::get('/account/settings-data', [UserController::class, 'accountSettingsData'])->name('account.settings.data');
+    Route::get('/account/watchlist-data', [UserController::class, 'watchlistData'])->name('account.watchlist.data');
+    Route::post('/account/watchlist/save', [UserController::class, 'saveWatchlistItem'])->name('account.watchlist.save');
+    Route::post('/account/watchlist/delete', [UserController::class, 'deleteWatchlistItem'])->name('account.watchlist.delete');
+    Route::post('/account/profile/update', [UserController::class, 'updateProfileData'])->name('account.profile.update');
     Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');
     Route::view('/account-setting', 'react-modernization')->name('accountSetting');

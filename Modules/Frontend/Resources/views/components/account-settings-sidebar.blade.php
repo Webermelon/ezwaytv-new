@@ -15,12 +15,6 @@
                 <h6 class="m-0">{{ __('frontend.my_watchlist') }}</h6>
             </a>
         </li>
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('unlock.videos') ? 'active' : '' }} p-3 text-center" href="{{ route('unlock.videos') }}">
-                <i class="ph ph-video"></i>
-                <h6 class="m-0">{{ __('frontend.rent_videos') }}</h6>
-            </a>
-        </li>
         @if(getCurrentProfileSession('is_child_profile') == 0)
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('payment-history') ? 'active' : '' }} p-3 text-center" href="{{ route('payment-history') }}">
