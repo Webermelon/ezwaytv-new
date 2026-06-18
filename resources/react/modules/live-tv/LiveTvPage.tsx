@@ -797,6 +797,18 @@ function LiveTvCard({ channel, channelNumber }: { channel: MediaItem; channelNum
   )
 }
 
+function channelArtwork(channel?: MediaItem | null) {
+  return channel?.poster_tv_image
+    ?? channel?.poster_image
+    ?? channel?.details?.thumbnail_image
+    ?? channel?.poster_url
+    ?? channel?.thumbnail_url
+    ?? channel?.cover_image_url
+    ?? channel?.avatar_image_url
+    ?? channel?.profile_image
+    ?? null
+}
+
 function ChannelGridSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
@@ -918,10 +930,19 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
   )
 }
 
-function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChannel; currentTime: number; channelNumber?: number }) {
+function TvGuideRow({
+  row,
+  currentTime,
+  channelNumber,
+}: {
+  row: LiveTvGuideChannel
+  currentTime: number
+  channelNumber?: number
+}) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const name = row.channel.details?.name ?? row.channel.name
   const label = channelNumber ? channelLabel(channelNumber) : null
+  const image = channelArtwork(row.channel)
   const programs = useMemo(() => tvGuidePrograms(row, currentTime), [currentTime, row])
 
   function scrollByProgram(direction: -1 | 1) {
@@ -929,26 +950,33 @@ function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChann
   }
 
   return (
-    <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[170px_minmax(0,1fr)] lg:items-center">
-      <div className="flex min-w-0 items-center justify-between gap-3 lg:block">
-        {label ? <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-white/40">{label}</div> : null}
-        <a href={liveTvSpaHref(row.channel)} className="line-clamp-2 text-sm font-black text-[#d4a843] hover:text-[#f2d16f]">
-          {name}
-        </a>
-      </div>
+    <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
+      <a
+        href={liveTvSpaHref(row.channel)}
+        className="grid min-w-0 grid-cols-[82px_minmax(0,1fr)] items-center gap-3 rounded-md border border-white/8 bg-white/[0.035] p-2 text-left transition hover:border-[#d4a843]/34 hover:bg-[#d4a843]/8 sm:grid-cols-[92px_minmax(0,1fr)]"
+      >
+        <span className="block aspect-video overflow-hidden rounded border border-white/10 bg-black">
+          <MediaThumbnail src={image} alt={name} />
+        </span>
+        <span className="min-w-0">
+          {label ? <span className="mb-1 block text-[11px] font-black uppercase tracking-wide text-white/40">{label}</span> : null}
+          <span className="line-clamp-2 text-sm font-black leading-tight text-[#d4a843]">{name}</span>
+          {row.channel.details?.category ? <span className="mt-1 block truncate text-xs font-semibold text-white/38">{row.channel.details.category}</span> : null}
+        </span>
+      </a>
 
-      <div className="grid min-w-0 grid-cols-[32px_minmax(0,1fr)_32px] items-center gap-2">
+      <div className="grid min-w-0 grid-cols-1 items-center sm:grid-cols-[32px_minmax(0,1fr)_32px] sm:gap-2">
           <button
             type="button"
             onClick={() => scrollByProgram(-1)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f]"
+            className="hidden h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f] sm:flex"
             aria-label={`Scroll ${name} schedule left`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
         <div
           ref={scrollerRef}
-          className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 sm:pb-0"
           tabIndex={0}
         >
           {programs.map((program, index) => {
@@ -959,7 +987,7 @@ function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChann
                 href={liveTvSpaHref(row.channel)}
                 key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
                 className={[
-                  'min-h-16 w-[245px] shrink-0 rounded-md border-l-4 px-3 py-2 transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16',
+                  'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
                   onAir
                     ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
                     : 'border-[#d4a843] bg-[#d4a843]/10',
@@ -984,7 +1012,7 @@ function TvGuideRow({ row, currentTime, channelNumber }: { row: LiveTvGuideChann
         <button
           type="button"
           onClick={() => scrollByProgram(1)}
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f]"
+          className="hidden h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] text-white/66 transition hover:border-[#d4a843]/50 hover:text-[#f2d16f] sm:flex"
           aria-label={`Scroll ${name} schedule right`}
         >
           <ChevronRight className="h-4 w-4" />
