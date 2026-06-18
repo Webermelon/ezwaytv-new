@@ -262,7 +262,34 @@ body {
 }
 
 .vjs-theme-ezway.video-js {
-  background-color: #000;
+  background-color: transparent;
+}
+
+.ez-video-stage > .video-js,
+.ez-video-stage .video-js,
+.ez-video-stage .vjs-tech,
+.ez-video-stage video,
+.ez-video-stage iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.ez-video-stage .vjs-tech,
+.ez-video-stage video {
+  object-fit: contain !important;
+  background: transparent !important;
+}
+
+.ez-video-stage .video-js,
+.ez-video-stage .vjs-poster,
+.ez-video-stage .vjs-poster img {
+  background: transparent !important;
+}
+
+.ez-video-stage .vjs-poster img {
+  object-fit: contain !important;
 }
 
 .vjs-theme-ezway .vjs-control-bar {

@@ -171,7 +171,8 @@ export function VideoJsPlayer({
     const player = videojs(videoNodeRef.current, {
       autoplay: autoplay && !hasVastAds,
       controls: true,
-      fluid: true,
+      fill: true,
+      fluid: false,
       muted,
       preload: 'auto',
       poster: poster ?? undefined,
@@ -360,8 +361,16 @@ export function VideoJsPlayer({
   }, [playTrigger, startPreroll, unmuteOnPlayTrigger])
 
   return (
-    <div className="relative aspect-video w-full bg-black">
-      <video id="react-video-player" ref={videoNodeRef} className="video-js vjs-big-play-centered vjs-theme-ezway h-full w-full" playsInline />
+    <div className="ez-video-stage relative aspect-video w-full overflow-hidden bg-[#050505]">
+      {poster ? (
+        <>
+          <img src={poster} alt="" className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-2xl" />
+          <div className="pointer-events-none absolute inset-0 bg-black/62" />
+        </>
+      ) : (
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_42%),#050505]" />
+      )}
+      <video id="react-video-player" ref={videoNodeRef} className="video-js vjs-big-play-centered vjs-theme-ezway relative z-10 h-full w-full" playsInline />
       {adUi.visible ? (
         <div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-between bg-gradient-to-b from-black/20 via-transparent to-black/58 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-4 rounded-md border border-white/14 bg-black/38 px-3 py-2 shadow-lg backdrop-blur-md">
