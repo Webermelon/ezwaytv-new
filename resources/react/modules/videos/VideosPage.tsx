@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { WatchlistToggleButton } from '@/components/WatchlistToggleButton'
 import type { MediaItem } from '@/modules/home/types'
 import { loadVideosPage } from './videosApi'
 
@@ -183,6 +184,7 @@ function uniqueById(items: MediaItem[]) {
 
 function VideoCard({ video }: { video: MediaItem }) {
   const locked = isPremiumVideoCard(video)
+  const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
 
   return (
     <a href={videoHref(video)} className="group block min-w-0">
@@ -202,6 +204,13 @@ function VideoCard({ video }: { video: MediaItem }) {
             Premium
           </Badge>
         ) : video.access ? <Badge className="absolute right-3 top-3 rounded-sm bg-black/70 text-white">{video.access}</Badge> : null}
+        <div className="absolute bottom-3 left-3 z-10">
+          <WatchlistToggleButton
+            entertainmentId={video.id}
+            type="video"
+            initialInWatchlist={inWatchlist}
+          />
+        </div>
         {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>

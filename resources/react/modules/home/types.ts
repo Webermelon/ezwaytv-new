@@ -33,6 +33,8 @@ export type MediaItem = {
   ondemand_channel_id?: number | string | null
   videos_count?: number
   is_active?: boolean
+  is_watch_list?: number | boolean | string | null
+  is_in_watchlist?: number | boolean | string | null
   video_url?: string
   video_url_input?: string | null
   video_type?: string
