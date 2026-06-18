@@ -43,6 +43,14 @@ class PaymentController extends Controller
     public function selectPlan(Request $request)
     {
         $planId = $request->input('plan_id');
+
+        if (empty($planId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Plan ID is missing. Please refresh the page and choose the plan again.',
+            ], 422);
+        }
+
         $plan = Plan::where('id', $planId)->where('status', 1)->with('planLimitation')->first();
 
         if (! $plan) {
@@ -221,7 +229,8 @@ class PaymentController extends Controller
     protected function getExternalGetPaidCheckoutUrl(Plan $plan): ?string
     {
         $priceKey = number_format($this->discountedPlanPrice($plan), 2, '.', '');
-        $mappedUrl = config("services.ezway_getpaid.checkout_urls.{$priceKey}");
+        $checkoutUrls = config('services.ezway_getpaid.checkout_urls', []);
+        $mappedUrl = is_array($checkoutUrls) ? ($checkoutUrls[$priceKey] ?? null) : null;
 
         return $mappedUrl ?: config('services.ezway_getpaid.checkout_url');
     }
@@ -234,7 +243,7 @@ class PaymentController extends Controller
 
         $priceKey = number_format($this->discountedPlanPrice($plan), 2, '.', '');
         $itemMap = [
-            '1.99' => '38358',
+            '1.99' => '38475',
             '199.99' => '38376',
         ];
 

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CreditCard, Crown, Loader2, ShieldCheck } from 'lucide-react'
+import { Check, CreditCard, Crown, ExternalLink, Loader2, Music2, Radio, ShieldCheck, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
-import { api } from '@/lib/api'
+import { ApiError, api } from '@/lib/api'
 
 type Plan = {
   plan_id: number
@@ -42,8 +42,40 @@ type CheckoutResponse = {
   message?: string
 }
 
+const externalChannelOffers = [
+  {
+    title: 'Get Your Own VOD Channel',
+    price: '199.99',
+    label: 'On Demand Channel',
+    description: 'Launch a branded VOD channel for your videos and audience.',
+    href: 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38376',
+    icon: Tv,
+    featured: true,
+    features: ['Branded VOD channel presence', 'Channel page for your content', 'External monthly service purchase'],
+  },
+  {
+    title: 'Music Channel',
+    price: '24.99',
+    label: 'Music Promotion',
+    description: 'Get your music video in rotation on the EZWAY Music Channel.',
+    href: 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38358',
+    icon: Music2,
+    featured: false,
+    features: ['Music video rotation', 'EZWAY Music Channel exposure', 'External monthly service purchase'],
+  },
+  {
+    title: 'Live Channel Time Slot',
+    price: '249.99',
+    label: 'Live TV Placement',
+    description: 'Reserve a time slot on one of our live channels.',
+    href: 'mailto:info@ezwaynetwork.com?subject=eZWay%20TV%20Live%20Channel%20Time%20Slot',
+    icon: Radio,
+    featured: false,
+    features: ['Live channel scheduling request', 'Placement on an eZWay live channel', 'Team confirmation required'],
+  },
+]
+
 export function SubscriptionPlanPage() {
-  const [selectedDuration, setSelectedDuration] = useState<'all' | 'month' | 'year'>('all')
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null)
   const [error, setError] = useState('')
 
@@ -54,14 +86,16 @@ export function SubscriptionPlanPage() {
   })
 
   const plans = plansQuery.data ?? []
-  const filteredPlans = useMemo(() => {
-    if (selectedDuration === 'all') return plans
-    return plans.filter((plan) => String(plan.duration ?? '').toLowerCase() === selectedDuration)
-  }, [plans, selectedDuration])
+  const filteredPlans = useMemo(() => plans.filter(isPremiumContentPlan), [plans])
 
   async function handleChoose(plan: Plan) {
     setError('')
     setCheckoutPlanId(plan.plan_id)
+
+    if (window.isAuthenticated === false) {
+      window.location.href = `/login?redirect=${encodeURIComponent('/subscription-plan')}`
+      return
+    }
 
     if (!purchaseUrlForPlan(plan)) {
       setError('No GetPaid purchase link is configured for this plan price.')
@@ -82,7 +116,7 @@ export function SubscriptionPlanPage() {
 
       window.location.href = response.redirect_url
     } catch (checkoutError) {
-      setError(checkoutError instanceof Error ? checkoutError.message : 'Unable to start checkout.')
+      setError(checkoutErrorMessage(checkoutError))
       setCheckoutPlanId(null)
     }
   }
@@ -105,24 +139,8 @@ export function SubscriptionPlanPage() {
               </p>
             </div>
 
-            <div className="inline-grid w-full max-w-md grid-cols-3 rounded-md border border-white/10 bg-white/[0.055] p-1 text-sm font-black sm:w-auto">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'month', label: 'Monthly' },
-                { key: 'year', label: 'Yearly' },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setSelectedDuration(item.key as 'all' | 'month' | 'year')}
-                  className={[
-                    'h-10 rounded px-4 transition',
-                    selectedDuration === item.key ? 'bg-[#d4a843] text-black' : 'text-white/62 hover:bg-white/8 hover:text-white',
-                  ].join(' ')}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <div className="rounded-md border border-[#d4a843]/24 bg-[#d4a843]/10 px-4 py-3 text-sm font-black text-[#edc342]">
+              Premium Content Access
             </div>
           </div>
         </div>
@@ -157,6 +175,26 @@ export function SubscriptionPlanPage() {
               No active plans found for this filter.
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="border-t border-white/8 px-4 pb-14 pt-2 sm:px-8 lg:px-12">
+        <div className="mx-auto max-w-[1500px]">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#d4a843]">Additional Channel Services</p>
+              <h2 className="mt-2 text-2xl font-black sm:text-3xl">eZWay TV Special Paid Services</h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-6 text-white/52">
+              These are separate service purchases and are not part of the viewer subscription plans above.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {externalChannelOffers.map((offer) => (
+              <ExternalOfferCard key={offer.title} offer={offer} />
+            ))}
+          </div>
         </div>
       </section>
     </main>
@@ -235,6 +273,49 @@ function PlanCard({
   )
 }
 
+function ExternalOfferCard({ offer }: { offer: (typeof externalChannelOffers)[number] }) {
+  const Icon = offer.icon
+  const isMailto = offer.href.startsWith('mailto:')
+
+  return (
+    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', offer.featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+      <div className="flex items-start justify-between gap-3">
+        <span className="rounded-sm bg-[#d4a843] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
+          {offer.label}
+        </span>
+        <Icon className="h-7 w-7 shrink-0 text-[#d4a843]" />
+      </div>
+
+      <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{offer.title}</h3>
+      <p className="mt-3 min-h-12 text-sm leading-6 text-white/58">{offer.description}</p>
+
+      <div className="mt-6 flex items-end gap-2">
+        <span className="text-4xl font-black">${offer.price}</span>
+        <span className="pb-1 text-sm font-bold text-white/48">/ month</span>
+      </div>
+
+      <ul className="mt-6 grid gap-3">
+        {offer.features.map((feature) => (
+          <li key={feature} className="flex gap-3 text-sm leading-5 text-white/68">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <a
+        href={offer.href}
+        target={isMailto ? undefined : '_blank'}
+        rel={isMailto ? undefined : 'noreferrer'}
+        className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition', offer.featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
+      >
+        {isMailto ? 'Contact to Reserve' : 'Open External Checkout'}
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    </article>
+  )
+}
+
 async function loadPlans() {
   const response = await api.get<PlanListEnvelope>('/api/plan-list?per_page=50')
   const data = response.data
@@ -260,10 +341,27 @@ function formatMoney(value: number) {
 function purchaseUrlForPlan(plan: Plan) {
   const price = Number(plan.total_price ?? plan.price ?? 0).toFixed(2)
 
-  if (price === '1.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38358'
-  if (price === '199.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38376'
+  if (price === '1.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38475'
 
   return ''
+}
+
+function isPremiumContentPlan(plan: Plan) {
+  const price = Number(plan.total_price ?? plan.price ?? 0).toFixed(2)
+  return price === '1.99' && Number(plan.level ?? 0) === 4
+}
+
+function checkoutErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    const payload = error.payload as { message?: string; errors?: Record<string, string[] | string> } | null
+    if (payload?.message) return payload.message
+
+    const firstError = payload?.errors ? Object.values(payload.errors)[0] : null
+    if (Array.isArray(firstError)) return firstError[0] ?? 'Unable to start checkout.'
+    if (typeof firstError === 'string') return firstError
+  }
+
+  return error instanceof Error ? error.message : 'Unable to start checkout.'
 }
 
 function fallbackFeatures(): PlanLimitation[] {

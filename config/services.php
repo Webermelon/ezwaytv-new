@@ -66,7 +66,7 @@ return [
     'ezway_getpaid' => [
         'checkout_url' => env('EZWAY_NETWORK_GETPAID_CHECKOUT_URL'),
         'checkout_urls' => [
-            '1.99' => env('EZWAY_NETWORK_GETPAID_CHECKOUT_URL_199', 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38358'),
+            '1.99' => env('EZWAY_NETWORK_GETPAID_CHECKOUT_URL_199', 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38475'),
             '199.99' => env('EZWAY_NETWORK_GETPAID_CHECKOUT_URL_19999', 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38376'),
         ],
         'webhook_secret' => env('EZWAY_NETWORK_GETPAID_WEBHOOK_SECRET'),
