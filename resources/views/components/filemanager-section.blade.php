@@ -697,7 +697,7 @@
                 } else if (is_video) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeMediaUrl}">
                                 <video class="img-fluid object-fit-cover" preload="none" controlsList="nodownload" controls>
                                     <source src="${safeMediaUrl}" type="video/mp4">
                                 </video>
@@ -712,7 +712,7 @@
                 } else if (is_image) {
                     return `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeMediaUrl}">
                                 <img class="img-fluid object-fit-cover" src="${safeMediaUrl}" loading="lazy" decoding="async" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', 'image', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>

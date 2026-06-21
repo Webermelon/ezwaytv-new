@@ -1177,6 +1177,9 @@ function decryptVideoUrl($encryptedUrl)
 
 function extractFileNameFromUrl($url = '', $page_type = 'default')
 {
+    if (empty($url)) {
+        return $url;
+    }
 
     $normalizedFolder = $page_type;
     if ($page_type === 'season') {
@@ -1185,8 +1188,21 @@ function extractFileNameFromUrl($url = '', $page_type = 'default')
         $normalizedFolder = 'tvshow/episode';
     }
 
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $fileName = basename($path ?: $url);
+    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp', 'm4v', 'mpg', 'mpeg'];
+
+    // Large videos are already uploaded through Media Library. Saving content
+    // should only store the filename, never copy/read the whole remote object.
+    if (in_array($extension, $videoExtensions, true)) {
+        return $fileName;
+    }
+
     $isInCorrectFolder = strpos($url, '/storage/' . $normalizedFolder . '/video/') !== false
-                      || strpos($url, '/storage/' . $normalizedFolder . '/image/') !== false;
+                      || strpos($url, '/storage/' . $normalizedFolder . '/image/') !== false
+                      || strpos($url, '/' . $normalizedFolder . '/video/') !== false
+                      || strpos($url, '/' . $normalizedFolder . '/image/') !== false;
 
     if (!$isInCorrectFolder) {
         $url = copyImageToFolder($url, $page_type);
@@ -1249,6 +1265,9 @@ function copyImageToFolder($fileUrl, $folder = 'other')
         // Get file details
         $fileName = basename($sourcePath);
         $isVideo = preg_match('/\.(mp4|webm|avi|mov)$/i', $fileName);
+        if ($isVideo) {
+            return $fileUrl;
+        }
         $type = $isVideo ? 'video' : 'image';
 
         // Build target path
@@ -2203,38 +2222,38 @@ function bunnyIngestAndGetM3u8(string $sourceUrl, string $title): ?string
 
     $base = 'https://video.bunnycdn.com/library';
 
-    $list = Http::withHeaders([
-        'AccessKey' => $apiKey,
-    ])->get("{$base}/{$libraryId}/videos");
+    try {
+        $create = Http::timeout(20)
+            ->withHeaders([
+                'AccessKey' => $apiKey,
+                'Content-Type' => 'application/json',
+            ])
+            ->post("{$base}/{$libraryId}/videos", ['title' => $title]);
 
-    if ($list->successful()) {
-        $videos = $list->json()['items'] ?? [];
-        foreach ($videos as $video) {
-            if (isset($video['title']) && $video['title'] == $title) {
-                $guid = $video['guid'];
-                return "https://{$cdnHost}/{$guid}/playlist.m3u8";
-            }
-        }
+        if (!$create->successful()) return null;
+        $guid = data_get($create->json(), 'guid');
+        if (!$guid) return null;
+
+        $fetch = Http::timeout(20)
+            ->withHeaders([
+                'AccessKey' => $apiKey,
+                'Content-Type' => 'application/json',
+            ])
+            ->post("{$base}/{$libraryId}/videos/{$guid}/fetch", [
+                'url' => $sourceUrl,
+            ]);
+        if (!$fetch->successful()) return null;
+
+        return "https://{$cdnHost}/{$guid}/playlist.m3u8";
+    } catch (\Throwable $e) {
+        \Log::warning('Bunny Stream ingest failed', [
+            'source_url' => $sourceUrl,
+            'title' => $title,
+            'message' => $e->getMessage(),
+        ]);
+
+        return null;
     }
-
-    $create = Http::withHeaders([
-        'AccessKey' => $apiKey,
-        'Content-Type' => 'application/json',
-    ])->post("{$base}/{$libraryId}/videos", ['title' => $title]);
-
-    if (!$create->successful()) return null;
-    $guid = data_get($create->json(), 'guid');
-    if (!$guid) return null;
-
-    $fetch = Http::withHeaders([
-        'AccessKey' => $apiKey,
-        'Content-Type' => 'application/json',
-    ])->post("{$base}/{$libraryId}/videos/{$guid}/fetch", [
-        'url' => $sourceUrl,
-    ]);
-    if (!$fetch->successful()) return null;
-
-    return "https://{$cdnHost}/{$guid}/playlist.m3u8";
 }
 
 function formatDateTimeWithTimezone($value, $type = null)

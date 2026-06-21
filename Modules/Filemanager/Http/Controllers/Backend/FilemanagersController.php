@@ -129,8 +129,8 @@ class FilemanagersController extends Controller
             }
             $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('file uploaded', ['file' => $uniqueFileName]);
-            if (in_array($fileType, ['image', 'video'], true)) {
-                // process images and videos synchronously to avoid queuing backlog
+            if ($fileType === 'image') {
+                // Keep images immediate so previews are available right away.
                 ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $syncProcessedCount++;
             } else {
@@ -162,8 +162,8 @@ class FilemanagersController extends Controller
             }
             $diskType = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
             Log::info('queued assembled temp', ['file' => $originalName]);
-            if (in_array($fileType, ['image', 'video'], true)) {
-                // process images and videos synchronously to avoid queuing backlog
+            if ($fileType === 'image') {
+                // Keep images immediate so previews are available right away.
                 ProcessFileUpload::dispatchSync($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $syncProcessedCount++;
             } else {

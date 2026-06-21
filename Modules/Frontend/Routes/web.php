@@ -140,6 +140,7 @@ Route::view('/search', 'react-modernization')->name('search');
 
 
 Route::view('/watch-list', 'react-modernization')->name('watchList');
+Route::view('/subscription-plan', 'react-modernization')->name('subscriptionPlan');
 
 Route::view('/faq', 'react-modernization')->name('faq');
 
@@ -151,6 +152,33 @@ Route::post('/decrypt-url', [FrontendController::class, 'decryptUrl'])->name('de
 
 Route::post('/get-available-promotions', [PaymentController::class, 'getAvailablePromotions'])
     ->name('get-available-promotions');
+
+Route::post('/tv-subscriber-form', function (Request $request) {
+    $data = $request->validate([
+        'full_name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'email', 'max:255'],
+    ]);
+
+    $response = Http::timeout(12)->asJson()->post(
+        'https://ezwaycrm.com/webhook/inbound/22/5a6547bdd57eb731e01c30605f2279dd',
+        [
+            'full_name' => $data['full_name'],
+            'email' => $data['email'],
+        ]
+    );
+
+    if (! $response->successful()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Subscriber form could not be submitted right now.',
+        ], 502);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Thank you for subscribing to eZWay TV.',
+    ]);
+})->name('tv-subscriber-form');
 });
 
 Route::view('/trending-movies', 'react-modernization')->name('trending.movies');
@@ -174,7 +202,6 @@ Route::group(['middleware' => ['user']], function () {
     Route::view('/pay-per-view/invoice/{id}', 'react-modernization')->name('payperview.invoice');
     Route::post('/get-payment-details', [FrontendController::class, 'getPaymentDetails']);
     Route::get('invoice-download', [FrontendController::class, 'downloadInvoice'])->name('downloadinvoice');
-    Route::view('/subscription-plan', 'react-modernization')->name('subscriptionPlan');
     Route::post('/process-payment', [PaymentController::class, 'processPayment'])->name('process-payment');
     Route::post('/select-plan', [PaymentController::class, 'selectPlan'])->name('select.plan');
     Route::view('/payment/success', 'react-modernization')->name('payment.success');

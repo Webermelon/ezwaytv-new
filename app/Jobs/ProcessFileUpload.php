@@ -13,6 +13,8 @@ use Illuminate\Bus\Batchable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Aws\S3\S3Client;
+use Aws\S3\MultipartUploader;
 
 class ProcessFileUpload implements ShouldQueue
 {
@@ -133,6 +135,38 @@ class ProcessFileUpload implements ShouldQueue
         return null;
     }
 
+    private function uploadS3CompatibleFile(string $sourcePath, string $targetPath, string $diskType): void
+    {
+        $diskConfig = config("filesystems.disks.{$diskType}");
+        if (!$diskConfig || ($diskConfig['driver'] ?? null) !== 's3') {
+            throw new \RuntimeException("Disk {$diskType} is not an S3-compatible disk.");
+        }
+
+        $client = new S3Client([
+            'version' => 'latest',
+            'region' => $diskConfig['region'] ?? 'us-east-1',
+            'endpoint' => $diskConfig['endpoint'] ?? null,
+            'use_path_style_endpoint' => filter_var($diskConfig['use_path_style_endpoint'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'credentials' => [
+                'key' => $diskConfig['key'] ?? '',
+                'secret' => $diskConfig['secret'] ?? '',
+            ],
+        ]);
+
+        $uploader = new MultipartUploader($client, $sourcePath, [
+            'bucket' => $diskConfig['bucket'],
+            'key' => ltrim($targetPath, '/'),
+            'part_size' => 16 * 1024 * 1024,
+            'concurrency' => 1,
+            'params' => [
+                'ACL' => 'public-read',
+                'ContentType' => mime_content_type($sourcePath) ?: 'application/octet-stream',
+            ],
+        ]);
+
+        $uploader->upload();
+    }
+
     /**
      * Execute the job.
      */
@@ -186,9 +220,9 @@ class ProcessFileUpload implements ShouldQueue
             }
 
             $fileToStreamPath = $processedPath ?: $localSourcePath;
-            $file = fopen($fileToStreamPath, 'rb');
 
             if ($this->diskType === 'local') {
+                $file = fopen($fileToStreamPath, 'rb');
 
                 $folderPath = 'public/' . $this->page_type . '/'. $this->fileType . '/' . $this->filemanager->file_name;
 
@@ -201,6 +235,9 @@ class ProcessFileUpload implements ShouldQueue
                 }
 
                 Storage::disk('local')->writeStream($folderPath, $file);
+                if (is_resource($file)) {
+                    fclose($file);
+                }
 
                 $fullPath = storage_path('app/' . $folderPath);
                 if (file_exists($fullPath)) {
@@ -213,7 +250,15 @@ class ProcessFileUpload implements ShouldQueue
                 }
             } else {
                 $folderPath =  $this->page_type . '/' . $this->fileType . '/' . $this->filemanager->file_name;
-                Storage::disk($this->diskType)->writeStream($folderPath, $file);
+                if (in_array($this->diskType, ['dg-ocean', 's3'], true) && file_exists($fileToStreamPath)) {
+                    $this->uploadS3CompatibleFile($fileToStreamPath, $folderPath, $this->diskType);
+                } else {
+                    $file = fopen($fileToStreamPath, 'rb');
+                    Storage::disk($this->diskType)->writeStream($folderPath, $file);
+                    if (is_resource($file)) {
+                        fclose($file);
+                    }
+                }
             }
 
             $this->filemanager->file_url = $folderPath;

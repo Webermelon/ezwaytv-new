@@ -48,17 +48,45 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function setCurrentSelectionTarget(element) {
+    if (!element) return;
+    currentImageContainer = element.getAttribute('data-image-container') || currentImageContainer;
+    currentHiddenInput = element.getAttribute('data-hidden-input') || currentHiddenInput;
+  }
+
+  function getUrlExtension(mediaUrl) {
+    try {
+      return new URL(mediaUrl, window.location.origin).pathname.split('.').pop().toLowerCase();
+    } catch (e) {
+      return String(mediaUrl || '').split('?')[0].split('#')[0].split('.').pop().toLowerCase();
+    }
+  }
+
+  function isVideoUrl(mediaUrl) {
+    return ['mp4', 'avi', 'mov', 'webm', 'm4v'].includes(getUrlExtension(mediaUrl));
+  }
+
+  function isImageUrl(mediaUrl) {
+    return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(getUrlExtension(mediaUrl));
+  }
+
   // Expose globally for external use
   window.initializeImageSelection = initializeImageSelection;
 
   function initializeModal() {
-    document.querySelectorAll('button[data-bs-target="#exampleModal"]').forEach(function (button) {
+    document.querySelectorAll('[data-bs-target="#exampleModal"][data-hidden-input]').forEach(function (button) {
       initializeImageSelection(button);
     });
   }
 
   // Expose globally for external use
   window.initializeModal = initializeModal;
+
+  if (exampleModal) {
+    exampleModal.addEventListener('show.bs.modal', function (event) {
+      setCurrentSelectionTarget(event.relatedTarget);
+    });
+  }
 
   function selectMedia(mediaUrl, mediaElement) {
     selectedMediaUrl = mediaUrl;
@@ -67,14 +95,36 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#mediaLibraryContent img, #mediaLibraryContent video').forEach(function (media) {
       media.classList.remove('iq-image');
     });
+    document.querySelectorAll('#mediaLibraryContent .iq-media-images.selected').forEach(function (tile) {
+      tile.classList.remove('selected');
+    });
 
     // Add active class to the selected media element
     mediaElement.classList.add('iq-image');
+    var selectedTile = mediaElement.closest ? mediaElement.closest('.iq-media-images') : null;
+    if (selectedTile) {
+      selectedTile.classList.add('selected');
+    }
+    if (window.FileManager && window.FileManager.dom && typeof window.FileManager.dom.updateSaveButtonState === 'function') {
+      window.FileManager.dom.updateSaveButtonState();
+    }
   }
 
   const mediaLibraryContentElement = document.getElementById('mediaLibraryContent');
   if (mediaLibraryContentElement) {
     mediaLibraryContentElement.addEventListener('click', function (event) {
+      if (event.target.closest('.iq-button-delete') || event.target.closest('.iq-media-action')) {
+        return;
+      }
+
+      var mediaTile = event.target.closest('.iq-media-images[data-media-url]');
+      if (mediaTile) {
+        var tileMediaUrl = mediaTile.getAttribute('data-media-url');
+        var tileMediaElement = mediaTile.querySelector('img, video') || mediaTile;
+        selectMedia(tileMediaUrl, tileMediaElement);
+        event.preventDefault();
+        return;
+      }
 
       if (event.target.tagName === 'IMG') {
         var mediaUrl = event.target.src;
@@ -95,11 +145,20 @@ document.addEventListener('DOMContentLoaded', function () {
   const mediaSubmitButton = document.getElementById('mediaSubmitButton');
   if (mediaSubmitButton) {
     mediaSubmitButton.addEventListener('click', function () {
+      if (!selectedMediaUrl) {
+        var selectedTile = document.querySelector('#mediaLibraryContent .iq-media-images.selected[data-media-url]');
+        selectedMediaUrl = selectedTile ? selectedTile.getAttribute('data-media-url') : '';
+      }
+      var activeElement = document.activeElement;
+      if ((!currentImageContainer || !currentHiddenInput) && activeElement && activeElement.matches('[data-bs-target="#exampleModal"][data-hidden-input]')) {
+        setCurrentSelectionTarget(activeElement);
+      }
+
       if (selectedMediaUrl && currentImageContainer && currentHiddenInput) {
         var selectedImageContainer = document.getElementById(currentImageContainer);
         var mediaUrlInput = document.getElementById(currentHiddenInput);
 
-        if (selectedImageContainer) {
+        if (selectedImageContainer && mediaUrlInput) {
           mediaUrlInput.value = selectedMediaUrl;
           // Dispatch events so forms can react (validation badges, etc.)
           try { mediaUrlInput.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
@@ -117,8 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var isTrailerField = mediaUrlInput.id === 'file_url_trailer' || mediaUrlInput.name === 'trailer_video';
 
             // Only allow video selection
-            if (selectedMediaUrl.endsWith('.mp4') || selectedMediaUrl.endsWith('.avi') ||
-                selectedMediaUrl.endsWith('.mov') || selectedMediaUrl.endsWith('.webm')) {
+            if (isVideoUrl(selectedMediaUrl)) {
               if (fileError) {
                 fileError.style.display = 'none';
               }
@@ -242,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           } else {
 
-            if (selectedMediaUrl.endsWith('.png') || selectedMediaUrl.endsWith('.jpg') || selectedMediaUrl.endsWith('.jpeg') || selectedMediaUrl.endsWith('.webp')) {
+            if (isImageUrl(selectedMediaUrl)) {
               // For other cases, default behavior (assuming image upload or other media)
               var img = document.createElement('img');
               img.src = selectedMediaUrl;
@@ -282,6 +340,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
           $('#exampleModal').modal('hide');
         }
+      } else if (selectedMediaUrl) {
+        alert('Please reopen this media picker from the video field, then select the media again.');
       }
     });
   }
@@ -793,7 +853,7 @@ if (document.getElementById('file_url_media')) {
   document.getElementById('file_url_media').addEventListener('change', function () {
     var fileInput = document.getElementById('file_url_media');
     var uploadedImagesContainer = document.getElementById('uploadedImages');
-    var chunkSize = 1024 * 1024 * 30; // 100 MB chunk size (adjust as necessary)
+    var chunkSize = 1024 * 1024 * 5;
     var uploadedFiles = [];
 
     // Clear previously uploaded images and reset progress
@@ -1292,7 +1352,3 @@ function showErrorCountOnTabs(errors, tabFields = {}) {
 
 window.showValidationModal = showValidationModal
 window.showErrorCountOnTabs = showErrorCountOnTabs
-
-
-
-

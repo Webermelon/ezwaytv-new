@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, LogOut, Menu, Music2, Play, Radio, Search, Send, Settings, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
 
@@ -79,6 +79,7 @@ const mobileNavItems = [
 export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [subscriberFormOpen, setSubscriberFormOpen] = useState(false)
   const navigate = useSpaNavigate()
   const authUser = getAuthUser()
   const navQuery = useQuery({
@@ -112,6 +113,25 @@ export function AppHeader({ active }: AppHeaderProps) {
       document.body.style.overflow = originalOverflow
     }
   }, [mobileMenuOpen])
+
+  useEffect(() => {
+    if (!subscriberFormOpen) return
+
+    const originalOverflow = document.body.style.overflow
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSubscriberFormOpen(false)
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [subscriberFormOpen])
 
   return (
     <>
@@ -148,6 +168,13 @@ export function AppHeader({ active }: AppHeaderProps) {
                   </div>
                 )
               })}
+              <button
+                type="button"
+                onClick={() => setSubscriberFormOpen(true)}
+                className="relative inline-flex h-16 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm text-white/62 transition hover:border-white/20 hover:text-white"
+              >
+                TV Subscriber
+              </button>
             </nav>
           </div>
 
@@ -161,12 +188,11 @@ export function AppHeader({ active }: AppHeaderProps) {
               <span className="ez-header-search-label">Search</span>
             </a>
             <Button
-              asChild
-              className={['hidden h-9 rounded-md bg-primary px-3 text-white hover:bg-primary/90 lg:inline-flex', authUser ? 'lg:hidden' : ''].join(' ')}
+              type="button"
+              onClick={() => setSubscriberFormOpen(true)}
+              className="hidden h-9 rounded-md bg-primary px-3 text-white hover:bg-primary/90 lg:inline-flex"
             >
-              <a href="https://ezwaynetwork.com/" target="_blank" rel="noreferrer">
-                Join Our Family
-              </a>
+              Subscribe
             </Button>
             {authUser ? <ProfileMenu user={authUser} /> : null}
             <button
@@ -190,10 +216,15 @@ export function AppHeader({ active }: AppHeaderProps) {
           visibleMenuKeys={navData.visibleMenuKeys}
           authUser={authUser}
           navigate={navigate}
+          onOpenSubscriberForm={() => {
+            setMobileMenuOpen(false)
+            setSubscriberFormOpen(true)
+          }}
           onNavigate={() => setMobileMenuOpen(false)}
           onClose={() => setMobileMenuOpen(false)}
         />
       ) : null}
+      {subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
     </>
   )
 }
@@ -206,6 +237,7 @@ function MobileMenu({
   visibleMenuKeys,
   authUser,
   navigate,
+  onOpenSubscriberForm,
   onNavigate,
   onClose,
 }: {
@@ -216,6 +248,7 @@ function MobileMenu({
   visibleMenuKeys: string[] | null
   authUser: AuthUser | null
   navigate: (to: string, options?: { replace?: boolean }) => void
+  onOpenSubscriberForm: () => void
   onNavigate: () => void
   onClose: () => void
 }) {
@@ -356,16 +389,25 @@ function MobileMenu({
                 </div>
               )
             })}
+            <button
+              type="button"
+              onClick={onOpenSubscriberForm}
+              className="flex min-h-12 w-full min-w-0 max-w-full items-center justify-between overflow-hidden rounded-xl border border-transparent px-4 text-left text-sm font-black text-white transition hover:border-white/10 hover:bg-white/[0.045]"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <UsersRound className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 truncate">TV Subscriber</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0" />
+            </button>
           </div>
 
           {authUser ? (
             <MobileProfileMenu user={authUser} onNavigate={onNavigate} />
           ) : (
-            <a
-              href="https://ezwaynetwork.com/"
-              target="_blank"
-              rel="noreferrer"
-              onClick={onNavigate}
+            <button
+              type="button"
+              onClick={onOpenSubscriberForm}
               className="mt-5 grid min-h-20 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 px-4 py-3 shadow-[0_0_28px_rgba(212,168,67,0.10)]"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342] shadow-inner shadow-[#d4a843]/20">
@@ -378,7 +420,7 @@ function MobileMenu({
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#edc342] text-black">
                 <ChevronRight className="h-5 w-5" />
               </span>
-            </a>
+            </button>
           )}
 
           <div className="mt-5 flex items-center gap-3">
@@ -403,6 +445,128 @@ function MobileMenu({
           </div>
         </div>
       </nav>
+    </div>
+  )
+}
+
+function SubscriberFormModal({ onClose }: { onClose: () => void }) {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('submitting')
+    setMessage('')
+
+    try {
+      const response = await api.post<{ success?: boolean; message?: string }>('/tv-subscriber-form', {
+        full_name: fullName.trim(),
+        email: email.trim(),
+      })
+
+      if (!response?.success) {
+        throw new Error(response?.message || 'Subscriber form could not be submitted right now.')
+      }
+
+      setStatus('success')
+      setMessage(response.message || 'Thank you for subscribing to eZWay TV.')
+      setFullName('')
+      setEmail('')
+    } catch (error) {
+      setStatus('error')
+      setMessage(error instanceof Error ? error.message : 'Subscriber form could not be submitted right now.')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/76 px-3 py-5 backdrop-blur-md sm:px-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="subscriber-form-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Close subscriber form"
+        onClick={onClose}
+      />
+      <section className="relative flex max-h-[92dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-lg border border-[#d4a843]/28 bg-[radial-gradient(circle_at_82%_0%,rgba(212,168,67,0.22),transparent_34%),linear-gradient(180deg,#111_0%,#050505_100%)] shadow-2xl shadow-black">
+        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 sm:px-5">
+          <BrandLogo imageClassName="max-h-10 max-w-[170px]" textClassName="text-xl" placeholderClassName="h-9 w-[160px]" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close subscriber form"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="grid gap-5 px-5 py-6 sm:px-7 sm:py-7">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">Subscribe eZWay TV</p>
+            <h2 id="subscriber-form-title" className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
+              Stay connected with eZWay TV.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-white/62">
+              Get updates, channel news, and subscriber-only announcements from eZWay TV.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            <label className="grid gap-2">
+              <span className="text-xs font-black uppercase tracking-wide text-white/54">Full Name</span>
+              <input
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+                maxLength={255}
+                autoComplete="name"
+                className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]"
+                placeholder="Your name"
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-xs font-black uppercase tracking-wide text-white/54">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                maxLength={255}
+                autoComplete="email"
+                className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]"
+                placeholder="you@example.com"
+              />
+            </label>
+          </div>
+
+          {message ? (
+            <div
+              className={[
+                'rounded-md border px-4 py-3 text-sm font-semibold',
+                status === 'success'
+                  ? 'border-emerald-400/24 bg-emerald-500/12 text-emerald-100'
+                  : 'border-red-400/24 bg-red-500/12 text-red-100',
+              ].join(' ')}
+            >
+              {message}
+            </div>
+          ) : null}
+
+          <Button
+            type="submit"
+            disabled={status === 'submitting'}
+            className="h-12 w-full rounded-md bg-primary text-sm font-black text-black hover:bg-[#f3c84b] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {status === 'submitting' ? 'Subscribing...' : 'Subscribe'}
+          </Button>
+        </form>
+      </section>
     </div>
   )
 }
