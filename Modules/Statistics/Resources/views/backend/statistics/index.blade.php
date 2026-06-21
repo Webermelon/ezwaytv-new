@@ -268,6 +268,7 @@
                         <tr>
                             <th>Channel</th>
                             <th class="text-end">Video Views</th>
+                            <th class="text-end">Overall Views</th>
                             <th class="text-end">Profile Views</th>
                             <th class="text-end">Plays</th>
                             <th class="text-end">Unique Visitors</th>
@@ -275,7 +276,7 @@
                         </tr>
                     </thead>
                     <tbody id="ondemandBody">
-                        <tr><td colspan="6" class="text-center py-4 text-muted">Loading…</td></tr>
+                        <tr><td colspan="7" class="text-center py-4 text-muted">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -611,19 +612,19 @@
         const period = getPeriod();
         const tbody = document.getElementById('ondemandBody');
         const totalsEl = document.getElementById('ondemandTotals');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Loading…</td></tr>';
 
         fetchJson(`${base}/ondemand`, { period, limit: 10 }).then(data => {
             if (!data || data.migration_required) {
                 totalsEl.textContent = 'Run the latest Statistics migration to enable On Demand channel reporting.';
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">Migration required</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Migration required</td></tr>';
                 return;
             }
 
-            totalsEl.textContent = `${Number(data.totals.total_views || 0).toLocaleString()} total views (${Number(data.totals.views || 0).toLocaleString()} video, ${Number(data.totals.profile_views || 0).toLocaleString()} profile), ${Number(data.totals.plays || 0).toLocaleString()} plays, ${Number(data.totals.watch_hours || 0).toLocaleString()} watch hours`;
+            totalsEl.textContent = `${Number(data.totals.total_views || 0).toLocaleString()} overall views (${Number(data.totals.views || 0).toLocaleString()} video, ${Number(data.totals.profile_views || 0).toLocaleString()} profile), ${Number(data.totals.plays || 0).toLocaleString()} plays, ${Number(data.totals.watch_hours || 0).toLocaleString()} watch hours`;
 
             if (!data.channels.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No On Demand data yet</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No On Demand data yet</td></tr>';
                 return;
             }
 
@@ -634,9 +635,10 @@
                 return `<tr>
                     <td>${name}<div class="text-muted small">${Number(row.videos || 0).toLocaleString()} tracked videos</div></td>
                     <td class="text-end">${Number(row.views || 0).toLocaleString()}</td>
-                    <td class="text-end">${Number(row.display_profile_views ?? row.profile_views ?? 0).toLocaleString()}${Number(row.boost_views || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
-                    <td class="text-end">${Number(row.display_plays ?? row.plays ?? 0).toLocaleString()}${Number(row.boost_plays || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
-                    <td class="text-end">${Number(row.display_unique_visitors ?? row.unique_visitors ?? 0).toLocaleString()}${Number(row.boost_unique_visitors || 0) > 0 ? '<div class="text-danger small">boosted</div>' : ''}</td>
+                    <td class="text-end">${Number((row.views || 0) + (row.display_profile_views ?? row.profile_views ?? 0)).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.display_profile_views ?? row.profile_views ?? 0).toLocaleString()}${Number(row.boost_views || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
+                    <td class="text-end">${Number(row.display_plays ?? row.plays ?? 0).toLocaleString()}${Number(row.boost_plays || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
+                    <td class="text-end">${Number(row.display_unique_visitors ?? row.unique_visitors ?? 0).toLocaleString()}${Number(row.boost_unique_visitors || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
                     <td class="text-end">${escHtml(row.watch_time || '00:00:00')}</td>
                 </tr>`;
             }).join('');
