@@ -844,6 +844,7 @@ class StatisticsController extends Controller
         $videosOut = collect($videosOut)->sortByDesc('total')->values()->take($limit)->values();
         $totals = [
             'views' => $allChannels->sum('views'),
+            'boost_views' => $allChannels->sum('boost_views'),
             'profile_views' => $allChannels->sum('display_profile_views'),
             'total_views' => $allChannels->sum('views') + $allChannels->sum('display_profile_views'),
             'plays' => $allChannels->sum('display_plays'),
