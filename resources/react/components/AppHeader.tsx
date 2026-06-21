@@ -168,13 +168,6 @@ export function AppHeader({ active }: AppHeaderProps) {
                   </div>
                 )
               })}
-              <button
-                type="button"
-                onClick={() => setSubscriberFormOpen(true)}
-                className="relative inline-flex h-16 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm text-white/62 transition hover:border-white/20 hover:text-white"
-              >
-                TV Subscriber
-              </button>
             </nav>
           </div>
 
@@ -389,17 +382,6 @@ function MobileMenu({
                 </div>
               )
             })}
-            <button
-              type="button"
-              onClick={onOpenSubscriberForm}
-              className="flex min-h-12 w-full min-w-0 max-w-full items-center justify-between overflow-hidden rounded-xl border border-transparent px-4 text-left text-sm font-black text-white transition hover:border-white/10 hover:bg-white/[0.045]"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <UsersRound className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 truncate">TV Subscriber</span>
-              </span>
-              <ChevronRight className="h-5 w-5 shrink-0" />
-            </button>
           </div>
 
           {authUser ? (
