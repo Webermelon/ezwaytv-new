@@ -1,0 +1,189 @@
+# Subscription Webhook
+
+This app keeps subscription plans and subscription records locally. Payment can happen in an external system, but the external system must notify this Laravel app by webhook so the local subscription status can be updated.
+
+## Local Selection Flow
+
+Frontend plan selection posts to:
+
+```http
+POST /select-plan
+```
+
+Required form data:
+
+```json
+{
+  "plan_id": 1
+}
+```
+
+The controller validates that the plan exists and is active, then creates:
+
+- a pending `subscriptions` row
+- a pending `subscriptions_transactions` row
+
+The response does not redirect to an external checkout:
+
+```json
+{
+  "success": true,
+  "message": "Subscription request saved. Your subscription will activate after payment confirmation is received.",
+  "subscription_id": 123,
+  "status": "pending"
+}
+```
+
+The external payment system should store or receive this `subscription_id` and send it back in the webhook after payment status changes.
+
+## Webhook Endpoint
+
+```http
+POST /api/subscription/webhook
+```
+
+Controller:
+
+```text
+Modules\Frontend\Http\Controllers\PaymentController::handleSubscriptionWebhook
+```
+
+Route name:
+
+```text
+api.subscription.webhook
+```
+
+## Authentication
+
+Set a shared secret:
+
+```env
+SUBSCRIPTION_WEBHOOK_SECRET=
+```
+
+The webhook accepts either of these authentication formats.
+
+HMAC signature:
+
+```http
+X-Subscription-Signature: {hash_hmac_sha256_of_raw_body}
+```
+
+Bearer token:
+
+```http
+Authorization: Bearer {SUBSCRIPTION_WEBHOOK_SECRET}
+```
+
+If `SUBSCRIPTION_WEBHOOK_SECRET` is empty or the provided credential does not match, the endpoint returns `401`.
+
+## Accepted Payload
+
+Minimum payload:
+
+```json
+{
+  "subscription_id": 123,
+  "status": "paid"
+}
+```
+
+Supported subscription id aliases:
+
+- `subscription_id`
+- `local_subscription_id`
+- `subs_id`
+
+Optional fields:
+
+- `plan_id`
+- `transaction_id`
+- `invoice_id`
+- `payment_id`
+- `payment_type`
+- `provider`
+
+If `plan_id` is present, it must match the local subscription's `plan_id`.
+
+## Status Mapping
+
+Incoming paid or active values activate the local subscription:
+
+- `paid`
+- `complete`
+- `completed`
+- `succeeded`
+- `success`
+- `active`
+
+Incoming pending values keep the local subscription pending:
+
+- `pending`
+- `processing`
+
+Incoming cancel values cancel the local subscription:
+
+- `cancel`
+- `canceled`
+- `cancelled`
+
+Incoming inactive/failure values deactivate the local subscription:
+
+- `inactive`
+- `deactivated`
+- `failed`
+- `expired`
+
+Unknown statuses return `422`.
+
+## Activation Effects
+
+When the webhook activates a subscription:
+
+- the target `subscriptions.status` becomes `active`
+- `start_date` is refreshed to the webhook processing time
+- `end_date` is recalculated from the subscription duration
+- any other active subscription for the same user is set to `deactivated`
+- the matching `subscriptions_transactions` row is updated to `paid`
+- `users.is_subscribe` is synced to `1`
+- cache is flushed
+
+When the webhook cancels, deactivates, or returns a pending status:
+
+- only the target subscription status changes
+- the matching transaction row is updated with the incoming payload
+- `users.is_subscribe` is synced based on whether the user still has any active subscription
+- cache is flushed
+
+## Example Request
+
+```bash
+curl -X POST "https://ezway.tv/api/subscription/webhook" \
+  -H "Authorization: Bearer ${SUBSCRIPTION_WEBHOOK_SECRET}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscription_id": 123,
+    "plan_id": 4,
+    "status": "paid",
+    "transaction_id": "pay_abc123",
+    "provider": "external_processor"
+  }'
+```
+
+Successful response:
+
+```json
+{
+  "success": true,
+  "message": "Subscription status updated.",
+  "subscription_id": 123,
+  "status": "active"
+}
+```
+
+## Notes
+
+- Provider-specific checkout URL configuration is not part of this flow.
+- No database schema changes are required.
+- The external payment system must know the local `subscription_id`; without it, the webhook cannot safely identify which pending subscription to update.

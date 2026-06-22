@@ -2229,46 +2229,50 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `php -l Modules/Frontend/Trait/LoginTrait.php` passes.
 - No migrations were run and no database tables were altered.
 
-### External eZWay Network GetPaid Subscription Handoff
+### External Subscription Webhook Handoff
 
 - User clarified:
   - local plan records stay in this Laravel app.
-  - actual recurring payment should be handled externally by eZWay Network GetPaid.
-  - local app should save records only; external system handles payment.
+  - provider-specific checkout handoff is no longer needed.
+  - local app should save pending records and receive a webhook that changes the internal subscription status.
 - Updated `Modules/Frontend/Http/Controllers/PaymentController.php`:
   - `/select-plan` now validates the local active plan.
   - Creates a local pending `subscriptions` record.
   - Creates a local pending `subscriptions_transactions` record.
-  - Returns a JSON `redirect_url` for external GetPaid checkout.
+  - Returns JSON with `subscription_id`, `status`, and a pending confirmation message.
+  - Added generic `handleSubscriptionWebhook()` for external subscription status callbacks.
 - Added helper logic:
-  - `createPendingExternalSubscription()`
-  - `buildExternalGetPaidUrl()`
+  - `createPendingWebhookSubscription()`
+  - `validSubscriptionWebhookSecret()`
+  - `normalizeWebhookSubscriptionStatus()`
+  - `applyWebhookSubscriptionStatus()`
+  - `syncUserSubscriptionFlag()`
   - `discountedPlanPrice()`
 - Pending records use:
   - subscription status: `pending`
-  - transaction payment type: `ezwaynetwork_getpaid`
+  - transaction payment type: `external_webhook`
   - transaction payment status: `pending`
   - transaction id placeholder: `external-pending-{subscription_id}`
 - Updated `Modules/Frontend/Resources/views/subscriptionplan.blade.php`:
-  - plan selection now redirects to `response.redirect_url`.
-  - no longer injects the old internal payment form into the page.
+  - plan selection now shows the local pending confirmation message.
+  - no longer redirects to a provider checkout URL.
 - Added config in `config/services.php`:
-  - `services.ezway_getpaid.checkout_url`
-  - `services.ezway_getpaid.return_url`
-  - `services.ezway_getpaid.cancel_url`
-- Added `.env` keys:
-  - `EZWAY_NETWORK_GETPAID_CHECKOUT_URL`
-  - `EZWAY_NETWORK_GETPAID_RETURN_URL`
-  - `EZWAY_NETWORK_GETPAID_CANCEL_URL`
-- Current `.env` placeholder checkout URL:
-  - `https://ezwaynetwork.com/`
+  - `services.subscription_webhook.secret`
+- Webhook endpoint:
+  - `POST /api/subscription/webhook`
+  - route name: `api.subscription.webhook`
+  - accepts `X-Subscription-Signature` HMAC SHA-256 or `Authorization: Bearer` using `SUBSCRIPTION_WEBHOOK_SECRET`.
+- Added documentation:
+  - `docs/subscription-webhook.md`
+  - updated `docs/api-contract-audit.md`
+  - updated `docs/database-audit.md`
 - Follow-up needed:
-  - replace placeholder with the exact GetPaid recurring subscription checkout URL.
-  - add webhook/callback verification from eZWay Network to activate pending subscriptions after external payment succeeds.
+  - set `SUBSCRIPTION_WEBHOOK_SECRET` in the deployment environment.
+  - configure the external payment system to send the local `subscription_id` in webhook payloads.
 - Verified:
   - `php -l Modules/Frontend/Http/Controllers/PaymentController.php` passes.
   - `php -l config/services.php` passes.
-  - `npm run react:build` passes.
+  - `php -l routes/api.php` passes.
 - No migrations were run and no database tables were altered.
 
 ## 2026-06-15

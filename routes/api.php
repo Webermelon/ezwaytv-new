@@ -52,7 +52,7 @@ Route::controller(AuthController::class)->group(function () {
 });
 
 Route::post('check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('api.check.mobile.exists');
-Route::post('ezway-network/subscription-paid', [PaymentController::class, 'handleGetPaidSubscriptionWebhook'])->name('api.ezway-network.subscription-paid');
+Route::post('subscription/webhook', [PaymentController::class, 'handleSubscriptionWebhook'])->name('api.subscription.webhook');
 Route::post('/store-access-token', [SettingController::class, 'storeToken']);
 Route::post('/token-revoke', [SettingController::class, 'revokeToken']);
 Route::get('get-tranding-data', [DashboardController::class, 'getTrandingData']);
