@@ -268,8 +268,8 @@
                         <tr>
                             <th>Channel</th>
                             <th class="text-end">Video Views</th>
-                            <th class="text-end">Overall Views</th>
-                            <th class="text-end">Profile Views</th>
+                            <th class="text-end">Other Views</th>
+                            <th class="text-end">Total Views</th>
                             <th class="text-end">Plays</th>
                             <th class="text-end">Unique Visitors</th>
                             <th class="text-end">Watch Time</th>
@@ -443,9 +443,7 @@
             document.getElementById('val-plays').textContent     = data.total_plays;
             document.getElementById('val-pageviews').textContent = data.page_views;
             document.getElementById('val-visitors').textContent  = data.unique_visitors;
-            // Display watch time in minutes instead of hours
-            const watchMinutes = Math.round((parseFloat(data.watch_hours) || 0) * 60);
-            document.getElementById('val-hours').textContent     = watchMinutes + ' min';
+            document.getElementById('val-hours').textContent     = `${data.watch_hours} h`;
             const viewsEl = document.getElementById('val-views');
             if (viewsEl) viewsEl.textContent = data.total_views;
 
@@ -621,7 +619,7 @@
                 return;
             }
 
-            totalsEl.textContent = `${Number(data.totals.total_views || 0).toLocaleString()} overall views (${Number(data.totals.views || 0).toLocaleString()} video, ${Number(data.totals.profile_views || 0).toLocaleString()} profile), ${Number(data.totals.plays || 0).toLocaleString()} plays, ${Number(data.totals.watch_hours || 0).toLocaleString()} watch hours`;
+            totalsEl.textContent = `${Number(data.totals.total_views || 0).toLocaleString()} total views, ${Number(data.totals.plays || 0).toLocaleString()} plays, ${Number(data.totals.watch_hours || 0).toLocaleString()} watch hours`;
 
             if (!data.channels.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">No On Demand data yet</td></tr>';
@@ -634,11 +632,11 @@
                     : `<span class="fw-medium">${escHtml(row.name)}</span>`;
                 return `<tr>
                     <td>${name}<div class="text-muted small">${Number(row.videos || 0).toLocaleString()} tracked videos</div></td>
-                    <td class="text-end">${Number(row.views || 0).toLocaleString()}</td>
-                    <td class="text-end">${Number((row.views || 0) + (row.display_profile_views ?? row.profile_views ?? 0)).toLocaleString()}</td>
-                    <td class="text-end">${Number(row.display_profile_views ?? row.profile_views ?? 0).toLocaleString()}${Number(row.boost_views || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
-                    <td class="text-end">${Number(row.display_plays ?? row.plays ?? 0).toLocaleString()}${Number(row.boost_plays || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
-                    <td class="text-end">${Number(row.display_unique_visitors ?? row.unique_visitors ?? 0).toLocaleString()}${Number(row.boost_unique_visitors || 0) > 0 ? '<div class="text-danger small">included</div>' : ''}</td>
+                    <td class="text-end">${Number(row.display_views ?? row.views ?? 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.display_profile_views ?? row.profile_views ?? 0).toLocaleString()}</td>
+                    <td class="text-end">${Number((row.display_views ?? row.views ?? 0) + (row.display_profile_views ?? row.profile_views ?? 0)).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.display_plays ?? row.plays ?? 0).toLocaleString()}</td>
+                    <td class="text-end">${Number(row.display_unique_visitors ?? row.unique_visitors ?? 0).toLocaleString()}</td>
                     <td class="text-end">${escHtml(row.watch_time || '00:00:00')}</td>
                 </tr>`;
             }).join('');

@@ -5,8 +5,10 @@ namespace Modules\Statistics\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Modules\Statistics\Models\ContentBoost;
+use Modules\Statistics\Models\StatSetting;
 
 class ContentBoostController extends Controller
 {
@@ -253,7 +255,38 @@ class ContentBoostController extends Controller
             'boost_views'  => (int)($boostSums->total_views ?? 0),
             'boost_watch_seconds' => (int)($boostSums->total_watch_seconds ?? 0),
             'boost_unique_visitors' => (int)($boostSums->total_unique_visitors ?? 0),
+            'views_display_mode' => $this->displayModeFor('views', $type, $id),
+            'plays_display_mode' => $this->displayModeFor('plays', $type, $id),
+            'show_player_views' => StatSetting::get("show_player_views:{$type}:{$id}", '1') === '1',
+            'global_views_display_mode' => StatSetting::get('views_display_mode', 'combined'),
+            'global_plays_display_mode' => StatSetting::get('plays_display_mode', 'combined'),
             'history'      => $history,
+        ]);
+    }
+
+    public function saveDisplayMode(Request $request)
+    {
+        $validated = $request->validate([
+            'content_type' => 'required|string|max:50',
+            'content_id' => 'required|integer|min:1',
+            'views_display_mode' => 'required|string|in:inherit,combined,real,boosted,hidden',
+            'plays_display_mode' => 'required|string|in:inherit,combined,real,boosted,hidden',
+            'show_player_views' => 'required|boolean',
+        ]);
+
+        $this->setDisplayModeOverride('views', $validated['content_type'], (int) $validated['content_id'], $validated['views_display_mode']);
+        $this->setDisplayModeOverride('plays', $validated['content_type'], (int) $validated['content_id'], $validated['plays_display_mode']);
+        StatSetting::set(
+            "show_player_views:{$validated['content_type']}:{$validated['content_id']}",
+            $validated['show_player_views'] ? '1' : '0'
+        );
+        $this->clearFrontendStatsCache($validated['content_type']);
+
+        return response()->json([
+            'success' => true,
+            'views_display_mode' => $this->displayModeFor('views', $validated['content_type'], (int) $validated['content_id']),
+            'plays_display_mode' => $this->displayModeFor('plays', $validated['content_type'], (int) $validated['content_id']),
+            'show_player_views' => (bool) $validated['show_player_views'],
         ]);
     }
 
@@ -293,6 +326,7 @@ class ContentBoostController extends Controller
         }
 
         ContentBoost::create($payload);
+        $this->clearFrontendStatsCache($validated['content_type']);
 
         return response()->json(['success' => true, 'name' => $name]);
     }
@@ -302,7 +336,11 @@ class ContentBoostController extends Controller
      */
     public function destroy(int $id)
     {
-        ContentBoost::findOrFail($id)->delete();
+        $boost = ContentBoost::findOrFail($id);
+        $contentType = $boost->content_type;
+        $boost->delete();
+        $this->clearFrontendStatsCache($contentType);
+
         return response()->json(['success' => true]);
     }
 
@@ -341,5 +379,38 @@ class ContentBoostController extends Controller
         }
 
         return $hasColumn;
+    }
+
+    private function displayModeFor(string $metric, string $type, int $id): string
+    {
+        $allowed = ['combined', 'real', 'boosted', 'hidden'];
+        $override = StatSetting::get("{$metric}_display_mode:{$type}:{$id}");
+        if (in_array($override, $allowed, true)) {
+            return $override;
+        }
+
+        $global = StatSetting::get("{$metric}_display_mode", 'combined');
+        return in_array($global, $allowed, true) ? $global : 'combined';
+    }
+
+    private function setDisplayModeOverride(string $metric, string $type, int $id, string $mode): void
+    {
+        $key = "{$metric}_display_mode:{$type}:{$id}";
+
+        if ($mode === 'inherit') {
+            StatSetting::where('key', $key)->delete();
+            return;
+        }
+
+        StatSetting::set($key, $mode);
+    }
+
+    private function clearFrontendStatsCache(string $contentType): void
+    {
+        if ($contentType === 'livetv' && function_exists('clearLiveTvDashboardCache')) {
+            clearLiveTvDashboardCache();
+        }
+
+        Cache::forget('stat_settings_all');
     }
 }

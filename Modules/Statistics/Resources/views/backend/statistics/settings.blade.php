@@ -134,6 +134,15 @@
                                 </div>
                             </div>
                             <div class="col-12">
+                                <label class="form-label fw-medium" for="views_display_mode">Global View Display Mode</label>
+                                <select class="form-select" id="views_display_mode" name="views_display_mode">
+                                    @foreach(['combined' => 'Combined real + boosted', 'real' => 'Original real only', 'boosted' => 'Boosted only', 'hidden' => 'Hidden'] as $mode => $label)
+                                        <option value="{{ $mode }}" {{ ($settings['views_display_mode'] ?? 'combined') === $mode ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Default view count shown on frontend cards and content pages. Individual content can override this in Content Booster.</div>
+                            </div>
+                            <div class="col-12">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="show_plays_frontend" name="show_plays_frontend" value="1"
                                         {{ ($settings['show_plays_frontend'] ?? '1') == '1' ? 'checked' : '' }}>
@@ -142,6 +151,15 @@
                                         <small class="text-muted">Display play count on content pages.</small>
                                     </label>
                                 </div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-medium" for="plays_display_mode">Global Play Display Mode</label>
+                                <select class="form-select" id="plays_display_mode" name="plays_display_mode">
+                                    @foreach(['combined' => 'Combined real + boosted', 'real' => 'Original real only', 'boosted' => 'Boosted only', 'hidden' => 'Hidden'] as $mode => $label)
+                                        <option value="{{ $mode }}" {{ ($settings['plays_display_mode'] ?? 'combined') === $mode ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Default play count shown on frontend content pages. Individual content can override this in Content Booster.</div>
                             </div>
                         </div>
                     </div>

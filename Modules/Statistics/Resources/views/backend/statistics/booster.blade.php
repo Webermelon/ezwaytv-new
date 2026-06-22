@@ -166,6 +166,47 @@
                 </div>
             </div>
 
+            <div class="mb-3 p-3 rounded" style="background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.06);">
+                <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                    <div>
+                        <h6 class="fw-semibold mb-0">Frontend Display Mode</h6>
+                        <small class="text-muted">Override what visitors see for this selected item.</small>
+                    </div>
+                    <span class="badge bg-dark" id="displayModeStatus">Using global default</span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="item_show_player_views" checked>
+                            <label class="form-check-label" for="item_show_player_views">
+                                <span class="fw-medium">Show Views on Player Page</span><br>
+                                <small class="text-muted">Turn views on/off for this individual player page only.</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-medium" for="item_views_display_mode">Views</label>
+                        <select class="form-select" id="item_views_display_mode">
+                            <option value="inherit">Use global default</option>
+                            <option value="combined">Combined real + boosted</option>
+                            <option value="real">Original real only</option>
+                            <option value="boosted">Boosted only</option>
+                            <option value="hidden">Hidden</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-medium" for="item_plays_display_mode">Plays</label>
+                        <select class="form-select" id="item_plays_display_mode">
+                            <option value="inherit">Use global default</option>
+                            <option value="combined">Combined real + boosted</option>
+                            <option value="real">Original real only</option>
+                            <option value="boosted">Boosted only</option>
+                            <option value="hidden">Hidden</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <form id="boostForm">
                 <input type="hidden" id="f_content_type" name="content_type">
                 <input type="hidden" id="f_content_id"   name="content_id">
@@ -414,9 +455,72 @@
                 data.real_unique_visitors || 0,
                 data.real_watch_seconds || 0
             );
+            setDisplayModeControls(data);
             updateDisplayNums();
         });
     }
+
+    function setDisplayModeControls(data) {
+        const viewsSelect = document.getElementById('item_views_display_mode');
+        const playsSelect = document.getElementById('item_plays_display_mode');
+        const playerViewsToggle = document.getElementById('item_show_player_views');
+        const status = document.getElementById('displayModeStatus');
+
+        viewsSelect.dataset.effective = data.views_display_mode || 'combined';
+        playsSelect.dataset.effective = data.plays_display_mode || 'combined';
+        viewsSelect.dataset.global = data.global_views_display_mode || 'combined';
+        playsSelect.dataset.global = data.global_plays_display_mode || 'combined';
+
+        viewsSelect.value = (data.views_display_mode && data.views_display_mode !== data.global_views_display_mode) ? data.views_display_mode : 'inherit';
+        playsSelect.value = (data.plays_display_mode && data.plays_display_mode !== data.global_plays_display_mode) ? data.plays_display_mode : 'inherit';
+        playerViewsToggle.checked = data.show_player_views !== false;
+        status.textContent = `Views: ${labelMode(data.views_display_mode || 'combined')} · Plays: ${labelMode(data.plays_display_mode || 'combined')}`;
+    }
+
+    function saveDisplayMode() {
+        const ctype = document.getElementById('f_content_type').value;
+        const cid = document.getElementById('f_content_id').value;
+        if (!ctype || !cid) return;
+
+        const body = new FormData();
+        body.append('content_type', ctype);
+        body.append('content_id', cid);
+        body.append('views_display_mode', document.getElementById('item_views_display_mode').value);
+        body.append('plays_display_mode', document.getElementById('item_plays_display_mode').value);
+        body.append('show_player_views', document.getElementById('item_show_player_views').checked ? '1' : '0');
+
+        fetch(`${base}/booster/display-mode`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': csrfTok,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body,
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            document.getElementById('displayModeStatus').textContent = `Views: ${labelMode(data.views_display_mode)} · Plays: ${labelMode(data.plays_display_mode)}`;
+            document.getElementById('item_show_player_views').checked = data.show_player_views !== false;
+            showToast('Display mode saved', 'success');
+        })
+        .catch(() => showToast('Display mode save failed', 'danger'));
+    }
+
+    function labelMode(mode) {
+        return {
+            combined: 'combined',
+            real: 'original',
+            boosted: 'boosted',
+            hidden: 'hidden',
+        }[mode] || 'combined';
+    }
+
+    document.getElementById('item_views_display_mode').addEventListener('change', saveDisplayMode);
+    document.getElementById('item_plays_display_mode').addEventListener('change', saveDisplayMode);
+    document.getElementById('item_show_player_views').addEventListener('change', saveDisplayMode);
 
     function updateDisplayNums() {
         const bPlays = parseInt(document.getElementById('f_boost_plays').value) || 0;
