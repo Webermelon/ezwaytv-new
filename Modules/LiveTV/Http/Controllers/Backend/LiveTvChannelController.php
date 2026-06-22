@@ -273,7 +273,7 @@ class LiveTvChannelController extends Controller
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
         $playerViewSettings = [
-            'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '1'),
+            'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '0'),
         ];
 
         return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings'));

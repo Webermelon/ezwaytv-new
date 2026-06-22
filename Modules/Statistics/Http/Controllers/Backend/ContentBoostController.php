@@ -257,7 +257,7 @@ class ContentBoostController extends Controller
             'boost_unique_visitors' => (int)($boostSums->total_unique_visitors ?? 0),
             'views_display_mode' => $this->displayModeFor('views', $type, $id),
             'plays_display_mode' => $this->displayModeFor('plays', $type, $id),
-            'show_player_views' => StatSetting::get("show_player_views:{$type}:{$id}", '1') === '1',
+            'show_player_views' => StatSetting::get("show_player_views:{$type}:{$id}", $type === 'livetv' ? '0' : '1') === '1',
             'global_views_display_mode' => StatSetting::get('views_display_mode', 'combined'),
             'global_plays_display_mode' => StatSetting::get('plays_display_mode', 'combined'),
             'history'      => $history,
