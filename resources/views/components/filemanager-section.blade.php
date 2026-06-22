@@ -573,7 +573,7 @@
                 return response.json();
             },
 
-            deleteFile: async (fileId, url) => {
+            deleteFile: async (fileId, url, path = null) => {
                 const response = await fetch(
                     `${FileManager.config.baseUrl}/app/media-library/destroy`, {
                         method: 'POST',
@@ -581,7 +581,7 @@
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': FileManager.config.csrfToken
                         },
-                        body: JSON.stringify({ url })
+                        body: JSON.stringify({ url, path })
                     });
 
                 return response.json();
@@ -670,6 +670,7 @@
                 const jsMediaUrl = FileManager.utils.escapeJsString(media_url);
                 const safeMediaUrl = FileManager.utils.escapeHtml(media_url);
                 const jsFolder = FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(media_url || ''));
+                const jsPath = FileManager.utils.escapeJsString(path || '');
 
                 if (is_dir) {
                     const transKey = 'folder_' + name.toLowerCase();
@@ -701,7 +702,7 @@
                                 <video class="img-fluid object-fit-cover" preload="none" controlsList="nodownload" controls>
                                     <source src="${safeMediaUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', 'video', '${jsFolder}')">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', '${jsPath}', 'video', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
@@ -714,7 +715,7 @@
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeMediaUrl}">
                                 <img class="img-fluid object-fit-cover" src="${safeMediaUrl}" loading="lazy" decoding="async" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', 'image', '${jsFolder}')">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', '${jsPath}', 'image', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
@@ -746,7 +747,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsFileUrl}', 'file', '${FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(fileUrl))}')">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsFileUrl}', '${jsPath}', 'file', '${FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(fileUrl))}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                             </div>
@@ -931,7 +932,24 @@
             }
         },
 
-        deleteFile: (fileName, url, type, folderName) => {
+        deleteFile: (fileName, url, pathOrType = null, typeOrFolder = null, maybeFolderName = null) => {
+            if (typeof fileName === 'string' && /^https?:\/\//i.test(fileName)) {
+                const originalUrl = fileName;
+                const originalType = url;
+                const originalFileName = pathOrType;
+                const originalFolderName = typeOrFolder;
+                const originalPath = maybeFolderName;
+                fileName = originalFileName || '';
+                url = originalUrl;
+                pathOrType = originalPath || null;
+                typeOrFolder = originalType || (url && url.match(/\.(jpe?g|png|gif|webp|svg)(\?|$)/i) ? 'image' : 'video');
+                maybeFolderName = originalFolderName || FileManager.utils.getFolderFromUrl(url);
+            }
+
+            const path = pathOrType && !['video', 'image', 'file'].includes(pathOrType) ? pathOrType : null;
+            const type = ['video', 'image', 'file'].includes(pathOrType) ? pathOrType : typeOrFolder;
+            const folderName = maybeFolderName || (pathOrType && ['video', 'image', 'file'].includes(pathOrType) ? typeOrFolder : null);
+
             const i18n = {
                 delete_confirm_title: @json(__('frontend.delete_confirm_title')),
                 delete_confirm_text: @json(__('frontend.delete_confirm_text')),
@@ -975,7 +993,7 @@
                     const fileId = fileName.split('.')[0];
 
                     try {
-                        const data = await FileManager.api.deleteFile(fileId, url);
+                        const data = await FileManager.api.deleteFile(fileId, url, path);
 
                         if (data.success) {
                             const mediaContainer = document.querySelector(
