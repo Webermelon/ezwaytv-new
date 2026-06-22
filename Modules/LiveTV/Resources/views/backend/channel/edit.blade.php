@@ -236,6 +236,33 @@
                                 </div>
                                 <small class="text-muted d-block mt-1">Messages stay attached to this channel even if chat is later disabled.</small>
                             </div>
+                            <div class="col-12">
+                                <div class="border rounded p-3 mt-2">
+                                    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+                                        <div>
+                                            <h6 class="mb-1">Player View Settings</h6>
+                                            <small class="text-muted">Controls only this Live TV channel player page.</small>
+                                        </div>
+                                        <a href="{{ url('/livetv/' . ($data->slug ?? $data->id)) }}" target="_blank" class="btn btn-sm btn-secondary">
+                                            Preview Player
+                                        </a>
+                                    </div>
+
+                                    <div class="row gy-3">
+                                        <div class="col-md-12">
+                                            {{ html()->label('Show Views on Player Page', 'show_player_views')->class('form-label') }}
+                                            <div class="d-flex justify-content-between align-items-center form-control">
+                                                {{ html()->label('Show view count', 'show_player_views')->class('form-label mb-0 text-body') }}
+                                                <div class="form-check form-switch">
+                                                    {{ html()->hidden('show_player_views', 0) }}
+                                                    {{ html()->checkbox('show_player_views', old('show_player_views', ($playerViewSettings['show_player_views'] ?? '1') === '1'), 1)->class('form-check-input')->id('show_player_views') }}
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Hides or shows views for this channel only.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
