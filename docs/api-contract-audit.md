@@ -145,6 +145,16 @@ Recommended API mapping order:
 11. Admin CRUD modules
 12. Settings
 
+## Subscription Webhook Contract
+
+The external subscription payment flow is documented in [subscription-webhook.md](subscription-webhook.md).
+
+- `POST /select-plan` creates local pending subscription and transaction records.
+- `POST /api/subscription/webhook` receives the external payment/subscription status update.
+- Webhook authentication uses `SUBSCRIPTION_WEBHOOK_SECRET` through either `X-Subscription-Signature` HMAC SHA-256 or `Authorization: Bearer`.
+- The webhook updates existing local records; it does not create plans or alter the database schema.
+- Provider-specific checkout redirects are no longer part of the subscription contract.
+
 ## Known Risks
 
 - Some API names have spelling mistakes that must be preserved for compatibility, such as `cancle-subscription` and `user-subscription_histroy`.

@@ -105,12 +105,7 @@
                         _token: '{{ csrf_token() }}' // CSRF token for security
                     },
                     success: function(response) {
-                        if (response.redirect_url) {
-                            window.location.href = response.redirect_url;
-                            return;
-                        }
-
-                        alert(response.message || 'External checkout is not available.');
+                        alert(response.message || 'Subscription request saved.');
                     },
                     error: function(xhr) {
                         if (xhr.status === 419) {

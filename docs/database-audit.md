@@ -261,6 +261,22 @@ Notable columns:
   - payment: `amount`, `discount_percentage`, `tax_amount`, `coupon_discount`, `total_amount`, `payment_id`
   - device: `device_id`
 
+Subscription webhook behavior:
+
+- `/select-plan` creates a local `pending` subscription before external payment confirmation.
+- `POST /api/subscription/webhook` changes the existing local subscription status after external confirmation.
+- Activating a subscription sets other active subscriptions for the same user to `deactivated`.
+- Webhook status handling does not require a migration or new columns.
+
+### `subscriptions_transactions`
+
+Webhook transaction behavior:
+
+- `/select-plan` creates a pending transaction with `payment_type` set to `external_webhook`.
+- The webhook updates the transaction for the same `subscriptions_id`.
+- The webhook stores the raw incoming payload in `other_transactions_details`.
+- Paid/active webhook statuses set `payment_status` to `paid`; other supported statuses are stored as their local mapped status.
+
 ### `pay_per_views`
 
 - Columns: 13
