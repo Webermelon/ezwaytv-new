@@ -8,8 +8,8 @@
 document.addEventListener('DOMContentLoaded', function(){
     try {
         var meta = window._ezPageMeta || {};
-        var ctype = meta.content_type;
-        var cid = meta.content_id;
+        var ctype = @json($contentType ?? null) || meta.content_type;
+        var cid = @json($contentId ?? null) || meta.content_id;
         if (!ctype || !cid) return;
 
         function human(n) {
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function(){
             var showViews = false, showPlays = false;
 
             if (d.show_views_frontend) {
-                document.getElementById('ezway-views-num').textContent = human(d.total_views || 0);
+                document.getElementById('ezway-views-num').textContent = human(d.display_views ?? d.total_views ?? 0);
                 viewsBlock.style.display = '';
                 showViews = true;
             } else {
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function(){
             }
 
             if (d.show_plays_frontend) {
-                document.getElementById('ezway-plays-num').textContent = human(d.total_plays || 0);
+                document.getElementById('ezway-plays-num').textContent = human(d.display_plays ?? d.total_plays ?? 0);
                 playsBlock.style.display = '';
                 showPlays = true;
             }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Copy, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,7 @@ import { MediaThumbnail } from '@/components/MediaThumbnail'
 import type { MediaItem } from '@/modules/home/types'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
-import { loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type VideoAd } from './videoDetailApi'
+import { loadContentStats, loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type ContentStats, type VideoAd } from './videoDetailApi'
 
 type AuthorChannel = {
   id?: number | string
@@ -84,17 +84,28 @@ export function VideoDetailPage() {
   const video = videoQuery.data as VideoDetail | null | undefined
   const videoId = video?.id
   const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
+  const statsContentType = channelId ? 'ondemand_video' : 'video'
   const adsQuery = useQuery({
     queryKey: ['video-ads', videoId],
     queryFn: () => loadVideoAds(videoId as string | number),
     enabled: Boolean(videoId),
     staleTime: 30_000,
   })
+  const statsQuery = useQuery({
+    queryKey: ['content-stats', statsContentType, videoId],
+    queryFn: () => loadContentStats(statsContentType, videoId as string | number),
+    enabled: Boolean(videoId),
+    staleTime: 30_000,
+  })
+  const contentStats = statsQuery.data as ContentStats | null | undefined
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const trackViewMutation = useMutation({
     mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
       trackVideoView(nextVideo, nextChannelId)
     ),
+    onSuccess: () => {
+      statsQuery.refetch().catch(() => undefined)
+    },
   })
   const trackPlayMutation = useMutation({
     mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
@@ -181,6 +192,7 @@ export function VideoDetailPage() {
                       {video.imdb_rating}
                     </span>
                   ) : null}
+                  <PlayerStats stats={contentStats} />
                 </div>
 
                 <ChannelBadges channels={video.author_channels ?? []} />
@@ -312,6 +324,19 @@ function PlayerPreparing({ poster }: { poster?: string | null }) {
         Preparing player
       </div>
     </div>
+  )
+}
+
+function PlayerStats({ stats }: { stats?: ContentStats | null }) {
+  if (!stats?.show_views_frontend) return null
+
+  const views = Number(stats.display_views ?? stats.total_views ?? 0)
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Eye className="h-4 w-4" />
+      {formatCompactCount(views)} views
+    </span>
   )
 }
 
@@ -692,6 +717,20 @@ function requiredPlanLabel(video: VideoDetail) {
   if (video.required_plan_level || video.plan_level) return `Plan Level ${video.required_plan_level ?? video.plan_level}`
 
   return 'a premium plan'
+}
+
+function formatCompactCount(value: number) {
+  const count = Math.max(0, Number(value) || 0)
+
+  if (count >= 1_000_000) {
+    return `${Number((count / 1_000_000).toFixed(1)).toLocaleString()}M`
+  }
+
+  if (count >= 1_000) {
+    return `${Number((count / 1_000).toFixed(1)).toLocaleString()}K`
+  }
+
+  return count.toLocaleString()
 }
 
 function buildVideoHref(video: MediaItem, channelId?: string | number | null) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -10,7 +10,7 @@ import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { useSpaPath } from '@/lib/spa-router'
 import type { LiveTvDashboard, MediaItem, ProgramInfo } from '@/modules/home/types'
 import { VideoJsPlayer } from '@/modules/video-detail/VideoJsPlayer'
-import type { VideoAd } from '@/modules/video-detail/videoDetailApi'
+import { loadContentStats, type ContentStats, type VideoAd } from '@/modules/video-detail/videoDetailApi'
 import {
   loadLiveTvAds,
   loadLiveTvChat,
@@ -225,6 +225,13 @@ function LiveTvDetailPage({
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | number | null>(null)
   const channelId = channel?.id
+  const statsQuery = useQuery({
+    queryKey: ['content-stats', 'livetv', channelId],
+    queryFn: () => loadContentStats('livetv', channelId as string | number),
+    enabled: Boolean(channelId),
+    staleTime: 30_000,
+  })
+  const contentStats = statsQuery.data as ContentStats | null | undefined
   const adsQuery = useQuery({
     queryKey: ['livetv-ads', channelId],
     queryFn: () => loadLiveTvAds(channelId as string | number),
@@ -251,6 +258,9 @@ function LiveTvDetailPage({
   const hasScheduleUi = Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
   const trackViewMutation = useMutation({
     mutationFn: (nextChannel: MediaItem) => trackLiveTvView(nextChannel),
+    onSuccess: () => {
+      statsQuery.refetch().catch(() => undefined)
+    },
   })
   const trackPlayMutation = useMutation({
     mutationFn: (nextChannel: MediaItem) => trackLiveTvPlay(nextChannel),
@@ -309,6 +319,7 @@ function LiveTvDetailPage({
               {isSubscriptionLocked ? <Badge variant="outline" className="border-[#d4a843]/50 bg-[#d4a843]/10 text-[#f2d16f]">Premium</Badge> : null}
             </div>
             <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
+            <LiveTvPlayerStats stats={contentStats} />
             <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
 
             {isSubscriptionLocked ? <LiveTvPremiumNotice channel={channel} /> : null}
@@ -561,6 +572,21 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function LiveTvPlayerStats({ stats }: { stats?: ContentStats | null }) {
+  if (!stats?.show_views_frontend) return null
+
+  const views = Number(stats.display_views ?? stats.total_views ?? 0)
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-white/62">
+      <span className="inline-flex items-center gap-2">
+        <Eye className="h-4 w-4" />
+        {formatCompactCount(views)} views
+      </span>
     </div>
   )
 }
@@ -1329,6 +1355,20 @@ async function copyLiveTvShareUrl() {
   input.select()
   document.execCommand('copy')
   document.body.removeChild(input)
+}
+
+function formatCompactCount(value: number) {
+  const count = Math.max(0, Number(value) || 0)
+
+  if (count >= 1_000_000) {
+    return `${Number((count / 1_000_000).toFixed(1)).toLocaleString()}M`
+  }
+
+  if (count >= 1_000) {
+    return `${Number((count / 1_000).toFixed(1)).toLocaleString()}K`
+  }
+
+  return count.toLocaleString()
 }
 
 function formatTime(value?: string | null, timezone?: string | null) {
