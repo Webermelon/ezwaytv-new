@@ -355,24 +355,57 @@ class StatisticsController extends Controller
         // Boost sums
         $boostPlays = (int) ContentBoost::where('content_type', $type)->where('content_id', $id)->sum('boost_plays');
         $boostViews = (int) ContentBoost::where('content_type', $type)->where('content_id', $id)->sum('boost_views');
+        $engagementViews = (int) $realViews + (int) $realPlays;
 
-        // Display flags
+        // Display flags and modes
         $showPageViews = StatSetting::get('show_page_views', '1') === '1';
         $showPlayerPlays = StatSetting::get('show_player_plays', '1') === '1';
-        $showViewsFrontend = StatSetting::get('show_views_frontend', '1') === '1';
-        $showPlaysFrontend = StatSetting::get('show_plays_frontend', '1') === '1';
+        $viewsMode = $this->displayModeFor('views', $type, $id);
+        $playsMode = $this->displayModeFor('plays', $type, $id);
+        $showPlayerViews = StatSetting::get("show_player_views:{$type}:{$id}", '1') === '1';
+        $showViewsFrontend = StatSetting::get('show_views_frontend', '1') === '1' && $showPlayerViews && $viewsMode !== 'hidden';
+        $showPlaysFrontend = StatSetting::get('show_plays_frontend', '1') === '1' && $playsMode !== 'hidden';
+        $displayViews = $this->displayCount($viewsMode, $engagementViews, $boostViews);
+        $displayPlays = $this->displayCount($playsMode, (int) $realPlays, $boostPlays);
 
         return response()->json([
             'real_plays' => (int) $realPlays,
             'real_views' => (int) $realViews,
+            'engagement_views' => $engagementViews,
             'boost_plays' => $boostPlays,
             'boost_views' => $boostViews,
-            'total_plays' => (int)($realPlays + $boostPlays),
-            'total_views' => (int)($realViews + $boostViews),
+            'display_plays' => $displayPlays,
+            'display_views' => $displayViews,
+            'total_plays' => $displayPlays,
+            'total_views' => $displayViews,
+            'views_display_mode' => $viewsMode,
+            'plays_display_mode' => $playsMode,
+            'show_player_views' => $showPlayerViews,
             'show_page_views' => $showPageViews,
             'show_player_plays' => $showPlayerPlays,
             'show_views_frontend' => $showViewsFrontend,
             'show_plays_frontend' => $showPlaysFrontend,
         ]);
+    }
+
+    private function displayModeFor(string $metric, string $type, int $id): string
+    {
+        $allowed = ['combined', 'real', 'boosted', 'hidden'];
+        $override = StatSetting::get("{$metric}_display_mode:{$type}:{$id}");
+        $mode = in_array($override, $allowed, true)
+            ? $override
+            : StatSetting::get("{$metric}_display_mode", 'combined');
+
+        return in_array($mode, $allowed, true) ? $mode : 'combined';
+    }
+
+    private function displayCount(string $mode, int $real, int $boost): int
+    {
+        return match ($mode) {
+            'real' => $real,
+            'boosted' => $boost,
+            'hidden' => 0,
+            default => $real + $boost,
+        };
     }
 }

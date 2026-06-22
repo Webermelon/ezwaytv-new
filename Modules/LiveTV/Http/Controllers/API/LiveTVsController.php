@@ -19,6 +19,8 @@ use Modules\Frontend\Models\PayPerView;
 use App\Models\MobileSetting;
 use Modules\Banner\Models\Banner;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class LiveTVsController extends Controller
 {
@@ -58,6 +60,9 @@ class LiveTVsController extends Controller
     public function liveTvDetails(Request $request){
 
         $channelData = LiveTvChannel::where('id', $request->channel_id)->with('TvCategory','plan','TvChannelStreamContentMappings')->first();
+        if ($channelData) {
+            $this->attachLiveTvStats(collect([$channelData]));
+        }
 
         $responseData = new LiveTvChannelDetailsResource($channelData);
 
@@ -72,10 +77,12 @@ class LiveTVsController extends Controller
         $channelId = $request->channel_id ?? $request->id;
         $userId = $request->user_id ?? auth()->id();
 
+        $cacheVersion = Cache::get('livetv_dashboard_cache_version', 0);
         $cacheKey = 'livetv_details_v4_schedule_status_'. md5(json_encode([
             'channel_id' => $channelId,
             'user_id' => $userId,
-            'device_type' => $device_type
+            'device_type' => $device_type,
+            'cache_version' => $cacheVersion,
         ]));
 
         $cachedResult = cacheApiResponse($cacheKey, 300, function () use ($request, $channelId, $userId, $device_type) {
@@ -114,6 +121,7 @@ class LiveTVsController extends Controller
             $channelData['isDeviceSupported'] = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
 
             $channelData['poster_image'] =  $device_type == 'tv' ? $channelData->poster_tv_url : $channelData->poster_url ?? null;
+            $this->attachLiveTvStats(collect([$channelData]));
             // Get more items and apply setContentAccess to each
             $moreItems = LiveTvChannel::where('category_id', $channelData->category_id)->where('deleted_at', null)->where('status',1)->featuredFirst()->get()->except($channelData->id);
 
@@ -134,6 +142,7 @@ class LiveTVsController extends Controller
 
                 return $item;
             });
+            $this->attachLiveTvStats($moreItems->values());
 
             $channelData['moreItems'] = $moreItems;
             $responseData = new LiveTvChannelDetailsResourceV3($channelData);
@@ -153,14 +162,9 @@ class LiveTVsController extends Controller
         // Base query
         $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1);
 
-        // Allow sorting by views (uses stat_page_views.content_type = 'livetv') or alphabetic
+        // Allow sorting by combined real + boosted views or alphabetic
         if ($request->input('sort') === 'views') {
-            $channelData = $channelData->leftJoin('stat_page_views', function($join){
-                $join->on('live_tv_channel.id', '=', 'stat_page_views.content_id')
-                     ->where('stat_page_views.content_type', 'livetv');
-            })
-            ->select('live_tv_channel.*', \DB::raw('COUNT(stat_page_views.id) as total_views'))
-            ->groupBy('live_tv_channel.id')
+            $channelData = $this->applyLiveTvViewsSort($channelData)
             ->featuredFirst()
             ->orderByDesc('total_views');
         } elseif ($request->input('sort') === 'alpha') {
@@ -181,6 +185,7 @@ class LiveTVsController extends Controller
                 $showPremiumBadge = $isPaid && ($userPlanLevel < $planLevel);
                 $channelItem['show_premium_badge'] =  $showPremiumBadge;
             });
+            $this->attachLiveTvStats($channel->getCollection());
             $channelList = LiveTvChannelResource::collection($channel);
 
             foreach ($channelList->toArray($request) as $index => $value) {
@@ -198,6 +203,7 @@ class LiveTVsController extends Controller
             );
         }else{
             $channelData=  $channelData->get();
+            $this->attachLiveTvStats($channelData);
             $responseData['channel'] = LiveTvChannelResource::collection($channelData);
             return ApiResponse::success($responseData, __('livetv.channel_list'), 200);
         }
@@ -210,14 +216,17 @@ class LiveTVsController extends Controller
         $profile_id = getCurrentProfile($userId, $request);
         $device_type = getDeviceType($request);
         $perPage = $request->input('per_page', 10);
+        $cacheVersion = Cache::get('livetv_dashboard_cache_version', 0);
         $cacheKey = 'channel_list_v3_featured_order_'. md5(json_encode([
             'user_id' => $userId,
             'device_type' => $device_type,
             'profile_id' => $profile_id,
             'category_id' => $request->category_id ?? null,
             'is_ajax' => $request->is_ajax ?? 0,
+            'sort' => $request->sort ?? null,
             'page' => $request->page ?? 1,
-            'per_page' => $perPage
+            'per_page' => $perPage,
+            'cache_version' => $cacheVersion,
         ]));
 
         $cachedResult = cacheApiResponse($cacheKey, 300, function () use ($request, $userId, $device_type, $perPage) {
@@ -228,8 +237,12 @@ class LiveTVsController extends Controller
             $userPlanLevel = $userLevel->plan_level ?? 0;
 
             $channelData = LiveTvChannel::with('TvCategory','plan','TvChannelStreamContentMappings')->where('status',1)->where('deleted_at',null);
-            // support alphabetic sorting
-            if ($request->input('sort') === 'alpha') {
+            // support combined real + boosted views and alphabetic sorting
+            if ($request->input('sort') === 'views') {
+                $channelData = $this->applyLiveTvViewsSort($channelData)
+                    ->featuredFirst()
+                    ->orderByDesc('total_views');
+            } elseif ($request->input('sort') === 'alpha') {
                 $channelData = $channelData->featuredFirst()->orderBy('name', 'asc');
             } else {
                 $channelData = $channelData->featuredFirst()->orderBy('id', 'desc');
@@ -248,6 +261,7 @@ class LiveTVsController extends Controller
                     $channelItem->show_premium_badge = !$channelItem->access == 'free' && $channelItem->access == 'paid' && $channelItem->plan_level > $userPlanLevel;
                     return $channelItem;
                 });
+                $this->attachLiveTvStats($channel->getCollection());
 
                 $html = '';
                 $channelList = LiveTvChannelResourceV3::collection($channel);
@@ -273,6 +287,7 @@ class LiveTVsController extends Controller
                     $channelItem->poster_image = $device_type == 'tv' ? setBaseUrlWithFileName($channelItem->poster_tv_url, 'image', 'livetv') : setBaseUrlWithFileName($channelItem->poster_url, 'image', 'livetv');
                     return $channelItem;
                 });
+                $this->attachLiveTvStats($channelData->getCollection());
                 $responseData['channel'] = LiveTvChannelResourceV3::collection($channelData);
                 return [
                     'data' => $responseData,
@@ -451,6 +466,7 @@ class LiveTVsController extends Controller
                         $sliderData[] = $livetvChannel;
                     }
                 }
+                $this->attachLiveTvStats(collect($sliderData));
 
                 // schedules methods moved outside closure to class scope
                 
@@ -481,6 +497,7 @@ class LiveTVsController extends Controller
                 $channel = setContentAccess($channel, $user_id, $userPlanId, $purchasedIds ?? []);
                 $channel->poster_image =  $device_type == 'tv' ? setBaseUrlWithFileName($channel->poster_tv_url, 'image', 'livetv') : setBaseUrlWithFileName($channel->poster_url , 'image', 'livetv');
             });
+            $this->attachLiveTvStats($allChannelData);
 
             // Group ALL channels by category for easy access
             $channelsByCategory = $allChannelData->groupBy('category_id');
@@ -614,5 +631,148 @@ class LiveTVsController extends Controller
         $schedule->delete();
         $this->clearChannelScheduleCache($channelId);
         return ApiResponse::success(null, __('livetv.schedule_deleted'), 200);
+    }
+
+    private function applyLiveTvViewsSort($query)
+    {
+        $globalMode = $this->validDisplayMode(
+            DB::table('stat_settings')->where('key', 'views_display_mode')->value('value') ?? 'combined'
+        );
+
+        $realViews = DB::table('stat_page_views')
+            ->select('content_id', DB::raw('COUNT(*) as real_views'))
+            ->where('content_type', 'livetv')
+            ->groupBy('content_id');
+
+        $boostViews = DB::table('stat_content_boosts')
+            ->select('content_id', DB::raw('SUM(boost_views) as boost_views'))
+            ->where('content_type', 'livetv')
+            ->groupBy('content_id');
+
+        return $query
+            ->leftJoinSub($realViews, 'livetv_real_views', function ($join) {
+                $join->on('live_tv_channel.id', '=', 'livetv_real_views.content_id');
+            })
+            ->leftJoinSub($boostViews, 'livetv_boost_views', function ($join) {
+                $join->on('live_tv_channel.id', '=', 'livetv_boost_views.content_id');
+            })
+            ->leftJoin('stat_settings as livetv_view_mode', function ($join) {
+                $join->on('livetv_view_mode.key', '=', DB::raw("CONCAT('views_display_mode:livetv:', live_tv_channel.id)"));
+            })
+            ->select(
+                'live_tv_channel.*',
+                DB::raw($this->displayCountSql($globalMode) . ' as total_views')
+            );
+    }
+
+    private function attachLiveTvStats(Collection $channels): void
+    {
+        if ($channels->isEmpty()) {
+            return;
+        }
+
+        $ids = $channels->pluck('id')->filter()->values();
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $realViews = DB::table('stat_page_views')
+            ->select('content_id', DB::raw('COUNT(*) as total'))
+            ->where('content_type', 'livetv')
+            ->whereIn('content_id', $ids)
+            ->groupBy('content_id')
+            ->pluck('total', 'content_id');
+
+        $realPlays = DB::table('stat_play_events')
+            ->select('content_id', DB::raw('COUNT(*) as total'))
+            ->where('content_type', 'livetv')
+            ->whereIn('content_id', $ids)
+            ->groupBy('content_id')
+            ->pluck('total', 'content_id');
+
+        $boosts = DB::table('stat_content_boosts')
+            ->select(
+                'content_id',
+                DB::raw('SUM(boost_views) as boost_views'),
+                DB::raw('SUM(boost_plays) as boost_plays')
+            )
+            ->where('content_type', 'livetv')
+            ->whereIn('content_id', $ids)
+            ->groupBy('content_id')
+            ->get()
+            ->keyBy('content_id');
+
+        $settings = DB::table('stat_settings')->whereIn('key', array_merge([
+            'show_views_frontend',
+            'show_plays_frontend',
+            'views_display_mode',
+            'plays_display_mode',
+        ], $ids->flatMap(fn ($id) => [
+            'views_display_mode:livetv:' . $id,
+            'plays_display_mode:livetv:' . $id,
+        ])->all()))->pluck('value', 'key');
+
+        $showViews = $settings['show_views_frontend'] ?? '1';
+        $showPlays = $settings['show_plays_frontend'] ?? '1';
+        $globalViewsMode = $this->validDisplayMode($settings['views_display_mode'] ?? 'combined');
+        $globalPlaysMode = $this->validDisplayMode($settings['plays_display_mode'] ?? 'combined');
+
+        $channels->each(function ($channel) use ($realViews, $realPlays, $boosts, $showViews, $showPlays, $settings, $globalViewsMode, $globalPlaysMode) {
+            $boost = $boosts->get($channel->id);
+            $realViewCount = (int) ($realViews[$channel->id] ?? 0);
+            $realPlayCount = (int) ($realPlays[$channel->id] ?? 0);
+            $boostViewCount = (int) ($boost->boost_views ?? 0);
+            $boostPlayCount = (int) ($boost->boost_plays ?? 0);
+            $viewsMode = $this->validDisplayMode($settings['views_display_mode:livetv:' . $channel->id] ?? $globalViewsMode);
+            $playsMode = $this->validDisplayMode($settings['plays_display_mode:livetv:' . $channel->id] ?? $globalPlaysMode);
+
+            $channel->real_views = $realViewCount;
+            $channel->boost_views = $boostViewCount;
+            $channel->display_views = $this->displayCount($viewsMode, $realViewCount, $boostViewCount);
+            $channel->total_views = $channel->display_views;
+            $channel->real_plays = $realPlayCount;
+            $channel->boost_plays = $boostPlayCount;
+            $channel->display_plays = $this->displayCount($playsMode, $realPlayCount, $boostPlayCount);
+            $channel->total_plays = $channel->display_plays;
+            $channel->views_display_mode = $viewsMode;
+            $channel->plays_display_mode = $playsMode;
+            $channel->show_views_frontend = $showViews === '1' && $viewsMode !== 'hidden';
+            $channel->show_plays_frontend = $showPlays === '1' && $playsMode !== 'hidden';
+        });
+    }
+
+    private function validDisplayMode(?string $mode): string
+    {
+        return in_array($mode, ['combined', 'real', 'boosted', 'hidden'], true) ? $mode : 'combined';
+    }
+
+    private function displayCount(string $mode, int $real, int $boost): int
+    {
+        return match ($mode) {
+            'real' => $real,
+            'boosted' => $boost,
+            'hidden' => 0,
+            default => $real + $boost,
+        };
+    }
+
+    private function displayCountSql(string $globalMode): string
+    {
+        $real = 'COALESCE(livetv_real_views.real_views, 0)';
+        $boost = 'COALESCE(livetv_boost_views.boost_views, 0)';
+        $globalExpression = match ($globalMode) {
+            'real' => $real,
+            'boosted' => $boost,
+            'hidden' => '0',
+            default => "({$real} + {$boost})",
+        };
+
+        return "CASE COALESCE(livetv_view_mode.value, '{$globalMode}')
+            WHEN 'real' THEN {$real}
+            WHEN 'boosted' THEN {$boost}
+            WHEN 'hidden' THEN 0
+            WHEN 'combined' THEN ({$real} + {$boost})
+            ELSE {$globalExpression}
+        END";
     }
 }

@@ -16,6 +16,7 @@ use Modules\LiveTV\Http\Requests\TvChannelRequest;
 use Modules\LiveTV\Models\TvChannelStreamContentMapping;
 use Modules\LiveTV\Services\LiveTvChannelService;
 use Illuminate\Support\Facades\Schema;
+use Modules\Statistics\Models\StatSetting;
 
 
 class LiveTvChannelController extends Controller
@@ -271,7 +272,11 @@ class LiveTvChannelController extends Controller
         $module_title = __('livetv.edit_tvchannel');
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
-        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type'));
+        $playerViewSettings = [
+            'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '1'),
+        ];
+
+        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings'));
     }
 
     /**
@@ -331,7 +336,12 @@ class LiveTvChannelController extends Controller
             ]);
         }
 
+        $this->savePlayerViewSettings($request, (int) $id);
+
         clearRelatedCache([], 'livetv');
+        if (function_exists('clearLiveTvDashboardCache')) {
+            clearLiveTvDashboardCache();
+        }
 
         $message = trans('messages.update_form_livetv', ['form' => 'Tv Channel']);
         return redirect()->route('backend.tv-channel.index')->with('success', $message);
@@ -340,6 +350,11 @@ class LiveTvChannelController extends Controller
     private function supportsLiveChatSetting(): bool
     {
         return Schema::hasColumn('live_tv_channel', 'enable_live_chat');
+    }
+
+    private function savePlayerViewSettings(Request $request, int $channelId): void
+    {
+        StatSetting::set("show_player_views:livetv:{$channelId}", $request->boolean('show_player_views') ? '1' : '0');
     }
 
     /**

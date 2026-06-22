@@ -29,6 +29,12 @@
                         'schedules' => $data['schedules'] ?? [],
                         'schedules_api_key' => $data['schedules_api_key'] ?? null,
                     ])
+                    <div class="mt-3">
+                        @include('frontend::components.section.content_stats', [
+                            'contentType' => 'livetv',
+                            'contentId' => $data['id'] ?? null,
+                        ])
+                    </div>
                 </div>
                 @if (!empty($data['enable_live_chat']))
                     <div class="col-12 col-xl-4">
@@ -127,7 +133,6 @@
                                 <span class="badge bg-primary mb-2">{{ $data['category'] }}</span>
                             @endif
                             <h4>{{ $data['name'] }}</h4>
-                            @include('frontend::components.section.content_stats')
                             <p class="font-size-14 js-episode-desc">
                                 <span class="js-desc-text">{!! Str::limit(strip_tags($data['description']), 300) !!}</span>
                                 @if(strlen(strip_tags($data['description'])) > 300)

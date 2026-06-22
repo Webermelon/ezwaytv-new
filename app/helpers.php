@@ -1322,6 +1322,60 @@ function copyImageToFolder($fileUrl, $folder = 'other')
 
 
 
+if (! function_exists('encodeUrlPathSegments')) {
+    function encodeUrlPathSegments($url)
+    {
+        if (empty($url) || ! is_string($url)) {
+            return $url;
+        }
+
+        $parts = parse_url($url);
+        if (empty($parts['path'])) {
+            return $url;
+        }
+
+        $path = $parts['path'];
+        if (! empty($parts['fragment'])) {
+            $path .= '#' . $parts['fragment'];
+            unset($parts['fragment']);
+        }
+
+        $encodedPath = implode('/', array_map(
+            fn ($segment) => rawurlencode(rawurldecode($segment)),
+            explode('/', $path)
+        ));
+        $encoded = '';
+
+        if (! empty($parts['scheme'])) {
+            $encoded .= $parts['scheme'] . '://';
+        }
+
+        if (! empty($parts['user'])) {
+            $encoded .= $parts['user'];
+            if (! empty($parts['pass'])) {
+                $encoded .= ':' . $parts['pass'];
+            }
+            $encoded .= '@';
+        }
+
+        if (! empty($parts['host'])) {
+            $encoded .= $parts['host'];
+        }
+
+        if (! empty($parts['port'])) {
+            $encoded .= ':' . $parts['port'];
+        }
+
+        $encoded .= $encodedPath;
+
+        if (! empty($parts['query'])) {
+            $encoded .= '?' . $parts['query'];
+        }
+
+        return $encoded;
+    }
+}
+
 function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other')
 {
 
@@ -1366,14 +1420,14 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
             }
 
             if (!empty($publicUrl)) {
-                return $publicUrl;
+                return encodeUrlPathSegments($publicUrl);
             }
 
             // Fallback to a temporary (signed) URL when no public URL is available
-            return $disk->temporaryUrl(
+            return encodeUrlPathSegments($disk->temporaryUrl(
                 $normalizedPath,
                 now()->addMinutes((int) env('DO_SPACES_SIGNED_URL_TTL', 60))
-            );
+            ));
         } catch (\Throwable $e) {
             return null;
         }
@@ -1433,7 +1487,7 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
         }
 
         // Return immediately if the remote image exists
-        return $url;
+        return encodeUrlPathSegments($url);
 
         return checkImageExists($url) ? $url : setDefaultImage();
     }
@@ -1463,9 +1517,9 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
             }
 
             if ($baseUrl !== '') {
-                return "$baseUrl/$urlPath";
+                return encodeUrlPathSegments("$baseUrl/$urlPath");
             }
-            return Storage::disk($activeDisk)->url($urlPath);
+            return encodeUrlPathSegments(Storage::disk($activeDisk)->url($urlPath));
         }
 
         $objectPath = "$page_type/$type/$fileName";
@@ -1478,10 +1532,10 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
         }
 
         if ($baseUrl !== '') {
-            return "$baseUrl/$objectPath";
+            return encodeUrlPathSegments("$baseUrl/$objectPath");
         }
 
-        return Storage::disk($activeDisk)->url($objectPath);
+        return encodeUrlPathSegments(Storage::disk($activeDisk)->url($objectPath));
     }
 
 

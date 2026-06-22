@@ -334,11 +334,12 @@ private function getFileType($extension)
 
 
         $url = $request->input('url');
+        $requestPath = $request->input('path');
 
         $activeDisk = env('ACTIVE_STORAGE', 'local');
 
         $parsedUrl = parse_url($url);
-        $urlPath = ltrim($parsedUrl['path'] ?? '', '/');
+        $urlPath = ltrim($requestPath ?: ($parsedUrl['path'] ?? ''), '/');
 
 
 
@@ -370,17 +371,49 @@ private function getFileType($extension)
 
         deleteBunnyStreamVideoByFile($fileName);
 
-        $deleted = Storage::disk($activeDisk)->delete($relativePath);
+        $disk = Storage::disk($activeDisk);
+        $pathsToDelete = [$relativePath];
 
-        if ($deleted) {
-            $filemanager = Filemanager::where('file_name', $fileName)->first();
-            if ($filemanager) {
-                $filemanager->forceDelete();
+        if ($activeDisk !== 'local' && !pathinfo($relativePath, PATHINFO_EXTENSION)) {
+            foreach ($disk->files(dirname($relativePath) === '.' ? '' : dirname($relativePath)) as $candidatePath) {
+                if (str_starts_with(basename($candidatePath), $fileName)) {
+                    $pathsToDelete[] = $candidatePath;
+                }
             }
-            return response()->json(['success' => true]);
         }
 
-        return response()->json(['success' => false], 500);
+        $pathsToDelete = array_values(array_unique(array_filter($pathsToDelete)));
+        $deletedPaths = [];
+
+        foreach ($pathsToDelete as $pathToDelete) {
+            if ($disk->exists($pathToDelete) && $disk->delete($pathToDelete)) {
+                $deletedPaths[] = $pathToDelete;
+            }
+        }
+
+        $deleted = count($deletedPaths) > 0;
+
+        if ($deleted) {
+            Filemanager::query()
+                ->where(function ($query) use ($fileName, $deletedPaths) {
+                    $query->where('file_name', $fileName)
+                        ->orWhereIn('file_url', $deletedPaths);
+
+                    foreach ($deletedPaths as $deletedPath) {
+                        $query->orWhere('file_name', basename($deletedPath));
+                    }
+                })
+                ->get()
+                ->each(fn ($filemanager) => $filemanager->forceDelete());
+
+            return response()->json(['success' => true, 'deleted_paths' => $deletedPaths]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'path' => $relativePath,
+            'message' => 'File was not found on the active storage disk.',
+        ], 404);
     }
 
    public function SearchMedia(Request $request){
@@ -525,7 +558,7 @@ private function getFileType($extension)
                                     $pageType = end($segments) ?: 'default';
                                 }
                             }
-                            $mediaUrl = ($isVideo || $isImage) ? setBaseUrlWithFileName($name, $isVideo ? 'video' : 'image', $pageType) : '';
+                            $mediaUrl = ($isVideo || $isImage) ? setBaseUrlWithFileName($relativePath, $isVideo ? 'video' : 'image', $pageType) : '';
                             $allItems[] = [
                                 'name' => $name,
                                 'path' => $relativePath,
@@ -664,7 +697,7 @@ private function getFileType($extension)
         $mediaUrl = '';
         if (!$isDir && ($isVideo || $isImage)) {
             $type = $isVideo ? 'video' : 'image';
-            $mediaUrl = setBaseUrlWithFileName($name, $type, $pageType);
+            $mediaUrl = setBaseUrlWithFileName($relativePath !== null ? $relativePath : $name, $type, $pageType);
         }
 
         // When local, compute size/mtime using absolute path; expose relative path to the client

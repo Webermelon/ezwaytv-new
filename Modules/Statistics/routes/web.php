@@ -28,6 +28,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth', 'a
         Route::get('/booster/search',   [ContentBoostController::class, 'search'])->name('booster.search');
         Route::get('/booster/stats',    [ContentBoostController::class, 'stats'])->name('booster.stats');
         Route::post('/booster/save',    [ContentBoostController::class, 'save'])->name('booster.save');
+        Route::post('/booster/display-mode', [ContentBoostController::class, 'saveDisplayMode'])->name('booster.display_mode');
         Route::delete('/booster/{id}',  [ContentBoostController::class, 'destroy'])->name('booster.destroy');
     });
 });

@@ -417,7 +417,7 @@
                                 <video class="img-fluid object-fit-cover media-thumb-10" preload="none" controlsList="nodownload" controls>
                                     <source src="${safeVideoUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
@@ -435,7 +435,7 @@
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}">
                                 <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
@@ -464,7 +464,7 @@
                                     </div>
                                     ${buildMediaActions(fileUrl)}
                                 </div>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(fileUrl)}', 'file', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(fileUrl)}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(fileUrl)}', 'file', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(fileUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                             </div>
@@ -881,7 +881,7 @@
                                 <video class="img-fluid object-fit-cover media-thumb-10" preload="none" controlsList="nodownload" controls>
                                     <source src="${safeVideoUrl}" type="video/mp4">
                                 </video>
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(videoUrl)}', 'video', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(videoUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>
@@ -898,7 +898,7 @@
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}">
                                 <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}" loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
-                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'))">
+                                <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
                                 <p class="media-title pt-2 mb-0" data-bs-toggle="tooltip" data-bs-title="${safeName}">${safeName}</p>

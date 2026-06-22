@@ -117,7 +117,7 @@
             let hasMore = @json($hasMore);
 
 
-            function deleteImage(url, type, fileName, folderName) {
+            function deleteImage(url, type, fileName, folderName, path = null) {
                 const i18n = {
                     delete_confirm_title: @json(__('frontend.delete_confirm_title')),
                     delete_confirm_text: @json(__('frontend.delete_confirm_text')),
@@ -163,7 +163,7 @@
                                         'Content-Type': 'application/json',
                                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                     },
-                                    body: JSON.stringify({ url })
+                                    body: JSON.stringify({ url, path })
                                 })
                                 .then(response => response.json())
                                 .then(data => {

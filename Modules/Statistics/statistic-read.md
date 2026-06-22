@@ -152,5 +152,48 @@ Applied and active:
   - `ondemand_video` views/plays with `channel_id` when traffic comes from an On Demand channel.
   - Normal `video` views/plays for videos assigned through `author_channel_video`, so general video page traffic still rolls up into the owning On Demand channel report.
   - `ondemand_channel` Content Booster entries, which add channel-level views, plays, watch time, and unique visitors to the On Demand dashboard row.
+- Live TV frontend/API display includes:
+  - `livetv` Content Booster entries from `stat_content_boosts`.
+  - Combined real + boosted view totals on Live TV list/card resources.
+  - `sort=views` ranking based on the effective Live TV view display mode.
+  - Detail stats through `/api/statistics/content-stats?content_type=livetv&content_id={id}` and Live TV resource `stats` payloads.
+  - Frontend visibility controlled by Statistics settings: `show_views_frontend` and `show_plays_frontend`.
+
+## 10) Frontend View/Play Display Modes
+
+Display modes are panel-controlled and support both global defaults and individual content overrides.
+
+Global controls:
+- Location: `/app/statistics/settings`
+- Keys:
+  - `views_display_mode`
+  - `plays_display_mode`
+- Supported values:
+  - `combined`: real + boosted
+  - `real`: original/real only
+  - `boosted`: boosted only
+  - `hidden`: hide the metric
+
+Individual content overrides:
+- Location: `/app/statistics/booster`
+- Search/select a content item, then use the `Frontend Display Mode` controls.
+- Live TV channel edit shortcut: `/app/tv-channel/{id}/edit`
+  - Use `Player View Settings`.
+  - This is the preferred place to control a single Live TV player page.
+  - This page only exposes `Show Views on Player Page`.
+- Override keys are stored in `stat_settings`:
+  - `views_display_mode:{content_type}:{content_id}`
+  - `plays_display_mode:{content_type}:{content_id}`
+  - `show_player_views:{content_type}:{content_id}`
+- Choosing `Use global default` removes the individual override.
+- `Show Views on Player Page` toggles the view count for only the selected item player page.
+
+Frontend/API behavior:
+- `/api/statistics/content-stats` returns `real_*`, `boost_*`, `engagement_views`, `display_*`, `total_*`, and `*_display_mode`.
+- Frontend player views use engagement views:
+  - `engagement_views = real page views + real play clicks`
+  - displayed views add boosted views according to the effective display mode.
+- Live TV list/detail resources expose the same values under `stats`.
+- Live TV cards show `display_views` when frontend views are enabled and the effective mode is not `hidden`.
 
 Use this file as the baseline before new changes.

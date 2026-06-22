@@ -2275,6 +2275,79 @@ Recommendation: continue React/Vite/shadcn foundation work on Laravel 12 first, 
   - `php -l routes/api.php` passes.
 - No migrations were run and no database tables were altered.
 
+### Live TV Combined Real + Boosted Views
+
+- User requested a YouTube-like visible view system where original/real views and boosted views can be combined and controlled from the panel.
+- Reused the existing Statistics Content Booster system instead of creating a duplicate booster table.
+- Updated `Modules/LiveTV/Http/Controllers/API/LiveTVsController.php`:
+  - Live TV channel lists now attach `real_views`, `boost_views`, `total_views`, `real_plays`, `boost_plays`, and `total_plays`.
+  - `sort=views` now ranks Live TV channels by combined real + boosted views.
+  - V3 channel list/detail cache keys include the Live TV cache version.
+- Updated Live TV resources:
+  - `LiveTvChannelResource`
+  - `LiveTvChannelResourceV3`
+  - `LiveTvChannelDetailsResource`
+  - `LiveTvChannelDetailsResourceV3`
+  - each now exposes a `stats` payload.
+- Updated `Modules/Frontend/Resources/views/components/card/card_tvchannel.blade.php`:
+  - shows combined view total on channel cards when `show_views_frontend` is enabled.
+  - supports both old and V3 Live TV resource shapes.
+- Updated `Modules/Statistics/Http/Controllers/Backend/ContentBoostController.php`:
+  - Live TV boost save/delete now bumps the Live TV cache version so panel changes refresh frontend/API caches.
+- Updated `Modules/Statistics/statistic-read.md` with the Live TV booster behavior.
+- Added explicit global/individual display mode controls:
+  - global location: `/app/statistics/settings`
+  - individual location: `/app/statistics/booster`
+  - modes: `combined`, `real`, `boosted`, `hidden`
+  - global keys: `views_display_mode`, `plays_display_mode`
+  - per-item keys: `views_display_mode:{content_type}:{content_id}`, `plays_display_mode:{content_type}:{content_id}`
+- Added individual player page view toggle:
+  - location: `/app/statistics/booster`
+  - Live TV channel edit location: `/app/tv-channel/{id}/edit`
+  - checkbox: `Show Views on Player Page`
+  - per-item key: `show_player_views:{content_type}:{content_id}`
+  - consumed by `/api/statistics/content-stats`, so it applies to React video and Live TV player pages.
+- Updated `Modules/LiveTV/Http/Controllers/Backend/LiveTvChannelController.php`:
+  - loads player view settings for the edit form.
+  - saves `show_player_views:livetv:{id}` during channel update.
+- Updated `Modules/LiveTV/Resources/views/backend/channel/edit.blade.php`:
+  - added `Player View Settings` with only `Show Views on Player Page`.
+- Updated `/api/statistics/content-stats`:
+  - returns `display_views`, `display_plays`, `views_display_mode`, and `plays_display_mode`.
+  - returns `show_player_views`.
+  - returns `engagement_views`.
+  - displayed player views now use `real page views + real play clicks + boosted views` for the default combined mode.
+  - `total_views`/`total_plays` now represent the effective displayed totals.
+- Updated React video/player detail page:
+  - `resources/react/modules/video-detail/VideoDetailPage.tsx` now displays panel-controlled view totals in the hero/player metadata row.
+  - `resources/react/modules/video-detail/videoDetailApi.ts` now loads `/api/statistics/content-stats`.
+  - view totals refresh after the page view tracking call completes.
+- Fixed Live TV player stats rendering:
+  - `Modules/Frontend/Resources/views/components/section/content_stats.blade.php` now accepts explicit `contentType` and `contentId` include data, so it does not depend on `window._ezPageMeta` script ordering.
+  - `Modules/Frontend/Resources/views/livetvDetail.blade.php` passes `contentType=livetv` and the channel id into the stats component.
+  - moved the Live TV stats line directly under the player area instead of the lower detail section.
+  - the stats component now renders `display_views` / `display_plays` from the effective panel-controlled mode.
+- Fixed React Live TV player stats rendering:
+  - `resources/react/modules/live-tv/LiveTvPage.tsx` now fetches `/api/statistics/content-stats?content_type=livetv&content_id={id}`.
+  - displays the effective panel-controlled Live TV view count under the channel title in the player hero.
+  - refreshes the stats after the Live TV page-view tracking call completes.
+- Verified:
+  - `php -l Modules/Statistics/Http/Controllers/API/StatisticsController.php` passes.
+  - `php -l Modules/Statistics/Http/Controllers/Backend/StatisticsController.php` passes.
+  - `php -l Modules/LiveTV/Http/Controllers/API/LiveTVsController.php` passes.
+  - `php -l Modules/LiveTV/Transformers/LiveTvChannelResource.php` passes.
+  - `php -l Modules/LiveTV/Transformers/LiveTvChannelResourceV3.php` passes.
+  - `php -l Modules/LiveTV/Transformers/LiveTvChannelDetailsResource.php` passes.
+  - `php -l Modules/LiveTV/Transformers/LiveTvChannelDetailsResourceV3.php` passes.
+  - `php -l Modules/Statistics/Http/Controllers/Backend/ContentBoostController.php` passes.
+  - `php -l Modules/Statistics/routes/web.php` passes.
+  - `php -l Modules/LiveTV/Http/Controllers/Backend/LiveTvChannelController.php` passes.
+  - `php -l Modules/LiveTV/Resources/views/backend/channel/edit.blade.php` passes.
+  - `php -l Modules/Frontend/Resources/views/components/section/content_stats.blade.php` passes.
+  - `php -l Modules/Frontend/Resources/views/livetvDetail.blade.php` passes.
+  - `npm run react:build` passes.
+- No migrations were run and no database tables were altered.
+
 ## 2026-06-15
 
 ### Current Frontend Progress

@@ -70,7 +70,7 @@
                 window.location.href = `${baseUrl}/app/filemanager/browse?folder=storage/app/public/${folderName}`;
             }
 
-            function deleteImage(url) {
+            function deleteImage(url, type = null, fileName = null, folderName = null, path = null) {
                 Swal.fire({
                         title: "{{ __('frontend.delete_confirm_title', ['type' => __('frontend.media')]) }}",
                         icon: "warning",
@@ -92,7 +92,7 @@
                                         'Content-Type': 'application/json',
                                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                     },
-                                    body: JSON.stringify({ url: url })
+                                    body: JSON.stringify({ url: url, path: path })
                                 })
                                 .then(response => response.json())
                                 .then(data => {

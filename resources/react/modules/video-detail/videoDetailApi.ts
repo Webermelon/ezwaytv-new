@@ -15,6 +15,21 @@ export type VideoAd = {
   skip_after?: string | number | null
 }
 
+export type ContentStats = {
+  real_plays?: number
+  real_views?: number
+  boost_plays?: number
+  boost_views?: number
+  display_plays?: number
+  display_views?: number
+  total_plays?: number
+  total_views?: number
+  views_display_mode?: 'combined' | 'real' | 'boosted' | 'hidden'
+  plays_display_mode?: 'combined' | 'real' | 'boosted' | 'hidden'
+  show_views_frontend?: boolean
+  show_plays_frontend?: boolean
+}
+
 export async function loadVideoDetail(slug: string, ondemandChannel?: string | null) {
   const params = new URLSearchParams({ slug })
 
@@ -25,6 +40,15 @@ export async function loadVideoDetail(slug: string, ondemandChannel?: string | n
   const response = await api.get<ApiEnvelope<MediaItem>>(`/api/video-details?${params.toString()}`)
 
   return response.data
+}
+
+export async function loadContentStats(contentType: string, contentId: string | number) {
+  const params = new URLSearchParams({
+    content_type: contentType,
+    content_id: String(contentId),
+  })
+
+  return api.get<ContentStats>(`/api/statistics/content-stats?${params.toString()}`)
 }
 
 export async function loadVideoAds(videoId: string | number) {
