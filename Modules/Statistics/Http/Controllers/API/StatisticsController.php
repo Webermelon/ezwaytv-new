@@ -362,7 +362,8 @@ class StatisticsController extends Controller
         $showPlayerPlays = StatSetting::get('show_player_plays', '1') === '1';
         $viewsMode = $this->displayModeFor('views', $type, $id);
         $playsMode = $this->displayModeFor('plays', $type, $id);
-        $showPlayerViews = StatSetting::get("show_player_views:{$type}:{$id}", '1') === '1';
+        $showPlayerViewsDefault = $type === 'livetv' ? '0' : '1';
+        $showPlayerViews = StatSetting::get("show_player_views:{$type}:{$id}", $showPlayerViewsDefault) === '1';
         $showViewsFrontend = StatSetting::get('show_views_frontend', '1') === '1' && $showPlayerViews && $viewsMode !== 'hidden';
         $showPlaysFrontend = StatSetting::get('show_plays_frontend', '1') === '1' && $playsMode !== 'hidden';
         $displayViews = $this->displayCount($viewsMode, $engagementViews, $boostViews);
