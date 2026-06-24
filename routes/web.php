@@ -37,6 +37,7 @@ require __DIR__ . '/auth.php';
 Route::view('/docs/api', 'docs.api')->name('docs.api');
 Route::redirect('/docs/apis', '/docs/api');
 Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');
+Route::get('/core/payment-history', [CoreCheckoutBridgeController::class, 'paymentHistory'])->name('core.payment-history');
 Route::post('/core/checkouts', [CoreCheckoutBridgeController::class, 'checkout'])->name('core.checkouts');
 
 if (app()->environment('local')) {
@@ -47,6 +48,7 @@ if (app()->environment('local')) {
     Route::view('/spa/{path?}', 'react-modernization')->where('path', '.*')->name('react-spa');
 }
 
+Route::view('/payment-history', 'react-modernization')->name('payment-history');
 Route::view('/music', 'react-modernization')->name('music');
 Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
 Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');

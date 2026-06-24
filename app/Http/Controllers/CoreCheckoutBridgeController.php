@@ -33,6 +33,48 @@ class CoreCheckoutBridgeController extends Controller
         return response()->json($response->json() ?? [], $response->status());
     }
 
+    public function paymentHistory(Request $request): JsonResponse
+    {
+        $user = $this->viewer($request);
+        if (! $user) {
+            return response()->json(['message' => 'Please sign in to view payment history.'], 401);
+        }
+
+        $core = $this->coreClient();
+        if (! $core) {
+            return response()->json(['message' => 'Core API is not configured.'], 503);
+        }
+
+        [$client, $baseUrl] = $core;
+        $coreUser = (int) ($user->network_user_id ?: $user->id);
+
+        try {
+            $response = $client->get($baseUrl.'/api/payments/status', [
+                'platform_slug' => 'ezway-tv',
+                'subject_type' => 'tv_subscription',
+                'subject_id' => (string) $coreUser,
+            ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return response()->json(['message' => 'Payment history could not be loaded right now.'], 502);
+        }
+
+        if ($response->status() === 404) {
+            return response()->json([
+                'data' => [
+                    'summary' => [],
+                    'invoices' => [],
+                    'transactions' => [],
+                    'subscriptions' => [],
+                    'service_orders' => [],
+                    'pitch_party_registrations' => [],
+                ],
+            ]);
+        }
+
+        return response()->json($response->json() ?? [], $response->status());
+    }
+
     public function checkout(Request $request): JsonResponse
     {
         $user = $this->viewer($request);

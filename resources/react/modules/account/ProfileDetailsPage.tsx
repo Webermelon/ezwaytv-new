@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, Check, CreditCard, Edit3, KeyRound, Loader2, ReceiptText, Upload, UserCircle, X } from 'lucide-react'
+import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, UserCircle, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
-import { loadAccountSettings, updateAccountProfile, type AccountProfile } from '@/modules/account/accountApi'
+import { loadAccountSettings, type AccountProfile } from '@/modules/account/accountApi'
 
 type ProfileForm = {
   first_name: string
@@ -34,9 +34,7 @@ const emptyForm: ProfileForm = {
 }
 
 export function ProfileDetailsPage() {
-  const queryClient = useQueryClient()
   const [form, setForm] = useState<ProfileForm>(emptyForm)
-  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
 
   const accountQuery = useQuery({
     queryKey: ['account-settings'],
@@ -70,33 +68,6 @@ export function ProfileDetailsPage() {
     }
   }, [form.previewUrl])
 
-  const updateMutation = useMutation({
-    mutationFn: updateAccountProfile,
-    onSuccess: (response) => {
-      if (!response.status) {
-        throw new Error(response.message || 'Profile could not be updated.')
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['account-settings'] })
-      const nextProfile = response.data
-
-      if (nextProfile && window.ezwayAuth) {
-        window.ezwayAuth = {
-          ...window.ezwayAuth,
-          name: nextProfile.name || `${nextProfile.first_name ?? ''} ${nextProfile.last_name ?? ''}`.trim(),
-          email: nextProfile.email,
-          avatar: nextProfile.avatar || window.ezwayAuth.avatar,
-        }
-      }
-
-      setNotice({ tone: 'success', text: response.message || 'Profile updated.' })
-      setForm((current) => ({ ...current, file: null, previewUrl: '' }))
-    },
-    onError: (error) => {
-      setNotice({ tone: 'error', text: readApiError(error, 'Profile could not be updated.') })
-    },
-  })
-
   if (!isAuthenticated()) {
     return <AuthRequired title="Profile Details" />
   }
@@ -108,36 +79,17 @@ export function ProfileDetailsPage() {
 
   function submitForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
-    if (!form.first_name.trim() || !form.last_name.trim() || !form.email.trim() || !form.mobile.trim() || !form.date_of_birth) {
-      setNotice({ tone: 'error', text: 'First name, last name, email, mobile, and date of birth are required.' })
-      return
-    }
-
-    updateMutation.mutate({
-      first_name: form.first_name.trim(),
-      last_name: form.last_name.trim(),
-      email: form.email.trim(),
-      mobile: form.mobile.trim(),
-      country_code: form.country_code.trim(),
-      address: form.address.trim(),
-      gender: form.gender,
-      date_of_birth: form.date_of_birth,
-      file: form.file,
-    })
   }
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
-      <AccountHero title="Profile Details" description="Update your name, contact information, profile image, and personal details." actionLabel="Account Settings" actionHref="/account-setting" />
+      <AccountHero title="Profile Details" description="Your TV profile is read-only here. Update your profile from eZWay Network to keep all connected apps in sync." actionLabel="Update on eZWay Network" actionHref="https://ezwaynetwork.com" />
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/update-profile" />
           <div className="min-w-0">
-            {notice ? <Notice tone={notice.tone} text={notice.text} onClose={() => setNotice(null)} /> : null}
-
             {accountQuery.isLoading ? (
               <div className="flex min-h-72 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#edc342]" />
@@ -150,12 +102,11 @@ export function ProfileDetailsPage() {
                   </span>
                   <div>
                     <h2 className="text-2xl font-black">Profile Information</h2>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-white/54">Keep your account details current for sign-in, billing, and account notifications.</p>
-                    <label className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
-                      <Upload className="h-4 w-4" />
-                      Upload Image
-                      <input type="file" accept="image/*" className="sr-only" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-                    </label>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-white/54">Profile changes are managed on eZWay Network so your identity stays consistent across all eZWay apps.</p>
+                    <a href="https://ezwaynetwork.com" className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
+                      <ExternalLink className="h-4 w-4" />
+                      Update on eZWay Network
+                    </a>
                   </div>
                 </div>
 
@@ -173,7 +124,7 @@ export function ProfileDetailsPage() {
                   <div className="grid gap-2 sm:grid-cols-3">
                     {['male', 'female', 'other'].map((gender) => (
                       <label key={gender} className="flex h-11 items-center gap-2 rounded-md border border-white/10 bg-black/20 px-3 text-sm font-bold capitalize text-white/72">
-                        <input type="radio" name="gender" value={gender} checked={form.gender === gender} onChange={() => setForm({ ...form, gender })} className="accent-[#edc342]" />
+                        <input disabled type="radio" name="gender" value={gender} checked={form.gender === gender} onChange={() => undefined} className="accent-[#edc342]" />
                         {gender}
                       </label>
                     ))}
@@ -183,18 +134,21 @@ export function ProfileDetailsPage() {
                 <label className="mt-4 grid gap-2">
                   <span className="text-xs font-black uppercase tracking-[0.18em] text-white/42">Address</span>
                   <textarea
+                    disabled
                     value={form.address}
-                    onChange={(event) => setForm({ ...form, address: event.target.value })}
+                    onChange={() => undefined}
                     rows={4}
-                    className="rounded-md border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70"
+                    className="cursor-not-allowed rounded-md border border-white/10 bg-black/30 px-4 py-3 text-sm font-semibold text-white/72 outline-none placeholder:text-white/28"
                     placeholder="Address"
                   />
                 </label>
 
                 <div className="mt-6 flex justify-end">
-                  <Button type="submit" disabled={updateMutation.isPending} className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
-                    {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    Update Profile
+                  <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
+                    <a href="https://ezwaynetwork.com">
+                      <ExternalLink className="h-4 w-4" />
+                      Update on eZWay Network
+                    </a>
                   </Button>
                 </div>
               </form>
@@ -211,12 +165,13 @@ function TextField({ label, value, onChange, type = 'text', required, placeholde
     <label className="grid gap-2">
       <span className="text-xs font-black uppercase tracking-[0.18em] text-white/42">{label}</span>
       <input
+        disabled
         type={type}
         value={value}
         required={required}
         placeholder={placeholder ?? label}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 rounded-md border border-white/10 bg-black/20 px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70"
+        className="h-12 cursor-not-allowed rounded-md border border-white/10 bg-black/30 px-4 text-sm font-semibold text-white/72 outline-none placeholder:text-white/28"
       />
     </label>
   )
@@ -227,7 +182,6 @@ export function AccountSidebar({ activeHref }: { activeHref: string }) {
     { label: 'Account Settings', href: '/account-setting', icon: UserCircle },
     { label: 'My Watchlist', href: '/watch-list', icon: Bookmark },
     { label: 'Payment History', href: '/payment-history', icon: CreditCard },
-    { label: 'Transactions', href: '/transaction-history', icon: ReceiptText },
     { label: 'Profile Details', href: '/update-profile', icon: UserCircle },
     { label: 'Change Password', href: '/change-password', icon: KeyRound },
   ]

@@ -31,7 +31,7 @@
 <main>
     <div class="eyebrow">eZWay TV</div>
     <h1>TV Access API Docs</h1>
-    <p>Private API contracts used by eZWay Core to create users, activate TV subscriptions, cancel access, and verify access. These endpoints are server-to-server only and must not be called from Connect frontend or public clients.</p>
+    <p>API contracts used by eZWay Core and the TV frontend. Private access endpoints are server-to-server only. The checkout bridge endpoints are authenticated TV web routes that proxy the logged-in viewer to Core without exposing Core API credentials to the browser.</p>
 
     <div class="panel" id="index">
         <h2>Index</h2>
@@ -42,6 +42,7 @@
             <a class="card" href="#activate"><strong>Activate Subscription</strong><span>Grant TV plan access after Core checkout succeeds.</span></a>
             <a class="card" href="#cancel"><strong>Cancel Subscription</strong><span>Revoke TV plan access when subscription ends.</span></a>
             <a class="card" href="#status"><strong>Check Access</strong><span>Read active TV access status by Core user ID.</span></a>
+            <a class="card" href="#checkout-bridge"><strong>TV Checkout Bridge</strong><span>Authenticated TV web endpoints for saved cards, checkout, and payment history.</span></a>
         </div>
     </div>
 
@@ -58,9 +59,9 @@ Content-Type: application/json</code></pre>
     <div class="panel" id="mapping">
         <h2>Access Mapping</h2>
         <ul>
-            <li>Core package slug: <code>tv-channel-access-monthly</code>.</li>
-            <li>Core package ID: <code>6</code>.</li>
-            <li>Core access package ID: <code>7</code>.</li>
+            <li>Current Core package slug: <code>tv-subscription-monthly</code>.</li>
+            <li>Current Core package ID in staging: <code>17</code>.</li>
+            <li>Core access package is resolved from the package settings in Core, not hardcoded by TV.</li>
             <li>Connect/Core capability: <code>access.premium.4</code>.</li>
             <li>The trailing <code>4</code> is used as the TV plan ID.</li>
             <li>TV stores the Core user ID in <code>users.network_user_id</code>.</li>
@@ -162,6 +163,77 @@ Content-Type: application/json</code></pre>
   "ends_at": "2026-07-24 00:00:00"
 }</code></pre>
     </div>
+
+
+
+    <div class="panel" id="checkout-bridge">
+        <h2>TV Checkout Bridge</h2>
+        <p>These routes are authenticated TV web routes. They are called by the TV React app and then proxied by TV to Core using <code>CORE_API_BASE_URL</code>, <code>CORE_API_TOKEN</code>, and optional <code>CORE_API_HOST</code>. The browser never sends a Core token or chooses the Core user ID.</p>
+
+        <h3>Load Saved Payment Methods</h3>
+        <p><code>GET /core/payment-methods</code></p>
+        <p>TV resolves the logged-in user, maps to <code>users.network_user_id</code> when available, and calls Core <code>GET /api/users/{core_user_id}/payment-methods</code>.</p>
+        <pre><code>{
+  "data": [
+    {
+      "id": "pm_abc123",
+      "brand": "visa",
+      "last4": "4242",
+      "exp_month": 12,
+      "exp_year": 2028
+    }
+  ]
+}</code></pre>
+
+        <h3>Create Checkout</h3>
+        <p><code>POST /core/checkouts</code></p>
+        <p>Creates a Core checkout for the logged-in TV user. If <code>payment_method_id</code> is provided, Core can try direct charge first. If no card exists or direct charge cannot complete, Core returns a hosted checkout URL.</p>
+        <pre><code>{
+  "package_slug": "tv-subscription-monthly",
+  "payment_method_id": "pm_abc123"
+}</code></pre>
+        <p>TV sends Core metadata for scoping payment history and access sync:</p>
+        <pre><code>{
+  "platform": { "slug": "ezway-tv" },
+  "subject_type": "tv_subscription",
+  "subject_id": "{core_user_id}",
+  "metadata": {
+    "source_app": "ezway_tv",
+    "tv_user_id": "{tv_user_id}",
+    "network_user_id": "{core_user_id}"
+  }
+}</code></pre>
+        <h3>Response</h3>
+        <pre><code>{
+  "success": true,
+  "redirect_url": "https://sandbox.ezwaypay.com/subscribe/...",
+  "provider_subscription_id": "sub_..."
+}</code></pre>
+        <p>Success, cancel, and failed redirects return to:</p>
+        <pre><code>/subscription-plan?checkout_status=success
+/subscription-plan?checkout_status=cancelled
+/subscription-plan?checkout_status=failed</code></pre>
+
+        <h3>Payment History</h3>
+        <p><code>GET /core/payment-history</code></p>
+        <p>Returns payment history for the logged-in TV user only. TV calls Core <code>GET /api/payments/status</code> with all of the following metadata filters together:</p>
+        <pre><code>{
+  "platform_slug": "ezway-tv",
+  "subject_type": "tv_subscription",
+  "subject_id": "{core_user_id}"
+}</code></pre>
+        <p>Core must match these metadata values together. This prevents unrelated membership payments for the same user ID from showing in TV payment history.</p>
+        <p>The TV page currently displays only <code>subscriptions</code> and <code>invoices</code>. If Core has no local invoice rows for a TV subscription, the TV frontend displays invoice-style rows derived from the subscription records so the invoice tab is still useful.</p>
+        <pre><code>{
+  "data": {
+    "subscriptions": [],
+    "invoices": [],
+    "service_orders": [],
+    "transactions": []
+  }
+}</code></pre>
+    </div>
+
 
     <div class="panel" id="errors">
         <h2>Error Examples</h2>

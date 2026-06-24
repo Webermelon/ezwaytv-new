@@ -3,6 +3,7 @@ import { CastCrewDetailPage } from '@/modules/castcrew/CastCrewDetailPage'
 import { AccountSettingPage } from '@/modules/account/AccountSettingPage'
 import { ChangePasswordPage } from '@/modules/account/ChangePasswordPage'
 import { ProfileDetailsPage } from '@/modules/account/ProfileDetailsPage'
+import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
 import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
 import { HomePage } from '@/modules/home/HomePage'
@@ -43,6 +44,8 @@ export default function App() {
     page = <DistributionPage />
   } else if (pathname === '/subscription-plan') {
     page = <SubscriptionPlanPage />
+  } else if (pathname === '/payment-history') {
+    page = <PaymentHistoryPage />
   } else if (pathname === '/account-setting') {
     page = <AccountSettingPage />
   } else if (pathname === '/watch-list') {

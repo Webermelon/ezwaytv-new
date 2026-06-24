@@ -143,7 +143,7 @@ export function AccountSettingPage() {
             </div>
 
             <Button asChild className="h-11 bg-[#edc342] px-4 font-black text-black hover:bg-[#f4ce4d]">
-              <a href="/update-profile">
+              <a href="https://ezwaynetwork.com">
                 <Edit3 className="h-4 w-4" />
                 Edit Profile
               </a>
@@ -253,7 +253,7 @@ function ContactPanel({ mobile }: { mobile: string | null }) {
         <p className="mt-2 text-lg font-black">{mobile ? maskMobile(mobile) : 'Not added'}</p>
       </div>
       <Button asChild className="mt-5 w-full bg-white/[0.08] font-black text-white hover:bg-white/[0.12]">
-        <a href="/update-profile">
+        <a href="https://ezwaynetwork.com">
           <Edit3 className="h-4 w-4" />
           Update Details
         </a>

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CreditCard, Crown, ExternalLink, Loader2, Music2, Radio, ShieldCheck, Tv, X } from 'lucide-react'
+import { AlertTriangle, Check, CreditCard, Crown, ExternalLink, Loader2, Music2, Radio, ShieldCheck, Tv, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { ApiError, api } from '@/lib/api'
@@ -126,10 +126,13 @@ const externalChannelOffers = [
 export function SubscriptionPlanPage() {
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [checkoutError, setCheckoutError] = useState('')
   const [previewPlan, setPreviewPlan] = useState<Plan | null>(null)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('')
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false)
+  const checkoutStatus = new URLSearchParams(window.location.search).get('checkout_status')
+  const checkoutSucceeded = checkoutStatus === 'success'
 
   const plansQuery = useQuery({
     queryKey: ['subscription-plans'],
@@ -149,8 +152,15 @@ export function SubscriptionPlanPage() {
   const plans = plansQuery.data ?? []
   const filteredPlans = useMemo(() => plans.filter(isPremiumContentPlan), [plans])
 
+  useEffect(() => {
+    if (checkoutSucceeded && window.isAuthenticated !== false) {
+      void accountQuery.refetch()
+    }
+  }, [checkoutSucceeded])
+
   async function handleChoose(plan: Plan) {
     setError('')
+    setCheckoutError('')
 
     if (window.isAuthenticated === false) {
       window.location.href = `/login?redirect=${encodeURIComponent('/subscription-plan')}`
@@ -171,7 +181,7 @@ export function SubscriptionPlanPage() {
       } catch (paymentMethodError) {
         setPaymentMethods([])
         setSelectedPaymentMethodId('')
-        setError(checkoutErrorMessage(paymentMethodError))
+        setCheckoutError(checkoutErrorMessage(paymentMethodError))
       } finally {
         setPaymentMethodsLoading(false)
       }
@@ -183,6 +193,7 @@ export function SubscriptionPlanPage() {
 
   async function startCheckout(plan: Plan, paymentMethodId: string) {
     setError('')
+    setCheckoutError('')
     setCheckoutPlanId(plan.plan_id)
 
     try {
@@ -217,7 +228,12 @@ export function SubscriptionPlanPage() {
 
       window.location.href = response.redirect_url
     } catch (checkoutError) {
-      setError(checkoutErrorMessage(checkoutError))
+      const message = checkoutErrorMessage(checkoutError)
+      if (plan.source === 'core') {
+        setCheckoutError(message)
+      } else {
+        setError(message)
+      }
       setCheckoutPlanId(null)
     }
   }
@@ -225,6 +241,7 @@ export function SubscriptionPlanPage() {
   function closeCheckoutPreview() {
     if (checkoutPlanId) return
     setPreviewPlan(null)
+    setCheckoutError('')
     setPaymentMethods([])
     setSelectedPaymentMethodId('')
   }
@@ -255,6 +272,13 @@ export function SubscriptionPlanPage() {
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-[1800px]">
+          {checkoutSucceeded ? (
+            <div className="mb-6 flex gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-5 py-4 text-sm font-semibold leading-6 text-emerald-100">
+              <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+              <span>Payment successful. Your TV subscription is active, and this plan is now marked as your current plan.</span>
+            </div>
+          ) : null}
+
           {error ? (
             <div className="mb-6 rounded-md border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100">
               {error}
@@ -273,7 +297,7 @@ export function SubscriptionPlanPage() {
                   plan={plan}
                   featured={index === 0}
                   loading={checkoutPlanId === plan.plan_id}
-                  current={hasActiveSubscription && isCurrentPlan(plan, activeSubscription)}
+                  current={(hasActiveSubscription && isCurrentPlan(plan, activeSubscription)) || (checkoutSucceeded && plan.source === 'core' && isPremiumContentPlan(plan))}
                   onChoose={() => handleChoose(plan)}
                 />
               ))}
@@ -294,6 +318,7 @@ export function SubscriptionPlanPage() {
           onSelectMethod={setSelectedPaymentMethodId}
           loadingMethods={paymentMethodsLoading}
           checkoutBusy={checkoutPlanId === previewPlan.plan_id}
+          error={checkoutError}
           onClose={closeCheckoutPreview}
           onCheckout={() => startCheckout(previewPlan, selectedPaymentMethodId)}
         />
@@ -402,6 +427,7 @@ function CheckoutPreviewModal({
   onSelectMethod,
   loadingMethods,
   checkoutBusy,
+  error,
   onClose,
   onCheckout,
 }: {
@@ -411,6 +437,7 @@ function CheckoutPreviewModal({
   onSelectMethod: (id: string) => void
   loadingMethods: boolean
   checkoutBusy: boolean
+  error: string
   onClose: () => void
   onCheckout: () => void
 }) {
@@ -418,7 +445,7 @@ function CheckoutPreviewModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/72 px-3 py-4 backdrop-blur-sm sm:items-center sm:px-5" role="dialog" aria-modal="true">
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/12 bg-[#101010] shadow-2xl shadow-black/60">
+      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/12 bg-[#101010] shadow-2xl shadow-black/60">
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-[#101010]/95 px-5 py-4 backdrop-blur">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d4a843]">Checkout preview</p>
@@ -429,7 +456,7 @@ function CheckoutPreviewModal({
           </button>
         </div>
 
-        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
           <section className="rounded-xl border border-white/10 bg-white/[0.045] p-5">
             <div className="flex items-start gap-4">
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[#d4a843] text-black">
@@ -470,6 +497,13 @@ function CheckoutPreviewModal({
               onSelect={onSelectMethod}
               loading={loadingMethods}
             />
+
+            {error ? (
+              <div className="mt-5 flex gap-3 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-semibold leading-6 text-red-100">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+                <span>{error}</span>
+              </div>
+            ) : null}
 
             <button
               type="button"
