@@ -5,6 +5,7 @@ namespace Modules\Video\Models;
 use App\Models\BaseModel;
 use App\Models\Clip;
 use App\Models\Scopes\VideoScope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Entertainment\Models\Subtitle;
@@ -215,6 +216,16 @@ class Video extends BaseModel
     public function authorChannels()
     {
         return $this->belongsToMany(\App\Models\AuthorChannel::class, 'author_channel_video', 'video_id', 'author_channel_id')->withTimestamps();
+    }
+
+    public function scopeWithoutAuthorChannelAssignments(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('authorChannels');
+    }
+
+    public function scopeWithAuthorChannelAssignments(Builder $query): Builder
+    {
+        return $query->whereHas('authorChannels');
     }
 
         public static function get_popular_videos($videoIdsArray)

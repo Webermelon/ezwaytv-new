@@ -28,6 +28,7 @@ class VideosController extends Controller
                   ->orWhereNull('release_date');
         })
         ->where('status', 1)
+        ->withAuthorChannelAssignments()
         ->with('VideoStreamContentMappings', 'plan');
 
         isset($request->is_restricted) && $videoList = $videoList->where('is_restricted', $request->is_restricted);
@@ -87,6 +88,7 @@ class VideosController extends Controller
                       ->orWhereNull('release_date');
             })
             ->where('status', 1)
+            ->withAuthorChannelAssignments()
             ->whereNull('deleted_at');
 
         $videoList->with([
