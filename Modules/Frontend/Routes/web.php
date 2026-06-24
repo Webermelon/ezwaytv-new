@@ -47,6 +47,8 @@ Route::get('/auth/apple/callback', [AuthController::class, 'handleAppleCallback'
 Route::view('/login', 'react-modernization')->name('login');
 
 Route::view('/otp-login', 'react-modernization')->name('otp-login');
+Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:5,1')->name('auth.spa-otp.send');
+Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:10,1')->name('auth.spa-otp.verify');
 Route::post('/auth/otp-login-store', [OTPController::class, 'otpLoginStore'])->name('auth.otp-login-store');
 Route::get('/auth/check-user-exists', [OTPController::class, 'checkUserExists'])->name('check.user.exists');
 Route::post('/auth/check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('check.mobile.exists');
@@ -59,6 +61,62 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 
 
 Route::get('language/{language}', [LanguageController::class, 'switch'])->name('frontend.language.switch');
+
+Route::post('/core/checkouts', function (Request $request) {
+    $user = auth()->user();
+    if (! $user) {
+        return response()->json(['message' => 'Please sign in before choosing a plan.'], 401);
+    }
+
+    $data = $request->validate([
+        'package_slug' => ['required', 'string', 'max:255'],
+    ]);
+
+    $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+    $token = (string) config('services.core_api.token');
+
+    if ($baseUrl === '' || $token === '') {
+        return response()->json(['message' => 'Core API is not configured.'], 503);
+    }
+
+    $client = Http::withToken($token)->acceptJson()->timeout(20);
+    $host = trim((string) config('services.core_api.host'));
+    if ($host !== '') {
+        $client = $client->withHeaders(['Host' => $host]);
+    }
+
+    $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
+
+    try {
+        $response = $client->post($baseUrl.'/api/checkouts', [
+            'package_slugs' => [$data['package_slug']],
+            'user_id' => (int) ($user->network_user_id ?: $user->id),
+            'customer' => [
+                'name' => $name !== '' ? $name : ($user->name ?? $user->email),
+                'email' => $user->email,
+                'phone' => $user->mobile ?? null,
+            ],
+            'platform' => ['slug' => 'ezway-tv'],
+            'subject_type' => 'tv_subscription',
+            'subject_id' => (string) ($user->network_user_id ?: $user->id),
+            'success_url' => url('/subscription-plan?checkout_status=success'),
+            'cancel_url' => url('/subscription-plan?checkout_status=cancelled'),
+            'failed_url' => url('/subscription-plan?checkout_status=failed'),
+            'checkout_mode' => 'auto',
+            'metadata' => [
+                'source_app' => 'ezway_tv',
+                'tv_user_id' => (string) $user->id,
+                'network_user_id' => (string) ($user->network_user_id ?: ''),
+            ],
+        ]);
+    } catch (\Throwable $exception) {
+        report($exception);
+        return response()->json(['message' => 'Core checkout could not be reached.'], 502);
+    }
+
+    return response($response->body(), $response->status())
+        ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+});
 Route::view('/login-page', 'react-modernization')->name('login-page');
 Route::get('/sso/wp/login', [WordPressSsoController::class, 'login'])->name('wordpress-sso.login');
 Route::post('/store-user', [AuthController::class, 'store'])->name('store-user');

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, ChevronDown, ChevronRight, Film, Home as HomeIcon, LogOut, Menu, Music2, Play, Radio, Search, Send, Settings, Share2, Tv, UsersRound, Video, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, CreditCard, Film, Home as HomeIcon, LogOut, Menu, Music2, Play, Radio, Search, Send, Settings, Share2, Tv, UserCircle, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
-import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { useSpaNavigate } from '@/lib/spa-router'
 import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from '@/modules/home/types'
@@ -56,9 +55,10 @@ const navItems = [
   { key: 'home', label: 'Home', href: '/' },
   // { key: 'movies', label: 'Movies', href: '/movies' },
   // { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
-  { key: 'videos', label: 'Videos', href: '/videos', dropdown: 'videos' },
+  { key: 'videos', label: 'Videos', href: '/videos' },
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
+  { key: 'pricing', label: 'Pricing', href: '/subscription-plan' },
   { key: 'distribution', label: 'Distribution', href: '/distribution' },
   { key: 'stream-music', label: 'Stream Your Music', href: '/music' },
 ] as const
@@ -69,9 +69,10 @@ const mobileNavItems = [
   { key: 'home', label: 'Home', href: '/', icon: HomeIcon },
   { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
   { key: 'tvshows', label: 'TV Shows', href: '/tv-shows', icon: Tv },
-  { key: 'videos', label: 'Videos', href: '/videos', dropdown: 'videos', icon: Video },
+  { key: 'videos', label: 'Videos', href: '/videos', icon: Video },
   { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
+  { key: 'pricing', label: 'Pricing', href: '/subscription-plan', icon: CreditCard },
   { key: 'distribution', label: 'Distribution', href: '/distribution', icon: Share2 },
   { key: 'stream-music', label: 'Stream Your Music', href: '/music', icon: Music2 },
 ] as const
@@ -79,7 +80,6 @@ const mobileNavItems = [
 export function AppHeader({ active }: AppHeaderProps) {
   const activeKey = active ?? inferActiveKey()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [subscriberFormOpen, setSubscriberFormOpen] = useState(false)
   const navigate = useSpaNavigate()
   const authUser = getAuthUser()
   const navQuery = useQuery({
@@ -114,29 +114,11 @@ export function AppHeader({ active }: AppHeaderProps) {
     }
   }, [mobileMenuOpen])
 
-  useEffect(() => {
-    if (!subscriberFormOpen) return
-
-    const originalOverflow = document.body.style.overflow
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setSubscriberFormOpen(false)
-      }
-    }
-
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      document.body.style.overflow = originalOverflow
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [subscriberFormOpen])
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-white/8 bg-[#050505]/94 px-4 backdrop-blur-xl sm:px-8 lg:px-12">
-        <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between gap-4">
+        <div className="flex h-16 w-full items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-6">
             <BrandLogo imageClassName="max-h-11 max-w-[190px]" textClassName="text-2xl" placeholderClassName="h-10 w-[170px]" />
             <nav className="hidden items-center gap-1 text-sm font-semibold text-white/62 md:flex">
@@ -180,14 +162,25 @@ export function AppHeader({ active }: AppHeaderProps) {
               <Search className="ez-header-search-icon h-5 w-5 shrink-0" />
               <span className="ez-header-search-label">Search</span>
             </a>
-            <Button
-              type="button"
-              onClick={() => setSubscriberFormOpen(true)}
-              className="hidden h-9 rounded-md bg-primary px-3 text-white hover:bg-primary/90 lg:inline-flex"
-            >
-              Subscribe
-            </Button>
-            {authUser ? <ProfileMenu user={authUser} /> : null}
+
+            {!authUser || !authUser.is_subscribe ? (
+              <a
+                href="/subscription-plan"
+                className="hidden h-9 items-center gap-2 rounded-md bg-[#d4a843] px-3 text-sm font-black text-black transition hover:bg-[#efc955] lg:inline-flex"
+              >
+                Subscribe
+              </a>
+            ) : null}
+
+            {authUser ? <ProfileMenu user={authUser} /> : (
+              <a
+                href="/login"
+                className="hidden h-9 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-black text-white transition hover:bg-white/[0.14] lg:inline-flex"
+              >
+                <UserCircle className="h-4 w-4" />
+                <span>Login</span>
+              </a>
+            )}
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] md:hidden"
@@ -209,15 +202,11 @@ export function AppHeader({ active }: AppHeaderProps) {
           visibleMenuKeys={navData.visibleMenuKeys}
           authUser={authUser}
           navigate={navigate}
-          onOpenSubscriberForm={() => {
-            setMobileMenuOpen(false)
-            setSubscriberFormOpen(true)
-          }}
+
           onNavigate={() => setMobileMenuOpen(false)}
           onClose={() => setMobileMenuOpen(false)}
         />
       ) : null}
-      {subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
     </>
   )
 }
@@ -230,7 +219,6 @@ function MobileMenu({
   visibleMenuKeys,
   authUser,
   navigate,
-  onOpenSubscriberForm,
   onNavigate,
   onClose,
 }: {
@@ -241,7 +229,6 @@ function MobileMenu({
   visibleMenuKeys: string[] | null
   authUser: AuthUser | null
   navigate: (to: string, options?: { replace?: boolean }) => void
-  onOpenSubscriberForm: () => void
   onNavigate: () => void
   onClose: () => void
 }) {
@@ -384,25 +371,38 @@ function MobileMenu({
             })}
           </div>
 
+          {!authUser || !authUser.is_subscribe ? (
+            <a
+              href="/subscription-plan"
+              onClick={onNavigate}
+              className="mt-5 flex min-h-14 items-center justify-center rounded-xl bg-[#d4a843] px-4 text-sm font-black text-black shadow-xl shadow-[#d4a843]/20 transition hover:bg-[#efc955]"
+            >
+              Subscribe
+            </a>
+          ) : null}
+
           {authUser ? (
             <MobileProfileMenu user={authUser} onNavigate={onNavigate} />
           ) : (
-            <button
-              type="button"
-              onClick={onOpenSubscriberForm}
-              className="mt-5 grid min-h-20 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 px-4 py-3 shadow-[0_0_28px_rgba(212,168,67,0.10)]"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342] shadow-inner shadow-[#d4a843]/20">
-                <UsersRound className="h-5 w-5" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-black uppercase text-white">Join Our Family</span>
-                <span className="mt-1 block text-xs font-semibold leading-4 text-white/54">Become part of the eZWay community.</span>
-              </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#edc342] text-black">
-                <ChevronRight className="h-5 w-5" />
-              </span>
-            </button>
+            <div className="mt-3 grid gap-3">
+              <a
+                href="/login"
+                onClick={onNavigate}
+                className="grid min-h-16 grid-cols-[48px_minmax(0,1fr)_40px] items-center gap-3 rounded-xl border border-white/12 bg-white/[0.06] px-4 py-3 text-white shadow-[0_0_22px_rgba(255,255,255,0.06)] transition hover:border-white/18 hover:bg-white/[0.10]"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/[0.08] text-white">
+                  <UserCircle className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black uppercase text-white">Login</span>
+                  <span className="mt-1 block text-xs font-semibold leading-4 text-white/54">Access your eZWay TV account.</span>
+                </span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/12 text-white">
+                  <ChevronRight className="h-5 w-5" />
+                </span>
+              </a>
+
+            </div>
           )}
 
           <div className="mt-5 flex items-center gap-3">
@@ -427,128 +427,6 @@ function MobileMenu({
           </div>
         </div>
       </nav>
-    </div>
-  )
-}
-
-function SubscriberFormModal({ onClose }: { onClose: () => void }) {
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
-  const [message, setMessage] = useState('')
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setStatus('submitting')
-    setMessage('')
-
-    try {
-      const response = await api.post<{ success?: boolean; message?: string }>('/tv-subscriber-form', {
-        full_name: fullName.trim(),
-        email: email.trim(),
-      })
-
-      if (!response?.success) {
-        throw new Error(response?.message || 'Subscriber form could not be submitted right now.')
-      }
-
-      setStatus('success')
-      setMessage(response.message || 'Thank you for subscribing to eZWay TV.')
-      setFullName('')
-      setEmail('')
-    } catch (error) {
-      setStatus('error')
-      setMessage(error instanceof Error ? error.message : 'Subscriber form could not be submitted right now.')
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/76 px-3 py-5 backdrop-blur-md sm:px-5"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="subscriber-form-title"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="Close subscriber form"
-        onClick={onClose}
-      />
-      <section className="relative flex max-h-[92dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-lg border border-[#d4a843]/28 bg-[radial-gradient(circle_at_82%_0%,rgba(212,168,67,0.22),transparent_34%),linear-gradient(180deg,#111_0%,#050505_100%)] shadow-2xl shadow-black">
-        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 sm:px-5">
-          <BrandLogo imageClassName="max-h-10 max-w-[170px]" textClassName="text-xl" placeholderClassName="h-9 w-[160px]" />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close subscriber form"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14]"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="grid gap-5 px-5 py-6 sm:px-7 sm:py-7">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">Subscribe eZWay TV</p>
-            <h2 id="subscriber-form-title" className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">
-              Stay connected with eZWay TV.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-white/62">
-              Get updates, channel news, and subscriber-only announcements from eZWay TV.
-            </p>
-          </div>
-
-          <div className="grid gap-4">
-            <label className="grid gap-2">
-              <span className="text-xs font-black uppercase tracking-wide text-white/54">Full Name</span>
-              <input
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                required
-                maxLength={255}
-                autoComplete="name"
-                className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]"
-                placeholder="Your name"
-              />
-            </label>
-
-            <label className="grid gap-2">
-              <span className="text-xs font-black uppercase tracking-wide text-white/54">Email</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                maxLength={255}
-                autoComplete="email"
-                className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]"
-                placeholder="you@example.com"
-              />
-            </label>
-          </div>
-
-          {message ? (
-            <div
-              className={[
-                'rounded-md border px-4 py-3 text-sm font-semibold',
-                status === 'success'
-                  ? 'border-emerald-400/24 bg-emerald-500/12 text-emerald-100'
-                  : 'border-red-400/24 bg-red-500/12 text-red-100',
-              ].join(' ')}
-            >
-              {message}
-            </div>
-          ) : null}
-
-          <Button
-            type="submit"
-            disabled={status === 'submitting'}
-            className="h-12 w-full rounded-md bg-primary text-sm font-black text-black hover:bg-[#f3c84b] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {status === 'submitting' ? 'Subscribing...' : 'Subscribe'}
-          </Button>
-        </form>
-      </section>
     </div>
   )
 }
@@ -681,14 +559,19 @@ function profileMenuItems(user: AuthUser) {
     ]
   }
 
-  return [
+  const items = [
     { label: 'My Dashboard', href: user.dashboard_url || '/account-setting', icon: HomeIcon },
     { label: 'Account Settings', href: '/account-setting', icon: Settings },
     { label: 'Watchlist', href: '/watch-list', icon: Film },
-    { label: 'Subscription', href: '/subscription-plan', icon: Radio },
     { label: 'Payment History', href: '/payment-history', icon: Share2 },
     { label: 'Manage Profiles', href: '/manage-profile', icon: UsersRound },
   ]
+
+  if (!user.is_subscribe) {
+    items.splice(3, 0, { label: 'Subscription', href: '/subscription-plan', icon: Radio })
+  }
+
+  return items
 }
 
 function displayUserName(user: AuthUser) {
@@ -797,6 +680,7 @@ async function loadHeaderNavData() {
 }
 
 function isMenuVisible(visibleMenuKeys: string[] | null, key: string) {
+  if (key === 'pricing') return true
   return visibleMenuKeys === null || visibleMenuKeys.includes(key)
 }
 

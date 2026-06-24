@@ -54,7 +54,7 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
 
   return (
     <section className={['bg-[#050505] px-4 py-5 sm:px-8 lg:px-12', className].filter(Boolean).join(' ')}>
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1800px]">
         <div className={showNetworkAd ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]' : undefined}>
           <div className="relative min-w-0 overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl shadow-black/40">
             <SlideImage slide={activeSlide} />

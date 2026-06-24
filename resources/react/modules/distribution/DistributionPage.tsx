@@ -23,7 +23,7 @@ export function DistributionPage() {
 
       <section className="relative overflow-hidden px-4 py-14 text-center sm:px-8 sm:py-20 lg:px-12">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(212,168,67,0.10)_0%,transparent_70%),repeating-linear-gradient(0deg,transparent,transparent_39px,rgba(212,168,67,0.04)_40px),repeating-linear-gradient(90deg,transparent,transparent_39px,rgba(212,168,67,0.04)_40px)]" />
-        <div className="relative mx-auto max-w-5xl">
+        <div className="relative mx-auto max-w-[1800px]">
           <div className="mb-5 inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#d4a843] before:block before:h-px before:w-5 before:bg-[#d4a843]/60 after:block after:h-px after:w-5 after:bg-[#d4a843]/60 sm:mb-6 sm:gap-3 sm:text-[11px] sm:tracking-[0.25em] sm:before:w-8 sm:after:w-8">
             eZWay Network
           </div>
@@ -50,7 +50,7 @@ export function DistributionPage() {
         Potential reach: 100,000,000 - Organic viewers: tens of thousands
       </div>
 
-      <section className="mx-auto max-w-[1240px] px-4 sm:px-8">
+      <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
         <SectionHead title="Los Angeles Station" />
 
         <article className="mb-20 grid overflow-hidden rounded border border-[#d4a843]/20 border-l-4 border-l-[#d4a843] bg-[#161616] lg:grid-cols-2">
@@ -92,7 +92,7 @@ export function DistributionPage() {
         </article>
       </section>
 
-      <section className="mx-auto max-w-[1240px] px-4 sm:px-8">
+      <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
         <SectionHead title="Network Partners" />
 
         {distributionQuery.isLoading ? (
@@ -110,7 +110,7 @@ export function DistributionPage() {
 
       <section className="border-y border-[#d4a843]/20 bg-[#161616] px-4 py-10 text-center sm:px-8">
         <div className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#7a7468]">Available On All Major Platforms</div>
-        <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-x-4 gap-y-3">
+        <div className="mx-auto flex max-w-[1800px] flex-wrap justify-center gap-x-4 gap-y-3">
           {(platformNames.length ? platformNames : ['EZWAY.TV', 'XOTV', 'BVC TV', 'NATIONAL BIZ TV']).map((platform) => (
             <span key={platform} className="rounded-sm border border-white/10 bg-[#1e1e1e] px-5 py-2 text-xs font-semibold tracking-normal text-[#9e9890]">
               {platform}

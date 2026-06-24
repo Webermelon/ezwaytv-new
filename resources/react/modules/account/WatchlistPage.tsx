@@ -54,7 +54,7 @@ export function WatchlistPage() {
       <AccountHero title="My Watchlist" description="Keep track of movies, shows, and videos you want to watch next." actionLabel="Explore Content" actionHref="/" />
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/watch-list" />
 
           <div className="min-w-0">

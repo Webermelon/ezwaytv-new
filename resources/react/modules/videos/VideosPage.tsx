@@ -66,43 +66,12 @@ export function VideosPage() {
     })
   }, [access, query, videos])
 
-  const featured = filteredVideos[0] ?? videos[0]
-  const featuredDescription = featured ? stripHtml(String(featured.short_desc || featured.description || '')) : ''
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="videos" />
 
-      <section className="relative min-h-[62vh] overflow-hidden">
-        {featured?.poster_image ? <img src={featured.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" /> : null}
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.88)_34%,rgba(5,5,5,0.42)_70%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#050505] to-transparent" />
-
-        <div className="relative z-10 flex min-h-[62vh] max-w-4xl flex-col justify-end px-4 pb-16 pt-20 sm:px-8 lg:px-12">
-          <Badge className="w-fit rounded-sm bg-primary text-white">Videos</Badge>
-          <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">
-            {featured?.name ?? 'Videos'}
-          </h1>
-          {featuredDescription ? (
-            <p className="mt-5 line-clamp-3 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-              {featuredDescription}
-            </p>
-          ) : null}
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-              <a href={videoHref(featured)}>
-                {isPremiumVideoCard(featured) ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
-                {isPremiumVideoCard(featured) ? 'View Premium' : 'Play'}
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/videos">All Videos</a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="px-4 py-8 sm:px-8 lg:px-12">
         <div className="mb-6 flex flex-col gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 sm:flex-row sm:items-center">
           <div className="flex min-h-11 flex-1 items-center gap-2 rounded-md bg-black/38 px-3">
             <Search className="h-4 w-4 text-white/44" />
@@ -213,9 +182,54 @@ function VideoCard({ video }: { video: MediaItem }) {
         </div>
         {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
-      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
+      <div className="mt-2 grid gap-1">
+        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
+        <ChannelName video={video} />
+      </div>
     </a>
   )
+}
+
+function ChannelName({ video }: { video: MediaItem }) {
+  const channelName = video.channel_name || video.username || 'eZWay TV'
+  const channelSlug = video.channel_username || ''
+  const channelHref = video.profile_url || (channelSlug ? `/on-demand/${channelSlug}` : '')
+  const avatar = video.profile_image || video.avatar_image_url || video.cover_image_url || ''
+  const content = (
+    <>
+      <span className="flex h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+        {avatar ? (
+          <img src={avatar} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-white/58">{channelInitials(channelName)}</span>
+        )}
+      </span>
+      <span className="line-clamp-1 min-w-0 text-xs font-semibold text-white/48 transition group-hover:text-white/70">{channelName}</span>
+    </>
+  )
+
+  if (!channelHref) {
+    return <div className="flex min-w-0 items-center gap-2">{content}</div>
+  }
+
+  return (
+    <a
+      href={channelHref}
+      onClick={(event) => event.stopPropagation()}
+      className="flex w-fit max-w-full min-w-0 items-center gap-2"
+    >
+      {content}
+    </a>
+  )
+}
+
+function channelInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'EZ'
 }
 
 function VideoGridSkeleton() {

@@ -80,7 +80,7 @@ function MusicHero() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(212,168,67,0.22),transparent_30%),radial-gradient(circle_at_82%_20%,rgba(31,111,235,0.18),transparent_32%),linear-gradient(135deg,#050505_0%,#101010_54%,#050505_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#060606] to-transparent" />
 
-      <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:px-12">
+      <div className="relative mx-auto grid max-w-[1800px] gap-10 px-4 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:px-12">
         <div className="min-w-0">
           <div className="inline-flex max-w-full items-center gap-2 rounded-sm border border-[#d4a843]/28 bg-[#d4a843]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-[#f1c95c]">
             <Radio className="h-4 w-4 shrink-0" />
@@ -205,7 +205,7 @@ function GenresSection() {
 function ChannelSection() {
   return (
     <section id="channel" className="bg-[#050609] px-4 py-16 sm:px-8 sm:py-24 lg:px-12">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+      <div className="mx-auto grid max-w-[1800px] gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#f1c95c]">
             <Star className="h-3.5 w-3.5 fill-current" />
@@ -390,7 +390,7 @@ function StatCard({ stat }: { stat: (typeof stats)[number] }) {
 function Section({ id, label, icon: Icon, title, intro, children }: { id: string; label: string; icon: typeof Music2; title: string; intro?: string; children: ReactNode }) {
   return (
     <section id={id} className="px-4 py-14 sm:px-8 sm:py-18 lg:px-12">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1800px]">
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#d4a843]">
             <Icon className="h-4 w-4" />

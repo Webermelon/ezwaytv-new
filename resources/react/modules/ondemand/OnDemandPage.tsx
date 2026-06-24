@@ -92,16 +92,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-              <ChannelSidebar
-                channels={filteredChannels}
-                loading={channelsQuery.isLoading}
-                query={query}
-                selectedUsername={routeUsername}
-                onQueryChange={setQuery}
-              />
-              <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
-            </div>
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -230,7 +221,7 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
-      <div className="relative aspect-[16/9] overflow-hidden bg-black sm:aspect-[21/8] sm:min-h-72">
+      <div className="relative h-[38vw] max-h-48 min-h-36 overflow-hidden bg-black sm:h-[30vw] sm:max-h-52 lg:h-[24vw] lg:max-h-56">
         {profile.cover_image_url ? (
           <img
             src={profile.cover_image_url}
@@ -242,7 +233,7 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
       </div>
 
       <div className="relative px-4 pb-6 sm:px-6">
-        <div className="-mt-10 grid gap-4 sm:-mt-12 sm:flex sm:flex-wrap sm:items-end">
+        <div className="-mt-8 grid gap-4 sm:-mt-10 sm:flex sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 items-end gap-3 sm:flex-1 sm:gap-4">
             <MediaThumbnail
               src={profile.avatar_image_url ?? profile.cover_image_url}
@@ -300,7 +291,7 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
               <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
             </div>
           ) : videos.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {videos.map((video) => (
                 <VideoCard key={video.id} video={video} channelId={profile.id} />
               ))}

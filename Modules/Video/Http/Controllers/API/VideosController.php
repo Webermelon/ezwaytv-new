@@ -90,7 +90,8 @@ class VideosController extends Controller
             ->whereNull('deleted_at');
 
         $videoList->with([
-            'plan:id,level'
+            'plan:id,level',
+            'authorChannels:id,name,username,avatar'
         ]);
 
         if ($user_id && $profile_id) {

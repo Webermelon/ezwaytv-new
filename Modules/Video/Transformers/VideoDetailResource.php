@@ -31,11 +31,11 @@ class VideoDetailResource extends JsonResource
         $currentUser = auth()->user();
 
         if (! $currentUser && $userId) {
-            $currentUser = \App\Models\User::with('subscriptionPackage:id,level,name')
+            $currentUser = \App\Models\User::with('subscriptionPackage:id,user_id,level,name')
                 ->where('id', $userId)
                 ->first();
         } elseif ($currentUser && ! $currentUser->relationLoaded('subscriptionPackage')) {
-            $currentUser->load('subscriptionPackage:id,level,name');
+            $currentUser->load('subscriptionPackage:id,user_id,level,name');
         }
 
         $requiredPlanLevel = optional($plan)->level ?? 0;

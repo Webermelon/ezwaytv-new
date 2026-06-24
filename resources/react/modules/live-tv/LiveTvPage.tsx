@@ -143,7 +143,7 @@ export function LiveTvPage() {
         </div>
       </section>
 
-      <section className="px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="px-3 pb-16 sm:px-6 lg:px-8">
         <TvGuide channels={allChannels} loading={dashboardQuery.isLoading} />
 
         <div id="channels" className="mb-6 scroll-mt-24 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
@@ -297,69 +297,16 @@ function LiveTvDetailPage({
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="livetv" />
-      <section className="relative z-30 overflow-visible">
-        <img src={heroBackgroundImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_38%,rgba(5,5,5,0.42)_76%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] to-transparent" />
-
-        <div className="relative z-10 grid min-h-[76vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-8 lg:px-12 lg:py-8">
-          <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
-            <a href="/livetv" className="mb-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-white/62 hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Live TV
-            </a>
-            <div className="flex flex-wrap gap-2">
-              {channelBadge ? <Badge className="w-fit rounded-sm bg-[#d4a843] text-black">{channelBadge}</Badge> : null}
-              <Badge className="w-fit rounded-sm bg-red-600 text-white">
-                <Radio className="mr-1 h-3.5 w-3.5" />
-                Live
-              </Badge>
-              {category ? <Badge className="rounded-sm bg-white/14 text-white">{category}</Badge> : null}
-              {channel?.details?.access ? <Badge className="rounded-sm bg-white/14 text-white">{channel.details.access}</Badge> : null}
-              {isSubscriptionLocked ? <Badge variant="outline" className="border-[#d4a843]/50 bg-[#d4a843]/10 text-[#f2d16f]">Premium</Badge> : null}
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+        <div className="w-screen">
+          <div className="livetv-player relative h-[76svh] min-h-[430px] w-full overflow-hidden bg-black">
+            <div className="pointer-events-none absolute left-4 top-4 z-40 inline-flex items-center gap-2 rounded-full border border-red-400/40 bg-red-600/92 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-2xl shadow-red-950/40 backdrop-blur sm:left-6 sm:top-6">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+              </span>
+              Live
             </div>
-            <h1 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
-            <LiveTvPlayerStats stats={contentStats} />
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 sm:text-base">{description}</p>
-
-            {isSubscriptionLocked ? <LiveTvPremiumNotice channel={channel} /> : null}
-
-            <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
-              {isSubscriptionLocked ? (
-                <PremiumActionButton />
-              ) : (
-                <Button
-                  type="button"
-                  size="lg"
-                  className="bg-white text-black hover:bg-white/85"
-                  disabled={!stream && !loading}
-                  onClick={() => {
-                    setPlayerStarted(true)
-                    setPlayTrigger((value) => value + 1)
-                    document.querySelector<HTMLElement>('.livetv-player')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }}
-                >
-                  <Play className="h-5 w-5 fill-current" />
-                  Watch Live
-                </Button>
-              )}
-              <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-                <a href="/livetv">All Channels</a>
-              </Button>
-              <LiveTvShareMenu
-                title={title}
-                copied={copiedShareUrl}
-                onCopy={() => {
-                  copyLiveTvShareUrl().then(() => {
-                    setCopiedShareUrl(true)
-                    window.setTimeout(() => setCopiedShareUrl(false), 1800)
-                  }).catch(() => undefined)
-                }}
-              />
-            </div>
-          </section>
-
-          <div className="livetv-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
             {isSubscriptionLocked ? (
               <PremiumPlayerLock
                 image={image}
@@ -374,6 +321,7 @@ function LiveTvDetailPage({
                 muted={false}
                 playTrigger={playTrigger}
                 vastAds={ads.vast}
+                isLive
                 onPlay={() => {
                   if (!channel || playIdRef.current) return
                   trackPlayMutation.mutate(channel)
@@ -406,18 +354,89 @@ function LiveTvDetailPage({
             ) : loading ? (
               <LiveTvPlayerPreparing image={image} title={title} />
             ) : (
-              <div className="flex aspect-video items-center justify-center bg-black p-8 text-center text-white/56">
+              <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
                 No playable Live TV stream was returned for this channel.
               </div>
             )}
           </div>
+
+          <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  {channelBadge ? <Badge className="w-fit rounded-sm bg-[#d4a843] text-black">{channelBadge}</Badge> : null}
+                  <Badge className="w-fit rounded-sm bg-red-600 text-white">
+                    <span className="mr-1.5 h-2 w-2 animate-pulse rounded-full bg-white" />
+                    Live
+                  </Badge>
+                  {category ? <Badge className="rounded-sm bg-white/14 text-white">{category}</Badge> : null}
+                  {channel?.details?.access ? <Badge className="rounded-sm bg-white/14 text-white">{channel.details.access}</Badge> : null}
+                  {isSubscriptionLocked ? <Badge variant="outline" className="border-[#d4a843]/50 bg-[#d4a843]/10 text-[#f2d16f]">Premium</Badge> : null}
+                </div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-12 w-12 shrink-0 overflow-hidden rounded-md border border-white/10 bg-white/[0.06]">
+                    {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                  </span>
+                  <div className="min-w-0">
+                    <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.65rem]">{title}</h1>
+                    <LiveTvPlayerStats stats={contentStats} compact />
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative z-[80] flex flex-wrap gap-2 lg:justify-end">
+                {isSubscriptionLocked ? (
+                  <PremiumActionButton />
+                ) : !playerStarted ? (
+                  <Button
+                    type="button"
+                    className="bg-white text-black hover:bg-white/85"
+                    disabled={!stream && !loading}
+                    onClick={() => {
+                      setPlayerStarted(true)
+                      setPlayTrigger((value) => value + 1)
+                    }}
+                  >
+                    <Play className="h-5 w-5 fill-current" />
+                    Watch Live
+                  </Button>
+                ) : null}
+                <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+                  <a href="/livetv">All Channels</a>
+                </Button>
+                <LiveTvShareMenu
+                  title={title}
+                  copied={copiedShareUrl}
+                  onCopy={() => {
+                    copyLiveTvShareUrl().then(() => {
+                      setCopiedShareUrl(true)
+                      window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                    }).catch(() => undefined)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-3 pb-8 pt-3 sm:px-6 lg:px-8">
+        <div className="w-full">
+          <a href="/livetv" className="mb-4 inline-flex w-fit items-center gap-2 text-sm font-semibold text-white/62 hover:text-white">
+            <ArrowLeft className="h-4 w-4" />
+            Live TV
+          </a>
+          <div className="rounded-md border border-white/10 bg-white/[0.045] p-4 text-sm leading-7 text-white/68">
+            {description}
+          </div>
+          {isSubscriptionLocked ? <LiveTvPremiumNotice channel={channel} /> : null}
         </div>
       </section>
 
       <AdStrip ads={ads.custom} />
 
       {hasScheduleUi || (channel?.id && chat?.enabled) ? (
-        <section className="px-4 pb-16 sm:px-8 lg:px-12">
+        <section className="px-3 pb-16 sm:px-6 lg:px-8">
           <div className={chat?.enabled && hasScheduleUi ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]' : undefined}>
             {hasScheduleUi ? (
               <SchedulePanel
@@ -432,7 +451,7 @@ function LiveTvDetailPage({
         </section>
       ) : null}
 
-      <section className="px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="px-3 pb-16 sm:px-6 lg:px-8">
         <div className="mb-3 flex items-center justify-between gap-4">
           <h2 className="text-2xl font-bold">More Live Channels</h2>
           <a href="/livetv" className="text-sm font-semibold text-white/58 hover:text-white">View all</a>
@@ -576,13 +595,13 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
   )
 }
 
-function LiveTvPlayerStats({ stats }: { stats?: ContentStats | null }) {
+function LiveTvPlayerStats({ stats, compact = false }: { stats?: ContentStats | null; compact?: boolean }) {
   if (!stats?.show_views_frontend) return null
 
   const views = Number(stats.display_views ?? stats.total_views ?? 0)
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-white/62">
+    <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-white/50" : "mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-white/62"}>
       <span className="inline-flex items-center gap-2">
         <Eye className="h-4 w-4" />
         {formatCompactCount(views)} views
@@ -625,7 +644,7 @@ function LinkedInIcon({ className }: ShareIconProps) {
 
 function LiveTvPlayerPreparing({ image, title }: { image?: string; title: string }) {
   return (
-    <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-black">
+    <div className="relative flex h-full min-h-[320px] w-full items-center justify-center overflow-hidden bg-black">
       {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-22 blur-sm" /> : null}
       <div className="absolute inset-0 bg-black/60" />
       <div className="relative flex flex-col items-center gap-4 text-center">
@@ -762,7 +781,7 @@ function LiveTvStartScreen({ image, title, onStart }: { image?: string | null; t
     <button
       type="button"
       onClick={onStart}
-      className="group relative block aspect-video w-full overflow-hidden bg-black text-left"
+      className="group relative block h-full min-h-[320px] w-full overflow-hidden bg-black text-left"
       aria-label={`Watch ${title} live`}
     >
       {image ? (
@@ -1199,7 +1218,7 @@ function PremiumActionButton() {
 
 function PremiumPlayerLock({ image, title, label }: { image?: string | null; title: string; label: string }) {
   return (
-    <div className="relative flex aspect-video min-h-[260px] flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
+    <div className="relative flex h-full min-h-[320px] w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
       {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" /> : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,168,67,0.18),transparent_36%),linear-gradient(180deg,rgba(0,0,0,0.50),#000_100%)]" />
       <div className="relative flex max-w-md flex-col items-center">

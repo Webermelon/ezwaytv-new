@@ -293,27 +293,299 @@ body {
 }
 
 .vjs-theme-ezway .vjs-control-bar {
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.86));
+  position: absolute !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 40 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 0.15rem !important;
+  height: 5.4rem !important;
+  padding: 1.85rem 1rem 0.8rem !important;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.34) 32%, rgba(0, 0, 0, 0.86) 100%) !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  transition: opacity 180ms ease, transform 180ms ease !important;
+}
+
+.vjs-theme-ezway.vjs-user-inactive.vjs-playing .vjs-control-bar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(0.7rem) !important;
+}
+
+.vjs-theme-ezway.vjs-user-active .vjs-control-bar,
+.vjs-theme-ezway:hover .vjs-control-bar,
+.vjs-theme-ezway.vjs-paused .vjs-control-bar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+.vjs-theme-ezway .vjs-control {
+  width: 2.8rem !important;
+  height: 2.8rem !important;
+  color: #fff !important;
+  opacity: 0.94 !important;
+}
+
+.vjs-theme-ezway .vjs-control:hover,
+.vjs-theme-ezway .vjs-control:focus {
+  opacity: 1 !important;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.42) !important;
+}
+
+.vjs-theme-ezway .vjs-button > .vjs-icon-placeholder::before,
+.vjs-theme-ezway .vjs-icon-placeholder::before {
+  font-size: 1.8rem !important;
+  line-height: 2.8rem !important;
+}
+
+.vjs-theme-ezway .vjs-play-control {
+  margin-left: -0.25rem !important;
+}
+
+.vjs-theme-ezway .vjs-current-time,
+.vjs-theme-ezway .vjs-duration,
+.vjs-theme-ezway .vjs-time-divider {
+  display: block !important;
+  width: auto !important;
+  min-width: auto !important;
+  height: 2.8rem !important;
+  padding: 0 0.15rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  line-height: 2.8rem !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.vjs-theme-ezway .vjs-time-divider {
+  padding: 0 0.05rem !important;
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.vjs-theme-ezway .vjs-progress-control {
+  position: absolute !important;
+  top: 1.05rem !important;
+  right: 1rem !important;
+  left: 1rem !important;
+  width: auto !important;
+  height: 1rem !important;
+  min-width: 0 !important;
+}
+
+.vjs-theme-ezway .vjs-progress-control .vjs-progress-holder {
+  height: 0.24rem !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.26) !important;
+  transition: height 140ms ease !important;
+}
+
+.vjs-theme-ezway .vjs-progress-control:hover .vjs-progress-holder,
+.vjs-theme-ezway .vjs-progress-control:focus-within .vjs-progress-holder {
+  height: 0.38rem !important;
+}
+
+.vjs-theme-ezway .vjs-load-progress,
+.vjs-theme-ezway .vjs-load-progress div {
+  border-radius: inherit !important;
+  background: rgba(255, 255, 255, 0.38) !important;
+}
+
+.vjs-theme-ezway .vjs-play-progress {
+  border-radius: inherit !important;
+  background: #ff0033 !important;
+}
+
+.vjs-theme-ezway .vjs-play-progress::before {
+  top: 50% !important;
+  right: -0.42rem !important;
+  width: 0.85rem !important;
+  height: 0.85rem !important;
+  margin-top: -0.425rem !important;
+  border-radius: 999px !important;
+  background: #ff0033 !important;
+  color: transparent !important;
+  opacity: 0 !important;
+  transform: scale(0.72) !important;
+  transition: opacity 140ms ease, transform 140ms ease !important;
+}
+
+.vjs-theme-ezway .vjs-progress-control:hover .vjs-play-progress::before,
+.vjs-theme-ezway .vjs-progress-control:focus-within .vjs-play-progress::before {
+  opacity: 1 !important;
+  transform: scale(1) !important;
+}
+
+.vjs-theme-ezway .vjs-volume-panel {
+  width: 3rem !important;
+  transition: width 160ms ease !important;
+}
+
+.vjs-theme-ezway .vjs-volume-panel:hover,
+.vjs-theme-ezway .vjs-volume-panel:focus-within,
+.vjs-theme-ezway .vjs-volume-panel.vjs-volume-panel-horizontal:hover,
+.vjs-theme-ezway .vjs-volume-panel.vjs-volume-panel-horizontal:focus-within {
+  width: 8.8rem !important;
+}
+
+.vjs-theme-ezway .vjs-volume-control {
+  opacity: 0 !important;
+  width: 0 !important;
+  transition: opacity 150ms ease, width 150ms ease !important;
+}
+
+.vjs-theme-ezway .vjs-volume-panel:hover .vjs-volume-control,
+.vjs-theme-ezway .vjs-volume-panel:focus-within .vjs-volume-control {
+  opacity: 1 !important;
+  width: 5.6rem !important;
+}
+
+.vjs-theme-ezway .vjs-volume-bar {
+  height: 0.22rem !important;
+  margin: 1.28rem 0.45rem !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.vjs-theme-ezway .vjs-volume-level {
+  border-radius: inherit !important;
+  background: #fff !important;
+}
+
+.vjs-theme-ezway .vjs-volume-level::before {
+  top: -0.28rem !important;
+  color: #fff !important;
+}
+
+.vjs-theme-ezway .vjs-remaining-time,
+.vjs-theme-ezway .vjs-live-control,
+.vjs-theme-ezway .vjs-custom-control-spacer {
+  display: none !important;
+}
+
+.vjs-theme-ezway.vjs-ezway-live .vjs-progress-control,
+.vjs-theme-ezway.vjs-ezway-live .vjs-current-time,
+.vjs-theme-ezway.vjs-ezway-live .vjs-duration,
+.vjs-theme-ezway.vjs-ezway-live .vjs-time-divider {
+  display: none !important;
+}
+
+.vjs-theme-ezway.vjs-ezway-live .vjs-live-control {
+  display: flex !important;
+  align-items: center !important;
+  width: auto !important;
+  height: 2.8rem !important;
+  padding: 0 0.6rem !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  line-height: 2.8rem !important;
+  color: #fff !important;
+}
+
+.vjs-theme-ezway.vjs-ezway-live .vjs-live-control::before {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.45rem;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75);
+  animation: vjs-ezway-live-pulse 1.35s infinite;
+}
+
+@keyframes vjs-ezway-live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75); }
+  70% { box-shadow: 0 0 0 0.45rem rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.vjs-theme-ezway .vjs-picture-in-picture-control,
+.vjs-theme-ezway .vjs-fullscreen-control {
+  margin-left: 0 !important;
+}
+
+.vjs-theme-ezway .vjs-fullscreen-control {
+  margin-left: auto !important;
+}
+
+.vjs-theme-ezway .vjs-menu-button-popup .vjs-menu {
+  bottom: 3rem !important;
+}
+
+.vjs-theme-ezway .vjs-menu-content {
+  border-radius: 0.75rem !important;
+  background: rgba(20, 20, 20, 0.96) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38) !important;
+  backdrop-filter: blur(16px) !important;
 }
 
 .vjs-theme-ezway .vjs-big-play-button {
-  width: 4rem;
-  height: 4rem;
-  margin-top: -2rem;
-  margin-left: -2rem;
+  width: 4.25rem;
+  height: 4.25rem;
+  margin-top: -2.125rem;
+  margin-left: -2.125rem;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #050505;
-  line-height: 4rem;
+  line-height: 4.25rem;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+}
+
+.vjs-theme-ezway .vjs-big-play-button .vjs-icon-placeholder::before {
+  font-size: 2.5rem !important;
+  line-height: 4.25rem !important;
 }
 
 .vjs-theme-ezway:hover .vjs-big-play-button,
 .vjs-theme-ezway .vjs-big-play-button:focus {
-  background: hsl(var(--primary));
-  color: #fff;
+  background: #fff;
+  color: #050505;
 }
 
+@media (max-width: 640px) {
+  .vjs-theme-ezway .vjs-control-bar {
+    height: 5rem !important;
+    padding: 1.65rem 0.45rem 0.55rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-progress-control {
+    top: 0.9rem !important;
+    right: 0.7rem !important;
+    left: 0.7rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-control {
+    width: 2.35rem !important;
+    height: 2.6rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-button > .vjs-icon-placeholder::before,
+  .vjs-theme-ezway .vjs-icon-placeholder::before {
+    font-size: 1.55rem !important;
+    line-height: 2.6rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-current-time,
+  .vjs-theme-ezway .vjs-duration,
+  .vjs-theme-ezway .vjs-time-divider {
+    height: 2.6rem !important;
+    font-size: 0.7rem !important;
+    line-height: 2.6rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-volume-panel,
+  .vjs-theme-ezway .vjs-picture-in-picture-control {
+    display: none !important;
+  }
+}
 .public-content {
   color: rgba(255, 255, 255, 0.84);
   font-size: 0.98rem;

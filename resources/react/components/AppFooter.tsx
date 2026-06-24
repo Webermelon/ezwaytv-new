@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Film, Globe2, Home, Mail, Phone, Search, Tv } from 'lucide-react'
+import { Film, Globe2, Home, Mail, Phone, Search, Send, Tv, X } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { BrandLogo } from '@/components/BrandLogo'
@@ -33,6 +33,7 @@ type FooterData = {
 }
 
 export function AppFooter() {
+  const [subscriberFormOpen, setSubscriberFormOpen] = useState(false)
   const footerQuery = useQuery({
     queryKey: ['footer-data'],
     queryFn: loadFooterData,
@@ -47,10 +48,30 @@ export function AppFooter() {
     }
   }, [footer])
 
+  useEffect(() => {
+    if (!subscriberFormOpen) return
+
+    const originalOverflow = document.body.style.overflow
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSubscriberFormOpen(false)
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [subscriberFormOpen])
+
   return (
     <>
+      <SubscriberFooterSection onSubscribe={() => setSubscriberFormOpen(true)} />
       <footer className="border-t border-white/10 bg-[#050505] px-4 pb-24 pt-12 text-white sm:px-8 lg:px-12 lg:pb-0">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.9fr)_1px_minmax(0,2fr)]">
+        <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.9fr)_1px_minmax(0,2fr)]">
           <section className="min-w-0">
             <BrandLogo />
             <p className="mt-5 max-w-sm text-sm leading-6 text-white/58">
@@ -99,7 +120,7 @@ export function AppFooter() {
           </section>
         </div>
 
-        <div className="mx-auto mt-10 max-w-5xl rounded-md border border-white/10 bg-white/[0.035] px-4 py-4">
+        <div className="mt-10 w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-4">
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm font-semibold text-white/62">
             {(footer?.pages ?? []).map((page) => (
               <a key={`${page.id ?? page.slug}`} href={page.url ?? `/page/${page.slug}`} className="hover:text-white">
@@ -120,7 +141,102 @@ export function AppFooter() {
       </footer>
 
       <MobileFooterMenu />
+      {subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
     </>
+  )
+}
+
+function SubscriberFooterSection({ onSubscribe }: { onSubscribe: () => void }) {
+  return (
+    <section className="border-t border-white/10 bg-[radial-gradient(circle_at_78%_20%,rgba(212,168,67,0.16),transparent_30%),linear-gradient(180deg,#090909_0%,#050505_100%)] px-4 py-12 text-white sm:px-8 lg:px-12">
+      <div className="mx-auto grid w-full max-w-[1800px] gap-6 rounded-2xl border border-[#d4a843]/22 bg-white/[0.035] p-5 shadow-2xl shadow-black/35 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">eZWay TV updates</p>
+          <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">Stay connected with new channels, shows, and announcements.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">Subscribe for eZWay TV updates, channel news, and subscriber-only announcements. No payment required.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onSubscribe}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-6 text-sm font-black text-black transition hover:bg-[#efc955] sm:w-auto"
+        >
+          <Send className="h-4 w-4" />
+          Subscribe for updates
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function SubscriberFormModal({ onClose }: { onClose: () => void }) {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setStatus('submitting')
+    setMessage('')
+
+    try {
+      const response = await api.post<{ success?: boolean; message?: string }>('/tv-subscriber-form', {
+        full_name: fullName.trim(),
+        email: email.trim(),
+      })
+
+      if (!response?.success) {
+        throw new Error(response?.message || 'Subscriber form could not be submitted right now.')
+      }
+
+      setStatus('success')
+      setMessage(response.message || 'Thank you for subscribing to eZWay TV.')
+      setFullName('')
+      setEmail('')
+    } catch (error) {
+      setStatus('error')
+      setMessage(error instanceof Error ? error.message : 'Subscriber form could not be submitted right now.')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/76 px-3 py-5 backdrop-blur-md sm:px-5" role="dialog" aria-modal="true" aria-labelledby="subscriber-form-title">
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close subscriber form" onClick={onClose} />
+      <section className="relative flex max-h-[92dvh] w-full max-w-[560px] flex-col overflow-hidden rounded-lg border border-[#d4a843]/28 bg-[radial-gradient(circle_at_82%_0%,rgba(212,168,67,0.22),transparent_34%),linear-gradient(180deg,#111_0%,#050505_100%)] shadow-2xl shadow-black">
+        <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] px-4 py-3 sm:px-5">
+          <BrandLogo imageClassName="max-h-10 max-w-[170px]" textClassName="text-xl" placeholderClassName="h-9 w-[160px]" />
+          <button type="button" onClick={onClose} aria-label="Close subscriber form" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="grid gap-5 px-5 py-6 sm:px-7 sm:py-7">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">Subscribe eZWay TV</p>
+            <h2 id="subscriber-form-title" className="mt-3 text-3xl font-black leading-tight text-white sm:text-4xl">Stay connected with eZWay TV.</h2>
+            <p className="mt-3 text-sm leading-6 text-white/62">Get updates, channel news, and subscriber-only announcements from eZWay TV.</p>
+          </div>
+
+          <div className="grid gap-4">
+            <label className="grid gap-2">
+              <span className="text-xs font-black uppercase tracking-wide text-white/54">Full Name</span>
+              <input value={fullName} onChange={(event) => setFullName(event.target.value)} required maxLength={255} autoComplete="name" className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]" placeholder="Your name" />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-xs font-black uppercase tracking-wide text-white/54">Email</span>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={255} autoComplete="email" className="h-12 rounded-md border border-white/12 bg-white/[0.075] px-4 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-[#d4a843]/70 focus:bg-white/[0.10]" placeholder="you@example.com" />
+            </label>
+          </div>
+
+          {message ? (
+            <div className={['rounded-md border px-4 py-3 text-sm font-semibold', status === 'success' ? 'border-emerald-400/24 bg-emerald-500/12 text-emerald-100' : 'border-red-400/24 bg-red-500/12 text-red-100'].join(' ')}>{message}</div>
+          ) : null}
+
+          <button type="submit" disabled={status === 'submitting'} className="h-12 w-full rounded-md bg-[#d4a843] text-sm font-black text-black transition hover:bg-[#f3c84b] disabled:cursor-not-allowed disabled:opacity-70">
+            {status === 'submitting' ? 'Subscribing...' : 'Subscribe'}
+          </button>
+        </form>
+      </section>
+    </div>
   )
 }
 

@@ -9,6 +9,9 @@ use App\Models\User;
 use Hash;
 use Auth;
 use Str;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use App\Services\CoreTvAccessService;
 use App\Models\Device;
 use App\Models\Setting;
 use Modules\Frontend\Trait\LoginTrait;
@@ -95,6 +98,194 @@ class OTPController extends Controller
         return redirect('/'); // Redirect to intended page
     }
 
+    public function sendSpaOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:255',
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            $user = $this->syncMissingUserFromCore($validated['email']);
+        }
+
+        if (!$user || $user->user_type !== 'user') {
+            return response()->json([
+                'status' => false,
+                'message' => 'We could not find an active eZWay TV account with that email.',
+            ], 404);
+        }
+
+        $otp = (string) random_int(1000, 9999);
+        $user->forceFill(['otp' => $otp])->save();
+        $request->session()->put('tv_login_otp_email', $user->email);
+        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+
+        if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'We sent a 4-digit login code to your email.',
+        ]);
+    }
+
+    public function verifySpaOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => 'required|email|max:255',
+            'otp' => 'required|digits:4',
+        ]);
+
+        $sessionEmail = $request->session()->get('tv_login_otp_email');
+        $expiresAt = (int) $request->session()->get('tv_login_otp_expires_at', 0);
+
+        if (!$sessionEmail || strcasecmp($sessionEmail, $validated['email']) !== 0 || $expiresAt < now()->timestamp) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your login code has expired. Please request a new one.',
+            ], 422);
+        }
+
+        $user = User::where('email', $validated['email'])->where('otp', $validated['otp'])->first();
+
+        if (!$user || $user->user_type !== 'user') {
+            return response()->json([
+                'status' => false,
+                'message' => 'The code you entered is not valid.',
+            ], 422);
+        }
+
+        $request->session()->forget(['tv_login_otp_email', 'tv_login_otp_expires_at']);
+        $request->session()->regenerate();
+        $user->forceFill(['otp' => null])->save();
+
+        Auth::login($user);
+        $this->setDevice($user, $request);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'You are signed in.',
+            'data' => [
+                'redirect_url' => route('user.login'),
+            ],
+        ]);
+    }
+    private function coreApiRequest(int $timeout = 15): \Illuminate\Http\Client\PendingRequest
+    {
+        $request = Http::withToken((string) config('services.core_api.token'))
+            ->acceptJson()
+            ->timeout($timeout);
+
+        $host = trim((string) config('services.core_api.host'));
+        if ($host !== '') {
+            $request = $request->withHeaders(['Host' => $host]);
+        }
+
+        return $request;
+    }
+    private function sendOtpViaCore(string $email, string $otp, string $name = ''): bool
+    {
+        $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+        $token = (string) config('services.core_api.token');
+
+        if ($baseUrl === '' || $token === '') {
+            Log::warning('TV OTP email skipped because Core API is not configured.');
+            return false;
+        }
+
+        $bodyText = "Your eZWay TV login code is {$otp}. This code expires in 10 minutes.";
+        $bodyHtml = '<p>Your eZWay TV login code is:</p>'
+            .'<p style="font-size:28px;font-weight:800;letter-spacing:8px;margin:18px 0;">'.e($otp).'</p>'
+            .'<p>This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>';
+
+        try {
+            $response = $this->coreApiRequest(15)
+                ->post($baseUrl.'/api/emails/send', [
+                    'mode' => 'direct',
+                    'to' => $email,
+                    'to_name' => $name !== '' ? $name : null,
+                    'subject' => 'Your eZWay TV login code',
+                    'body_html' => $bodyHtml,
+                    'body_text' => $bodyText,
+                    'from_name' => 'eZWay TV',
+                    'variables' => [
+                        'platform' => [
+                            'name' => 'eZWay TV',
+                            'network_name' => 'eZWay TV',
+                            'url' => config('app.url'),
+                            'network_url' => config('app.url'),
+                        ],
+                    ],
+                ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return false;
+        }
+
+        if (! $response->successful()) {
+            Log::warning('Core email API failed to send TV OTP.', [
+                'email' => $email,
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+    private function syncMissingUserFromCore(string $email): ?User
+    {
+        $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+        $token = (string) config('services.core_api.token');
+
+        if ($baseUrl === '' || $token === '') {
+            Log::warning('TV OTP Core lookup skipped because Core API is not configured.');
+            return null;
+        }
+
+        try {
+            $response = $this->coreApiRequest(12)
+                ->get($baseUrl.'/api/tv/login-user', [
+                    'email' => $email,
+                    'package_slug' => 'tv-channel-access-monthly',
+                ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return null;
+        }
+
+        if (! $response->successful()) {
+            Log::info('TV OTP Core lookup did not return access.', [
+                'email' => $email,
+                'status' => $response->status(),
+            ]);
+            return null;
+        }
+
+        $payload = $response->json('data');
+        if (! is_array($payload) || empty($payload['core_user_id'])) {
+            return null;
+        }
+
+        try {
+            $access = app(CoreTvAccessService::class);
+            $access->activate($payload);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return null;
+        }
+
+        return User::query()
+            ->where('network_user_id', (int) $payload['core_user_id'])
+            ->orWhere('email', $email)
+            ->first();
+    }
     public function checkUserExists(Request $request)
     {
         $data = $request->all();

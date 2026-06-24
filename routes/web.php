@@ -18,6 +18,7 @@ use App\Http\Controllers\Backend\MobileSettingController;
 use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
+use App\Http\Controllers\CoreCheckoutBridgeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +33,11 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 
 // Auth Routes
 require __DIR__ . '/auth.php';
+
+Route::view('/docs/api', 'docs.api')->name('docs.api');
+Route::redirect('/docs/apis', '/docs/api');
+Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');
+Route::post('/core/checkouts', [CoreCheckoutBridgeController::class, 'checkout'])->name('core.checkouts');
 
 if (app()->environment('local')) {
     Route::view('/react-modernization', 'react-modernization')->name('react-modernization');

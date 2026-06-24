@@ -1,10 +1,11 @@
 import { FormEvent, ReactNode, useState } from 'react'
-import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Mail, Shield } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, KeyRound, Mail, RefreshCw, Shield } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { BrandLogo } from '@/components/BrandLogo'
 
 type AuthMode = 'login' | 'forgot'
+type OtpStep = 'email' | 'code'
 
 type ApiEnvelope = {
   status?: boolean
@@ -13,7 +14,6 @@ type ApiEnvelope = {
   data?: unknown
 }
 
-const networkLoginUrl = 'https://ezwaynetwork.com?site=ezwaytvott'
 const authBackground = '/dummy-images/login_banner.jpg'
 
 export function AuthPage() {
@@ -31,7 +31,7 @@ export function AuthPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_14%,rgba(212,168,67,0.22),transparent_30%),linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.95)_42%,rgba(5,5,5,0.7)_100%)]" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
 
-        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-64px)] max-w-6xl items-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,460px)] lg:px-12">
+        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-64px)] max-w-[1800px] items-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,460px)] lg:px-12">
           <div className="max-w-2xl">
             <a href="/" className="mb-8 inline-flex w-fit items-center gap-2 text-sm font-bold text-white/62 transition hover:text-white">
               <ArrowLeft className="h-4 w-4" />
@@ -42,12 +42,12 @@ export function AuthPage() {
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d4a843]/30 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-[#f0c74b]">
               <Shield className="h-4 w-4" />
-              Secure Account
+              Secure TV Access
             </span>
             <h1 className="mt-5 max-w-xl text-4xl font-black leading-[1.04] sm:text-6xl">{copy.title}</h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-white/68">{copy.description}</p>
             <div className="mt-8 grid max-w-xl gap-3 text-sm font-semibold text-white/68 sm:grid-cols-3">
-              {['Network sign in ready', 'Laravel CSRF protected', 'Same account system'].map((item) => (
+              {['Email code login', 'No password needed', 'Private watch session'].map((item) => (
                 <div key={item} className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.055] px-3 py-3">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-[#d4a843]" />
                   {item}
@@ -66,15 +66,17 @@ export function AuthPage() {
 function AuthPanel({ mode }: { mode: AuthMode }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpStep, setOtpStep] = useState<OtpStep>('email')
 
   const isForgot = mode === 'forgot'
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleForgotSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const formData = new FormData(form)
     setMessage(null)
-
     setLoading(true)
 
     try {
@@ -89,34 +91,53 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
     }
   }
 
+  async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage(null)
+    setLoading(true)
+
+    try {
+      const formData = new FormData()
+      formData.set('email', email.trim())
+
+      if (otpStep === 'email') {
+        const response = await postAuth('/auth/spa-otp/send', formData)
+        ensureApiSuccess(response, 'We sent a login code to your email.')
+        setOtpStep('code')
+        setMessage({ tone: 'success', text: getApiMessage(response, 'We sent a login code to your email.') })
+        return
+      }
+
+      formData.set('otp', otp.replace(/\D/g, '').slice(0, 4))
+      const response = await postAuth('/auth/spa-otp/verify', formData)
+      ensureApiSuccess(response, 'You are signed in.')
+      setMessage({ tone: 'success', text: getApiMessage(response, 'You are signed in.') })
+      window.location.href = getRedirectUrl(response) || '/'
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'Something went wrong. Please try again.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <section className="rounded-md border border-white/10 bg-[#111]/92 p-5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:p-7">
       <div className="mb-6">
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-[#d4a843]">{isForgot ? 'Password help' : 'Network Access'}</p>
-        <h2 className="mt-2 text-3xl font-black">{isForgot ? 'Reset password' : 'Continue with eZWay Network'}</h2>
+        <p className="text-xs font-black uppercase tracking-[0.24em] text-[#d4a843]">{isForgot ? 'Password help' : 'OTP Login'}</p>
+        <h2 className="mt-2 text-3xl font-black">{isForgot ? 'Reset password' : 'Sign in with a code'}</h2>
         <p className="mt-2 text-sm leading-6 text-white/58">
           {isForgot
             ? 'Enter your account email and we will send the reset link.'
-            : 'Create or access your account through eZWay Network, then return to eZWay TV automatically.'}
+            : otpStep === 'email'
+              ? 'Enter the email connected to your eZWay TV account. We will send a one-time login code.'
+              : `Enter the 4-digit code sent to ${email}.`}
         </p>
       </div>
 
-      {message ? (
-        <div
-          className={[
-            'mb-5 flex gap-3 rounded-md border px-4 py-3 text-sm font-semibold leading-6',
-            message.tone === 'success'
-              ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100'
-              : 'border-red-400/25 bg-red-500/10 text-red-100',
-          ].join(' ')}
-        >
-          {message.tone === 'success' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />}
-          <span>{message.text}</span>
-        </div>
-      ) : null}
+      {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
 
       {isForgot ? (
-        <form className="grid gap-4" onSubmit={handleSubmit}>
+        <form className="grid gap-4" onSubmit={handleForgotSubmit}>
           <Field
             icon={<Mail className="h-5 w-5" />}
             label="Account email"
@@ -136,27 +157,84 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
           </button>
         </form>
       ) : (
-        <a
-          href={networkLoginUrl}
-          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955]"
-        >
-          <Shield className="h-5 w-5" />
-          Continue With eZWay Network
-        </a>
+        <form className="grid gap-4" onSubmit={handleOtpSubmit}>
+          <Field
+            icon={<Mail className="h-5 w-5" />}
+            label="Account email"
+            name="email"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            autoComplete="email"
+            required
+            disabled={otpStep === 'code'}
+          />
+
+          {otpStep === 'code' ? (
+            <Field
+              icon={<KeyRound className="h-5 w-5" />}
+              label="Login code"
+              name="otp"
+              value={otp}
+              onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              required
+            />
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading || !email.trim() || (otpStep === 'code' && otp.length !== 4)}
+            className="mt-1 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-65"
+          >
+            {loading ? 'Please wait...' : otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'}
+            {!loading ? <ArrowRight className="h-5 w-5" /> : null}
+          </button>
+
+          {otpStep === 'code' ? (
+            <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setOtp('')
+                  setOtpStep('email')
+                  setMessage(null)
+                }}
+                className="inline-flex items-center justify-center gap-2 text-[#f0c74b] transition hover:text-white disabled:opacity-60"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Use a different email or resend code
+              </button>
+            </div>
+          ) : null}
+        </form>
       )}
 
-      <div className="mt-6 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-center text-sm font-semibold text-white/58">
-        {isForgot ? (
-          <>
-            Remember your password? <a className="font-black text-[#f0c74b] hover:text-white" href="/login">Back to sign in</a>
-          </>
-        ) : (
-          <>
-            Account access is handled by <span className="font-black text-[#f0c74b]">eZWay Network</span>.
-          </>
-        )}
-      </div>
+      {isForgot ? (
+        <div className="mt-6 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-center text-sm font-semibold text-white/58">
+          Remember your password? <a className="font-black text-[#f0c74b] hover:text-white" href="/login">Back to OTP login</a>
+        </div>
+      ) : null}
     </section>
+  )
+}
+
+function StatusMessage({ tone, text }: { tone: 'success' | 'error'; text: string }) {
+  return (
+    <div
+      className={[
+        'mb-5 flex gap-3 rounded-md border px-4 py-3 text-sm font-semibold leading-6',
+        tone === 'success'
+          ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100'
+          : 'border-red-400/25 bg-red-500/10 text-red-100',
+      ].join(' ')}
+    >
+      {tone === 'success' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /> : <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />}
+      <span>{text}</span>
+    </div>
   )
 }
 
@@ -165,19 +243,27 @@ function Field({
   label,
   name,
   type = 'text',
+  value,
+  onChange,
   defaultValue,
   autoComplete,
   inputMode,
   required,
+  disabled,
+  maxLength,
 }: {
   icon: ReactNode
   label: string
   name: string
   type?: string
+  value?: string
+  onChange?: (value: string) => void
   defaultValue?: string
   autoComplete?: string
   inputMode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'
   required?: boolean
+  disabled?: boolean
+  maxLength?: number
 }) {
   return (
     <label className="grid gap-2">
@@ -187,11 +273,15 @@ function Field({
         <input
           name={name}
           type={type}
+          value={value}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
           defaultValue={defaultValue}
           autoComplete={autoComplete}
           inputMode={inputMode}
           required={required}
-          className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-white/32"
+          disabled={disabled}
+          maxLength={maxLength}
+          className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-white/32 disabled:cursor-not-allowed disabled:text-white/50"
         />
       </span>
     </label>
@@ -300,6 +390,14 @@ function getCsrfFromPayload(payload: ApiEnvelope) {
   return ''
 }
 
+function getRedirectUrl(payload: ApiEnvelope) {
+  if (!payload.data || typeof payload.data !== 'object') return ''
+
+  const data = payload.data as Record<string, unknown>
+
+  return typeof data.redirect_url === 'string' ? data.redirect_url : ''
+}
+
 function inferAuthMode(): AuthMode {
   const pathname = window.location.pathname
 
@@ -312,12 +410,12 @@ function authCopy(mode: AuthMode) {
   if (mode === 'forgot') {
     return {
       title: 'Get back into your account',
-      description: 'Use the existing password reset flow. We will send the reset link to the email tied to your eZWay TV account.',
+      description: 'Use your account email and we will send the reset link for your eZWay TV access.',
     }
   }
 
   return {
-    title: 'Continue with eZWay Network',
-    description: 'Account creation and sign in are handled through eZWay Network for one connected profile across the platform.',
+    title: 'Sign in to eZWay TV',
+    description: 'Use a secure one-time code to access your subscriptions, watchlist, live channels, and on-demand videos.',
   }
 }

@@ -153,98 +153,13 @@ export function VideoDetailPage() {
         </section>
       ) : (
         <>
-          <section className="relative z-30 overflow-visible">
-            {video.poster_tv_image || video.poster_image ? (
-              <img src={video.poster_tv_image ?? video.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-34" />
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.92)_40%,rgba(5,5,5,0.68)_76%,#050505_100%)]" />
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
-
-            <div className="relative z-10 grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-8">
-              <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Badge className="rounded-sm bg-primary text-white">{video.access ?? 'video'}</Badge>
-                  {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
-                  {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
-                  {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
-                </div>
-
-                <h1 className="max-w-4xl text-2xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                  {video.name}
-                </h1>
-
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/62">
-                  {video.release_date ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(video.release_date).getFullYear()}
-                    </span>
-                  ) : null}
-                  {video.duration ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      {video.duration}
-                    </span>
-                  ) : null}
-                  {video.imdb_rating ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Star className="h-4 w-4" />
-                      {video.imdb_rating}
-                    </span>
-                  ) : null}
-                  <PlayerStats stats={contentStats} />
-                </div>
-
-                <ChannelBadges channels={video.author_channels ?? []} />
-
-                <p className="mt-5 max-w-4xl text-sm leading-7 text-white/68 sm:text-base">
-                  {stripHtml(video.description ?? video.short_desc ?? '')}
-                </p>
-
-                {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
-
-                <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
-                  {isPayPerViewLocked ? (
-                    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-                      <a href="/pay-per-view">
-                        <Lock className="h-5 w-5" />
-                        Rent / Buy
-                      </a>
-                    </Button>
-                  ) : isSubscriptionLocked ? (
-                    <PremiumActionButton video={video} />
-                  ) : (
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="bg-white text-black hover:bg-white/85"
-                      onClick={() => {
-                        setPlayTrigger((value) => value + 1)
-                        document.querySelector<HTMLElement>('.video-detail-player')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }}
-                    >
-                      <Play className="h-5 w-5 fill-current" />
-                      Watch Now
-                    </Button>
-                  )}
-                  <ShareMenu
-                    title={video.name}
-                    copied={copiedShareUrl}
-                    onCopy={() => {
-                      copyShareUrl().then(() => {
-                        setCopiedShareUrl(true)
-                        window.setTimeout(() => setCopiedShareUrl(false), 1800)
-                      }).catch(() => undefined)
-                    }}
-                  />
-                </div>
-              </section>
-
-              <aside className="video-detail-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
+          <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+            <div className="w-screen">
+              <div className="video-detail-player h-[80svh] min-h-[420px] w-full overflow-hidden bg-black">
                 {isSubscriptionLocked ? (
                   <PremiumPlayerLock video={video} />
                 ) : isPayPerViewLocked ? (
-                  <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black p-8 text-center">
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
                     <Lock className="h-10 w-10 text-primary" />
                     <h2 className="text-2xl font-bold">Purchase required</h2>
                     <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
@@ -285,18 +200,106 @@ export function VideoDetailPage() {
                     />
                   )
                 ) : (
-                  <div className="flex aspect-video items-center justify-center bg-black p-8 text-center text-white/56">
+                  <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
                     No playable source was returned for this video.
                   </div>
                 )}
-              </aside>
+              </div>
+              <div className="shrink-0 border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
+                <div className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.65rem]">
+                      {video.name}
+                    </h1>
+                    <div className="mt-3">
+                      <ChannelIdentity video={video} />
+                    </div>
+                  </div>
+                  <div className="hidden shrink-0 flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58 md:flex">
+                    <PlayerStats stats={contentStats} />
+                    {video.duration ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {video.duration}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="px-3 pb-8 pt-3 sm:px-6 lg:px-8">
+            <div className="w-full">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
+                <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
+                {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
+                {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
+              </div>
+
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58">
+                <PlayerStats stats={contentStats} />
+                {video.release_date ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(video.release_date).getFullYear()}
+                  </span>
+                ) : null}
+                {video.duration ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {video.duration}
+                  </span>
+                ) : null}
+                {video.imdb_rating ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Star className="h-4 w-4" />
+                    {video.imdb_rating}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2 border-y border-white/10 py-4">
+                <div className="relative z-[80] flex flex-wrap gap-2">
+                  {isPayPerViewLocked ? (
+                    <Button asChild className="bg-white text-black hover:bg-white/85">
+                      <a href="/pay-per-view">
+                        <Lock className="h-5 w-5" />
+                        Rent / Buy
+                      </a>
+                    </Button>
+                  ) : isSubscriptionLocked ? (
+                    <PremiumActionButton video={video} />
+                  ) : null}
+                  <ShareMenu
+                    title={video.name}
+                    copied={copiedShareUrl}
+                    onCopy={() => {
+                      copyShareUrl().then(() => {
+                        setCopiedShareUrl(true)
+                        window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                      }).catch(() => undefined)
+                    }}
+                  />
+                </div>
+              </div>
+
+              {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
+
+              {(video.description || video.short_desc) ? (
+                <div className="mt-4 rounded-md bg-white/[0.055] p-4 text-sm leading-7 text-white/72 ring-1 ring-white/8">
+                  {stripHtml(video.description ?? video.short_desc ?? '')}
+                </div>
+              ) : null}
             </div>
           </section>
 
           <AdStrip ads={ads.custom} />
 
           {related.length > 0 ? (
-            <section className="px-4 pb-16 sm:px-8 lg:px-12">
+            <section className="px-3 pb-16 sm:px-6 lg:px-8">
               <h2 className="mb-4 text-2xl font-bold">
                 {video.ondemand_channel_context?.name ? `More from ${video.ondemand_channel_context.name}` : 'More Like This'}
               </h2>
@@ -316,7 +319,7 @@ export function VideoDetailPage() {
 
 function PlayerPreparing({ poster }: { poster?: string | null }) {
   return (
-    <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-black">
+    <div className="relative flex h-full min-h-[320px] w-full items-center justify-center overflow-hidden bg-black">
       {poster ? <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
       <div className="absolute inset-0 bg-black/58" />
       <div className="relative flex items-center gap-3 text-sm font-semibold text-white/72">
@@ -392,7 +395,7 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
 
 function PremiumPlayerLock({ video }: { video: VideoDetail }) {
   return (
-    <div className="relative flex aspect-video min-h-[260px] flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
+    <div className="relative flex h-full min-h-[320px] w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
       {video.poster_image || video.poster_tv_image ? (
         <img src={video.poster_image ?? video.poster_tv_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
       ) : null}
@@ -415,6 +418,28 @@ function PremiumPlayerLock({ video }: { video: VideoDetail }) {
   )
 }
 
+function ChannelIdentity({ video }: { video: VideoDetail }) {
+  const channel = video.author_channels?.[0]
+  const name = channel?.name ?? video.ondemand_channel_context?.name ?? 'eZWay TV'
+  const username = channel?.username ?? video.ondemand_channel_context?.username
+  const image = channel?.avatar_image_url ?? channel?.avatar ?? video.avatar_image_url ?? video.profile_image ?? null
+  const href = username ? `/on-demand/${username}` : video.ondemand_channel_context?.url ?? '/on-demand'
+
+  return (
+    <a href={href} className="group flex min-w-0 items-center gap-3 text-left">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-sm font-black text-white/64 ring-1 ring-white/12">
+        {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : initials(name)}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-base font-black text-white group-hover:text-white/84">{name}</span>
+        <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white/46">
+          <Tv className="h-3.5 w-3.5" />
+          On Demand Channel
+        </span>
+      </span>
+    </a>
+  )
+}
 function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
   if (channels.length === 0) return null
 
@@ -492,7 +517,7 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
   if (ads.length === 0) return null
 
   return (
-    <section className="px-4 pb-8 sm:px-8 lg:px-12">
+    <section className="px-3 pb-8 sm:px-6 lg:px-8">
       <div className="mb-3 text-sm font-bold uppercase text-primary">{label}</div>
       <div className="grid gap-3 md:grid-cols-3">
         {ads.slice(0, 3).map((ad, index) => (
@@ -665,14 +690,61 @@ function LinkedInIcon({ className }: ShareIconProps) {
 
 function VideoDetailSkeleton() {
   return (
-    <section className="grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-10">
-      <div className="order-2 lg:order-1">
-        <div className="h-6 w-24 animate-pulse rounded-sm bg-white/10" />
-        <div className="mt-5 h-16 max-w-2xl animate-pulse rounded-md bg-white/10" />
-        <div className="mt-4 h-24 max-w-3xl animate-pulse rounded-md bg-white/8" />
-      </div>
-      <div className="order-1 aspect-video self-center animate-pulse rounded-md bg-white/8 lg:order-2" />
-    </section>
+    <>
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+        <div className="w-screen">
+          <div className="relative h-[80svh] min-h-[420px] w-full overflow-hidden bg-[#070707]">
+            <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(110deg,rgba(255,255,255,0.035)_0%,rgba(255,255,255,0.075)_26%,rgba(255,255,255,0.035)_52%)]" />
+            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-white/14" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
+            <div className="absolute bottom-5 left-4 right-4 h-2 animate-pulse rounded-full bg-white/12 sm:left-8 sm:right-8" />
+          </div>
+          <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="h-7 w-11/12 max-w-5xl animate-pulse rounded-md bg-white/12 sm:h-8" />
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-12 w-12 animate-pulse rounded-full bg-white/12" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-48 animate-pulse rounded bg-white/12" />
+                    <div className="mt-2 h-3 w-32 animate-pulse rounded bg-white/8" />
+                  </div>
+                </div>
+              </div>
+              <div className="hidden items-center gap-4 md:flex">
+                <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+                <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-3 pb-8 pt-3 sm:px-6 lg:px-8">
+        <div className="w-full">
+          <div className="flex flex-wrap gap-2">
+            <div className="h-6 w-20 animate-pulse rounded-sm bg-white/10" />
+            <div className="h-6 w-24 animate-pulse rounded-sm bg-white/8" />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4">
+            <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+          </div>
+          <div className="mt-4 h-24 animate-pulse rounded-md bg-white/[0.055]" />
+          <div className="mt-8 h-7 w-64 animate-pulse rounded-md bg-white/10" />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="grid gap-2">
+                <div className="aspect-video animate-pulse rounded-md bg-white/[0.07]" />
+                <div className="h-4 animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-white/7" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   )
 }
 

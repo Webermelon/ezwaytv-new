@@ -77,7 +77,7 @@ export function SearchPage() {
       <AppHeader active="search" />
 
       <section className="px-4 pb-10 pt-12 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-[1800px]">
           <Badge className="rounded-sm bg-primary text-white">Search</Badge>
           <h1 className="mt-4 text-4xl font-black leading-none sm:text-5xl">Find something to watch</h1>
 

@@ -16,6 +16,7 @@ type VideoJsPlayerProps = {
   playTrigger?: number
   unmuteOnPlayTrigger?: boolean
   vastAds: VideoAd[]
+  isLive?: boolean
   onPlay?: () => void
   onTimeUpdate?: (seconds: number) => void
   onPause?: (seconds: number) => void
@@ -61,6 +62,7 @@ export function VideoJsPlayer({
   playTrigger = 0,
   unmuteOnPlayTrigger = false,
   vastAds,
+  isLive = false,
   onPlay,
   onTimeUpdate,
   onPause,
@@ -173,6 +175,7 @@ export function VideoJsPlayer({
       controls: true,
       fill: true,
       fluid: false,
+      liveui: isLive,
       muted,
       preload: 'auto',
       poster: poster ?? undefined,
@@ -186,6 +189,11 @@ export function VideoJsPlayer({
         pictureInPictureToggle: true,
       },
     }) as VideoJsImaPlayer
+
+    if (isLive) {
+      player.addClass('vjs-ezway-live')
+      player.duration(Number.POSITIVE_INFINITY)
+    }
 
     playerRef.current = player
 
@@ -256,7 +264,7 @@ export function VideoJsPlayer({
       prerollCreativeRef.current = null
       finishPrerollRef.current = null
     }
-  }, [autoplay, hasVastAds, muted, poster, source])
+  }, [autoplay, hasVastAds, isLive, muted, poster, source])
 
   useEffect(() => {
     const player = playerRef.current
@@ -361,7 +369,7 @@ export function VideoJsPlayer({
   }, [playTrigger, startPreroll, unmuteOnPlayTrigger])
 
   return (
-    <div className="ez-video-stage relative aspect-video w-full overflow-hidden bg-[#050505]">
+    <div className="ez-video-stage relative h-full min-h-[320px] w-full overflow-hidden bg-[#050505]">
       {poster ? (
         <>
           <img src={poster} alt="" className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-2xl" />

@@ -32,7 +32,7 @@ class UserController extends Controller
             'status' => true,
             'data' => [
                 'profile' => $this->serializeUser($user),
-                'plan_details' => $user->is_subscribe ? $user->subscriptionPackage : null,
+                'plan_details' => $user->subscriptionPackage ?: null,
                 'register_mobile_number' => $user->mobile,
                 'your_device' => $currentDevice ? $this->serializeDevice($currentDevice) : null,
                 'other_device' => $otherDevices,

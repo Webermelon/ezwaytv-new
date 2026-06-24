@@ -129,7 +129,7 @@ export function AccountSettingPage() {
       <AppHeader active="home" />
 
       <section className="border-b border-white/8 bg-[radial-gradient(circle_at_82%_0%,rgba(212,168,67,0.18),transparent_28%),linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-[1500px]">
+        <div className="mx-auto max-w-[1800px]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">
@@ -153,7 +153,7 @@ export function AccountSettingPage() {
       </section>
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/account-setting" />
 
           <div className="min-w-0">

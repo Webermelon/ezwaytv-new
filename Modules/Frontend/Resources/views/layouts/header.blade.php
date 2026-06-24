@@ -703,6 +703,16 @@
                                         </button>
                                     @endif
                                 @endif
+                                @if (!auth()->check())
+                                    <li class="nav-item">
+                                        <a href="{{ route('login') }}" class="btn btn-primary font-size-14 text-uppercase px-3 login-btn">
+                                            <span class="d-flex align-items-center gap-2">
+                                                <i class="ph ph-sign-in"></i>
+                                                {{ __('frontend.login') }}
+                                            </span>
+                                        </a>
+                                    </li>
+                                @endif
                                 @php
                                     $currentProfile = getCurrentProfileSession();
                                     $isChildProfile = getCurrentProfileSession('is_child_profile');
