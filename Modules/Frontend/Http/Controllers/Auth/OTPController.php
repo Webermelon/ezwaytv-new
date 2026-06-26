@@ -98,6 +98,141 @@ class OTPController extends Controller
         return redirect('/'); // Redirect to intended page
     }
 
+
+    public function checkSpaUsername(Request $request)
+    {
+        $validated = $request->validate([
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+        ]);
+
+        $response = $this->coreGet('/api/users/check-username', [
+            'username' => $validated['username'],
+        ]);
+
+        if (!$response) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Username check is not available right now.',
+            ], 503);
+        }
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+    }
+
+    public function checkSpaEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email|max:255'],
+        ]);
+
+        $response = $this->coreGet('/api/users/check-email', [
+            'email' => $validated['email'],
+        ]);
+
+        if (!$response) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Email check is not available right now.',
+            ], 503);
+        }
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+    }
+
+    public function registerSpa(Request $request)
+    {
+        $validated = $request->validate([
+            'invite_code' => ['nullable', 'string', 'max:32'],
+            'first_name' => ['required', 'string', 'max:60'],
+            'last_name' => ['required', 'string', 'max:32'],
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+            'email' => ['required', 'email|max:255'],
+            'phone_number' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        $existing = User::where('email', $validated['email'])->first();
+        if ($existing) {
+            return response()->json([
+                'status' => false,
+                'message' => 'This email already has an eZWay TV account. Please sign in instead.',
+            ], 409);
+        }
+
+        $response = $this->corePost('/api/users', [
+            'invite_code' => trim((string) ($validated['invite_code'] ?? '')) ?: null,
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'] ?? null,
+            'source' => 'ezway-tv',
+            'timezone' => config('app.timezone', 'UTC'),
+            'active' => '1',
+            'ip_address' => $request->ip(),
+        ], 20);
+
+        if (!$response) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Core signup is not available right now.',
+            ], 503);
+        }
+
+        if (!$response->successful() && $response->status() !== 409) {
+            Log::warning('Core user signup failed for TV.', [
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+
+            return response($response->body(), $response->status())
+                ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+        }
+
+        if ($response->status() === 409) {
+            return response()->json([
+                'status' => false,
+                'message' => $response->json('message') ?: 'This account already exists. Please sign in instead.',
+            ], 409);
+        }
+
+        $coreUser = $response->json('data');
+        if (!is_array($coreUser) || empty($coreUser['id'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Core signup did not return a valid user.',
+            ], 502);
+        }
+
+        try {
+            $user = app(CoreTvAccessService::class)->syncUser([
+                'core_user_id' => (int) $coreUser['id'],
+                'connect_user_id' => (int) $coreUser['id'],
+                'email' => (string) ($coreUser['email'] ?? $validated['email']),
+                'username' => (string) ($coreUser['username'] ?? $validated['username']),
+                'first_name' => (string) ($coreUser['first_name'] ?? $validated['first_name']),
+                'last_name' => (string) ($coreUser['last_name'] ?? $validated['last_name']),
+                'phone' => (string) ($coreUser['phone_number'] ?? $validated['phone_number'] ?? ''),
+            ]);
+
+            if (!$user->hasRole('user')) {
+                $user->assignRole('user');
+            }
+
+            $user->createOrUpdateProfileWithAvatar();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'The account was created in Core, but TV could not prepare the local account.',
+            ], 500);
+        }
+
+        return $this->sendLoginOtpForUser($request, $user, 'Your account is ready. We sent a 4-digit login code to your email.');
+    }
+
     public function sendSpaOtp(Request $request)
     {
         $validated = $request->validate([
@@ -117,22 +252,7 @@ class OTPController extends Controller
             ], 404);
         }
 
-        $otp = (string) random_int(1000, 9999);
-        $user->forceFill(['otp' => $otp])->save();
-        $request->session()->put('tv_login_otp_email', $user->email);
-        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
-
-        if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'We sent a 4-digit login code to your email.',
-        ]);
+        return $this->sendLoginOtpForUser($request, $user, 'We sent a 4-digit login code to your email.');
     }
 
     public function verifySpaOtp(Request $request)
@@ -176,6 +296,61 @@ class OTPController extends Controller
             ],
         ]);
     }
+
+    private function sendLoginOtpForUser(Request $request, User $user, string $message)
+    {
+        $otp = (string) random_int(1000, 9999);
+        $user->forceFill(['otp' => $otp])->save();
+        $request->session()->put('tv_login_otp_email', $user->email);
+        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+
+        if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $message,
+        ]);
+    }
+
+    private function coreGet(string $path, array $query = [], int $timeout = 12): ?\Illuminate\Http\Client\Response
+    {
+        $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+        $token = (string) config('services.core_api.token');
+
+        if ($baseUrl === '' || $token === '') {
+            return null;
+        }
+
+        try {
+            return $this->coreApiRequest($timeout)->get($baseUrl.$path, $query);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return null;
+        }
+    }
+
+    private function corePost(string $path, array $payload = [], int $timeout = 15): ?\Illuminate\Http\Client\Response
+    {
+        $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+        $token = (string) config('services.core_api.token');
+
+        if ($baseUrl === '' || $token === '') {
+            return null;
+        }
+
+        try {
+            return $this->coreApiRequest($timeout)->post($baseUrl.$path, $payload);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return null;
+        }
+    }
+
     private function coreApiRequest(int $timeout = 15): \Illuminate\Http\Client\PendingRequest
     {
         $request = Http::withToken((string) config('services.core_api.token'))

@@ -469,6 +469,14 @@ class GenerateMenus
 
 
             $this->mainRoute($menu, [
+                'icon' => 'ph ph-key',
+                'title' => 'API Keys',
+                'route' => 'backend.core-api-keys.index',
+                'active' => ['app/core-api-keys', 'app/core-api-keys/*'],
+                'order' => 0,
+            ]);
+
+            $this->mainRoute($menu, [
                 'icon' => 'ph ph-gear-six',
                 'title' => __('sidebar.settings'),
                 'route' => 'backend.settings.general',

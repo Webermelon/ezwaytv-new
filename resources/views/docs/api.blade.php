@@ -48,11 +48,12 @@
 
     <div class="panel" id="auth">
         <h2>Authentication</h2>
-        <p>Every private Core request must include the shared bearer token. If <code>CORE_PRIVATE_API_SECRET</code> is set in TV, the request must also include an HMAC signature of the raw JSON body.</p>
-        <pre><code>Authorization: Bearer &lt;CORE_PRIVATE_API_TOKEN&gt;
-X-Core-Signature: &lt;hmac_sha256(raw_body, CORE_PRIVATE_API_SECRET)&gt;
+        <p>Every private Core request must include a bearer token. TV accepts the legacy <code>CORE_PRIVATE_API_TOKEN</code> from <code>.env</code> and active database keys generated from the backend page <code>/app/core-api-keys</code>.</p>
+        <pre><code>Authorization: Bearer &lt;generated_token_or_CORE_PRIVATE_API_TOKEN&gt;
+X-Core-Signature: &lt;hmac_sha256(raw_body, signing_secret)&gt;
 X-Request-Id: &lt;uuid&gt;
 Content-Type: application/json</code></pre>
+        <p>Generated API keys include a bearer token and signing secret. The token is stored hashed, the secret is stored encrypted, and both raw values are only shown once after generation.</p>
         <p>Invalid token returns <code>401</code>. Invalid signature also returns <code>401</code>.</p>
     </div>
 

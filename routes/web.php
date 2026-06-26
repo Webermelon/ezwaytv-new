@@ -11,6 +11,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Backend\EmailLogController;
+use App\Http\Controllers\Backend\CoreApiKeyController;
 use App\Http\Controllers\MusicVideoSubmissionController;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -176,6 +177,9 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 
 
         Route::resource("mobile-setting", MobileSettingController::class);
+        Route::get('core-api-keys', [CoreApiKeyController::class, 'index'])->name('core-api-keys.index');
+        Route::post('core-api-keys', [CoreApiKeyController::class, 'store'])->name('core-api-keys.store');
+        Route::post('core-api-keys/{coreApiKey}/revoke', [CoreApiKeyController::class, 'revoke'])->name('core-api-keys.revoke');
         Route::get('email-logs', [EmailLogController::class, 'index'])->name('email-logs.index');
         Route::get('email-logs/{id}', [EmailLogController::class, 'show'])->name('email-logs.show');
         Route::get('users-submission', [MusicVideoSubmissionController::class, 'adminIndex'])->name('users_submission.index');

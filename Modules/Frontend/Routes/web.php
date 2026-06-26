@@ -47,6 +47,9 @@ Route::get('/auth/apple/callback', [AuthController::class, 'handleAppleCallback'
 Route::view('/login', 'react-modernization')->name('login');
 
 Route::view('/otp-login', 'react-modernization')->name('otp-login');
+Route::get('/auth/check-username', [OTPController::class, 'checkSpaUsername'])->middleware('throttle:30,1')->name('auth.check-username');
+Route::get('/auth/check-email', [OTPController::class, 'checkSpaEmail'])->middleware('throttle:30,1')->name('auth.check-email');
+Route::post('/auth/spa-register', [OTPController::class, 'registerSpa'])->middleware('throttle:5,1')->name('auth.spa-register');
 Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:5,1')->name('auth.spa-otp.send');
 Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:10,1')->name('auth.spa-otp.verify');
 Route::post('/auth/otp-login-store', [OTPController::class, 'otpLoginStore'])->name('auth.otp-login-store');
