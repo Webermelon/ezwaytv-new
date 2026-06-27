@@ -78,9 +78,13 @@ type CorePackageEnvelope = {
 
 type CheckoutResponse = {
   success?: boolean
+  checkout_type?: string
+  payment_status?: string
   redirect_url?: string
   message?: string
   data?: {
+    checkout_type?: string
+    payment_status?: string
     redirect_url?: string
   }
 }
@@ -97,6 +101,7 @@ type PaymentMethod = {
 type PaymentMethodsResponse = {
   data?: PaymentMethod[]
   customer_id?: string | null
+  is_billable?: boolean | null
   message?: string
 }
 
@@ -106,6 +111,7 @@ export function SubscriptionPlanPage() {
   const [checkoutError, setCheckoutError] = useState('')
   const [previewPlan, setPreviewPlan] = useState<Plan | null>(null)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [paymentMethodsMessage, setPaymentMethodsMessage] = useState('')
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('')
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false)
   const [checkoutSignedIn, setCheckoutSignedIn] = useState(window.isAuthenticated !== false)
@@ -169,9 +175,11 @@ export function SubscriptionPlanPage() {
       const response = await api.get<PaymentMethodsResponse>('/core/payment-methods')
       const methods = Array.isArray(response.data) ? response.data : []
       setPaymentMethods(methods)
+      setPaymentMethodsMessage(response.message ?? '')
       setSelectedPaymentMethodId(methods[0]?.id ?? '')
     } catch (paymentMethodError) {
       setPaymentMethods([])
+      setPaymentMethodsMessage('')
       setSelectedPaymentMethodId('')
       setCheckoutError(checkoutErrorMessage(paymentMethodError))
     } finally {
@@ -307,6 +315,7 @@ export function SubscriptionPlanPage() {
         <CheckoutPreviewModal
           plan={previewPlan}
           methods={paymentMethods}
+          message={paymentMethodsMessage}
           selectedMethodId={selectedPaymentMethodId}
           onSelectMethod={setSelectedPaymentMethodId}
           loadingMethods={paymentMethodsLoading}
@@ -472,6 +481,7 @@ function PlanCard({
 function CheckoutPreviewModal({
   plan,
   methods,
+  message,
   selectedMethodId,
   onSelectMethod,
   loadingMethods,
@@ -484,6 +494,7 @@ function CheckoutPreviewModal({
 }: {
   plan: Plan
   methods: PaymentMethod[]
+  message?: string
   selectedMethodId: string
   onSelectMethod: (id: string) => void
   loadingMethods: boolean
@@ -548,6 +559,7 @@ function CheckoutPreviewModal({
 
                 <PaymentMethodSelector
                   methods={methods}
+                  message={message}
                   selectedMethodId={selectedMethodId}
                   onSelect={onSelectMethod}
                   loading={loadingMethods}
@@ -765,11 +777,13 @@ function CheckoutInput({
 
 function PaymentMethodSelector({
   methods,
+  message,
   selectedMethodId,
   onSelect,
   loading,
 }: {
   methods: PaymentMethod[]
+  message?: string
   selectedMethodId: string
   onSelect: (id: string) => void
   loading: boolean
@@ -785,7 +799,7 @@ function PaymentMethodSelector({
   if (!methods.length) {
     return (
       <div className="mt-4 rounded-xl bg-black/20 p-4 text-sm leading-6 text-white/52 ring-1 ring-white/8">
-        No saved cards were found. Continue to checkout to add a card securely.
+        {message || 'No saved cards were found. Continue to checkout to add a card securely.'}
       </div>
     )
   }
