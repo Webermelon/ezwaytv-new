@@ -207,7 +207,7 @@ Content-Type: application/json</code></pre>
         <h3>Response</h3>
         <pre><code>{
   "success": true,
-  "redirect_url": "https://sandbox.ezwaypay.com/subscribe/...",
+  "redirect_url": "https://sandbox.ezwaypay.com/subscription-checkout/...",
   "provider_subscription_id": "sub_..."
 }</code></pre>
         <p>Success, cancel, and failed redirects return to:</p>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, ChevronDown, ChevronRight, CreditCard, Film, Home as HomeIcon, LogOut, Menu, Music2, Play, Radio, Search, Send, Settings, Share2, Tv, UserCircle, UsersRound, Video, X } from 'lucide-react'
+import { Camera, ChevronDown, ChevronRight, CreditCard, Film, Home as HomeIcon, LogOut, Menu, Music2, PackageCheck, Play, Radio, Search, Send, Settings, Share2, Tv, UserCircle, UsersRound, Video, X } from 'lucide-react'
 
 import { BrandLogo } from '@/components/BrandLogo'
 import { api } from '@/lib/api'
@@ -56,7 +56,7 @@ const navItems = [
   // { key: 'movies', label: 'Movies', href: '/movies' },
   // { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
   { key: 'videos', label: 'Videos', href: '/videos' },
-  { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand' },
+  { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
   { key: 'pricing', label: 'Pricing', href: '/subscription-plan' },
   { key: 'distribution', label: 'Distribution', href: '/distribution' },
@@ -70,7 +70,7 @@ const mobileNavItems = [
   { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
   { key: 'tvshows', label: 'TV Shows', href: '/tv-shows', icon: Tv },
   { key: 'videos', label: 'Videos', href: '/videos', icon: Video },
-  { key: 'on-demand', label: 'On Demand', href: '/on-demand', dropdown: 'ondemand', icon: Film },
+  { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
   { key: 'pricing', label: 'Pricing', href: '/subscription-plan', icon: CreditCard },
   { key: 'distribution', label: 'Distribution', href: '/distribution', icon: Share2 },
@@ -564,6 +564,7 @@ function profileMenuItems(user: AuthUser) {
     { label: 'Account Settings', href: '/account-setting', icon: Settings },
     { label: 'Watchlist', href: '/watch-list', icon: Film },
     { label: 'Payment History', href: '/payment-history', icon: Share2 },
+    { label: 'Orders', href: '/orders', icon: PackageCheck },
     { label: 'Manage Profiles', href: '/manage-profile', icon: UsersRound },
   ]
 

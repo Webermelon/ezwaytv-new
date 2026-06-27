@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Check, CreditCard, Crown, ExternalLink, Loader2, Music2, Radio, ShieldCheck, Tv, X } from 'lucide-react'
+import { AlertTriangle, AtSign, Check, CreditCard, Crown, KeyRound, Loader2, Mail, Phone, RefreshCw, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { ApiError, api } from '@/lib/api'
 import { loadAccountSettings } from '@/modules/account/accountApi'
+
+type CheckoutAuthMode = 'email' | 'otp' | 'register'
+
+type CheckoutAuthResponse = {
+  status?: boolean
+  message?: string
+  errors?: Record<string, string[] | string>
+  available?: boolean
+  data?: { redirect_url?: string }
+}
 
 type Plan = {
   source?: 'local' | 'core'
@@ -90,39 +100,6 @@ type PaymentMethodsResponse = {
   message?: string
 }
 
-const externalChannelOffers = [
-  {
-    title: 'Get Your Own VOD Channel',
-    price: '199.99',
-    label: 'On Demand Channel',
-    description: 'Launch a branded VOD channel for your videos and audience.',
-    href: 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38376',
-    icon: Tv,
-    featured: true,
-    features: ['Branded VOD channel presence', 'Channel page for your content', 'External monthly service purchase'],
-  },
-  {
-    title: 'Music Channel',
-    price: '24.99',
-    label: 'Music Promotion',
-    description: 'Get your music video in rotation on the EZWAY Music Channel.',
-    href: 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38358',
-    icon: Music2,
-    featured: false,
-    features: ['Music video rotation', 'EZWAY Music Channel exposure', 'External monthly service purchase'],
-  },
-  {
-    title: 'Live Channel Time Slot',
-    price: '249.99',
-    label: 'Live TV Placement',
-    description: 'Reserve a time slot on one of our live channels.',
-    href: 'mailto:info@ezwaynetwork.com?subject=eZWay%20TV%20Live%20Channel%20Time%20Slot',
-    icon: Radio,
-    featured: false,
-    features: ['Live channel scheduling request', 'Placement on an eZWay live channel', 'Team confirmation required'],
-  },
-]
-
 export function SubscriptionPlanPage() {
   const [checkoutPlanId, setCheckoutPlanId] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -131,12 +108,19 @@ export function SubscriptionPlanPage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('')
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false)
+  const [checkoutSignedIn, setCheckoutSignedIn] = useState(window.isAuthenticated !== false)
   const checkoutStatus = new URLSearchParams(window.location.search).get('checkout_status')
   const checkoutSucceeded = checkoutStatus === 'success'
 
   const plansQuery = useQuery({
     queryKey: ['subscription-plans'],
     queryFn: loadPlans,
+    staleTime: 5 * 60_000,
+  })
+
+  const channelServicesQuery = useQuery({
+    queryKey: ['tv-channel-service-packages'],
+    queryFn: loadChannelServicePlans,
     staleTime: 5 * 60_000,
   })
 
@@ -150,6 +134,7 @@ export function SubscriptionPlanPage() {
   const activeSubscription = accountQuery.data?.plan_details ?? null
   const hasActiveSubscription = isActiveSubscription(activeSubscription)
   const plans = plansQuery.data ?? []
+  const channelServicePlans = channelServicesQuery.data ?? []
   const filteredPlans = useMemo(() => plans.filter(isPremiumContentPlan), [plans])
 
   useEffect(() => {
@@ -162,33 +147,43 @@ export function SubscriptionPlanPage() {
     setError('')
     setCheckoutError('')
 
-    if (window.isAuthenticated === false) {
-      window.location.href = `/login?redirect=${encodeURIComponent('/subscription-plan')}`
-      return
-    }
-
     if (plan.source === 'core') {
       setPreviewPlan(plan)
       setSelectedPaymentMethodId('')
       setPaymentMethods([])
-      setPaymentMethodsLoading(true)
 
-      try {
-        const response = await api.get<PaymentMethodsResponse>('/core/payment-methods')
-        const methods = Array.isArray(response.data) ? response.data : []
-        setPaymentMethods(methods)
-        setSelectedPaymentMethodId(methods[0]?.id ?? '')
-      } catch (paymentMethodError) {
-        setPaymentMethods([])
-        setSelectedPaymentMethodId('')
-        setCheckoutError(checkoutErrorMessage(paymentMethodError))
-      } finally {
+      if (checkoutSignedIn || window.isAuthenticated !== false) {
+        await loadCheckoutPaymentMethods()
+      } else {
         setPaymentMethodsLoading(false)
       }
       return
     }
 
     await startCheckout(plan, '')
+  }
+
+  async function loadCheckoutPaymentMethods() {
+    setPaymentMethodsLoading(true)
+    try {
+      const response = await api.get<PaymentMethodsResponse>('/core/payment-methods')
+      const methods = Array.isArray(response.data) ? response.data : []
+      setPaymentMethods(methods)
+      setSelectedPaymentMethodId(methods[0]?.id ?? '')
+    } catch (paymentMethodError) {
+      setPaymentMethods([])
+      setSelectedPaymentMethodId('')
+      setCheckoutError(checkoutErrorMessage(paymentMethodError))
+    } finally {
+      setPaymentMethodsLoading(false)
+    }
+  }
+
+  async function handleCheckoutSignedIn() {
+    window.isAuthenticated = true
+    setCheckoutSignedIn(true)
+    await accountQuery.refetch()
+    await loadCheckoutPaymentMethods()
   }
 
   async function startCheckout(plan: Plan, paymentMethodId: string) {
@@ -286,9 +281,7 @@ export function SubscriptionPlanPage() {
           ) : null}
 
           {plansQuery.isLoading ? (
-            <div className="flex min-h-64 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
-              <Loader2 className="h-6 w-6 animate-spin text-[#d4a843]" />
-            </div>
+            <PricingPlanSkeletonGrid />
           ) : filteredPlans.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredPlans.map((plan, index) => (
@@ -319,6 +312,8 @@ export function SubscriptionPlanPage() {
           loadingMethods={paymentMethodsLoading}
           checkoutBusy={checkoutPlanId === previewPlan.plan_id}
           error={checkoutError}
+          isSignedIn={checkoutSignedIn || window.isAuthenticated !== false}
+          onSignedIn={handleCheckoutSignedIn}
           onClose={closeCheckoutPreview}
           onCheckout={() => startCheckout(previewPlan, selectedPaymentMethodId)}
         />
@@ -335,14 +330,66 @@ export function SubscriptionPlanPage() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {externalChannelOffers.map((offer) => (
-              <ExternalOfferCard key={offer.title} offer={offer} />
-            ))}
-          </div>
+          {channelServicesQuery.isLoading ? (
+            <PricingPlanSkeletonGrid compact />
+          ) : channelServicePlans.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-3">
+              {channelServicePlans.map((plan, index) => (
+                <ChannelServiceCard
+                  key={plan.plan_id}
+                  plan={plan}
+                  featured={index === 0}
+                  loading={checkoutPlanId === plan.plan_id}
+                  onChoose={() => handleChoose(plan)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-white/10 bg-white/[0.035] p-8 text-center text-white/56">
+              No active channel service packages found.
+            </div>
+          )}
         </div>
       </section>
     </main>
+  )
+}
+
+function PricingPlanSkeletonGrid({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={compact ? 'grid gap-4 md:grid-cols-3' : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3'}>
+      {Array.from({ length: compact ? 3 : 3 }).map((_, index) => (
+        <PricingPlanSkeletonCard key={index} compact={compact} featured={index === 0} />
+      ))}
+    </div>
+  )
+}
+
+function PricingPlanSkeletonCard({ compact, featured }: { compact: boolean; featured: boolean }) {
+  return (
+    <article className={['relative overflow-hidden rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/28 bg-[#d4a843]/8' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+      <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[pricing-shimmer_1.55s_infinite] bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.075)_45%,transparent_62%)]" />
+      <div className="relative flex min-h-12 items-start justify-between gap-3">
+        <div className="w-full max-w-[70%]">
+          <div className="h-3 w-24 rounded-full bg-[#d4a843]/20" />
+          <div className="mt-4 h-7 w-full rounded-md bg-white/10" />
+        </div>
+        <div className="h-7 w-20 rounded-full bg-white/10" />
+      </div>
+      <div className="relative mt-7 flex items-end gap-2">
+        <div className="h-10 w-32 rounded-md bg-white/12" />
+        <div className="mb-1 h-4 w-16 rounded bg-white/8" />
+      </div>
+      <div className="relative mt-7 grid gap-3">
+        {Array.from({ length: compact ? 3 : 5 }).map((_, itemIndex) => (
+          <div key={itemIndex} className="flex items-center gap-3">
+            <div className="h-4 w-4 rounded-full bg-[#d4a843]/20" />
+            <div className={['h-4 rounded bg-white/9', itemIndex % 3 === 0 ? 'w-10/12' : itemIndex % 3 === 1 ? 'w-8/12' : 'w-9/12'].join(' ')} />
+          </div>
+        ))}
+      </div>
+      <div className="relative mt-8 h-12 rounded-md bg-white/12" />
+    </article>
   )
 }
 
@@ -393,14 +440,16 @@ function PlanCard({
         <p className="mt-5 text-sm leading-6 text-white/58">{plan.description}</p>
       ) : null}
 
-      <ul className="mt-6 grid gap-3">
-        {(limitations.length > 0 ? limitations : fallbackFeatures()).map((item, index) => (
-          <li key={item.id ?? item.slug ?? index} className="flex gap-3 text-sm leading-5 text-white/68">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
-            <span>{item.message || item.limitation_title}</span>
-          </li>
-        ))}
-      </ul>
+      {limitations.length > 0 ? (
+        <ul className="mt-6 grid gap-3">
+          {limitations.map((item, index) => (
+            <li key={item.id ?? item.slug ?? index} className="flex gap-3 text-sm leading-5 text-white/68">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+              <span>{item.message || item.limitation_title}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <button
         type="button"
@@ -428,6 +477,8 @@ function CheckoutPreviewModal({
   loadingMethods,
   checkoutBusy,
   error,
+  isSignedIn,
+  onSignedIn,
   onClose,
   onCheckout,
 }: {
@@ -438,6 +489,8 @@ function CheckoutPreviewModal({
   loadingMethods: boolean
   checkoutBusy: boolean
   error: string
+  isSignedIn: boolean
+  onSignedIn: () => Promise<void>
   onClose: () => void
   onCheckout: () => void
 }) {
@@ -481,48 +534,232 @@ function CheckoutPreviewModal({
           </section>
 
           <aside className="rounded-xl border border-white/10 bg-white/[0.045] p-5">
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d4a843] text-black">
-                <CreditCard className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-black text-white">Payment method</p>
-                <p className="text-xs text-white/48">Saved card or add a new one</p>
-              </div>
-            </div>
+            {isSignedIn ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d4a843] text-black">
+                    <CreditCard className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-white">Payment method</p>
+                    <p className="text-xs text-white/48">Saved card or add a new one</p>
+                  </div>
+                </div>
 
-            <PaymentMethodSelector
-              methods={methods}
-              selectedMethodId={selectedMethodId}
-              onSelect={onSelectMethod}
-              loading={loadingMethods}
-            />
+                <PaymentMethodSelector
+                  methods={methods}
+                  selectedMethodId={selectedMethodId}
+                  onSelect={onSelectMethod}
+                  loading={loadingMethods}
+                />
 
-            {error ? (
-              <div className="mt-5 flex gap-3 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-semibold leading-6 text-red-100">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
-                <span>{error}</span>
-              </div>
-            ) : null}
+                {error ? (
+                  <div className="mt-5 flex gap-3 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-semibold leading-6 text-red-100">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+                    <span>{error}</span>
+                  </div>
+                ) : null}
 
-            <button
-              type="button"
-              onClick={onCheckout}
-              disabled={checkoutBusy || loadingMethods}
-              className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {checkoutBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-              {checkoutBusy ? 'Processing...' : selectedMethodId ? 'Pay with selected card' : 'Add new card / Checkout'}
-            </button>
+                <button
+                  type="button"
+                  onClick={onCheckout}
+                  disabled={checkoutBusy || loadingMethods}
+                  className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {checkoutBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                  {checkoutBusy ? 'Processing...' : selectedMethodId ? 'Pay with selected card' : 'Add new card / Checkout'}
+                </button>
 
-            <p className="mt-3 flex gap-2 text-xs leading-5 text-white/44">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
-              {selectedMethodId ? 'Core will try this saved card first. If it fails, you will be sent to hosted checkout.' : 'Hosted checkout lets you add a new card securely.'}
-            </p>
+                <p className="mt-3 flex gap-2 text-xs leading-5 text-white/44">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+                  {selectedMethodId ? 'Core will try this saved card first. If it fails, you will be sent to hosted checkout.' : 'Hosted checkout lets you add a new card securely.'}
+                </p>
+              </>
+            ) : (
+              <CheckoutAuthPanel onSignedIn={onSignedIn} />
+            )}
           </aside>
         </div>
       </div>
     </div>
+  )
+}
+
+function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
+  const [mode, setMode] = useState<CheckoutAuthMode>('email')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [username, setUsername] = useState('')
+  const [phone, setPhone] = useState('')
+
+  const cleanEmail = email.trim().toLowerCase()
+  const cleanOtp = otp.replace(/\D/g, '').slice(0, 4)
+  const canCreate = firstName.trim() && lastName.trim() && username.trim().length >= 3 && cleanEmail
+
+  async function sendOtp() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const formData = new FormData()
+      formData.set('email', cleanEmail)
+      const response = await api.post<CheckoutAuthResponse>('/auth/spa-otp/send', formData)
+      ensureCheckoutAuthSuccess(response, 'We sent a login code to your email.')
+      setMode('otp')
+      setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'We sent a login code to your email.') })
+    } catch (error) {
+      const text = checkoutErrorMessage(error)
+      if (error instanceof ApiError && error.status === 404) {
+        setMode('register')
+        setMessage({ tone: 'error', text: 'No TV account found for this email. Create your account here to continue checkout.' })
+      } else {
+        setMessage({ tone: 'error', text })
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function verifyOtp() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const formData = new FormData()
+      formData.set('email', cleanEmail)
+      formData.set('otp', cleanOtp)
+      const response = await api.post<CheckoutAuthResponse>('/auth/spa-otp/verify', formData)
+      ensureCheckoutAuthSuccess(response, 'You are signed in.')
+      setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'You are signed in. Loading checkout...') })
+      await onSignedIn()
+    } catch (error) {
+      setMessage({ tone: 'error', text: checkoutErrorMessage(error) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function createAccount() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const formData = new FormData()
+      formData.set('invite_code', inviteCode.trim())
+      formData.set('first_name', firstName.trim())
+      formData.set('last_name', lastName.trim())
+      formData.set('username', username.trim())
+      formData.set('email', cleanEmail)
+      formData.set('phone_number', phone.trim())
+      const response = await api.post<CheckoutAuthResponse>('/auth/spa-register', formData)
+      ensureCheckoutAuthSuccess(response, 'Your account is ready. We sent a login code to your email.')
+      setMode('otp')
+      setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'Your account is ready. We sent a login code to your email.') })
+    } catch (error) {
+      setMessage({ tone: 'error', text: checkoutErrorMessage(error) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-[#d4a843] text-black">
+          {mode === 'register' ? <UserRound className="h-5 w-5" /> : mode === 'otp' ? <KeyRound className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
+        </span>
+        <div>
+          <p className="text-sm font-black text-white">Checkout sign in</p>
+          <p className="text-xs text-white/48">Create or verify your account here</p>
+        </div>
+      </div>
+
+      {message ? (
+        <div className={["mt-5 rounded-xl border p-4 text-sm font-semibold leading-6", message.tone === 'success' ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100' : 'border-red-400/25 bg-red-500/10 text-red-100'].join(' ')}>
+          {message.text}
+        </div>
+      ) : null}
+
+      {mode === 'email' ? (
+        <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void sendOtp() }}>
+          <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
+          <button type="submit" disabled={busy || !cleanEmail} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+            {busy ? 'Checking...' : 'Continue with Email'}
+          </button>
+        </form>
+      ) : null}
+
+      {mode === 'otp' ? (
+        <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void verifyOtp() }}>
+          <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} disabled />
+          <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label="Login code" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
+          <button type="submit" disabled={busy || cleanOtp.length !== 4} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            {busy ? 'Verifying...' : 'Verify and Continue'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => { setOtp(''); setMode('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+            <RefreshCw className="h-4 w-4" /> Use a different email
+          </button>
+        </form>
+      ) : null}
+
+      {mode === 'register' ? (
+        <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void createAccount() }}>
+          <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
+          <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Invite code" value={inviteCode} onChange={setInviteCode} autoComplete="off" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <CheckoutInput icon={<UserRound className="h-4 w-4" />} label="First name" value={firstName} onChange={setFirstName} autoComplete="given-name" required />
+            <CheckoutInput icon={<UserRound className="h-4 w-4" />} label="Last name" value={lastName} onChange={setLastName} autoComplete="family-name" required />
+          </div>
+          <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Username" value={username} onChange={(value) => setUsername(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="username" required />
+          <CheckoutInput icon={<Phone className="h-4 w-4" />} label="Phone" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
+          <button type="submit" disabled={busy || !canCreate} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
+            {busy ? 'Creating...' : 'Create Account and Continue'}
+          </button>
+          <button type="button" disabled={busy} onClick={() => { setMode('email'); setMessage(null) }} className="text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+            Already have an account? Send login code
+          </button>
+        </form>
+      ) : null}
+    </div>
+  )
+}
+
+function CheckoutInput({
+  icon,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  autoComplete,
+  inputMode,
+  required,
+  disabled,
+  maxLength,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  autoComplete?: string
+  inputMode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'
+  required?: boolean
+  disabled?: boolean
+  maxLength?: number
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-white/46">{label}</span>
+      <span className="flex h-12 items-center gap-3 rounded-xl border border-white/10 bg-black/28 px-3 text-white transition focus-within:border-[#d4a843]/70 focus-within:bg-black/40">
+        <span className="text-[#d4a843]">{icon}</span>
+        <input value={value} onChange={(event) => onChange(event.target.value)} type={type} autoComplete={autoComplete} inputMode={inputMode} required={required} disabled={disabled} maxLength={maxLength} className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-white/32 disabled:cursor-not-allowed disabled:text-white/50" />
+      </span>
+    </label>
   )
 }
 
@@ -573,51 +810,71 @@ function PaymentMethodSelector({
     </div>
   )
 }
-function ExternalOfferCard({ offer }: { offer: (typeof externalChannelOffers)[number] }) {
-  const Icon = offer.icon
-  const isMailto = offer.href.startsWith('mailto:')
+function ChannelServiceCard({
+  plan,
+  featured,
+  loading,
+  onChoose,
+}: {
+  plan: Plan
+  featured: boolean
+  loading: boolean
+  onChoose: () => void
+}) {
+  const price = Number(plan.total_price ?? plan.price ?? 0)
+  const limitations = (plan.plan_type ?? []).filter((item) => item.message || item.limitation_title).slice(0, 5)
 
   return (
-    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', offer.featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
       <div className="flex items-start justify-between gap-3">
         <span className="rounded-sm bg-[#d4a843] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
-          {offer.label}
+          {plan.category_name || 'TV Package'}
         </span>
-        <Icon className="h-7 w-7 shrink-0 text-[#d4a843]" />
+        <ShoppingCart className="h-7 w-7 shrink-0 text-[#d4a843]" />
       </div>
 
-      <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{offer.title}</h3>
-      <p className="mt-3 min-h-12 text-sm leading-6 text-white/58">{offer.description}</p>
+      <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{plan.name}</h3>
+      {plan.description ? <p className="mt-3 min-h-12 text-sm leading-6 text-white/58">{plan.description}</p> : null}
 
       <div className="mt-6 flex items-end gap-2">
-        <span className="text-4xl font-black">${offer.price}</span>
-        <span className="pb-1 text-sm font-bold text-white/48">/ month</span>
+        <span className="text-4xl font-black">${formatMoney(price)}</span>
+        <span className="pb-1 text-sm font-bold text-white/48">/ {durationLabel(plan)}</span>
       </div>
 
-      <ul className="mt-6 grid gap-3">
-        {offer.features.map((feature) => (
-          <li key={feature} className="flex gap-3 text-sm leading-5 text-white/68">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
+      {limitations.length > 0 ? (
+        <ul className="mt-6 grid gap-3">
+          {limitations.map((item, index) => (
+            <li key={String(item.id ?? item.slug ?? item.message ?? index)} className="flex gap-3 text-sm leading-5 text-white/68">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+              <span>{item.message || item.limitation_title}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
-      <a
-        href={offer.href}
-        target={isMailto ? undefined : '_blank'}
-        rel={isMailto ? undefined : 'noreferrer'}
-        className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition', offer.featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
+      <button
+        type="button"
+        onClick={onChoose}
+        disabled={loading}
+        className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition disabled:cursor-wait disabled:opacity-70', featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
       >
-        {isMailto ? 'Contact to Reserve' : 'Open External Checkout'}
-        <ExternalLink className="h-4 w-4" />
-      </a>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+        {loading ? 'Preparing...' : 'Choose Service'}
+      </button>
     </article>
   )
 }
 
 async function loadPlans() {
-  const response = await api.get<CorePackageEnvelope>('/api/core/package-categories/tv-subscription/packages?status=active&limit=50')
+  return loadCoreCategoryPlans('tv-subscription')
+}
+
+async function loadChannelServicePlans() {
+  return loadCoreCategoryPlans('tv-packges')
+}
+
+async function loadCoreCategoryPlans(categorySlug: string) {
+  const response = await api.get<CorePackageEnvelope>(`/api/core/package-categories/${categorySlug}/packages?status=active&limit=50`)
   const packages = Array.isArray(response.data) ? response.data : []
 
   return packages.map((item) => corePackageToPlan(item, response.category))
@@ -702,6 +959,21 @@ function isPremiumContentPlan(plan: Plan) {
   return plan.source === 'core' || plan.category_slug === 'tv-subscription'
 }
 
+function ensureCheckoutAuthSuccess(payload: CheckoutAuthResponse | null, fallback: string) {
+  if (payload?.status === false) {
+    throw new Error(checkoutAuthMessage(payload, fallback))
+  }
+}
+
+function checkoutAuthMessage(payload: CheckoutAuthResponse | null, fallback: string) {
+  if (typeof payload?.message === 'string' && payload.message.trim()) return payload.message
+  if (payload?.errors) {
+    const first = Object.values(payload.errors).flat().find(Boolean)
+    if (first) return String(first)
+  }
+  return fallback
+}
+
 function checkoutErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     const payload = error.payload as { message?: string; errors?: Record<string, string[] | string> } | null
@@ -713,12 +985,4 @@ function checkoutErrorMessage(error: unknown) {
   }
 
   return error instanceof Error ? error.message : 'Unable to start checkout.'
-}
-
-function fallbackFeatures(): PlanLimitation[] {
-  return [
-    { id: 'streaming', message: 'Access eligible eZWay TV content.' },
-    { id: 'external', message: 'Recurring billing through eZWay Network.' },
-    { id: 'account', message: 'Plan record is saved to your local account.' },
-  ]
 }

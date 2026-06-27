@@ -79,6 +79,24 @@ body {
   color: hsl(var(--foreground));
 }
 
+a[href],
+button:not(:disabled),
+[role="button"],
+summary,
+label[for],
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
 html {
   color-scheme: dark;
 }
@@ -666,4 +684,10 @@ body {
   width: 100%;
   min-height: 720px;
   border: 0;
+}
+
+@keyframes pricing-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }

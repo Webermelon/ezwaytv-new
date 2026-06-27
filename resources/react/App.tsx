@@ -4,6 +4,7 @@ import { AccountSettingPage } from '@/modules/account/AccountSettingPage'
 import { ChangePasswordPage } from '@/modules/account/ChangePasswordPage'
 import { ProfileDetailsPage } from '@/modules/account/ProfileDetailsPage'
 import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
+import { OrdersPage } from '@/modules/account/OrdersPage'
 import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
 import { HomePage } from '@/modules/home/HomePage'
@@ -46,6 +47,8 @@ export default function App() {
     page = <SubscriptionPlanPage />
   } else if (pathname === '/payment-history') {
     page = <PaymentHistoryPage />
+  } else if (pathname === '/orders') {
+    page = <OrdersPage />
   } else if (pathname === '/account-setting') {
     page = <AccountSettingPage />
   } else if (pathname === '/watch-list') {

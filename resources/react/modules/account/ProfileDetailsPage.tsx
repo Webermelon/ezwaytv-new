@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, UserCircle, X } from 'lucide-react'
+import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, PackageCheck, UserCircle, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
@@ -182,6 +182,7 @@ export function AccountSidebar({ activeHref }: { activeHref: string }) {
     { label: 'Account Settings', href: '/account-setting', icon: UserCircle },
     { label: 'My Watchlist', href: '/watch-list', icon: Bookmark },
     { label: 'Payment History', href: '/payment-history', icon: CreditCard },
+    { label: 'Orders', href: '/orders', icon: PackageCheck },
     { label: 'Profile Details', href: '/update-profile', icon: UserCircle },
     { label: 'Change Password', href: '/change-password', icon: KeyRound },
   ]
