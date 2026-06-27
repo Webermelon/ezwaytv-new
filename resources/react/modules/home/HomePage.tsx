@@ -286,10 +286,6 @@ function contentHref(item?: MediaItem) {
     params.set('ondemand_channel', String(item.ondemand_channel_id))
   }
 
-  if (type === 'ondemand' || item.profile_url) {
-    return item.username ? `/on-demand/${item.username}` : '/on-demand'
-  }
-
   if (type === 'video' && item.slug) {
     params.set('autoplay', '1')
     return `/video-details/${item.slug}?${params.toString()}`
@@ -301,6 +297,10 @@ function contentHref(item?: MediaItem) {
 
   if (type === 'tvshow' && item.slug) {
     return `/tvshow-details/${item.slug}`
+  }
+
+  if (type === 'ondemand' || item.profile_url) {
+    return item.username ? `/on-demand/${item.username}` : '/on-demand'
   }
 
   if (type === 'livetv') {
