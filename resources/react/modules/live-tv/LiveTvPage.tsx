@@ -127,7 +127,7 @@ export function LiveTvPage() {
             {featured?.details?.name ?? featured?.name ?? 'Live TV'}
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-            Browse live channels in the React SPA. Channel detail pages now stay inside React, while playback still uses the existing Laravel player.
+            Watch live channels, music, entertainment, and original programming from the eZWay TV network.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
@@ -213,7 +213,8 @@ function LiveTvDetailPage({
   const image = channel?.poster_tv_image ?? channel?.poster_image ?? channel?.details?.thumbnail_image
   const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
   const channelBadge = channelNumber ? channelLabel(channelNumber) : null
-  const description = channel?.details?.description ?? channel?.description ?? 'Live channel details are loading from the existing Laravel APIs.'
+  const description = cleanLiveTvDescription(channel?.details?.description ?? channel?.description)
+    || 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
   const isSubscriptionLocked = isPremiumMediaLocked(channel)
@@ -549,7 +550,7 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
@@ -1355,6 +1356,27 @@ function relatedChannels(channels: MediaItem[], current?: MediaItem) {
 
 function currentLiveTvShareUrl() {
   return window.location.href
+}
+
+function cleanLiveTvDescription(value?: string | null) {
+  if (!value) return ''
+
+  return decodeHtmlEntities(value)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function decodeHtmlEntities(value: string) {
+  if (typeof document === 'undefined') {
+    return value.replace(/&nbsp;/gi, ' ')
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = value
+
+  return textarea.value
 }
 
 async function copyLiveTvShareUrl() {
