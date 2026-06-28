@@ -389,7 +389,7 @@ function useAvailability(path: string, key: string, value: string) {
         const payload = await getAuth(`${path}?${new URLSearchParams({ [key]: normalized })}`, controller.signal)
         const available = payload.available === true
         setState(available ? 'available' : 'taken')
-        setMessage(getApiMessage(payload, available ? 'Available.' : 'Already taken.'))
+        setMessage(available ? `${key === 'email' ? 'Email' : 'Username'} is valid` : getApiMessage(payload, 'Already taken.'))
       } catch (error) {
         if (controller.signal.aborted) return
         setState('invalid')

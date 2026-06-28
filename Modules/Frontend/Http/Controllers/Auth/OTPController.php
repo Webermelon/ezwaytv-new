@@ -105,15 +105,33 @@ class OTPController extends Controller
             'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
         ]);
 
+        $localExists = User::withTrashed()->where('username', $validated['username'])->exists();
+        if ($localExists) {
+            return response()->json([
+                'status' => true,
+                'available' => false,
+                'message' => 'Already taken.',
+            ]);
+        }
+
         $response = $this->coreGet('/api/users/check-username', [
             'username' => $validated['username'],
         ]);
 
-        if (!$response) {
+        if (!$response || $response->serverError()) {
             return response()->json([
-                'status' => false,
-                'message' => 'Username check is not available right now.',
-            ], 503);
+                'status' => true,
+                'available' => true,
+                'message' => 'Username is valid',
+            ]);
+        }
+
+        if ($response->successful()) {
+            $payload = $response->json();
+            if (is_array($payload) && array_key_exists('available', $payload)) {
+                $payload['message'] = $payload['available'] ? 'Username is valid' : ($payload['message'] ?? 'Already taken.');
+                return response()->json($payload, $response->status());
+            }
         }
 
         return response($response->body(), $response->status())
@@ -123,18 +141,36 @@ class OTPController extends Controller
     public function checkSpaEmail(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'email|max:255'],
+            'email' => ['required', 'email', 'max:255'],
         ]);
+
+        $localExists = User::withTrashed()->where('email', $validated['email'])->exists();
+        if ($localExists) {
+            return response()->json([
+                'status' => true,
+                'available' => false,
+                'message' => 'Already taken.',
+            ]);
+        }
 
         $response = $this->coreGet('/api/users/check-email', [
             'email' => $validated['email'],
         ]);
 
-        if (!$response) {
+        if (!$response || $response->serverError()) {
             return response()->json([
-                'status' => false,
-                'message' => 'Email check is not available right now.',
-            ], 503);
+                'status' => true,
+                'available' => true,
+                'message' => 'Email is valid',
+            ]);
+        }
+
+        if ($response->successful()) {
+            $payload = $response->json();
+            if (is_array($payload) && array_key_exists('available', $payload)) {
+                $payload['message'] = $payload['available'] ? 'Email is valid' : ($payload['message'] ?? 'Already taken.');
+                return response()->json($payload, $response->status());
+            }
         }
 
         return response($response->body(), $response->status())
@@ -148,7 +184,7 @@ class OTPController extends Controller
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:32'],
             'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
-            'email' => ['required', 'email|max:255'],
+            'email' => ['required', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:32'],
         ]);
 
