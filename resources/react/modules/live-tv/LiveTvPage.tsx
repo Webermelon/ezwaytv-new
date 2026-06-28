@@ -214,7 +214,6 @@ function LiveTvDetailPage({
   const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
   const channelBadge = channelNumber ? channelLabel(channelNumber) : null
   const description = cleanLiveTvDescription(channel?.details?.description ?? channel?.description)
-    || 'Live channel details are loading from the existing Laravel APIs.'
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
   const isSubscriptionLocked = isPremiumMediaLocked(channel)
@@ -427,9 +426,11 @@ function LiveTvDetailPage({
             <ArrowLeft className="h-4 w-4" />
             Live TV
           </a>
-          <div className="rounded-md border border-white/10 bg-white/[0.045] p-4 text-sm leading-7 text-white/68">
-            {description}
-          </div>
+          {description ? (
+            <div className="rounded-md border border-white/10 bg-white/[0.045] p-4 text-sm leading-7 text-white/68">
+              {description}
+            </div>
+          ) : null}
           {isSubscriptionLocked ? <LiveTvPremiumNotice channel={channel} /> : null}
         </div>
       </section>
@@ -452,23 +453,19 @@ function LiveTvDetailPage({
         </section>
       ) : null}
 
-      <section className="px-3 pb-16 sm:px-6 lg:px-8">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold">More Live Channels</h2>
-          <a href="/livetv" className="text-sm font-semibold text-white/58 hover:text-white">View all</a>
-        </div>
-        {suggestions.length > 0 ? (
+      {suggestions.length > 0 ? (
+        <section className="px-3 pb-16 sm:px-6 lg:px-8">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-bold">More Live Channels</h2>
+            <a href="/livetv" className="text-sm font-semibold text-white/58 hover:text-white">View all</a>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
             {suggestions.slice(0, 12).map((item) => (
               <LiveTvCard key={`suggestion-${item.id}`} channel={item} channelNumber={liveTvChannelNumber(item, suggestions)} />
             ))}
           </div>
-        ) : (
-          <div className="rounded-md border border-white/10 bg-white/[0.04] p-8 text-sm text-white/56">
-            More channels will appear here when the API returns related Live TV content.
-          </div>
-        )}
-      </section>
+        </section>
+      ) : null}
       <AdBannerSlider placement="livetv" />
     </main>
   )
@@ -769,9 +766,14 @@ function ProgramSummary({
           ) : null}
         </>
       ) : (
-        <p className="text-sm leading-6 text-white/54">
-          {loading ? 'Loading schedule from the existing Live TV API.' : 'No program data is available for this slot.'}
-        </p>
+        loading ? (
+          <div className="space-y-2">
+            <span className="block h-4 w-3/4 animate-pulse rounded-sm bg-white/10" />
+            <span className="block h-3 w-1/2 animate-pulse rounded-sm bg-white/8" />
+          </div>
+        ) : (
+          <p className="text-sm leading-6 text-white/54">No program data is available for this slot.</p>
+        )
       )}
     </article>
   )
