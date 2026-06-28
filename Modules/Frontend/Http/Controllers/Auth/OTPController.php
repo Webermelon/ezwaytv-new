@@ -188,12 +188,50 @@ class OTPController extends Controller
             'phone_number' => ['nullable', 'string', 'max:32'],
         ]);
 
-        $existing = User::where('email', $validated['email'])->first();
+        $existing = User::withTrashed()->where('email', $validated['email'])->first();
         if ($existing) {
             return response()->json([
                 'status' => false,
                 'message' => 'This email already has an eZWay TV account. Please sign in instead.',
             ], 409);
+        }
+
+        $otp = $this->makeLoginOtp();
+        $name = trim($validated['first_name'].' '.$validated['last_name']);
+
+        if (! $this->sendOtpViaCore($validated['email'], $otp, $name)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
+            ], 500);
+        }
+
+        $request->session()->put('tv_pending_registration', [
+            'data' => $validated,
+            'otp' => $otp,
+            'email' => $validated['email'],
+            'expires_at' => now()->addMinutes(10)->timestamp,
+            'ip_address' => $request->ip(),
+        ]);
+        $request->session()->put('tv_login_otp_email', $validated['email']);
+        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'We sent a 4-digit login code to your email.',
+        ]);
+    }
+
+    private function createCoreRegistrationUser(Request $request, array $validated): array
+    {
+        $existing = User::withTrashed()->where('email', $validated['email'])->first();
+        if ($existing) {
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'This email already has an eZWay TV account. Please sign in instead.',
+                ], 409),
+            ];
         }
 
         $response = $this->corePost('/api/users', [
@@ -210,10 +248,12 @@ class OTPController extends Controller
         ], 20);
 
         if (!$response) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Core signup is not available right now.',
-            ], 503);
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'Core signup is not available right now.',
+                ], 503),
+            ];
         }
 
         if (!$response->successful() && $response->status() !== 409) {
@@ -222,23 +262,29 @@ class OTPController extends Controller
                 'body' => $response->json() ?? $response->body(),
             ]);
 
-            return response($response->body(), $response->status())
-                ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+            return [
+                'response' => response($response->body(), $response->status())
+                    ->header('Content-Type', $response->header('Content-Type', 'application/json')),
+            ];
         }
 
         if ($response->status() === 409) {
-            return response()->json([
-                'status' => false,
-                'message' => $response->json('message') ?: 'This account already exists. Please sign in instead.',
-            ], 409);
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => $response->json('message') ?: 'This account already exists. Please sign in instead.',
+                ], 409),
+            ];
         }
 
         $coreUser = $response->json('data');
         if (!is_array($coreUser) || empty($coreUser['id'])) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Core signup did not return a valid user.',
-            ], 502);
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'Core signup did not return a valid user.',
+                ], 502),
+            ];
         }
 
         try {
@@ -260,13 +306,15 @@ class OTPController extends Controller
         } catch (\Throwable $exception) {
             report($exception);
 
-            return response()->json([
-                'status' => false,
-                'message' => 'The account was created in Core, but TV could not prepare the local account.',
-            ], 500);
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'The account was created in Core, but TV could not prepare the local account.',
+                ], 500),
+            ];
         }
 
-        return $this->sendLoginOtpForUser($request, $user, 'Your account is ready. We sent a 4-digit login code to your email.');
+        return ['user' => $user];
     }
 
     public function sendSpaOtp(Request $request)
@@ -308,6 +356,55 @@ class OTPController extends Controller
             ], 422);
         }
 
+        $pendingRegistration = $request->session()->get('tv_pending_registration');
+        if (is_array($pendingRegistration) && strcasecmp((string) ($pendingRegistration['email'] ?? ''), $validated['email']) === 0) {
+            if ((int) ($pendingRegistration['expires_at'] ?? 0) < now()->timestamp) {
+                $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your login code has expired. Please request a new one.',
+                ], 422);
+            }
+
+            if (!hash_equals((string) ($pendingRegistration['otp'] ?? ''), $validated['otp'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The code you entered is not valid.',
+                ], 422);
+            }
+
+            $registrationData = $pendingRegistration['data'] ?? null;
+            if (!is_array($registrationData)) {
+                $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Registration details expired. Please start again.',
+                ], 422);
+            }
+
+            $result = $this->createCoreRegistrationUser($request, $registrationData);
+            if (isset($result['response'])) {
+                return $result['response'];
+            }
+
+            $user = $result['user'];
+            $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+            $request->session()->regenerate();
+
+            Auth::login($user);
+            $this->setDevice($user, $request);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'You are signed in.',
+                'data' => [
+                    'redirect_url' => '/subscription-plan',
+                ],
+            ]);
+        }
+
         $user = User::where('email', $validated['email'])->where('otp', $validated['otp'])->first();
 
         if (!$user || $user->user_type !== 'user') {
@@ -335,10 +432,7 @@ class OTPController extends Controller
 
     private function sendLoginOtpForUser(Request $request, User $user, string $message)
     {
-        $otp = (string) random_int(1000, 9999);
-        $user->forceFill(['otp' => $otp])->save();
-        $request->session()->put('tv_login_otp_email', $user->email);
-        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+        $otp = $this->makeLoginOtp();
 
         if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
             return response()->json([
@@ -347,10 +441,24 @@ class OTPController extends Controller
             ], 500);
         }
 
+        $this->storeLoginOtp($request, $user, $otp);
+
         return response()->json([
             'status' => true,
             'message' => $message,
         ]);
+    }
+
+    private function makeLoginOtp(): string
+    {
+        return (string) random_int(1000, 9999);
+    }
+
+    private function storeLoginOtp(Request $request, User $user, string $otp): void
+    {
+        $user->forceFill(['otp' => $otp])->save();
+        $request->session()->put('tv_login_otp_email', $user->email);
+        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
     }
 
     private function coreGet(string $path, array $query = [], int $timeout = 12): ?\Illuminate\Http\Client\Response
