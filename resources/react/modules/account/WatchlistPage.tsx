@@ -11,6 +11,7 @@ const tabs = [
   { key: 'all', label: 'All' },
   { key: 'movie', label: 'Movies' },
   { key: 'tvshow', label: 'TV Shows' },
+  { key: 'ondemand', label: 'On Demand' },
   { key: 'video', label: 'Videos' },
 ]
 
@@ -118,6 +119,7 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
   const type = item.entertainment_type ?? item.type ?? item.details?.type ?? 'video'
   const href = itemHref(item)
   const image = watchlistImage(item, type)
+  const label = typeLabel(displayType(item))
 
   return (
     <article className="group overflow-hidden rounded-md border border-white/10 bg-white/[0.035] transition hover:border-white/20">
@@ -130,7 +132,7 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
           </div>
         )}
         <span className="absolute left-3 top-3 rounded-md border border-black/30 bg-black/72 px-2 py-1 text-xs font-black uppercase text-white/86">
-          {typeLabel(type)}
+          {label}
         </span>
       </a>
       <div className="p-4">
@@ -195,16 +197,31 @@ function itemHref(item: WatchlistItem) {
   const slug = item.slug ?? item.details?.slug
   const id = item.entertainment_id ?? item.details?.id ?? item.id
 
-  if (type === 'video') return slug ? `/video-details/${slug}` : `/video-details/${id}`
+  if (type === 'video') {
+    const videoPath = slug ? `/video-details/${slug}` : `/video-details/${id}`
+
+    return isOnDemandVideo(item) && item.ondemand_channel_id
+      ? `${videoPath}?autoplay=1&ondemand_channel=${encodeURIComponent(String(item.ondemand_channel_id))}`
+      : videoPath
+  }
   if (type === 'tvshow') return `/tvshow-details/${slug ?? id}`
   return `/movie-details/${slug ?? id}`
 }
 
+function displayType(item: WatchlistItem) {
+  return isOnDemandVideo(item) ? 'ondemand' : (item.entertainment_type ?? item.type ?? item.details?.type ?? 'video')
+}
+
 function typeLabel(type: string) {
+  if (type === 'ondemand') return 'On Demand'
   if (type === 'tvshow') return 'TV Show'
   if (type === 'movie') return 'Movie'
   if (type === 'video') return 'Video'
   return type || 'Title'
+}
+
+function isOnDemandVideo(item: WatchlistItem) {
+  return Boolean(item.is_ondemand_video || item.ondemand_channel_id || item.ondemand_channel_username)
 }
 
 function isAuthenticated() {

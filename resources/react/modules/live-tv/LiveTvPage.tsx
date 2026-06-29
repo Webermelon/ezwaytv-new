@@ -300,13 +300,6 @@ function LiveTvDetailPage({
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
           <div className="livetv-player relative h-[76svh] min-h-[430px] w-full overflow-hidden bg-black">
-            <div className="pointer-events-none absolute left-4 top-4 z-40 inline-flex items-center gap-2 rounded-full border border-red-400/40 bg-red-600/92 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white shadow-2xl shadow-red-950/40 backdrop-blur sm:left-6 sm:top-6">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-              </span>
-              Live
-            </div>
             {isSubscriptionLocked ? (
               <PremiumPlayerLock
                 image={image}
@@ -365,10 +358,6 @@ function LiveTvDetailPage({
               <div className="min-w-0">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   {channelBadge ? <Badge className="w-fit rounded-sm bg-[#d4a843] text-black">{channelBadge}</Badge> : null}
-                  <Badge className="w-fit rounded-sm bg-red-600 text-white">
-                    <span className="mr-1.5 h-2 w-2 animate-pulse rounded-full bg-white" />
-                    Live
-                  </Badge>
                   {category ? <Badge className="rounded-sm bg-white/14 text-white">{category}</Badge> : null}
                   {channel?.details?.access ? <Badge className="rounded-sm bg-white/14 text-white">{channel.details.access}</Badge> : null}
                   {isSubscriptionLocked ? <Badge variant="outline" className="border-[#d4a843]/50 bg-[#d4a843]/10 text-[#f2d16f]">Premium</Badge> : null}

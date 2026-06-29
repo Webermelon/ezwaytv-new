@@ -82,7 +82,7 @@ class UserController extends Controller
         $perPage = $request->input('per_page', 24);
         $profileId = getCurrentProfile($user->id, $request);
 
-        $query = Watchlist::with('entertainment', 'video')
+        $query = Watchlist::with('entertainment', 'video.authorChannels')
             ->where('user_id', $user->id)
             ->whereNull('deleted_at');
 
@@ -93,6 +93,13 @@ class UserController extends Controller
         if (in_array($type, ['movie', 'tvshow'], true)) {
             $query->where('type', $type)
                 ->whereHas('entertainment', fn ($subQuery) => $subQuery->where('status', 1)->whereNull('deleted_at'));
+        } elseif ($type === 'ondemand') {
+            $query->where('type', 'video')
+                ->whereHas('video', function ($subQuery) {
+                    $subQuery->where('status', 1)
+                        ->whereNull('deleted_at')
+                        ->whereHas('authorChannels', fn ($channelQuery) => $channelQuery->where('is_active', 1)->whereNull('author_channels.deleted_at'));
+                });
         } elseif ($type === 'video') {
             $query->where('type', 'video')
                 ->whereHas('video', fn ($subQuery) => $subQuery->where('status', 1)->whereNull('deleted_at'));
