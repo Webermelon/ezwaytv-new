@@ -685,14 +685,58 @@ function str_slug($title, $separator = '-', $language = 'en')
 }
 function formatDuration($duration)
 {
+    if (empty($duration)) {
+        return $duration;
+    }
+
     if (strpos($duration, ':') !== false) {
-        list($hours, $minutes) = explode(':', $duration);
+        $parts = explode(':', $duration);
+
+        if (count($parts) === 3) {
+            [$hours, $minutes, $seconds] = $parts;
+            $hours = intval($hours);
+            $minutes = intval($minutes);
+            $seconds = intval($seconds);
+
+            $hoursFormatted = str_pad($hours, 2, '0', STR_PAD_LEFT);
+            $minutesFormatted = str_pad($minutes, 2, '0', STR_PAD_LEFT);
+            $secondsFormatted = str_pad($seconds, 2, '0', STR_PAD_LEFT);
+
+            if ($hours > 0) {
+                return "{$hoursFormatted}h {$minutesFormatted}m {$secondsFormatted}s";
+            }
+
+            return "{$minutesFormatted}m {$secondsFormatted}s";
+        }
+
+        list($hours, $minutes) = $parts;
         $hours = intval($hours);
         $minutes = intval($minutes);
         // Format as "05h 20m" with leading zeros for hours
         $hoursFormatted = str_pad($hours, 2, '0', STR_PAD_LEFT);
         $minutesFormatted = str_pad($minutes, 2, '0', STR_PAD_LEFT);
         return "{$hoursFormatted}h {$minutesFormatted}m";
+    }
+
+    return $duration;
+}
+
+function normalizeVideoDurationForInput($duration)
+{
+    $duration = trim((string) $duration);
+
+    if ($duration === '') {
+        return '';
+    }
+
+    $parts = explode(':', $duration);
+
+    if (count($parts) === 2 && ctype_digit($parts[0]) && ctype_digit($parts[1])) {
+        return sprintf('%02d:%02d:00', (int) $parts[0], (int) $parts[1]);
+    }
+
+    if (count($parts) === 3 && ctype_digit($parts[0]) && ctype_digit($parts[1]) && ctype_digit($parts[2])) {
+        return sprintf('%02d:%02d:%02d', (int) $parts[0], (int) $parts[1], (int) $parts[2]);
     }
 
     return $duration;

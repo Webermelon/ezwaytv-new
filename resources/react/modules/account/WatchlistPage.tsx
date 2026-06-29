@@ -117,11 +117,11 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
   const title = item.name ?? item.details?.name ?? 'Untitled'
   const type = item.entertainment_type ?? item.type ?? item.details?.type ?? 'video'
   const href = itemHref(item)
-  const image = item.poster_tv_image ?? item.poster_image ?? item.thumbnail_image ?? item.thumbnail_url ?? item.details?.thumbnail_image
+  const image = watchlistImage(item, type)
 
   return (
     <article className="group overflow-hidden rounded-md border border-white/10 bg-white/[0.035] transition hover:border-white/20">
-      <a href={href} className="relative block aspect-[2/3] overflow-hidden bg-white/[0.04]">
+      <a href={href} className="relative block aspect-video overflow-hidden bg-white/[0.04]">
         {image ? (
           <img src={image} alt={title} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" loading="lazy" />
         ) : (
@@ -157,6 +157,22 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
       </div>
     </article>
   )
+}
+
+function watchlistImage(item: WatchlistItem, type: string) {
+  if (type === 'video') {
+    return item.thumbnail_image
+      ?? item.thumbnail_url
+      ?? item.details?.thumbnail_image
+      ?? item.poster_image
+      ?? item.poster_tv_image
+  }
+
+  return item.poster_tv_image
+    ?? item.poster_image
+    ?? item.thumbnail_image
+    ?? item.thumbnail_url
+    ?? item.details?.thumbnail_image
 }
 
 function EmptyWatchlist({ activeType }: { activeType: string }) {

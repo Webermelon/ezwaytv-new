@@ -234,7 +234,7 @@ function Rail({
 }
 
 function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'; index?: number }) {
-  const image = item.poster_tv_image ?? item.poster_image ?? item.cover_image_url ?? item.thumbnail_url ?? item.poster_url ?? item.language_image ?? item.profile_image
+  const image = cardImage(item, shape)
   const title = item.details?.name ?? item.name
   const cardStyle = { animationDelay: `${Math.min(index, 9) * 55}ms` }
 
@@ -255,7 +255,13 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
       <div
         className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]"
       >
-        <MediaThumbnail src={image} alt={title} previewSrc={shape === 'video' ? previewHref(item) : null} />
+        <MediaThumbnail
+          src={image}
+          alt={title}
+          previewSrc={null}
+          className={shape === 'video' ? 'aspect-video' : ''}
+          imageClassName={shape === 'video' ? 'object-cover' : undefined}
+        />
         <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4a843]/75 to-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(212,168,67,0.12),transparent_38%)]" />
@@ -272,6 +278,25 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
       {!item.videos_count && item.duration ? <p className="mt-1 text-xs text-white/58">{item.duration}</p> : null}
     </a>
   )
+}
+
+function cardImage(item: MediaItem, shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality') {
+  if (shape === 'video') {
+    return item.thumbnail_url
+      ?? item.details?.thumbnail_image
+      ?? item.poster_image
+      ?? item.poster_tv_image
+      ?? item.cover_image_url
+      ?? item.poster_url
+  }
+
+  return item.poster_tv_image
+    ?? item.poster_image
+    ?? item.cover_image_url
+    ?? item.thumbnail_url
+    ?? item.poster_url
+    ?? item.language_image
+    ?? item.profile_image
 }
 
 function contentHref(item?: MediaItem) {

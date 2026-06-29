@@ -1248,7 +1248,22 @@
 
             // Handle "HH:MM" format (e.g., "05:20")
             if (typeof duration === 'string' && duration.includes(':')) {
-                const [hours, minutes] = duration.split(':').map(Number);
+                const parts = duration.split(':').map(Number);
+
+                if (parts.length === 3) {
+                    const [hours, minutes, seconds] = parts;
+                    const hoursFormatted = String(hours).padStart(2, '0');
+                    const minutesFormatted = String(minutes).padStart(2, '0');
+                    const secondsFormatted = String(seconds).padStart(2, '0');
+
+                    if (hours > 0) {
+                        return `${hoursFormatted}h ${minutesFormatted}m ${secondsFormatted}s`;
+                    }
+
+                    return `${minutesFormatted}m ${secondsFormatted}s`;
+                }
+
+                const [hours, minutes] = parts;
                 const hoursFormatted = String(hours).padStart(2, '0');
                 const minutesFormatted = String(minutes).padStart(2, '0');
                 return `${hoursFormatted}h ${minutesFormatted}m`;
