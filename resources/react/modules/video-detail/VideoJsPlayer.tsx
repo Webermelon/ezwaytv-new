@@ -193,22 +193,6 @@ export function VideoJsPlayer({
     if (isLive) {
       player.addClass('vjs-ezway-live')
       player.duration(Number.POSITIVE_INFINITY)
-    } else {
-      ensureSeek10ButtonsRegistered()
-      const controlBar = player.getChild('controlBar') as videojs.Component | undefined
-      const controlBarWithChildren = controlBar as (videojs.Component & {
-        addChild: (child: string, options?: Record<string, unknown>, index?: number) => videojs.Component
-        getChild: (name: string) => videojs.Component | undefined
-      }) | undefined
-
-      if (controlBarWithChildren) {
-        if (!controlBarWithChildren.getChild('Rewind10Button')) {
-          controlBarWithChildren.addChild('Rewind10Button', {}, 1)
-        }
-        if (!controlBarWithChildren.getChild('Forward10Button')) {
-          controlBarWithChildren.addChild('Forward10Button', {}, 2)
-        }
-      }
     }
 
     playerRef.current = player
@@ -442,63 +426,6 @@ export function VideoJsPlayer({
       ) : null}
     </div>
   )
-}
-
-function ensureSeek10ButtonsRegistered() {
-  if (videojs.getComponent('Rewind10Button') && videojs.getComponent('Forward10Button')) return
-
-  const Button = videojs.getComponent('Button') as typeof videojs.Button
-
-  class Seek10Button extends Button {
-    seekSeconds = 0
-
-    handleClick() {
-      const player = this.player()
-      if (!player || player.hasClass('vjs-ezway-live')) return
-
-      const currentTime = Number(player.currentTime() ?? 0)
-      const duration = Number(player.duration())
-      if (!Number.isFinite(currentTime)) return
-
-      const nextTime = Number.isFinite(duration) && duration > 0
-        ? Math.min(Math.max(currentTime + this.seekSeconds, 0), Math.max(0, duration - 0.25))
-        : Math.max(currentTime + this.seekSeconds, 0)
-
-      player.currentTime(nextTime)
-    }
-  }
-
-  if (!videojs.getComponent('Rewind10Button')) {
-    class Rewind10Button extends Seek10Button {
-      constructor(player: videojs.Player, options?: videojs.ComponentOptions) {
-        super(player, options)
-        this.seekSeconds = -10
-        this.addClass('vjs-seek-10-control')
-        this.addClass('vjs-rewind-10-control')
-        this.controlText('Back 10 seconds')
-        this.el().setAttribute('aria-label', 'Back 10 seconds')
-        this.el().setAttribute('title', 'Back 10 seconds')
-        this.el().querySelector('.vjs-icon-placeholder')?.setAttribute('data-seek-label', '10')
-      }
-    }
-    videojs.registerComponent('Rewind10Button', Rewind10Button)
-  }
-
-  if (!videojs.getComponent('Forward10Button')) {
-    class Forward10Button extends Seek10Button {
-      constructor(player: videojs.Player, options?: videojs.ComponentOptions) {
-        super(player, options)
-        this.seekSeconds = 10
-        this.addClass('vjs-seek-10-control')
-        this.addClass('vjs-forward-10-control')
-        this.controlText('Forward 10 seconds')
-        this.el().setAttribute('aria-label', 'Forward 10 seconds')
-        this.el().setAttribute('title', 'Forward 10 seconds')
-        this.el().querySelector('.vjs-icon-placeholder')?.setAttribute('data-seek-label', '10')
-      }
-    }
-    videojs.registerComponent('Forward10Button', Forward10Button)
-  }
 }
 
 function resolveVastAd(vastAds: VideoAd[]) {
