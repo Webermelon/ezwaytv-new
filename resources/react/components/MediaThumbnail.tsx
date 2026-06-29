@@ -5,9 +5,10 @@ type MediaThumbnailProps = {
   alt?: string
   previewSrc?: string | null
   className?: string
+  imageClassName?: string
 }
 
-export function MediaThumbnail({ src, alt = '', previewSrc, className = '' }: MediaThumbnailProps) {
+export function MediaThumbnail({ src, alt = '', previewSrc, className = '', imageClassName = 'object-contain' }: MediaThumbnailProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const imageSrc = isPlaceholderImage(src) ? null : src
@@ -43,7 +44,7 @@ export function MediaThumbnail({ src, alt = '', previewSrc, className = '' }: Me
       {imageSrc ? (
         <>
           <img src={imageSrc} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-xl" loading="lazy" aria-hidden="true" />
-          <img src={imageSrc} alt={alt} className="relative z-10 h-full w-full object-contain transition-opacity duration-300" loading="lazy" />
+          <img src={imageSrc} alt={alt} className={['relative z-10 h-full w-full transition-opacity duration-300', imageClassName].join(' ')} loading="lazy" />
         </>
       ) : null}
       {previewSrc ? (

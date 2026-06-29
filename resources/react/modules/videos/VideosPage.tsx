@@ -154,33 +154,48 @@ function uniqueById(items: MediaItem[]) {
 function VideoCard({ video }: { video: MediaItem }) {
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
 
   return (
     <a href={videoHref(video)} className="group block min-w-0">
-      <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        <MediaThumbnail src={video.poster_image} alt={video.name} previewSrc={previewHref(video)} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
-        {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
-        <div className={[
-          'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
-          locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
-        ].join(' ')}>
-          {locked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
-        </div>
-        {locked ? (
-          <Badge className="absolute right-3 top-3 rounded-sm bg-primary text-black">
-            <Lock className="mr-1 h-3.5 w-3.5" />
-            Premium
-          </Badge>
-        ) : video.access ? <Badge className="absolute right-3 top-3 rounded-sm bg-black/70 text-white">{video.access}</Badge> : null}
-        <div className="absolute bottom-3 left-3 z-10">
-          <WatchlistToggleButton
-            entertainmentId={video.id}
-            type="video"
-            initialInWatchlist={inWatchlist}
+      <div className="overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
+        {accessLabel ? (
+          <div className="flex h-7 items-center justify-end px-2">
+            <Badge className={[
+              'rounded-sm text-[11px] font-bold',
+              locked ? 'bg-primary text-black' : 'bg-black/80 text-white',
+            ].join(' ')}>
+              {locked ? <Lock className="mr-1 h-3.5 w-3.5" /> : null}
+              {accessLabel}
+            </Badge>
+          </div>
+        ) : null}
+
+        <div className="relative">
+          <MediaThumbnail
+            src={video.poster_image}
+            alt={video.name}
+            previewSrc={null}
+            className="aspect-video"
+            imageClassName="object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/8 to-transparent" />
+          {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
+          <div className={[
+            'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
+            locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
+          ].join(' ')}>
+            {locked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+          </div>
+          <div className="absolute bottom-3 left-3 z-10">
+            <WatchlistToggleButton
+              entertainmentId={video.id}
+              type="video"
+              initialInWatchlist={inWatchlist}
+            />
+          </div>
+          {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
         </div>
-        {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
       <div className="mt-2 grid gap-1">
         <h3 className="line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
@@ -188,6 +203,12 @@ function VideoCard({ video }: { video: MediaItem }) {
       </div>
     </a>
   )
+}
+
+function formatAccessLabel(access?: string | null) {
+  if (!access) return null
+
+  return access.replaceAll('-', ' ')
 }
 
 function ChannelName({ video }: { video: MediaItem }) {
