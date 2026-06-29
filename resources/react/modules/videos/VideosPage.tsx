@@ -155,22 +155,11 @@ function VideoCard({ video }: { video: MediaItem }) {
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
   const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
+  const durationLabel = formatDurationLabel(video.duration)
 
   return (
     <a href={videoHref(video)} className="group block min-w-0">
       <div className="overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        {accessLabel ? (
-          <div className="flex h-7 items-center justify-end px-2">
-            <Badge className={[
-              'rounded-sm text-[11px] font-bold',
-              locked ? 'bg-primary text-black' : 'bg-black/80 text-white',
-            ].join(' ')}>
-              {locked ? <Lock className="mr-1 h-3.5 w-3.5" /> : null}
-              {accessLabel}
-            </Badge>
-          </div>
-        ) : null}
-
         <div className="relative">
           <MediaThumbnail
             src={video.poster_image}
@@ -181,6 +170,17 @@ function VideoCard({ video }: { video: MediaItem }) {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/8 to-transparent" />
           {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
+          {accessLabel ? (
+            <Badge className={[
+              'absolute right-2 top-2 z-20 inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[10px] font-black uppercase leading-none tracking-normal shadow-[0_8px_18px_rgba(0,0,0,0.35)]',
+              locked
+                ? 'border-primary/70 bg-primary text-black'
+                : 'border-primary/60 bg-primary text-black',
+            ].join(' ')}>
+              {locked ? <Lock className="h-3 w-3" /> : null}
+              {accessLabel}
+            </Badge>
+          ) : null}
           <div className={[
             'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
             locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
@@ -194,7 +194,7 @@ function VideoCard({ video }: { video: MediaItem }) {
               initialInWatchlist={inWatchlist}
             />
           </div>
-          {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
+          {durationLabel ? <Badge className="absolute bottom-3 right-3 z-20 rounded-sm bg-black/80 text-white">{durationLabel}</Badge> : null}
         </div>
       </div>
       <div className="mt-2 grid gap-1">
@@ -209,6 +209,57 @@ function formatAccessLabel(access?: string | null) {
   if (!access) return null
 
   return access.replaceAll('-', ' ')
+}
+
+function formatDurationLabel(duration?: string | number | null) {
+  if (duration === null || duration === undefined) return null
+
+  const value = String(duration).trim()
+  if (!value) return null
+
+  if (/^\d+$/.test(value)) {
+    return formatDurationSeconds(Number(value))
+  }
+
+  const parts = value.split(':').map((part) => Number(part))
+  if (parts.some((part) => Number.isNaN(part) || part < 0)) return value
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts
+
+    if (hours > 0) {
+      return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+    }
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  return value
+}
+
+function formatDurationSeconds(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return null
+
+  const roundedSeconds = Math.round(totalSeconds)
+  const hours = Math.floor(roundedSeconds / 3600)
+  const minutes = Math.floor((roundedSeconds % 3600) / 60)
+  const seconds = roundedSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+  }
+
+  return `${minutes}:${padTimePart(seconds)}`
+}
+
+function padTimePart(value: number) {
+  return String(Math.max(0, Math.floor(value))).padStart(2, '0')
 }
 
 function ChannelName({ video }: { video: MediaItem }) {

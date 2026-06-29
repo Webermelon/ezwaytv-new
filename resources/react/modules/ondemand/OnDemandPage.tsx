@@ -566,11 +566,19 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
   const href = `/video-details/${video.slug}?autoplay=1&ondemand_channel=${channelId}`
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
+  const durationLabel = formatDurationLabel(video.duration)
 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.02] group-hover:border-primary/60">
-        <MediaThumbnail src={image} alt={video.name} previewSrc={previewHref(video)} />
+        <MediaThumbnail
+          src={image}
+          alt={video.name}
+          previewSrc={null}
+          className="aspect-video"
+          imageClassName="object-cover"
+        />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/82 to-transparent" />
         {locked ? <div className="absolute inset-0 bg-black/38" /> : null}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -581,10 +589,10 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
             {locked ? <Lock className="h-6 w-6" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}
           </span>
         </div>
-        {locked ? (
-          <Badge className="absolute left-3 top-3 rounded-sm bg-primary text-black">
-            <Lock className="mr-1 h-3.5 w-3.5" />
-            Premium
+        {accessLabel ? (
+          <Badge className="absolute left-3 top-3 z-20 inline-flex h-6 items-center gap-1 rounded-full border border-primary/60 bg-primary px-2.5 text-[10px] font-black uppercase leading-none tracking-normal text-black shadow-[0_8px_18px_rgba(0,0,0,0.35)]">
+            {locked ? <Lock className="h-3 w-3" /> : null}
+            {accessLabel}
           </Badge>
         ) : null}
         <div className="absolute right-3 top-3 z-10">
@@ -594,7 +602,7 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
             initialInWatchlist={inWatchlist}
           />
         </div>
-        {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
+        {durationLabel ? <Badge className="absolute bottom-3 right-3 z-20 rounded-sm bg-black/80 text-white">{durationLabel}</Badge> : null}
       </div>
       <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h4>
     </a>
@@ -667,8 +675,9 @@ async function copyText(value: string) {
 }
 
 function videoThumb(video: MediaItem) {
-  return video.poster_tv_image
+  return video.thumbnail_image
     ?? video.thumbnail_url
+    ?? video.poster_tv_image
     ?? video.poster_url
     ?? video.poster_image
     ?? video.cover_image_url
@@ -726,6 +735,63 @@ function isPremiumVideoCard(video: MediaItem) {
   }
 
   return true
+}
+
+function formatAccessLabel(access?: string | null) {
+  if (!access) return null
+
+  return access.replaceAll('-', ' ')
+}
+
+function formatDurationLabel(duration?: string | number | null) {
+  if (duration === null || duration === undefined) return null
+
+  const value = String(duration).trim()
+  if (!value) return null
+
+  if (/^\d+$/.test(value)) {
+    return formatDurationSeconds(Number(value))
+  }
+
+  const parts = value.split(':').map((part) => Number(part))
+  if (parts.some((part) => Number.isNaN(part) || part < 0)) return value
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts
+
+    if (hours > 0) {
+      return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+    }
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  return value
+}
+
+function formatDurationSeconds(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return null
+
+  const roundedSeconds = Math.round(totalSeconds)
+  const hours = Math.floor(roundedSeconds / 3600)
+  const minutes = Math.floor((roundedSeconds % 3600) / 60)
+  const seconds = roundedSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+  }
+
+  return `${minutes}:${padTimePart(seconds)}`
+}
+
+function padTimePart(value: number) {
+  return String(Math.max(0, Math.floor(value))).padStart(2, '0')
 }
 
 function isPremiumChannelLocked(item: MediaItem) {
