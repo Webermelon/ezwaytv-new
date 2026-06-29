@@ -144,7 +144,7 @@
                     @error('access')<span class="text-danger">{{ $message }}</span>@enderror
                 </div>
 
-                <div class="col-md-6" id="planSelection" data-plan-selection>
+                <div class="col-md-6 {{ old('access', 'free') === 'paid' ? '' : 'd-none' }}" id="planSelection" data-plan-selection>
                     <label class="form-label">Subscription Plan <span class="text-danger">*</span></label>
                     <select name="plan_id" id="plan_id" class="form-control select2" data-plan-select>
                         <option value="">-- Select Plan --</option>
@@ -207,17 +207,23 @@ function syncPlanSelection() {
     const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
     if (!planSelection) return;
     const isPaid = selectedAccess === 'paid';
-    planSelection.classList.toggle('opacity-50', !isPaid);
+
+    planSelection.classList.toggle('d-none', !isPaid);
+
     if (planSelect) {
         planSelect.disabled = !isPaid;
+        planSelect.required = isPaid;
     }
+
     if (planSelect && !isPaid) {
+        planSelect.value = '';
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery(planSelect).prop('disabled', true);
+            jQuery(planSelect).val('').prop('disabled', true).trigger('change.select2');
         }
     }
+
     if (planSelect && isPaid && window.jQuery && jQuery.fn.select2) {
-        jQuery(planSelect).prop('disabled', false);
+        jQuery(planSelect).prop('disabled', false).trigger('change.select2');
     }
 }
 document.addEventListener('DOMContentLoaded', function () {

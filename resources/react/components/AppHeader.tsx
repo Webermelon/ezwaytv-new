@@ -242,7 +242,7 @@ function MobileMenu({
   })
 
   return (
-    <div className="fixed inset-y-0 left-0 right-0 z-[9999] min-h-screen w-[100dvw] max-w-[100dvw] overflow-hidden bg-black/72 backdrop-blur-sm md:hidden">
+    <div className="fixed inset-y-0 left-0 z-[9999] min-h-screen w-screen max-w-[100dvw] overflow-hidden bg-black/72 backdrop-blur-sm md:hidden">
       <nav className="flex h-screen min-h-screen w-full max-w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_78%_12%,rgba(212,168,67,0.16),transparent_28%),radial-gradient(circle_at_10%_76%,rgba(255,255,255,0.07),transparent_24%),linear-gradient(135deg,#050807_0%,#091011_48%,#050505_100%)] text-white shadow-2xl shadow-black">
         <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-4 px-5 pb-4 pt-5">
           <BrandLogo imageClassName="max-h-12 max-w-[200px]" textClassName="text-2xl" placeholderClassName="h-10 w-[180px]" />

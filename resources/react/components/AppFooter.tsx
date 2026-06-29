@@ -295,16 +295,16 @@ function MobileFooterMenu() {
   ]
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/92 px-2 py-2 text-white shadow-2xl backdrop-blur lg:hidden">
-      <ul className="grid grid-cols-5 gap-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 w-screen max-w-[100dvw] overflow-hidden border-t border-white/10 bg-black/92 px-1.5 py-2 text-white shadow-2xl backdrop-blur lg:hidden">
+      <ul className="grid w-full min-w-0 grid-cols-5 gap-1 overflow-hidden">
         {items.map((item) => {
           const Icon = item.icon
 
           return (
-            <li key={item.label}>
-              <a href={item.href} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-md text-[10px] font-bold text-white/62 hover:bg-white/[0.06] hover:text-white">
+            <li key={item.label} className="min-w-0 overflow-hidden">
+              <a href={item.href} className="flex min-h-14 min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 text-[9px] font-bold text-white/62 hover:bg-white/[0.06] hover:text-white">
                 <Icon className="h-4 w-4" />
-                <span className="max-w-full truncate">{item.label}</span>
+                <span className="block max-w-full truncate leading-none">{item.label}</span>
               </a>
             </li>
           )
