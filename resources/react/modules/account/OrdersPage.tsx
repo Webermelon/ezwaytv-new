@@ -148,8 +148,16 @@ async function loadOrders() {
 }
 
 async function loadTvPackageIds() {
-  const response = await api.get<CorePackageEnvelope>('/api/core/package-categories/tv-packges/packages?status=active&limit=100')
-  return new Set((response.data ?? []).map((item) => Number(item.id)).filter((id) => Number.isFinite(id) && id > 0))
+  try {
+    const response = await api.get<CorePackageEnvelope>('/api/core/package-categories/tv-packges/packages?status=active&limit=100')
+    return new Set((response.data ?? []).map((item) => Number(item.id)).filter((id) => Number.isFinite(id) && id > 0))
+  } catch (error) {
+    if (isMissingPackageCategoryError(error)) {
+      return new Set<number>()
+    }
+
+    throw error
+  }
 }
 
 function OrderRow({ order }: { order: ServiceOrder }) {
@@ -316,4 +324,13 @@ function readApiError(error: unknown, fallback: string) {
     return payload.message || fallback
   }
   return error instanceof Error ? error.message : fallback
+}
+
+function isMissingPackageCategoryError(error: unknown) {
+  if (!(error instanceof ApiError)) return false
+
+  const payload = error.payload as { message?: string } | null
+  const message = String(payload?.message ?? error.message ?? '').toLowerCase()
+
+  return error.status === 404 || message.includes('no category package found')
 }
