@@ -207,64 +207,51 @@ export function VideoDetailPage() {
                   </div>
                 )}
               </div>
-              <div className="shrink-0 border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
-                <div className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0">
-                    <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.65rem]">
-                      {video.name}
-                    </h1>
-                    <div className="mt-3">
-                      <ChannelIdentity video={video} />
-                    </div>
+            </div>
+          </section>
+
+          <section className="border-b border-white/10 bg-[#050505] px-3 py-5 sm:px-6 lg:px-8">
+            <div className="w-full">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.8rem]">
+                    {video.name}
+                  </h1>
+                  <div className="mt-3">
+                    <ChannelIdentity video={video} />
                   </div>
-                  <div className="hidden shrink-0 flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58 md:flex">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
+                    <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
+                    {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
+                    {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-col gap-3 xl:items-end">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58 xl:justify-end">
                     <PlayerStats stats={contentStats} />
+                    {video.release_date ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(video.release_date).getFullYear()}
+                      </span>
+                    ) : null}
                     {video.duration ? (
                       <span className="inline-flex items-center gap-2">
                         <Clock className="h-4 w-4" />
                         {video.duration}
                       </span>
                     ) : null}
+                    {video.imdb_rating ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Star className="h-4 w-4" />
+                        {video.imdb_rating}
+                      </span>
+                    ) : null}
                   </div>
-                </div>
-              </div>
-            </div>
-          </section>
 
-          <section className="px-3 pb-8 pt-3 sm:px-6 lg:px-8">
-            <div className="w-full">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
-                <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
-                {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
-                {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
-                {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
-              </div>
-
-
-              <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58">
-                <PlayerStats stats={contentStats} />
-                {video.release_date ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    {new Date(video.release_date).getFullYear()}
-                  </span>
-                ) : null}
-                {video.duration ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {video.duration}
-                  </span>
-                ) : null}
-                {video.imdb_rating ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Star className="h-4 w-4" />
-                    {video.imdb_rating}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2 border-y border-white/10 py-4">
-                <div className="relative z-[80] flex flex-wrap gap-2">
+                  <div className="relative z-[80] flex flex-wrap gap-2 xl:justify-end">
                   {isPayPerViewLocked ? (
                     <Button asChild className="bg-white text-black hover:bg-white/85">
                       <a href="/pay-per-view">
@@ -293,13 +280,14 @@ export function VideoDetailPage() {
                       }).catch(() => undefined)
                     }}
                   />
+                  </div>
                 </div>
               </div>
 
               {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
 
               {(video.description || video.short_desc) ? (
-                <div className="mt-4 rounded-md bg-white/[0.055] p-4 text-sm leading-7 text-white/72 ring-1 ring-white/8">
+                <div className="mt-5 rounded-md bg-white/[0.045] p-4 text-sm leading-7 text-white/72 ring-1 ring-white/8">
                   {stripHtml(video.description ?? video.short_desc ?? '')}
                 </div>
               ) : null}
@@ -742,7 +730,7 @@ function ShareMenu({
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
