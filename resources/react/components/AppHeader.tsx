@@ -242,9 +242,9 @@ function MobileMenu({
   })
 
   return (
-    <div className="fixed inset-y-0 left-0 z-[9999] min-h-screen w-screen max-w-[100dvw] overflow-hidden bg-black/72 backdrop-blur-sm md:hidden">
-      <nav className="flex h-screen min-h-screen w-full max-w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_78%_12%,rgba(212,168,67,0.16),transparent_28%),radial-gradient(circle_at_10%_76%,rgba(255,255,255,0.07),transparent_24%),linear-gradient(135deg,#050807_0%,#091011_48%,#050505_100%)] text-white shadow-2xl shadow-black">
-        <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-4 px-5 pb-4 pt-5">
+    <div className="fixed inset-0 z-[9999] h-dvh w-screen max-w-[100dvw] overflow-y-auto overflow-x-hidden bg-black/72 backdrop-blur-sm [overscroll-behavior:contain] [-webkit-overflow-scrolling:touch] md:hidden">
+      <nav className="min-h-dvh w-full max-w-full bg-[radial-gradient(circle_at_78%_12%,rgba(212,168,67,0.16),transparent_28%),radial-gradient(circle_at_10%_76%,rgba(255,255,255,0.07),transparent_24%),linear-gradient(135deg,#050807_0%,#091011_48%,#050505_100%)] text-white shadow-2xl shadow-black">
+        <div className="sticky top-0 z-10 flex w-full min-w-0 max-w-full items-center justify-between gap-4 bg-[#050807]/92 px-5 pb-4 pt-5 backdrop-blur-xl">
           <BrandLogo imageClassName="max-h-12 max-w-[200px]" textClassName="text-2xl" placeholderClassName="h-10 w-[180px]" />
           <button
             type="button"
@@ -256,7 +256,7 @@ function MobileMenu({
           </button>
         </div>
 
-        <div className="min-h-0 w-full min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden px-5 pb-6 pt-1">
+        <div className="w-full min-w-0 max-w-full overflow-visible px-5 pb-8 pt-1">
           <form
             className="mb-4 grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_56px] gap-3"
             action="/search"
@@ -286,7 +286,7 @@ function MobileMenu({
             </button>
           </form>
 
-          <div className="grid w-full min-w-0 max-w-full gap-1 overflow-hidden">
+          <div className="grid w-full min-w-0 max-w-full gap-1">
             {visibleMobileNavItems.map((item) => {
               const items = item.dropdown ? dropdowns[item.dropdown] : []
               const isOpen = item.dropdown ? openSection === item.dropdown : false
@@ -294,7 +294,7 @@ function MobileMenu({
               const Icon = item.icon
 
               return (
-                <div key={item.key} className="w-full min-w-0 max-w-full overflow-hidden">
+                <div key={item.key} className="w-full min-w-0 max-w-full">
                   {item.dropdown ? (
                     <>
                       <button
@@ -315,7 +315,7 @@ function MobileMenu({
                         <ChevronDown className={['h-5 w-5 shrink-0 transition', isOpen ? 'rotate-180' : ''].join(' ')} />
                       </button>
                       {isOpen ? (
-                        <div className="w-full min-w-0 max-w-full overflow-hidden pb-2 pl-12 pr-2 pt-1">
+                        <div className="w-full min-w-0 max-w-full pb-2 pl-12 pr-2 pt-1">
                           <a
                             href={item.href}
                             onClick={onNavigate}
@@ -324,8 +324,8 @@ function MobileMenu({
                             View all {item.label}
                           </a>
                           {items.length > 0 ? (
-                            <div className="grid w-full min-w-0 max-w-full gap-1 overflow-hidden">
-                              {items.slice(0, 5).map((entry) => (
+                            <div className="grid max-h-[32dvh] w-full min-w-0 max-w-full gap-1 overflow-y-auto overflow-x-hidden pr-1 [overscroll-behavior:contain] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]">
+                              {items.map((entry) => (
                                 <a
                                   key={`${item.dropdown}-${entry.id}`}
                                   href={navItemHref(entry, item.dropdown)}
