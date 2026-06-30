@@ -16,7 +16,7 @@ import { ManageProfilePage } from '@/modules/profile/ManageProfilePage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
-import { VideoDetailPage } from '@/modules/video-detail/VideoDetailPage'
+import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
@@ -63,6 +63,8 @@ export default function App() {
     page = <MusicPage />
   } else if (pathname.startsWith('/upload-your-videoes')) {
     page = <MusicUploadPage />
+  } else if (pathname.startsWith('/video-embed')) {
+    page = <VideoEmbedPage />
   } else if (pathname.startsWith('/video-details')) {
     page = <VideoDetailPage />
   } else if (pathname.startsWith('/castcrew-detail')) {
@@ -76,7 +78,7 @@ export default function App() {
   return (
     <>
       {page}
-      <AppFooter />
+      {pathname.startsWith('/video-embed') ? null : <AppFooter />}
     </>
   )
 }

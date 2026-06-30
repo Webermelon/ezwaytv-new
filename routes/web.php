@@ -52,6 +52,7 @@ if (app()->environment('local')) {
 Route::view('/payment-history', 'react-modernization')->name('payment-history');
 Route::view('/orders', 'react-modernization')->name('orders');
 Route::view('/music', 'react-modernization')->name('music');
+Route::view('/video-embed/{slug}', 'react-modernization')->name('video-embed');
 Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
 Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
 Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Code2, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { useBranding } from '@/lib/branding'
 import type { MediaItem } from '@/modules/home/types'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
@@ -68,6 +69,7 @@ export function VideoDetailPage() {
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+  const [copiedEmbedCode, setCopiedEmbedCode] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | null>(null)
@@ -275,11 +277,19 @@ export function VideoDetailPage() {
                   ) : null}
                   <ShareMenu
                     title={video.name}
+                    embedCode={buildEmbedCode(video, ondemandChannel)}
                     copied={copiedShareUrl}
+                    embedCopied={copiedEmbedCode}
                     onCopy={() => {
-                      copyShareUrl().then(() => {
+                      copyText(currentShareUrl()).then(() => {
                         setCopiedShareUrl(true)
                         window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                      }).catch(() => undefined)
+                    }}
+                    onCopyEmbed={() => {
+                      copyText(buildEmbedCode(video, ondemandChannel)).then(() => {
+                        setCopiedEmbedCode(true)
+                        window.setTimeout(() => setCopiedEmbedCode(false), 1800)
                       }).catch(() => undefined)
                     }}
                   />
@@ -314,6 +324,114 @@ export function VideoDetailPage() {
         </>
       )}
     </main>
+  )
+}
+
+export function VideoEmbedPage() {
+  const slug = getEmbedSlugFromPath()
+  const ondemandChannel = getQueryValue('ondemand_channel')
+  const [isPlaying, setIsPlaying] = useState(false)
+  const videoQuery = useQuery({
+    queryKey: ['video-embed', slug, ondemandChannel],
+    queryFn: () => loadVideoDetail(slug, ondemandChannel),
+    enabled: Boolean(slug),
+  })
+  const video = videoQuery.data as VideoDetail | null | undefined
+  const videoId = video?.id
+  const adsQuery = useQuery({
+    queryKey: ['video-embed-ads', videoId],
+    queryFn: () => loadVideoAds(videoId as string | number),
+    enabled: Boolean(videoId),
+    staleTime: 30_000,
+  })
+  const playerUrl = video ? resolvePlayerUrl(video) : null
+  const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
+  const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
+
+  return (
+    <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-black text-white">
+      <div className="relative aspect-video max-h-screen w-full max-w-[calc(100vh*16/9)] overflow-hidden bg-black">
+        {videoQuery.isLoading ? (
+          <PlayerPreparing />
+        ) : videoQuery.isError || !video ? (
+          <EmbedState message={videoQuery.isError ? 'Video could not be loaded.' : 'Video not found.'} />
+        ) : isSubscriptionLocked ? (
+          <PremiumPlayerLock video={video} />
+        ) : isPayPerViewLocked ? (
+          <EmbedState icon={<Lock className="h-8 w-8 text-primary" />} title="Purchase required" message="Open eZWay TV to unlock this video." />
+        ) : playerUrl ? (
+          adsQuery.isLoading ? (
+            <PlayerPreparing poster={video.poster_image} />
+          ) : (
+            <VideoJsPlayer
+              source={playerUrl}
+              poster={video.poster_image}
+              autoplay={false}
+              vastAds={adsQuery.data?.vast ?? []}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+            />
+          )
+        ) : (
+          <EmbedState message="No playable source was returned for this video." />
+        )}
+        {video ? <EmbedBrandBadge compact={isPlaying} video={video} ondemandChannel={ondemandChannel} /> : null}
+      </div>
+    </main>
+  )
+}
+
+function EmbedBrandBadge({ compact, video, ondemandChannel }: { compact: boolean; video: VideoDetail; ondemandChannel?: string | null }) {
+  const { appName, logo } = useBranding()
+  const displayName = appName || 'eZWay TV'
+  const displayLogo = logo ?? 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/ezwaytv_white_6a26f75c71a3d.png'
+  const watchUrl = buildWatchUrl(video, ondemandChannel)
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [displayLogo])
+
+  return (
+    <a
+      href={watchUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Watch on ${displayName}`}
+      title={`Watch on ${displayName}`}
+      className={[
+        'absolute bottom-4 right-4 z-50 inline-flex h-10 items-center gap-2 rounded-md border border-white/14 bg-black/62 shadow-xl shadow-black/40 backdrop-blur-md transition hover:bg-black/82 sm:bottom-5 sm:right-5',
+        compact ? 'max-w-[38%] px-2.5' : 'max-w-[58%] px-3',
+      ].join(' ')}
+    >
+      {!compact ? <span className="shrink-0 text-xs font-black text-white sm:text-sm">Watch on</span> : null}
+      {displayLogo && !imageFailed ? (
+        <img
+          src={displayLogo}
+          alt={displayName}
+          className={[
+            'w-auto object-contain',
+            compact ? 'max-h-5 max-w-[92px] sm:max-h-6 sm:max-w-[112px]' : 'max-h-5 max-w-[110px] sm:max-h-6 sm:max-w-[140px]',
+          ].join(' ')}
+          loading="lazy"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span className="truncate text-xs font-black text-white sm:text-sm">{displayName}</span>
+      )}
+    </a>
+  )
+}
+
+function EmbedState({ icon, title = 'Video unavailable', message }: { icon?: ReactNode; title?: string; message: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
+      {icon}
+      <h1 className="text-xl font-black">{title}</h1>
+      <p className="max-w-md text-sm leading-6 text-white/58">{message}</p>
+    </div>
   )
 }
 
@@ -534,7 +652,21 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
   )
 }
 
-function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+function ShareMenu({
+  title,
+  embedCode,
+  copied,
+  embedCopied,
+  onCopy,
+  onCopyEmbed,
+}: {
+  title: string
+  embedCode: string
+  copied: boolean
+  embedCopied: boolean
+  onCopy: () => void
+  onCopyEmbed: () => void
+}) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentShareUrl()
@@ -610,13 +742,13 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
         ].join(' ')}
       >
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
               key={label}
@@ -650,6 +782,31 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
             {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
+        </div>
+        <div className="mt-3 rounded-md border border-white/10 bg-black/38 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="inline-flex min-w-0 items-center gap-2 text-sm font-black text-white">
+              <Code2 className="h-4 w-4 shrink-0 text-primary" />
+              Embed
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onCopyEmbed()
+              }}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-black text-black transition hover:bg-white/86"
+            >
+              {embedCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {embedCopied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <textarea
+            value={embedCode}
+            readOnly
+            aria-label="Embed code"
+            className="h-24 w-full resize-none rounded-md border border-white/10 bg-black/55 p-2 font-mono text-[11px] leading-4 text-white/70 outline-none focus:border-primary/50"
+            onFocus={(event) => event.currentTarget.select()}
+          />
         </div>
       </div>
     </div>
@@ -753,6 +910,11 @@ function getSlugFromPath() {
   return match?.[1] ? decodeURIComponent(match[1]) : ''
 }
 
+function getEmbedSlugFromPath() {
+  const match = window.location.pathname.match(/^\/video-embed\/([^/]+)/)
+  return match?.[1] ? decodeURIComponent(match[1]) : ''
+}
+
 function getQueryValue(key: string) {
   return new URLSearchParams(window.location.search).get(key)
 }
@@ -824,16 +986,14 @@ function currentShareUrl() {
   return window.location.href
 }
 
-async function copyShareUrl() {
-  const url = currentShareUrl()
-
+async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(url)
+    await navigator.clipboard.writeText(value)
     return
   }
 
   const input = document.createElement('input')
-  input.value = url
+  input.value = value
   input.setAttribute('readonly', '')
   input.style.position = 'fixed'
   input.style.opacity = '0'
@@ -841,6 +1001,39 @@ async function copyShareUrl() {
   input.select()
   document.execCommand('copy')
   document.body.removeChild(input)
+}
+
+function buildEmbedCode(video: VideoDetail, ondemandChannel?: string | null) {
+  const src = buildEmbedUrl(video, ondemandChannel)
+
+  return `<div style="position:relative;width:100%;max-width:1200px;aspect-ratio:16/9;background:#000;overflow:hidden;"><iframe src="${escapeHtmlAttribute(src)}" title="eZWay TV video player" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+}
+
+function buildEmbedUrl(video: VideoDetail, ondemandChannel?: string | null) {
+  const slug = video.slug ?? String(video.id)
+  const url = new URL(`/video-embed/${encodeURIComponent(slug)}`, window.location.origin)
+
+  if (ondemandChannel) {
+    url.searchParams.set('ondemand_channel', ondemandChannel)
+  }
+
+  return url.toString()
+}
+
+function buildWatchUrl(video: VideoDetail, ondemandChannel?: string | null) {
+  const slug = video.slug ?? String(video.id)
+  const url = new URL(`/video-details/${encodeURIComponent(slug)}`, window.location.origin)
+
+  url.searchParams.set('autoplay', '1')
+  if (ondemandChannel) {
+    url.searchParams.set('ondemand_channel', ondemandChannel)
+  }
+
+  return url.toString()
+}
+
+function escapeHtmlAttribute(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 }
 
 function stripHtml(value: string) {
