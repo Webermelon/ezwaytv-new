@@ -285,10 +285,19 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
             <Badge variant="outline" className="border-white/16 text-white/70">{videos.length} videos</Badge>
           </div>
 
-          {channelLocked ? (
-            <div className="rounded-md border border-primary/30 bg-primary/10 p-8 text-center text-white/72">
-              <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
-              <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+          {channelLocked && videos.length > 0 ? (
+            <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
+              <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {videos.map((video) => (
+                  <VideoCard key={video.id} video={video} channelId={profile.id} />
+                ))}
+              </div>
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
+                <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
+                  <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
+                  <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+                </div>
+              </div>
             </div>
           ) : videos.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">

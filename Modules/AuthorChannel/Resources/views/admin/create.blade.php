@@ -132,11 +132,13 @@
                     <div class="d-flex gap-4 pt-2">
                         <label class="form-check">
                             <input class="form-check-input" type="radio" name="access" value="free"
+                                onchange="window.syncAuthorChannelPlanSelection && window.syncAuthorChannelPlanSelection()"
                                 {{ old('access', 'free') === 'free' ? 'checked' : '' }}>
                             <span class="form-check-label">Free</span>
                         </label>
                         <label class="form-check">
                             <input class="form-check-input" type="radio" name="access" value="paid"
+                                onchange="window.syncAuthorChannelPlanSelection && window.syncAuthorChannelPlanSelection()"
                                 {{ old('access') === 'paid' ? 'checked' : '' }}>
                             <span class="form-check-label">Paid</span>
                         </label>
@@ -200,44 +202,39 @@ if (nameInput && usernameInput) {
     });
 }
 
-const accessInputs = document.querySelectorAll('input[name="access"]');
-const planSelection = document.getElementById('planSelection');
-const planSelect = document.getElementById('plan_id');
-function syncPlanSelection() {
-    const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
-    if (!planSelection) return;
-    const isPaid = selectedAccess === 'paid';
+(function () {
+    const accessInputs = document.querySelectorAll('input[name="access"]');
+    const planSelection = document.getElementById('planSelection');
+    const planSelect = document.getElementById('plan_id');
 
-    planSelection.classList.toggle('d-none', !isPaid);
+    function syncPlanSelection() {
+        const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
+        const isPaid = selectedAccess === 'paid';
 
-    if (planSelect) {
+        if (planSelection) {
+            planSelection.classList.toggle('d-none', !isPaid);
+        }
+
+        if (!planSelect) return;
+
         planSelect.disabled = !isPaid;
         planSelect.required = isPaid;
-    }
 
-    if (planSelect && !isPaid) {
-        planSelect.value = '';
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery(planSelect).val('').prop('disabled', true).trigger('change.select2');
+            jQuery(planSelect).prop('disabled', !isPaid);
+        }
+
+        if (!isPaid) {
+            planSelect.value = '';
+            if (window.jQuery && jQuery.fn.select2) {
+                jQuery(planSelect).val('').trigger('change.select2');
+            }
         }
     }
 
-    if (planSelect && isPaid && window.jQuery && jQuery.fn.select2) {
-        jQuery(planSelect).prop('disabled', false).trigger('change.select2');
-    }
-}
-document.addEventListener('DOMContentLoaded', function () {
+    window.syncAuthorChannelPlanSelection = syncPlanSelection;
+    accessInputs.forEach((input) => input.addEventListener('change', syncPlanSelection));
     syncPlanSelection();
-    if (window.jQuery && jQuery.fn.select2 && planSelect) {
-        jQuery(planSelect).on('select2:open', function () {
-            if (document.querySelector('input[name="access"]:checked')?.value !== 'paid') {
-                jQuery(planSelect).select2('close');
-            }
-        });
-        }
-    }
-});
-accessInputs.forEach((input) => input.addEventListener('change', syncPlanSelection));
-syncPlanSelection();
+})();
 </script>
 @endsection
