@@ -155,7 +155,7 @@ export function VideoDetailPage() {
         <>
           <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
             <div className="w-screen">
-              <div className="video-detail-player h-[80svh] min-h-[420px] w-full overflow-hidden bg-black">
+              <div className="video-detail-player aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
                 {isSubscriptionLocked ? (
                   <PremiumPlayerLock video={video} />
                 ) : isPayPerViewLocked ? (
@@ -319,7 +319,7 @@ export function VideoDetailPage() {
 
 function PlayerPreparing({ poster }: { poster?: string | null }) {
   return (
-    <div className="relative flex h-full min-h-[320px] w-full items-center justify-center overflow-hidden bg-black">
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-black sm:min-h-[320px]">
       {poster ? <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
       <div className="absolute inset-0 bg-black/58" />
       <div className="relative flex items-center gap-3 text-sm font-semibold text-white/72">
@@ -395,7 +395,7 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
 
 function PremiumPlayerLock({ video }: { video: VideoDetail }) {
   return (
-    <div className="relative flex h-full min-h-[320px] w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
+    <div className="relative flex h-full min-h-0 w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center sm:min-h-[320px]">
       {video.poster_image || video.poster_tv_image ? (
         <img src={video.poster_image ?? video.poster_tv_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
       ) : null}
@@ -693,7 +693,7 @@ function VideoDetailSkeleton() {
     <>
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
-          <div className="relative h-[80svh] min-h-[420px] w-full overflow-hidden bg-[#070707]">
+          <div className="relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-[#070707] sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
             <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(110deg,rgba(255,255,255,0.035)_0%,rgba(255,255,255,0.075)_26%,rgba(255,255,255,0.035)_52%)]" />
             <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-white/14" />
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />

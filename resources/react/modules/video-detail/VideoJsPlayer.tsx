@@ -369,7 +369,7 @@ export function VideoJsPlayer({
   }, [playTrigger, startPreroll, unmuteOnPlayTrigger])
 
   return (
-    <div className="ez-video-stage relative h-full min-h-[320px] w-full overflow-hidden bg-[#050505]">
+    <div className="ez-video-stage relative h-full min-h-0 w-full overflow-hidden bg-[#050505] sm:min-h-[320px]">
       {poster ? (
         <>
           <img src={poster} alt="" className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-2xl" />
