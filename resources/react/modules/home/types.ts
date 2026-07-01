@@ -34,6 +34,8 @@ export type MediaItem = {
   profile_url?: string
   ondemand_channel_id?: number | string | null
   videos_count?: number
+  video_count?: number
+  total_videos?: number
   is_active?: boolean
   is_watch_list?: number | boolean | string | null
   is_in_watchlist?: number | boolean | string | null

@@ -269,13 +269,17 @@ class AuthorChannelAPIController extends Controller
         $currentPlanLevel = $this->currentPlanLevel();
         $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
 
+        $videosCount = (int) ($channel->videos_count ?? $channel->videos()->count());
+
         $data = [
             'id'           => $channel->id,
             'name'         => $channel->name,
             'username'     => $channel->username,
             'cover_image_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
             'avatar_image_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
-            'videos_count' => $channel->videos_count ?? $channel->videos()->count(),
+            'videos_count' => $videosCount,
+            'video_count'  => $videosCount,
+            'total_videos' => $videosCount,
             'is_active'    => (bool) $channel->is_active,
             'profile_url'  => url('/on-demand/' . $channel->username),
             'access'       => $access,
