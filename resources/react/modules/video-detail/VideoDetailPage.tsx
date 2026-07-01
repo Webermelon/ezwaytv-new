@@ -136,6 +136,7 @@ export function VideoDetailPage() {
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
   const isLocked = isPayPerViewLocked || isSubscriptionLocked
   const playerUrl = video ? resolvePlayerUrl(video) : null
+  const playerPoster = video ? resolvePreviewImage(video) : null
 
   if (!slug) {
     return <PublicPage />
@@ -168,11 +169,11 @@ export function VideoDetailPage() {
                   </div>
                 ) : playerUrl && !isLocked ? (
                   adsQuery.isLoading ? (
-                    <PlayerPreparing poster={video.poster_image} />
+                    <PlayerPreparing poster={playerPoster} />
                   ) : (
                     <VideoJsPlayer
                       source={playerUrl}
-                      poster={video.poster_image}
+                      poster={playerPoster}
                       autoplay={autoplay}
                       playTrigger={playTrigger}
                       vastAds={ads.vast}
@@ -333,6 +334,7 @@ export function VideoEmbedPage() {
     staleTime: 30_000,
   })
   const playerUrl = video ? resolvePlayerUrl(video) : null
+  const playerPoster = video ? resolvePreviewImage(video) : null
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
 
@@ -349,11 +351,11 @@ export function VideoEmbedPage() {
           <EmbedState icon={<Lock className="h-8 w-8 text-primary" />} title="Purchase required" message="Open eZWay TV to unlock this video." />
         ) : playerUrl ? (
           adsQuery.isLoading ? (
-            <PlayerPreparing poster={video.poster_image} />
+            <PlayerPreparing poster={playerPoster} />
           ) : (
             <VideoJsPlayer
               source={playerUrl}
-              poster={video.poster_image}
+              poster={playerPoster}
               autoplay={false}
               vastAds={adsQuery.data?.vast ?? []}
               onPlay={() => setIsPlaying(true)}
@@ -500,10 +502,12 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
 }
 
 function PremiumPlayerLock({ video }: { video: VideoDetail }) {
+  const poster = resolvePreviewImage(video)
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center sm:min-h-[320px]">
-      {video.poster_image || video.poster_tv_image ? (
-        <img src={video.poster_image ?? video.poster_tv_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
+      {poster ? (
+        <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
       ) : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,168,67,0.18),transparent_36%),linear-gradient(180deg,rgba(0,0,0,0.50),#000_100%)]" />
       <div className="relative flex max-w-md flex-col items-center">
@@ -590,13 +594,13 @@ function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        <div className="aspect-video bg-black">
-          {image ? (
-            <img src={image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/42">No image</div>
-          )}
-        </div>
+        <MediaThumbnail
+          src={image}
+          alt={item.name}
+          previewSrc={previewHref(item)}
+          className="aspect-video"
+          imageClassName="object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
           <Play className="h-5 w-5 fill-white text-white" />
@@ -968,6 +972,16 @@ function buildVideoHref(video: MediaItem, channelId?: string | number | null) {
 
 function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
+}
+
+function resolvePreviewImage(item: MediaItem) {
+  return item.poster_image
+    ?? item.poster_tv_image
+    ?? item.thumbnail_url
+    ?? item.poster_url
+    ?? item.cover_image_url
+    ?? item.details?.thumbnail_image
+    ?? null
 }
 
 function currentShareUrl() {

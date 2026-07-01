@@ -164,7 +164,7 @@ function VideoCard({ video }: { video: MediaItem }) {
           <MediaThumbnail
             src={video.poster_image}
             alt={video.name}
-            previewSrc={null}
+            previewSrc={previewHref(video)}
             className="aspect-video"
             imageClassName="object-cover"
           />

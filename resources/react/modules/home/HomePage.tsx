@@ -258,7 +258,7 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
         <MediaThumbnail
           src={image}
           alt={title}
-          previewSrc={null}
+          previewSrc={shape === 'video' ? previewHref(item) : null}
           className={shape === 'video' ? 'aspect-video' : ''}
           imageClassName={shape === 'video' ? 'object-cover' : undefined}
         />

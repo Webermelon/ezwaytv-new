@@ -128,7 +128,7 @@ export function VideoJsPlayer({
       setAdUi({ visible: false, skippable: false, canSkip: false })
       player.muted(autoplay ? true : wasMuted)
       player.controls(true)
-      playMainSource(player, source, wasMuted)
+      playMainSource(player, source, wasMuted, poster)
     }
 
     finishPrerollRef.current = finishPreroll
@@ -496,7 +496,8 @@ function formatSeconds(value: number) {
   return `${minutes}:${rest}`
 }
 
-function playMainSource(player: VideoJsImaPlayer, source: string, preferredMuted: boolean) {
+function playMainSource(player: VideoJsImaPlayer, source: string, preferredMuted: boolean, poster?: string | null) {
+  player.poster(poster ?? '')
   player.src({ src: source, type: guessMimeType(source) })
   player.load()
 

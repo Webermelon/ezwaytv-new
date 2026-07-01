@@ -584,7 +584,7 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
         <MediaThumbnail
           src={image}
           alt={video.name}
-          previewSrc={null}
+          previewSrc={previewHref(video)}
           className="aspect-video"
           imageClassName="object-cover"
         />
