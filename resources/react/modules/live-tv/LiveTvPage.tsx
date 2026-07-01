@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronLeft, ChevronRight, Copy, Eye, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -858,7 +858,6 @@ function ChannelGridSkeleton() {
 
 function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolean }) {
   const [currentTime, setCurrentTime] = useState(() => Date.now())
-  const [channelSort, setChannelSort] = useState<'asc' | 'desc'>('asc')
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
       queryKey: ['livetv-guide-channel-detail-schedule-v3', channel.id],
@@ -879,9 +878,9 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
         const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
         const featuredCompare = aFeatured - bFeatured
 
-        return featuredCompare || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
+        return featuredCompare || nameCompare || a.loadedAt - b.loadedAt || a.index - b.index
       })
-  ), [channelSort, currentTime, guideQueries])
+  ), [currentTime, guideQueries])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
   const programCount = visibleRows.reduce((total, { row }) => total + tvGuidePrograms(row, currentTime).length, 0)
   const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
@@ -915,31 +914,6 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
-            Now + Next
-          </div>
-          <div className="flex rounded-md border border-white/10 bg-white/[0.045] p-1">
-            {[
-              { value: 'asc', label: 'A-Z' },
-              { value: 'desc', label: 'Z-A' },
-            ].map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setChannelSort(item.value as 'asc' | 'desc')}
-                className={[
-                  'h-8 rounded px-3 text-xs font-black transition',
-                  channelSort === item.value
-                    ? 'bg-[#d4a843] text-black'
-                    : 'text-white/54 hover:bg-white/[0.08] hover:text-white',
-                ].join(' ')}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="max-h-[560px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
