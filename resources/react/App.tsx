@@ -3,6 +3,8 @@ import { CastCrewDetailPage } from '@/modules/castcrew/CastCrewDetailPage'
 import { AccountSettingPage } from '@/modules/account/AccountSettingPage'
 import { ChangePasswordPage } from '@/modules/account/ChangePasswordPage'
 import { ProfileDetailsPage } from '@/modules/account/ProfileDetailsPage'
+import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
+import { OrdersPage } from '@/modules/account/OrdersPage'
 import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
 import { HomePage } from '@/modules/home/HomePage'
@@ -14,7 +16,7 @@ import { ManageProfilePage } from '@/modules/profile/ManageProfilePage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
-import { VideoDetailPage } from '@/modules/video-detail/VideoDetailPage'
+import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
@@ -43,6 +45,10 @@ export default function App() {
     page = <DistributionPage />
   } else if (pathname === '/subscription-plan') {
     page = <SubscriptionPlanPage />
+  } else if (pathname === '/payment-history') {
+    page = <PaymentHistoryPage />
+  } else if (pathname === '/orders') {
+    page = <OrdersPage />
   } else if (pathname === '/account-setting') {
     page = <AccountSettingPage />
   } else if (pathname === '/watch-list') {
@@ -57,6 +63,8 @@ export default function App() {
     page = <MusicPage />
   } else if (pathname.startsWith('/upload-your-videoes')) {
     page = <MusicUploadPage />
+  } else if (pathname.startsWith('/video-embed')) {
+    page = <VideoEmbedPage />
   } else if (pathname.startsWith('/video-details')) {
     page = <VideoDetailPage />
   } else if (pathname.startsWith('/castcrew-detail')) {
@@ -70,7 +78,7 @@ export default function App() {
   return (
     <>
       {page}
-      <AppFooter />
+      {pathname.startsWith('/video-embed') ? null : <AppFooter />}
     </>
   )
 }

@@ -51,7 +51,12 @@ class SecurityHeaders
         // $response->headers->set('Cross-Origin-Embedder-Policy', 'credentialless');
         // $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
         // $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
-        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        if ($request->is('video-embed') || $request->is('video-embed/*')) {
+            $response->headers->remove('X-Frame-Options');
+            $response->headers->set('Content-Security-Policy', "frame-ancestors *");
+        } else {
+            $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        }
 
         // Remove information disclosure headers
         $response->headers->remove('X-Powered-By');

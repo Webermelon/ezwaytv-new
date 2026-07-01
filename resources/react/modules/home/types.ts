@@ -29,6 +29,8 @@ export type MediaItem = {
   required_plan_name?: string | null
   current_plan_level?: number | string | null
   username?: string
+  channel_name?: string | null
+  channel_username?: string | null
   profile_url?: string
   ondemand_channel_id?: number | string | null
   videos_count?: number

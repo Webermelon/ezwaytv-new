@@ -132,11 +132,13 @@
                     <div class="d-flex gap-4 pt-2">
                         <label class="form-check">
                             <input class="form-check-input" type="radio" name="access" value="free"
+                                onchange="window.syncAuthorChannelPlanSelection && window.syncAuthorChannelPlanSelection()"
                                 {{ old('access', 'free') === 'free' ? 'checked' : '' }}>
                             <span class="form-check-label">Free</span>
                         </label>
                         <label class="form-check">
                             <input class="form-check-input" type="radio" name="access" value="paid"
+                                onchange="window.syncAuthorChannelPlanSelection && window.syncAuthorChannelPlanSelection()"
                                 {{ old('access') === 'paid' ? 'checked' : '' }}>
                             <span class="form-check-label">Paid</span>
                         </label>
@@ -144,7 +146,7 @@
                     @error('access')<span class="text-danger">{{ $message }}</span>@enderror
                 </div>
 
-                <div class="col-md-6" id="planSelection" data-plan-selection>
+                <div class="col-md-6 {{ old('access', 'free') === 'paid' ? '' : 'd-none' }}" id="planSelection" data-plan-selection>
                     <label class="form-label">Subscription Plan <span class="text-danger">*</span></label>
                     <select name="plan_id" id="plan_id" class="form-control select2" data-plan-select>
                         <option value="">-- Select Plan --</option>
@@ -200,38 +202,39 @@ if (nameInput && usernameInput) {
     });
 }
 
-const accessInputs = document.querySelectorAll('input[name="access"]');
-const planSelection = document.getElementById('planSelection');
-const planSelect = document.getElementById('plan_id');
-function syncPlanSelection() {
-    const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
-    if (!planSelection) return;
-    const isPaid = selectedAccess === 'paid';
-    planSelection.classList.toggle('opacity-50', !isPaid);
-    if (planSelect) {
+(function () {
+    const accessInputs = document.querySelectorAll('input[name="access"]');
+    const planSelection = document.getElementById('planSelection');
+    const planSelect = document.getElementById('plan_id');
+
+    function syncPlanSelection() {
+        const selectedAccess = document.querySelector('input[name="access"]:checked')?.value || 'free';
+        const isPaid = selectedAccess === 'paid';
+
+        if (planSelection) {
+            planSelection.classList.toggle('d-none', !isPaid);
+        }
+
+        if (!planSelect) return;
+
         planSelect.disabled = !isPaid;
-    }
-    if (planSelect && !isPaid) {
+        planSelect.required = isPaid;
+
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery(planSelect).prop('disabled', true);
+            jQuery(planSelect).prop('disabled', !isPaid);
         }
-    }
-    if (planSelect && isPaid && window.jQuery && jQuery.fn.select2) {
-        jQuery(planSelect).prop('disabled', false);
-    }
-}
-document.addEventListener('DOMContentLoaded', function () {
-    syncPlanSelection();
-    if (window.jQuery && jQuery.fn.select2 && planSelect) {
-        jQuery(planSelect).on('select2:open', function () {
-            if (document.querySelector('input[name="access"]:checked')?.value !== 'paid') {
-                jQuery(planSelect).select2('close');
+
+        if (!isPaid) {
+            planSelect.value = '';
+            if (window.jQuery && jQuery.fn.select2) {
+                jQuery(planSelect).val('').trigger('change.select2');
             }
-        });
         }
     }
-});
-accessInputs.forEach((input) => input.addEventListener('change', syncPlanSelection));
-syncPlanSelection();
+
+    window.syncAuthorChannelPlanSelection = syncPlanSelection;
+    accessInputs.forEach((input) => input.addEventListener('change', syncPlanSelection));
+    syncPlanSelection();
+})();
 </script>
 @endsection

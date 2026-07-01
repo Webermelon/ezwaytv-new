@@ -46,6 +46,9 @@ class VideoResourceV3 extends JsonResource
         $isPremium = ($this->access === 'paid') && (($currentUser === null) || ($videoPlanLevel > $currentPlanLevel));
         $showPremiumBadge = ($this->access === 'paid') && (($currentUser === null) || ($videoPlanLevel > $currentPlanLevel));
 
+        $authorChannel = $this->relationLoaded('authorChannels') ? $this->authorChannels->first() : null;
+        $authorAvatar = $authorChannel?->avatar;
+
         $isPurchased = false;
         if ($this->access === 'pay-per-view') {
             $purchasedIds = $this->preloaded_purchased_ids ?? [];
@@ -80,7 +83,12 @@ class VideoResourceV3 extends JsonResource
             'imdb_rating' => $this->IMDb_rating,
             'duration' => $this->duration,
             'poster_image' => setBaseUrlWithFileName($this->poster_url,'image','video'),
-            'ondemand_channel_id' => $this->ondemand_channel_id ?? null,
+            'ondemand_channel_id' => $authorChannel?->id ?? ($this->ondemand_channel_id ?? null),
+            'channel_name' => $authorChannel?->name,
+            'channel_username' => $authorChannel?->username,
+            'username' => $authorChannel?->name,
+            'profile_url' => $authorChannel?->username ? url('/on-demand/'.$authorChannel->username) : null,
+            'avatar_image_url' => $authorAvatar ? setBaseUrlWithFileNameV2($authorAvatar) : null,
         ];
     }
 }

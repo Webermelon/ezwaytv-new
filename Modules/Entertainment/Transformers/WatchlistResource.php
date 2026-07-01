@@ -40,6 +40,15 @@ class WatchlistResource extends JsonResource
         $PlanLevel = optional(optional($contentItem)->plan)->level ?? 0;
         $access = $isVideo ? optional($contentItem)->access : optional($contentItem)->movie_access;
         $showPremiumBadge = ($access === 'paid') && ($currentUser === null || $PlanLevel > $currentPlanLevel);
+        $authorChannel = null;
+
+        if ($isVideo && $contentItem) {
+            if ($contentItem->relationLoaded('authorChannels')) {
+                $authorChannel = $contentItem->authorChannels->first();
+            } elseif (method_exists($contentItem, 'authorChannels')) {
+                $authorChannel = $contentItem->authorChannels()->where('is_active', 1)->first();
+            }
+        }
 
         return [
             'id' => $this->id,
@@ -85,6 +94,10 @@ class WatchlistResource extends JsonResource
             'is_purchased' => Entertainment::isPurchased($this->entertainment_id, $isVideo ? 'video' : optional($contentItem)->type, $this->user_id),
             'is_pay_per_view' => $isVideo ? (optional($contentItem)->access == 'pay-per-view') : (optional($contentItem)->movie_access == 'pay-per-view'),
             'show_premium_badge' => $showPremiumBadge,
+            'ondemand_channel_id' => optional($authorChannel)->id,
+            'ondemand_channel_name' => optional($authorChannel)->name,
+            'ondemand_channel_username' => optional($authorChannel)->username,
+            'is_ondemand_video' => (bool) optional($authorChannel)->id,
         ];
     }
 }

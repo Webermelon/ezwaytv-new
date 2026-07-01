@@ -30,6 +30,25 @@
         if (empty($previewUrl) && data_get($data, 'video_upload_type') === 'Local' && !empty(data_get($data, 'video_url_input'))) {
             $previewUrl = data_get($data, 'video_url_input');
         }
+
+        $accessType = strtolower((string) data_get($data, 'access', data_get($data, 'details.access', 'free')));
+        $isPayPerView = !empty(data_get($data, 'is_pay_per_view')) || $accessType === 'pay-per-view';
+        $isPurchased = !empty(data_get($data, 'is_purchased'));
+        $showPremiumBadge = !empty(data_get($data, 'show_premium_badge')) || $accessType === 'paid';
+
+        if ($isPayPerView) {
+            $accessLabel = $isPurchased ? __('messages.rented') : __('messages.rent');
+            $accessIcon = 'ph ph-film-reel';
+            $accessClass = 'product-rent ac-access-badge';
+        } elseif ($showPremiumBadge) {
+            $accessLabel = __('messages.lbl_premium');
+            $accessIcon = 'ph ph-crown-simple';
+            $accessClass = 'product-rent ac-access-badge ac-access-badge-premium';
+        } else {
+            $accessLabel = __('messages.free');
+            $accessIcon = null;
+            $accessClass = 'product-rent ac-access-badge ac-access-badge-free';
+        }
     @endphp
     <div class="slick-item">
         <div class="iq-card card-hover entainment-slick-card ac-video-card"
@@ -37,6 +56,15 @@
              data-movie-data="{{ json_encode($data) }}"
              data-preview="{{ $previewUrl }}"
              data-is-search="{{ isset($is_search) && $is_search == 1 ? 1 : null }}">
+
+            <div class="ac-access-row">
+                <span class="{{ $accessClass }}">
+                    @if ($accessIcon)
+                        <i class="{{ $accessIcon }}"></i>
+                    @endif
+                    {{ $accessLabel }}
+                </span>
+            </div>
 
             <div class="block-images position-relative w-100">
 
@@ -67,23 +95,9 @@
                     <i class="ph-fill ph-play" style="font-size:20px;color:#fff;margin-left:2px;"></i>
                 </div>
 
-                {{-- Badges (pay-per-view / premium) --}}
-                @if (!empty($data['is_pay_per_view']))
-                    @if (!empty($data['is_purchased']))
-                        <span class="product-rent"><i class="ph ph-film-reel"></i> {{ __('messages.rented') }}</span>
-                    @else
-                        <span class="product-rent"><i class="ph ph-film-reel"></i> {{ __('messages.rent') }}</span>
-                    @endif
-                @elseif (!empty($data['show_premium_badge']))
-                    <button type="button" class="product-premium border-0" data-bs-toggle="tooltip"
-                        data-bs-placement="top" data-bs-title="{{ __('messages.lbl_premium') }}">
-                        <i class="ph ph-crown-simple"></i>
-                    </button>
-                @endif
-
                 {{-- Duration badge --}}
                 @if (!empty($data['duration']))
-                <div class="position-absolute bottom-0 end-0 m-1" style="pointer-events:none;z-index:2;">
+                <div class="ac-duration-badge position-absolute bottom-0 end-0 m-1" style="pointer-events:none;">
                     <span class="badge bg-dark bg-opacity-75 font-size-11 px-1">{{ formatDuration($data['duration']) }}</span>
                 </div>
                 @endif

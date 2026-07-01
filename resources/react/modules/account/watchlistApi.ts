@@ -4,6 +4,10 @@ import type { MediaItem } from '@/modules/home/types'
 export type WatchlistItem = MediaItem & {
   entertainment_id?: number | string
   entertainment_type?: string
+  is_ondemand_video?: boolean | number
+  ondemand_channel_id?: number | string | null
+  ondemand_channel_name?: string | null
+  ondemand_channel_username?: string | null
   thumbnail_image?: string | null
   movie_access?: string | null
   is_watch_list?: boolean | number

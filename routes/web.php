@@ -11,6 +11,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\RolePermission;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Backend\EmailLogController;
+use App\Http\Controllers\Backend\CoreApiKeyController;
 use App\Http\Controllers\MusicVideoSubmissionController;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Backend\MobileSettingController;
 use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
+use App\Http\Controllers\CoreCheckoutBridgeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +35,12 @@ use App\Http\Controllers\Auth\WebQrLoginController;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
+Route::view('/docs/api', 'docs.api')->name('docs.api');
+Route::redirect('/docs/apis', '/docs/api');
+Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');
+Route::get('/core/payment-history', [CoreCheckoutBridgeController::class, 'paymentHistory'])->name('core.payment-history');
+Route::post('/core/checkouts', [CoreCheckoutBridgeController::class, 'checkout'])->name('core.checkouts');
+
 if (app()->environment('local')) {
     Route::view('/react-modernization', 'react-modernization')->name('react-modernization');
     Route::view('/react-home', 'react-modernization')->name('react-home');
@@ -41,7 +49,10 @@ if (app()->environment('local')) {
     Route::view('/spa/{path?}', 'react-modernization')->where('path', '.*')->name('react-spa');
 }
 
+Route::view('/payment-history', 'react-modernization')->name('payment-history');
+Route::view('/orders', 'react-modernization')->name('orders');
 Route::view('/music', 'react-modernization')->name('music');
+Route::view('/video-embed/{slug}', 'react-modernization')->name('video-embed');
 Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
 Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
 Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');
@@ -168,6 +179,9 @@ Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function (
 
 
         Route::resource("mobile-setting", MobileSettingController::class);
+        Route::get('core-api-keys', [CoreApiKeyController::class, 'index'])->name('core-api-keys.index');
+        Route::post('core-api-keys', [CoreApiKeyController::class, 'store'])->name('core-api-keys.store');
+        Route::post('core-api-keys/{coreApiKey}/revoke', [CoreApiKeyController::class, 'revoke'])->name('core-api-keys.revoke');
         Route::get('email-logs', [EmailLogController::class, 'index'])->name('email-logs.index');
         Route::get('email-logs/{id}', [EmailLogController::class, 'show'])->name('email-logs.show');
         Route::get('users-submission', [MusicVideoSubmissionController::class, 'adminIndex'])->name('users_submission.index');

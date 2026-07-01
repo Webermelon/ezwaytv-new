@@ -63,9 +63,53 @@
 
     {{-- Global: video card play button + hover preview --}}
     <style>
-        .ac-video-card .block-images { border-radius:6px; overflow:hidden; }
+        .ac-video-card .block-images {
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .ac-video-card .block-images > a { z-index: 8; }
         .ac-thumb-wrapper { position:relative; aspect-ratio:16/9; background:#111; }
         .ac-thumb-img, .ac-preview-video { border-radius:0; }
+        .ac-preview-video { z-index: 2; }
+
+        .ac-video-card .ac-access-row {
+            align-items: center;
+            display: flex;
+            justify-content: flex-end;
+            min-height: 24px;
+            padding: 0 8px 4px;
+        }
+
+        .ac-video-card .ac-access-badge {
+            align-items: center;
+            background: rgba(0, 0, 0, .82);
+            border-radius: 2px;
+            color: #fff;
+            display: inline-flex;
+            font-size: 11px;
+            font-weight: 700;
+            gap: 3px;
+            line-height: 1;
+            max-width: calc(100% - 18px);
+            min-height: 20px;
+            padding: 4px 8px;
+            text-transform: lowercase;
+            white-space: nowrap;
+        }
+
+        .ac-video-card .ac-access-badge i {
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .ac-video-card .ac-access-badge-premium,
+        .ac-video-card .ac-access-badge:not(.ac-access-badge-free) {
+            text-transform: uppercase;
+        }
+
+        .ac-video-card .ac-duration-badge {
+            z-index: 12;
+        }
 
         /* Play button — centered absolutely, no Bootstrap translate-middle needed */
         .ac-play-btn {
@@ -73,7 +117,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 5;
+            z-index: 10;
             transition: transform .2s ease, background .2s ease, opacity .2s ease;
             pointer-events: none;
         }
@@ -1204,7 +1248,22 @@
 
             // Handle "HH:MM" format (e.g., "05:20")
             if (typeof duration === 'string' && duration.includes(':')) {
-                const [hours, minutes] = duration.split(':').map(Number);
+                const parts = duration.split(':').map(Number);
+
+                if (parts.length === 3) {
+                    const [hours, minutes, seconds] = parts;
+                    const hoursFormatted = String(hours).padStart(2, '0');
+                    const minutesFormatted = String(minutes).padStart(2, '0');
+                    const secondsFormatted = String(seconds).padStart(2, '0');
+
+                    if (hours > 0) {
+                        return `${hoursFormatted}h ${minutesFormatted}m ${secondsFormatted}s`;
+                    }
+
+                    return `${minutesFormatted}m ${secondsFormatted}s`;
+                }
+
+                const [hours, minutes] = parts;
                 const hoursFormatted = String(hours).padStart(2, '0');
                 const minutesFormatted = String(minutes).padStart(2, '0');
                 return `${hoursFormatted}h ${minutesFormatted}m`;

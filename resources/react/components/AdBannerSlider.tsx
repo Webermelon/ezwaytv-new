@@ -54,10 +54,19 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
 
   return (
     <section className={['bg-[#050505] px-4 py-5 sm:px-8 lg:px-12', className].filter(Boolean).join(' ')}>
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1800px]">
         <div className={showNetworkAd ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]' : undefined}>
-          <div className="relative min-w-0 overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl shadow-black/40">
-            <SlideImage slide={activeSlide} />
+          <div className="relative aspect-[16/5] min-h-[150px] min-w-0 overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl shadow-black/40 sm:min-h-[210px] lg:min-h-[300px]">
+            <div
+              className="flex h-full w-full transition-transform duration-700 ease-out motion-reduce:transition-none"
+              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+            >
+              {slides.map((slide, index) => (
+                <div key={`${slide.id ?? index}-slide`} className="h-full w-full flex-none">
+                  <SlideImage slide={slide} eager={index === activeIndex} />
+                </div>
+              ))}
+            </div>
 
             {slides.length > 1 ? (
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
@@ -92,13 +101,13 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
   )
 }
 
-function SlideImage({ slide }: { slide: AdBannerSlide }) {
+function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: boolean }) {
   const image = (
     <img
       src={slide.image ?? ''}
       alt={slide.title ?? 'Advertisement'}
-      className="aspect-[16/5] min-h-[150px] w-full object-cover sm:min-h-[210px] lg:min-h-[300px]"
-      loading="lazy"
+      className="h-full w-full object-cover"
+      loading={eager ? 'eager' : 'lazy'}
     />
   )
   const href = slide.link_url ?? slide.link
@@ -106,7 +115,7 @@ function SlideImage({ slide }: { slide: AdBannerSlide }) {
   if (!href) return image
 
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="block">
+    <a href={href} target="_blank" rel="noreferrer" className="block h-full w-full">
       {image}
     </a>
   )

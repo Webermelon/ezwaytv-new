@@ -69,4 +69,15 @@ return [
 
 
 
+    'core_private_api' => [
+        'token' => env('CORE_PRIVATE_API_TOKEN'),
+        'secret' => env('CORE_PRIVATE_API_SECRET'),
+    ],
+
+    'core_api' => [
+        'base_url' => env('CORE_API_URL', 'https://ezwaycore.webermelon.dev'),
+        'token' => env('CORE_API_TOKEN'),
+        'host' => env('CORE_API_HOST'),
+    ],
+
 ];

@@ -595,6 +595,66 @@
         z-index: 0;
     }
 
+    @media (max-width: 640px) {
+        .video-player .video-js .vjs-control-bar {
+            position: absolute !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            display: flex !important;
+            align-items: flex-end !important;
+            height: 5.4rem !important;
+            padding: 2rem 0.45rem 0.55rem !important;
+            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.34) 32%, rgba(0, 0, 0, 0.86) 100%) !important;
+        }
+
+        .video-player .video-js .vjs-progress-control,
+        .video-player .video-js .vjs-control.vjs-progress-control {
+            position: absolute !important;
+            top: 0.72rem !important;
+            right: 0.85rem !important;
+            left: 0.85rem !important;
+            display: block !important;
+            width: auto !important;
+            min-width: 0 !important;
+            height: 1.45rem !important;
+            padding: 0.45rem 0 !important;
+        }
+
+        .video-player .video-js .vjs-progress-control .vjs-progress-holder {
+            width: 100% !important;
+            height: 0.42rem !important;
+            margin: 0 !important;
+            border-radius: 999px !important;
+            overflow: visible !important;
+            background: rgba(255, 255, 255, 0.26) !important;
+        }
+
+        .video-player .video-js .vjs-load-progress,
+        .video-player .video-js .vjs-load-progress div {
+            border-radius: inherit !important;
+            background: rgba(255, 255, 255, 0.38) !important;
+        }
+
+        .video-player .video-js .vjs-play-progress {
+            border-radius: inherit !important;
+            background: #ff0033 !important;
+        }
+
+        .video-player .video-js .vjs-play-progress::before {
+            top: 50% !important;
+            right: -0.5rem !important;
+            width: 1rem !important;
+            height: 1rem !important;
+            margin-top: -0.5rem !important;
+            border-radius: 999px !important;
+            color: transparent !important;
+            opacity: 1 !important;
+            background: #ff0033 !important;
+            transform: scale(0.9) !important;
+        }
+    }
+
     #customAdModal {
         display: none;
         position: absolute;

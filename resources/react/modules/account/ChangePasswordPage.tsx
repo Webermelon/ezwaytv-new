@@ -93,7 +93,7 @@ export function ChangePasswordPage() {
       <AccountHero title="Change Password" description="Update your password and sign out all active devices for a fresh login." actionLabel="Account Settings" actionHref="/account-setting" />
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/change-password" />
           <div className="min-w-0">
             {notice ? <Notice tone={notice.tone} text={notice.text} onClose={() => setNotice(null)} /> : null}

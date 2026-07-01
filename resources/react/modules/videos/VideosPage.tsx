@@ -66,43 +66,12 @@ export function VideosPage() {
     })
   }, [access, query, videos])
 
-  const featured = filteredVideos[0] ?? videos[0]
-  const featuredDescription = featured ? stripHtml(String(featured.short_desc || featured.description || '')) : ''
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="videos" />
 
-      <section className="relative min-h-[62vh] overflow-hidden">
-        {featured?.poster_image ? <img src={featured.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-58" /> : null}
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.88)_34%,rgba(5,5,5,0.42)_70%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#050505] to-transparent" />
-
-        <div className="relative z-10 flex min-h-[62vh] max-w-4xl flex-col justify-end px-4 pb-16 pt-20 sm:px-8 lg:px-12">
-          <Badge className="w-fit rounded-sm bg-primary text-white">Videos</Badge>
-          <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">
-            {featured?.name ?? 'Videos'}
-          </h1>
-          {featuredDescription ? (
-            <p className="mt-5 line-clamp-3 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-              {featuredDescription}
-            </p>
-          ) : null}
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-              <a href={videoHref(featured)}>
-                {isPremiumVideoCard(featured) ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
-                {isPremiumVideoCard(featured) ? 'View Premium' : 'Play'}
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/videos">All Videos</a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="px-4 py-8 sm:px-8 lg:px-12">
         <div className="mb-6 flex flex-col gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 sm:flex-row sm:items-center">
           <div className="flex min-h-11 flex-1 items-center gap-2 rounded-md bg-black/38 px-3">
             <Search className="h-4 w-4 text-white/44" />
@@ -185,37 +154,154 @@ function uniqueById(items: MediaItem[]) {
 function VideoCard({ video }: { video: MediaItem }) {
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
+  const durationLabel = formatDurationLabel(video.duration)
 
   return (
     <a href={videoHref(video)} className="group block min-w-0">
-      <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        <MediaThumbnail src={video.poster_image} alt={video.name} previewSrc={previewHref(video)} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
-        {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
-        <div className={[
-          'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
-          locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
-        ].join(' ')}>
-          {locked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
-        </div>
-        {locked ? (
-          <Badge className="absolute right-3 top-3 rounded-sm bg-primary text-black">
-            <Lock className="mr-1 h-3.5 w-3.5" />
-            Premium
-          </Badge>
-        ) : video.access ? <Badge className="absolute right-3 top-3 rounded-sm bg-black/70 text-white">{video.access}</Badge> : null}
-        <div className="absolute bottom-3 left-3 z-10">
-          <WatchlistToggleButton
-            entertainmentId={video.id}
-            type="video"
-            initialInWatchlist={inWatchlist}
+      <div className="overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
+        <div className="relative">
+          <MediaThumbnail
+            src={video.poster_image}
+            alt={video.name}
+            previewSrc={previewHref(video)}
+            className="aspect-video"
+            imageClassName="object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/8 to-transparent" />
+          {locked ? <div className="absolute inset-0 bg-black/32" /> : null}
+          {accessLabel ? (
+            <Badge className={[
+              'absolute right-2 top-2 z-20 inline-flex h-6 items-center gap-1 rounded-full border px-2.5 text-[10px] font-black uppercase leading-none tracking-normal shadow-[0_8px_18px_rgba(0,0,0,0.35)]',
+              locked
+                ? 'border-primary/70 bg-primary text-black'
+                : 'border-primary/60 bg-primary text-black',
+            ].join(' ')}>
+              {locked ? <Lock className="h-3 w-3" /> : null}
+              {accessLabel}
+            </Badge>
+          ) : null}
+          <div className={[
+            'absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur',
+            locked ? 'bg-primary text-black' : 'bg-white/20 text-white',
+          ].join(' ')}>
+            {locked ? <Lock className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
+          </div>
+          <div className="absolute bottom-3 left-3 z-10">
+            <WatchlistToggleButton
+              entertainmentId={video.id}
+              type="video"
+              initialInWatchlist={inWatchlist}
+            />
+          </div>
+          {durationLabel ? <Badge className="absolute bottom-3 right-3 z-20 rounded-sm bg-black/80 text-white">{durationLabel}</Badge> : null}
         </div>
-        {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
       </div>
-      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
+      <div className="mt-2 grid gap-1">
+        <h3 className="line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h3>
+        <ChannelName video={video} />
+      </div>
     </a>
   )
+}
+
+function formatAccessLabel(access?: string | null) {
+  if (!access) return null
+
+  return access.replaceAll('-', ' ')
+}
+
+function formatDurationLabel(duration?: string | number | null) {
+  if (duration === null || duration === undefined) return null
+
+  const value = String(duration).trim()
+  if (!value) return null
+
+  if (/^\d+$/.test(value)) {
+    return formatDurationSeconds(Number(value))
+  }
+
+  const parts = value.split(':').map((part) => Number(part))
+  if (parts.some((part) => Number.isNaN(part) || part < 0)) return value
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts
+
+    if (hours > 0) {
+      return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+    }
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  return value
+}
+
+function formatDurationSeconds(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return null
+
+  const roundedSeconds = Math.round(totalSeconds)
+  const hours = Math.floor(roundedSeconds / 3600)
+  const minutes = Math.floor((roundedSeconds % 3600) / 60)
+  const seconds = roundedSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+  }
+
+  return `${minutes}:${padTimePart(seconds)}`
+}
+
+function padTimePart(value: number) {
+  return String(Math.max(0, Math.floor(value))).padStart(2, '0')
+}
+
+function ChannelName({ video }: { video: MediaItem }) {
+  const channelName = video.channel_name || video.username || 'eZWay TV'
+  const channelSlug = video.channel_username || ''
+  const channelHref = video.profile_url || (channelSlug ? `/on-demand/${channelSlug}` : '')
+  const avatar = video.profile_image || video.avatar_image_url || video.cover_image_url || ''
+  const content = (
+    <>
+      <span className="flex h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+        {avatar ? (
+          <img src={avatar} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-[10px] font-black text-white/58">{channelInitials(channelName)}</span>
+        )}
+      </span>
+      <span className="line-clamp-1 min-w-0 text-xs font-semibold text-white/48 transition group-hover:text-white/70">{channelName}</span>
+    </>
+  )
+
+  if (!channelHref) {
+    return <div className="flex min-w-0 items-center gap-2">{content}</div>
+  }
+
+  return (
+    <a
+      href={channelHref}
+      onClick={(event) => event.stopPropagation()}
+      className="flex w-fit max-w-full min-w-0 items-center gap-2"
+    >
+      {content}
+    </a>
+  )
+}
+
+function channelInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'EZ'
 }
 
 function VideoGridSkeleton() {

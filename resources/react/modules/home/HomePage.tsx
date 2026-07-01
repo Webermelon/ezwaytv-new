@@ -66,18 +66,24 @@ export function HomePage() {
           </div>
         ) : null}
 
-        <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} />
-        <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" index={1} />
-        <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" index={2} />
-        <Rail
-          title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
-          items={state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []}
-          href="/castcrew-list"
-          shape="personality"
-          index={3}
-        />
-        <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" index={4} />
-        <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
+        {homeQuery.isLoading ? (
+          <HomeSectionsSkeleton />
+        ) : (
+          <>
+            <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} />
+            <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" index={1} />
+            <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" index={2} />
+            <Rail
+              title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
+              items={state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []}
+              href="/castcrew-list"
+              shape="personality"
+              index={3}
+            />
+            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" index={4} />
+            <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
+          </>
+        )}
       </section>
     </main>
   )
@@ -128,6 +134,62 @@ function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean })
   )
 }
 
+function HomeSectionsSkeleton() {
+  const rails = [
+    { titleWidth: 'w-32', shape: 'square' },
+    { titleWidth: 'w-48', shape: 'channel' },
+    { titleWidth: 'w-36', shape: 'video' },
+    { titleWidth: 'w-44', shape: 'personality' },
+    { titleWidth: 'w-52', shape: 'poster' },
+  ] as const
+
+  return (
+    <>
+      {rails.map((rail, index) => (
+        <section key={index} className="ez-home-rail" style={{ animationDelay: `${index * 90}ms` }}>
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <div className={['h-7 animate-pulse rounded-md bg-white/12', rail.titleWidth].join(' ')} />
+            <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+          </div>
+          <div
+            className={[
+              'grid grid-flow-col gap-4 overflow-x-hidden pb-5',
+              rail.shape === 'personality'
+                ? 'auto-cols-[minmax(150px,48vw)] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
+                : 'auto-cols-[minmax(220px,72vw)] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)]',
+            ].join(' ')}
+          >
+            {Array.from({ length: rail.shape === 'personality' ? 10 : 7 }).map((_, itemIndex) => (
+              <HomeCardSkeleton key={itemIndex} personality={rail.shape === 'personality'} index={itemIndex} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </>
+  )
+}
+
+function HomeCardSkeleton({ personality, index }: { personality?: boolean; index: number }) {
+  const style = { animationDelay: `${Math.min(index, 9) * 55}ms` }
+
+  if (personality) {
+    return (
+      <div className="ez-home-card min-w-0 text-center" style={style}>
+        <div className="mx-auto aspect-square w-[72%] animate-pulse rounded-full border border-white/10 bg-white/[0.07] shadow-lg" />
+        <div className="mx-auto mt-3 h-4 w-28 animate-pulse rounded bg-white/10" />
+        <div className="mx-auto mt-2 h-3 w-16 animate-pulse rounded bg-white/7" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="ez-home-card min-w-0" style={style}>
+      <div className="aspect-video animate-pulse rounded-md border border-white/8 bg-white/[0.07] shadow-lg" />
+      <div className="mt-2 h-4 animate-pulse rounded bg-white/10" />
+      <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-white/7" />
+    </div>
+  )
+}
 function Rail({
   title,
   items,
@@ -172,7 +234,7 @@ function Rail({
 }
 
 function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'; index?: number }) {
-  const image = item.poster_tv_image ?? item.poster_image ?? item.cover_image_url ?? item.thumbnail_url ?? item.poster_url ?? item.language_image ?? item.profile_image
+  const image = cardImage(item, shape)
   const title = item.details?.name ?? item.name
   const cardStyle = { animationDelay: `${Math.min(index, 9) * 55}ms` }
 
@@ -193,7 +255,13 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
       <div
         className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]"
       >
-        <MediaThumbnail src={image} alt={title} previewSrc={shape === 'video' ? previewHref(item) : null} />
+        <MediaThumbnail
+          src={image}
+          alt={title}
+          previewSrc={shape === 'video' ? previewHref(item) : null}
+          className={shape === 'video' ? 'aspect-video' : ''}
+          imageClassName={shape === 'video' ? 'object-cover' : undefined}
+        />
         <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4a843]/75 to-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(212,168,67,0.12),transparent_38%)]" />
@@ -212,6 +280,25 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
   )
 }
 
+function cardImage(item: MediaItem, shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality') {
+  if (shape === 'video') {
+    return item.thumbnail_url
+      ?? item.details?.thumbnail_image
+      ?? item.poster_image
+      ?? item.poster_tv_image
+      ?? item.cover_image_url
+      ?? item.poster_url
+  }
+
+  return item.poster_tv_image
+    ?? item.poster_image
+    ?? item.cover_image_url
+    ?? item.thumbnail_url
+    ?? item.poster_url
+    ?? item.language_image
+    ?? item.profile_image
+}
+
 function contentHref(item?: MediaItem) {
   if (!item) {
     return '/'
@@ -222,10 +309,6 @@ function contentHref(item?: MediaItem) {
 
   if (item.ondemand_channel_id) {
     params.set('ondemand_channel', String(item.ondemand_channel_id))
-  }
-
-  if (type === 'ondemand' || item.profile_url) {
-    return item.username ? `/on-demand/${item.username}` : '/on-demand'
   }
 
   if (type === 'video' && item.slug) {
@@ -239,6 +322,10 @@ function contentHref(item?: MediaItem) {
 
   if (type === 'tvshow' && item.slug) {
     return `/tvshow-details/${item.slug}`
+  }
+
+  if (type === 'ondemand' || item.profile_url) {
+    return item.username ? `/on-demand/${item.username}` : '/on-demand'
   }
 
   if (type === 'livetv') {

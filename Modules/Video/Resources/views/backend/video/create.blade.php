@@ -307,11 +307,12 @@
                     <div class="row gy-3">
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', old('duration'))->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->attribute('required', 'required') }}
+                            {{ html()->text('duration')->attribute('value', old('duration'))->placeholder('HH:MM:SS or MM:SS')->class('form-control')->attribute('required', 'required')->attribute('pattern', '^(\\d{1,2}:)?[0-5]?\\d:[0-5]\\d$')->attribute('inputmode', 'numeric') }}
+                            <small class="text-muted">Use <strong>HH:MM:SS</strong>. For short videos, <strong>1:26</strong> saves as <strong>00:01:26</strong>.</small>
                             @error('duration')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="duration-error">Duration field is required</div>
+                            <div class="invalid-feedback" id="duration-error">Duration must be HH:MM:SS or MM:SS.</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('messages.lbl_skip_intro_start_time'), 'start_time')->class('form-label') }}
@@ -2359,6 +2360,74 @@
                 if (window.showValidationModal) window.showValidationModal(serverErrors, videoFieldLabels);
                 if (window.showErrorCountOnTabs) window.showErrorCountOnTabs(serverErrors, videoTabFields);
             @endif
+        });
+
+        function formatVideoDurationFromSeconds(totalSeconds) {
+            if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '';
+            const rounded = Math.round(totalSeconds);
+            const hours = Math.floor(rounded / 3600);
+            const minutes = Math.floor((rounded % 3600) / 60);
+            const seconds = rounded % 60;
+            return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
+        }
+
+        function setDetectedVideoDuration(totalSeconds) {
+            const durationInput = document.querySelector('input[name="duration"]');
+            const formatted = formatVideoDurationFromSeconds(totalSeconds);
+            if (!durationInput || !formatted) return;
+            durationInput.value = formatted;
+            durationInput.dispatchEvent(new Event('input', { bubbles: true }));
+            durationInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function attachDurationDetector(video) {
+            if (!video || video.dataset.durationDetectorAttached === '1') return;
+            video.dataset.durationDetectorAttached = '1';
+            video.addEventListener('loadedmetadata', function() {
+                setDetectedVideoDuration(video.duration);
+            });
+            if (video.readyState >= 1) {
+                setDetectedVideoDuration(video.duration);
+            }
+        }
+
+        function detectDurationFromUrl(url) {
+            if (!url || !/\.(mp4|m4v|webm|ogg|ogv|mov)(\?|#|$)/i.test(url)) return;
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.addEventListener('loadedmetadata', function() {
+                setDetectedVideoDuration(video.duration);
+                video.removeAttribute('src');
+                video.load();
+            }, { once: true });
+            video.src = url;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const containers = [
+                document.getElementById('selectedImageContainerVideourl'),
+                document.getElementById('selectedImageContainer4'),
+            ].filter(Boolean);
+
+            containers.forEach(function(container) {
+                container.querySelectorAll('video').forEach(attachDurationDetector);
+                new MutationObserver(function() {
+                    container.querySelectorAll('video').forEach(attachDurationDetector);
+                }).observe(container, { childList: true, subtree: true });
+            });
+
+            ['file_url_video', 'file_url4', 'video_url_input'].forEach(function(id) {
+                const input = document.getElementById(id);
+                if (!input) return;
+                input.addEventListener('change', function() {
+                    detectDurationFromUrl(input.value);
+                });
+                input.addEventListener('input', function() {
+                    detectDurationFromUrl(input.value);
+                });
+                detectDurationFromUrl(input.value);
+            });
         });
 
         // Initialize Select2 with localization

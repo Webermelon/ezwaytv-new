@@ -8,6 +8,15 @@ use Illuminate\Contracts\Validation\Validator;
 
 class VideoRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('duration')) {
+            $this->merge([
+                'duration' => $this->normalizeDuration($this->input('duration')),
+            ]);
+        }
+    }
+
     public function rules()
     {
         $id = request()->id;
@@ -27,7 +36,7 @@ class VideoRequest extends FormRequest
                     ->whereNull('deleted_at')
                     ->ignore($videoId)
             ],
-            'duration' => ['required'],
+            'duration' => ['required', 'regex:/^\d{2}:[0-5]\d:[0-5]\d$/'],
             'release_date' => ['required'],
             'access' => 'required',
             'description' => 'required|string',
@@ -230,6 +239,7 @@ class VideoRequest extends FormRequest
             'name.required' => __('messages.title_field_required'),
             'name.unique' => __('messages.video_name_already_exists'),
             'duration.required' => __('messages.duration_required'),
+            'duration.regex' => 'Duration must be in HH:MM:SS format. You may enter MM:SS, for example 1:26.',
             'release_date.required' => __('messages.release_date_required'),
 
             'discount.required' => 'Discount is required.',
@@ -378,6 +388,52 @@ class VideoRequest extends FormRequest
         }
 
         return $messages;
+    }
+
+    private function normalizeDuration($duration): string
+    {
+        $duration = trim((string) $duration);
+
+        if ($duration === '') {
+            return $duration;
+        }
+
+        if (is_numeric($duration)) {
+            $totalMinutes = (int) $duration;
+            return sprintf('%02d:%02d:00', intdiv($totalMinutes, 60), $totalMinutes % 60);
+        }
+
+        $parts = array_map('trim', explode(':', $duration));
+
+        if (count($parts) === 2 && ctype_digit($parts[0]) && ctype_digit($parts[1])) {
+            $first = (int) $parts[0];
+            $second = (int) $parts[1];
+
+            if ($second > 59) {
+                return $duration;
+            }
+
+            $treatAsLegacyHoursMinutes = strlen($parts[0]) === 2 && $first === 0 && $second <= 59;
+            if ($treatAsLegacyHoursMinutes) {
+                return sprintf('%02d:%02d:00', $first, $second);
+            }
+
+            return sprintf('00:%02d:%02d', $first, $second);
+        }
+
+        if (count($parts) === 3 && ctype_digit($parts[0]) && ctype_digit($parts[1]) && ctype_digit($parts[2])) {
+            $hours = (int) $parts[0];
+            $minutes = (int) $parts[1];
+            $seconds = (int) $parts[2];
+
+            if ($minutes > 59 || $seconds > 59) {
+                return $duration;
+            }
+
+            return sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
+        }
+
+        return $duration;
     }
     /**
      * Determine if the user is authorized to make this request.

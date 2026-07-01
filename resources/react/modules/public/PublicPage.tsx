@@ -56,7 +56,7 @@ export function PublicPage() {
       <AppHeader />
 
       <section className="border-b border-white/10 bg-[#080808] px-4 pb-10 pt-28 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-[1800px]">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">eZWay TV</p>
           <h1 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">
             {pageTitle(pathname, state)}
@@ -65,7 +65,7 @@ export function PublicPage() {
       </section>
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-[1800px]">
           {state.status === 'loading' ? <LoadingState /> : null}
           {state.status === 'error' ? <ErrorState message={state.message} /> : null}
           {state.status === 'page' ? <CmsPageContent page={state.page} /> : null}

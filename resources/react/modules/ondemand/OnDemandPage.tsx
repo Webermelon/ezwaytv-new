@@ -92,16 +92,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-              <ChannelSidebar
-                channels={filteredChannels}
-                loading={channelsQuery.isLoading}
-                query={query}
-                selectedUsername={routeUsername}
-                onQueryChange={setQuery}
-              />
-              <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
-            </div>
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -230,7 +221,7 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
-      <div className="relative aspect-[16/9] overflow-hidden bg-black sm:aspect-[21/8] sm:min-h-72">
+      <div className="relative h-[38vw] max-h-48 min-h-36 overflow-hidden bg-black sm:h-[30vw] sm:max-h-52 lg:h-[24vw] lg:max-h-56">
         {profile.cover_image_url ? (
           <img
             src={profile.cover_image_url}
@@ -242,7 +233,7 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
       </div>
 
       <div className="relative px-4 pb-6 sm:px-6">
-        <div className="-mt-10 grid gap-4 sm:-mt-12 sm:flex sm:flex-wrap sm:items-end">
+        <div className="-mt-8 grid gap-4 sm:-mt-10 sm:flex sm:flex-wrap sm:items-end">
           <div className="flex min-w-0 items-end gap-3 sm:flex-1 sm:gap-4">
             <MediaThumbnail
               src={profile.avatar_image_url ?? profile.cover_image_url}
@@ -294,13 +285,22 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
             <Badge variant="outline" className="border-white/16 text-white/70">{videos.length} videos</Badge>
           </div>
 
-          {channelLocked ? (
-            <div className="rounded-md border border-primary/30 bg-primary/10 p-8 text-center text-white/72">
-              <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
-              <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+          {channelLocked && videos.length > 0 ? (
+            <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
+              <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {videos.map((video) => (
+                  <VideoCard key={video.id} video={video} channelId={profile.id} />
+                ))}
+              </div>
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
+                <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
+                  <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
+                  <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+                </div>
+              </div>
             </div>
           ) : videos.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {videos.map((video) => (
                 <VideoCard key={video.id} video={video} channelId={profile.id} />
               ))}
@@ -575,11 +575,19 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
   const href = `/video-details/${video.slug}?autoplay=1&ondemand_channel=${channelId}`
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
+  const durationLabel = formatDurationLabel(video.duration)
 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.02] group-hover:border-primary/60">
-        <MediaThumbnail src={image} alt={video.name} previewSrc={previewHref(video)} />
+        <MediaThumbnail
+          src={image}
+          alt={video.name}
+          previewSrc={previewHref(video)}
+          className="aspect-video"
+          imageClassName="object-cover"
+        />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/82 to-transparent" />
         {locked ? <div className="absolute inset-0 bg-black/38" /> : null}
         <div className="absolute inset-0 flex items-center justify-center">
@@ -590,10 +598,10 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
             {locked ? <Lock className="h-6 w-6" /> : <Play className="ml-0.5 h-6 w-6 fill-current" />}
           </span>
         </div>
-        {locked ? (
-          <Badge className="absolute left-3 top-3 rounded-sm bg-primary text-black">
-            <Lock className="mr-1 h-3.5 w-3.5" />
-            Premium
+        {accessLabel ? (
+          <Badge className="absolute left-3 top-3 z-20 inline-flex h-6 items-center gap-1 rounded-full border border-primary/60 bg-primary px-2.5 text-[10px] font-black uppercase leading-none tracking-normal text-black shadow-[0_8px_18px_rgba(0,0,0,0.35)]">
+            {locked ? <Lock className="h-3 w-3" /> : null}
+            {accessLabel}
           </Badge>
         ) : null}
         <div className="absolute right-3 top-3 z-10">
@@ -603,7 +611,7 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
             initialInWatchlist={inWatchlist}
           />
         </div>
-        {video.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{video.duration}</Badge> : null}
+        {durationLabel ? <Badge className="absolute bottom-3 right-3 z-20 rounded-sm bg-black/80 text-white">{durationLabel}</Badge> : null}
       </div>
       <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h4>
     </a>
@@ -676,8 +684,9 @@ async function copyText(value: string) {
 }
 
 function videoThumb(video: MediaItem) {
-  return video.poster_tv_image
+  return video.thumbnail_image
     ?? video.thumbnail_url
+    ?? video.poster_tv_image
     ?? video.poster_url
     ?? video.poster_image
     ?? video.cover_image_url
@@ -735,6 +744,63 @@ function isPremiumVideoCard(video: MediaItem) {
   }
 
   return true
+}
+
+function formatAccessLabel(access?: string | null) {
+  if (!access) return null
+
+  return access.replaceAll('-', ' ')
+}
+
+function formatDurationLabel(duration?: string | number | null) {
+  if (duration === null || duration === undefined) return null
+
+  const value = String(duration).trim()
+  if (!value) return null
+
+  if (/^\d+$/.test(value)) {
+    return formatDurationSeconds(Number(value))
+  }
+
+  const parts = value.split(':').map((part) => Number(part))
+  if (parts.some((part) => Number.isNaN(part) || part < 0)) return value
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts
+
+    if (hours > 0) {
+      return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+    }
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts
+
+    return `${minutes}:${padTimePart(seconds)}`
+  }
+
+  return value
+}
+
+function formatDurationSeconds(totalSeconds: number) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return null
+
+  const roundedSeconds = Math.round(totalSeconds)
+  const hours = Math.floor(roundedSeconds / 3600)
+  const minutes = Math.floor((roundedSeconds % 3600) / 60)
+  const seconds = roundedSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${padTimePart(minutes)}:${padTimePart(seconds)}`
+  }
+
+  return `${minutes}:${padTimePart(seconds)}`
+}
+
+function padTimePart(value: number) {
+  return String(Math.max(0, Math.floor(value))).padStart(2, '0')
 }
 
 function isPremiumChannelLocked(item: MediaItem) {

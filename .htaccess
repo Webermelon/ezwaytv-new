@@ -1,3 +1,21 @@
+# BEGIN EZWAY EMERGENCY SECURITY
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Block active abusive IPs seen on 2026-06-17.
+RewriteCond %{REMOTE_ADDR} ^(45\.32\.109\.103|98\.92\.166\.63|65\.109\.32\.183|213\.128\.70\.19)$
+RewriteRule ^ - [F,L]
+
+# Never expose repository, env, dependency, or backup artifacts.
+RewriteRule (^|/)\.git(/|$) - [F,L]
+RewriteRule (^|/)\.svn(/|$) - [F,L]
+RewriteRule (^|/)\.hg(/|$) - [F,L]
+RewriteRule (^|/)\.env(\..*)?$ - [F,L]
+RewriteRule (^|/)(composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|pnpm-lock\.yaml)$ - [F,L]
+RewriteRule \.(sql|bak|backup|old|orig|save|swp|tar|tgz|gz|zip|7z|rar)$ - [F,L]
+</IfModule>
+# END EZWAY EMERGENCY SECURITY
+
 <IfModule mod_headers.c>
     Header unset Panel
     Header unset Platform

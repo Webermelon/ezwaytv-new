@@ -129,7 +129,7 @@ export function AccountSettingPage() {
       <AppHeader active="home" />
 
       <section className="border-b border-white/8 bg-[radial-gradient(circle_at_82%_0%,rgba(212,168,67,0.18),transparent_28%),linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-[1500px]">
+        <div className="mx-auto max-w-[1800px]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">
@@ -143,7 +143,7 @@ export function AccountSettingPage() {
             </div>
 
             <Button asChild className="h-11 bg-[#edc342] px-4 font-black text-black hover:bg-[#f4ce4d]">
-              <a href="/update-profile">
+              <a href="https://ezwaynetwork.com">
                 <Edit3 className="h-4 w-4" />
                 Edit Profile
               </a>
@@ -153,7 +153,7 @@ export function AccountSettingPage() {
       </section>
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/account-setting" />
 
           <div className="min-w-0">
@@ -253,7 +253,7 @@ function ContactPanel({ mobile }: { mobile: string | null }) {
         <p className="mt-2 text-lg font-black">{mobile ? maskMobile(mobile) : 'Not added'}</p>
       </div>
       <Button asChild className="mt-5 w-full bg-white/[0.08] font-black text-white hover:bg-white/[0.12]">
-        <a href="/update-profile">
+        <a href="https://ezwaynetwork.com">
           <Edit3 className="h-4 w-4" />
           Update Details
         </a>

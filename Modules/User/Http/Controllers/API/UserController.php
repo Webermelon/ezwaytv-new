@@ -29,7 +29,7 @@ class UserController extends Controller
 
         $user = User::with('subscriptionPackage', 'watchList', 'continueWatch')->where('id', $userId)->first();
 
-        if($user->is_subscribe == 1){
+        if ($user->subscriptionPackage) {
             $user['plan_details'] = $user->subscriptionPackage;
         }
 
@@ -79,7 +79,7 @@ class UserController extends Controller
         // $user['page'] =  Page::where('status',1)->get();
 
 
-        if ($user->is_subscribe == 1) {
+        if ($user->subscriptionPackage) {
             $plan_details = $user->subscriptionPackage;
             $plan_details['start_date'] = formatDate($plan_details['start_date']);
             $plan_details['end_date'] = formatDate($plan_details['end_date']);
@@ -339,7 +339,7 @@ class UserController extends Controller
         }])
         ->where('id', $userId)->first();
 
-        if($user->is_subscribe == 1){
+        if ($user->subscriptionPackage) {
             $user['plan_details'] = $user->subscriptionPackage;
         }
 
@@ -366,7 +366,7 @@ class UserController extends Controller
             }])
             ->where('id', $userId)->first();
          
-        if($user->is_subscribe == 1){
+        if ($user->subscriptionPackage) {
             $user['plan_details'] = $user->subscriptionPackage;
         }
 

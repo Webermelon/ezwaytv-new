@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Code2, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { useBranding } from '@/lib/branding'
 import type { MediaItem } from '@/modules/home/types'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
@@ -68,6 +69,7 @@ export function VideoDetailPage() {
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+  const [copiedEmbedCode, setCopiedEmbedCode] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | null>(null)
@@ -134,6 +136,7 @@ export function VideoDetailPage() {
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
   const isLocked = isPayPerViewLocked || isSubscriptionLocked
   const playerUrl = video ? resolvePlayerUrl(video) : null
+  const playerPoster = video ? resolvePreviewImage(video) : null
 
   if (!slug) {
     return <PublicPage />
@@ -153,109 +156,24 @@ export function VideoDetailPage() {
         </section>
       ) : (
         <>
-          <section className="relative z-30 overflow-visible">
-            {video.poster_tv_image || video.poster_image ? (
-              <img src={video.poster_tv_image ?? video.poster_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-34" />
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.92)_40%,rgba(5,5,5,0.68)_76%,#050505_100%)]" />
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
-
-            <div className="relative z-10 grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-8">
-              <section className="order-2 min-w-0 pb-8 pt-0 lg:order-1 lg:py-10">
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Badge className="rounded-sm bg-primary text-white">{video.access ?? 'video'}</Badge>
-                  {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
-                  {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
-                  {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
-                </div>
-
-                <h1 className="max-w-4xl text-2xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                  {video.name}
-                </h1>
-
-                <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/62">
-                  {video.release_date ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {new Date(video.release_date).getFullYear()}
-                    </span>
-                  ) : null}
-                  {video.duration ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      {video.duration}
-                    </span>
-                  ) : null}
-                  {video.imdb_rating ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Star className="h-4 w-4" />
-                      {video.imdb_rating}
-                    </span>
-                  ) : null}
-                  <PlayerStats stats={contentStats} />
-                </div>
-
-                <ChannelBadges channels={video.author_channels ?? []} />
-
-                <p className="mt-5 max-w-4xl text-sm leading-7 text-white/68 sm:text-base">
-                  {stripHtml(video.description ?? video.short_desc ?? '')}
-                </p>
-
-                {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
-
-                <div className="relative z-[80] mt-7 flex flex-wrap gap-3 pb-2">
-                  {isPayPerViewLocked ? (
-                    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-                      <a href="/pay-per-view">
-                        <Lock className="h-5 w-5" />
-                        Rent / Buy
-                      </a>
-                    </Button>
-                  ) : isSubscriptionLocked ? (
-                    <PremiumActionButton video={video} />
-                  ) : (
-                    <Button
-                      type="button"
-                      size="lg"
-                      className="bg-white text-black hover:bg-white/85"
-                      onClick={() => {
-                        setPlayTrigger((value) => value + 1)
-                        document.querySelector<HTMLElement>('.video-detail-player')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }}
-                    >
-                      <Play className="h-5 w-5 fill-current" />
-                      Watch Now
-                    </Button>
-                  )}
-                  <ShareMenu
-                    title={video.name}
-                    copied={copiedShareUrl}
-                    onCopy={() => {
-                      copyShareUrl().then(() => {
-                        setCopiedShareUrl(true)
-                        window.setTimeout(() => setCopiedShareUrl(false), 1800)
-                      }).catch(() => undefined)
-                    }}
-                  />
-                </div>
-              </section>
-
-              <aside className="video-detail-player order-1 min-w-0 self-center overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl lg:order-2">
+          <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+            <div className="w-screen">
+              <div className="video-detail-player aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
                 {isSubscriptionLocked ? (
                   <PremiumPlayerLock video={video} />
                 ) : isPayPerViewLocked ? (
-                  <div className="flex aspect-video flex-col items-center justify-center gap-3 bg-black p-8 text-center">
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
                     <Lock className="h-10 w-10 text-primary" />
                     <h2 className="text-2xl font-bold">Purchase required</h2>
                     <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
                   </div>
                 ) : playerUrl && !isLocked ? (
                   adsQuery.isLoading ? (
-                    <PlayerPreparing poster={video.poster_image} />
+                    <PlayerPreparing poster={playerPoster} />
                   ) : (
                     <VideoJsPlayer
                       source={playerUrl}
-                      poster={video.poster_image}
+                      poster={playerPoster}
                       autoplay={autoplay}
                       playTrigger={playTrigger}
                       vastAds={ads.vast}
@@ -285,18 +203,102 @@ export function VideoDetailPage() {
                     />
                   )
                 ) : (
-                  <div className="flex aspect-video items-center justify-center bg-black p-8 text-center text-white/56">
+                  <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
                     No playable source was returned for this video.
                   </div>
                 )}
-              </aside>
+              </div>
+            </div>
+          </section>
+
+          <section className="border-b border-white/10 bg-[#050505] px-3 py-5 sm:px-6 lg:px-8">
+            <div className="w-full">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.8rem]">
+                    {video.name}
+                  </h1>
+                  <div className="mt-3">
+                    <ChannelIdentity video={video} />
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
+                    <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
+                    {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
+                    {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-col gap-3 xl:items-end">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/58 xl:justify-end">
+                    <PlayerStats stats={contentStats} />
+                    {video.release_date ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(video.release_date).getFullYear()}
+                      </span>
+                    ) : null}
+                    {video.duration ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {video.duration}
+                      </span>
+                    ) : null}
+                    {video.imdb_rating ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Star className="h-4 w-4" />
+                        {video.imdb_rating}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="relative z-[80] flex flex-wrap gap-2 xl:justify-end">
+                  {isPayPerViewLocked ? (
+                    <Button asChild className="bg-white text-black hover:bg-white/85">
+                      <a href="/pay-per-view">
+                        <Lock className="h-5 w-5" />
+                        Rent / Buy
+                      </a>
+                    </Button>
+                  ) : isSubscriptionLocked ? (
+                    <PremiumActionButton video={video} />
+                  ) : null}
+                  <ShareMenu
+                    title={video.name}
+                    embedCode={buildEmbedCode(video, ondemandChannel)}
+                    copied={copiedShareUrl}
+                    embedCopied={copiedEmbedCode}
+                    onCopy={() => {
+                      copyText(currentShareUrl()).then(() => {
+                        setCopiedShareUrl(true)
+                        window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                      }).catch(() => undefined)
+                    }}
+                    onCopyEmbed={() => {
+                      copyText(buildEmbedCode(video, ondemandChannel)).then(() => {
+                        setCopiedEmbedCode(true)
+                        window.setTimeout(() => setCopiedEmbedCode(false), 1800)
+                      }).catch(() => undefined)
+                    }}
+                  />
+                  </div>
+                </div>
+              </div>
+
+              {isSubscriptionLocked ? <PremiumAccessNotice video={video} /> : null}
+
+              {(video.description || video.short_desc) ? (
+                <div className="mt-5 rounded-md bg-white/[0.045] p-4 text-sm leading-7 text-white/72 ring-1 ring-white/8">
+                  {stripHtml(video.description ?? video.short_desc ?? '')}
+                </div>
+              ) : null}
             </div>
           </section>
 
           <AdStrip ads={ads.custom} />
 
           {related.length > 0 ? (
-            <section className="px-4 pb-16 sm:px-8 lg:px-12">
+            <section className="px-3 pb-16 sm:px-6 lg:px-8">
               <h2 className="mb-4 text-2xl font-bold">
                 {video.ondemand_channel_context?.name ? `More from ${video.ondemand_channel_context.name}` : 'More Like This'}
               </h2>
@@ -314,9 +316,118 @@ export function VideoDetailPage() {
   )
 }
 
+export function VideoEmbedPage() {
+  const slug = getEmbedSlugFromPath()
+  const ondemandChannel = getQueryValue('ondemand_channel')
+  const [isPlaying, setIsPlaying] = useState(false)
+  const videoQuery = useQuery({
+    queryKey: ['video-embed', slug, ondemandChannel],
+    queryFn: () => loadVideoDetail(slug, ondemandChannel),
+    enabled: Boolean(slug),
+  })
+  const video = videoQuery.data as VideoDetail | null | undefined
+  const videoId = video?.id
+  const adsQuery = useQuery({
+    queryKey: ['video-embed-ads', videoId],
+    queryFn: () => loadVideoAds(videoId as string | number),
+    enabled: Boolean(videoId),
+    staleTime: 30_000,
+  })
+  const playerUrl = video ? resolvePlayerUrl(video) : null
+  const playerPoster = video ? resolvePreviewImage(video) : null
+  const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
+  const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
+
+  return (
+    <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-black text-white">
+      <div className="relative aspect-video max-h-screen w-full max-w-[calc(100vh*16/9)] overflow-hidden bg-black">
+        {videoQuery.isLoading ? (
+          <PlayerPreparing />
+        ) : videoQuery.isError || !video ? (
+          <EmbedState message={videoQuery.isError ? 'Video could not be loaded.' : 'Video not found.'} />
+        ) : isSubscriptionLocked ? (
+          <PremiumPlayerLock video={video} />
+        ) : isPayPerViewLocked ? (
+          <EmbedState icon={<Lock className="h-8 w-8 text-primary" />} title="Purchase required" message="Open eZWay TV to unlock this video." />
+        ) : playerUrl ? (
+          adsQuery.isLoading ? (
+            <PlayerPreparing poster={playerPoster} />
+          ) : (
+            <VideoJsPlayer
+              source={playerUrl}
+              poster={playerPoster}
+              autoplay={false}
+              vastAds={adsQuery.data?.vast ?? []}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+            />
+          )
+        ) : (
+          <EmbedState message="No playable source was returned for this video." />
+        )}
+        {video ? <EmbedBrandBadge compact={isPlaying} video={video} ondemandChannel={ondemandChannel} /> : null}
+      </div>
+    </main>
+  )
+}
+
+function EmbedBrandBadge({ compact, video, ondemandChannel }: { compact: boolean; video: VideoDetail; ondemandChannel?: string | null }) {
+  const { appName, logo } = useBranding()
+  const displayName = appName || 'eZWay TV'
+  const displayLogo = logo ?? 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/ezwaytv_white_6a26f75c71a3d.png'
+  const watchUrl = buildWatchUrl(video, ondemandChannel)
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [displayLogo])
+
+  return (
+    <a
+      href={watchUrl}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`Watch on ${displayName}`}
+      title={`Watch on ${displayName}`}
+      className={[
+        'absolute bottom-4 right-4 z-50 inline-flex h-10 items-center gap-2 rounded-md border border-white/14 bg-black/62 shadow-xl shadow-black/40 backdrop-blur-md transition hover:bg-black/82 sm:bottom-5 sm:right-5',
+        compact ? 'max-w-[38%] px-2.5' : 'max-w-[58%] px-3',
+      ].join(' ')}
+    >
+      {!compact ? <span className="shrink-0 text-xs font-black text-white sm:text-sm">Watch on</span> : null}
+      {displayLogo && !imageFailed ? (
+        <img
+          src={displayLogo}
+          alt={displayName}
+          className={[
+            'w-auto object-contain',
+            compact ? 'max-h-5 max-w-[92px] sm:max-h-6 sm:max-w-[112px]' : 'max-h-5 max-w-[110px] sm:max-h-6 sm:max-w-[140px]',
+          ].join(' ')}
+          loading="lazy"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <span className="truncate text-xs font-black text-white sm:text-sm">{displayName}</span>
+      )}
+    </a>
+  )
+}
+
+function EmbedState({ icon, title = 'Video unavailable', message }: { icon?: ReactNode; title?: string; message: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
+      {icon}
+      <h1 className="text-xl font-black">{title}</h1>
+      <p className="max-w-md text-sm leading-6 text-white/58">{message}</p>
+    </div>
+  )
+}
+
 function PlayerPreparing({ poster }: { poster?: string | null }) {
   return (
-    <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-black">
+    <div className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-black sm:min-h-[320px]">
       {poster ? <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
       <div className="absolute inset-0 bg-black/58" />
       <div className="relative flex items-center gap-3 text-sm font-semibold text-white/72">
@@ -391,10 +502,12 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
 }
 
 function PremiumPlayerLock({ video }: { video: VideoDetail }) {
+  const poster = resolvePreviewImage(video)
+
   return (
-    <div className="relative flex aspect-video min-h-[260px] flex-col items-center justify-center overflow-hidden bg-black p-8 text-center">
-      {video.poster_image || video.poster_tv_image ? (
-        <img src={video.poster_image ?? video.poster_tv_image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
+    <div className="relative flex h-full min-h-0 w-full flex-col items-center justify-center overflow-hidden bg-black p-8 text-center sm:min-h-[320px]">
+      {poster ? (
+        <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-28" />
       ) : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(212,168,67,0.18),transparent_36%),linear-gradient(180deg,rgba(0,0,0,0.50),#000_100%)]" />
       <div className="relative flex max-w-md flex-col items-center">
@@ -415,6 +528,28 @@ function PremiumPlayerLock({ video }: { video: VideoDetail }) {
   )
 }
 
+function ChannelIdentity({ video }: { video: VideoDetail }) {
+  const channel = video.author_channels?.[0]
+  const name = channel?.name ?? video.ondemand_channel_context?.name ?? 'eZWay TV'
+  const username = channel?.username ?? video.ondemand_channel_context?.username
+  const image = channel?.avatar_image_url ?? channel?.avatar ?? video.avatar_image_url ?? video.profile_image ?? null
+  const href = username ? `/on-demand/${username}` : video.ondemand_channel_context?.url ?? '/on-demand'
+
+  return (
+    <a href={href} className="group flex min-w-0 items-center gap-3 text-left">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-sm font-black text-white/64 ring-1 ring-white/12">
+        {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : initials(name)}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-base font-black text-white group-hover:text-white/84">{name}</span>
+        <span className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white/46">
+          <Tv className="h-3.5 w-3.5" />
+          On Demand Channel
+        </span>
+      </span>
+    </a>
+  )
+}
 function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
   if (channels.length === 0) return null
 
@@ -459,13 +594,13 @@ function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string 
   return (
     <a href={href} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black transition group-hover:scale-[1.025] group-hover:border-primary/60">
-        <div className="aspect-video bg-black">
-          {image ? (
-            <img src={image} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-white/42">No image</div>
-          )}
-        </div>
+        <MediaThumbnail
+          src={image}
+          alt={item.name}
+          previewSrc={previewHref(item)}
+          className="aspect-video"
+          imageClassName="object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
         <div className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
           <Play className="h-5 w-5 fill-white text-white" />
@@ -492,7 +627,7 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
   if (ads.length === 0) return null
 
   return (
-    <section className="px-4 pb-8 sm:px-8 lg:px-12">
+    <section className="px-3 pb-8 sm:px-6 lg:px-8">
       <div className="mb-3 text-sm font-bold uppercase text-primary">{label}</div>
       <div className="grid gap-3 md:grid-cols-3">
         {ads.slice(0, 3).map((ad, index) => (
@@ -509,7 +644,21 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
   )
 }
 
-function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+function ShareMenu({
+  title,
+  embedCode,
+  copied,
+  embedCopied,
+  onCopy,
+  onCopyEmbed,
+}: {
+  title: string
+  embedCode: string
+  copied: boolean
+  embedCopied: boolean
+  onCopy: () => void
+  onCopyEmbed: () => void
+}) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentShareUrl()
@@ -585,13 +734,13 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition sm:left-0 sm:right-auto',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(24rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
         ].join(' ')}
       >
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
               key={label}
@@ -625,6 +774,31 @@ function ShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; 
             {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
+        </div>
+        <div className="mt-3 rounded-md border border-white/10 bg-black/38 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="inline-flex min-w-0 items-center gap-2 text-sm font-black text-white">
+              <Code2 className="h-4 w-4 shrink-0 text-primary" />
+              Embed
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onCopyEmbed()
+              }}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-black text-black transition hover:bg-white/86"
+            >
+              {embedCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {embedCopied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <textarea
+            value={embedCode}
+            readOnly
+            aria-label="Embed code"
+            className="h-24 w-full resize-none rounded-md border border-white/10 bg-black/55 p-2 font-mono text-[11px] leading-4 text-white/70 outline-none focus:border-primary/50"
+            onFocus={(event) => event.currentTarget.select()}
+          />
         </div>
       </div>
     </div>
@@ -665,19 +839,71 @@ function LinkedInIcon({ className }: ShareIconProps) {
 
 function VideoDetailSkeleton() {
   return (
-    <section className="grid min-h-[72vh] items-start gap-6 px-4 py-5 sm:px-8 lg:grid-cols-[1.06fr_0.94fr] lg:items-center lg:gap-8 lg:px-12 lg:py-10">
-      <div className="order-2 lg:order-1">
-        <div className="h-6 w-24 animate-pulse rounded-sm bg-white/10" />
-        <div className="mt-5 h-16 max-w-2xl animate-pulse rounded-md bg-white/10" />
-        <div className="mt-4 h-24 max-w-3xl animate-pulse rounded-md bg-white/8" />
-      </div>
-      <div className="order-1 aspect-video self-center animate-pulse rounded-md bg-white/8 lg:order-2" />
-    </section>
+    <>
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+        <div className="w-screen">
+          <div className="relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-[#070707] sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
+            <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(110deg,rgba(255,255,255,0.035)_0%,rgba(255,255,255,0.075)_26%,rgba(255,255,255,0.035)_52%)]" />
+            <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-white/14" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent" />
+            <div className="absolute bottom-5 left-4 right-4 h-2 animate-pulse rounded-full bg-white/12 sm:left-8 sm:right-8" />
+          </div>
+          <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="h-7 w-11/12 max-w-5xl animate-pulse rounded-md bg-white/12 sm:h-8" />
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-12 w-12 animate-pulse rounded-full bg-white/12" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-48 animate-pulse rounded bg-white/12" />
+                    <div className="mt-2 h-3 w-32 animate-pulse rounded bg-white/8" />
+                  </div>
+                </div>
+              </div>
+              <div className="hidden items-center gap-4 md:flex">
+                <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+                <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-3 pb-8 pt-3 sm:px-6 lg:px-8">
+        <div className="w-full">
+          <div className="flex flex-wrap gap-2">
+            <div className="h-6 w-20 animate-pulse rounded-sm bg-white/10" />
+            <div className="h-6 w-24 animate-pulse rounded-sm bg-white/8" />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4">
+            <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-20 animate-pulse rounded bg-white/10" />
+            <div className="h-4 w-16 animate-pulse rounded bg-white/10" />
+          </div>
+          <div className="mt-4 h-24 animate-pulse rounded-md bg-white/[0.055]" />
+          <div className="mt-8 h-7 w-64 animate-pulse rounded-md bg-white/10" />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="grid gap-2">
+                <div className="aspect-video animate-pulse rounded-md bg-white/[0.07]" />
+                <div className="h-4 animate-pulse rounded bg-white/10" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-white/7" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   )
 }
 
 function getSlugFromPath() {
   const match = window.location.pathname.match(/^\/video-details\/([^/]+)/)
+  return match?.[1] ? decodeURIComponent(match[1]) : ''
+}
+
+function getEmbedSlugFromPath() {
+  const match = window.location.pathname.match(/^\/video-embed\/([^/]+)/)
   return match?.[1] ? decodeURIComponent(match[1]) : ''
 }
 
@@ -748,20 +974,28 @@ function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
 }
 
+function resolvePreviewImage(item: MediaItem) {
+  return item.poster_image
+    ?? item.poster_tv_image
+    ?? item.thumbnail_url
+    ?? item.poster_url
+    ?? item.cover_image_url
+    ?? item.details?.thumbnail_image
+    ?? null
+}
+
 function currentShareUrl() {
   return window.location.href
 }
 
-async function copyShareUrl() {
-  const url = currentShareUrl()
-
+async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(url)
+    await navigator.clipboard.writeText(value)
     return
   }
 
   const input = document.createElement('input')
-  input.value = url
+  input.value = value
   input.setAttribute('readonly', '')
   input.style.position = 'fixed'
   input.style.opacity = '0'
@@ -769,6 +1003,39 @@ async function copyShareUrl() {
   input.select()
   document.execCommand('copy')
   document.body.removeChild(input)
+}
+
+function buildEmbedCode(video: VideoDetail, ondemandChannel?: string | null) {
+  const src = buildEmbedUrl(video, ondemandChannel)
+
+  return `<div style="position:relative;width:100%;max-width:1200px;aspect-ratio:16/9;background:#000;overflow:hidden;"><iframe src="${escapeHtmlAttribute(src)}" title="eZWay TV video player" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+}
+
+function buildEmbedUrl(video: VideoDetail, ondemandChannel?: string | null) {
+  const slug = video.slug ?? String(video.id)
+  const url = new URL(`/video-embed/${encodeURIComponent(slug)}`, window.location.origin)
+
+  if (ondemandChannel) {
+    url.searchParams.set('ondemand_channel', ondemandChannel)
+  }
+
+  return url.toString()
+}
+
+function buildWatchUrl(video: VideoDetail, ondemandChannel?: string | null) {
+  const slug = video.slug ?? String(video.id)
+  const url = new URL(`/video-details/${encodeURIComponent(slug)}`, window.location.origin)
+
+  url.searchParams.set('autoplay', '1')
+  if (ondemandChannel) {
+    url.searchParams.set('ondemand_channel', ondemandChannel)
+  }
+
+  return url.toString()
+}
+
+function escapeHtmlAttribute(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 }
 
 function stripHtml(value: string) {

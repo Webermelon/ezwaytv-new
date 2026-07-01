@@ -38,7 +38,7 @@ export function MusicUploadPage() {
     <main className="min-h-screen bg-[#060606] text-white">
       <AppHeader />
       <section className="border-b border-white/10 bg-[#0d0d0d] px-4 py-8 sm:px-8 lg:px-12">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-[1800px]">
           <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#d4a843]">
             <ReceiptText className="h-4 w-4" />
             eZWay Music Submission
@@ -226,7 +226,7 @@ function MusicSubmissionSection() {
 
   return (
     <section id="music-video-submission" className="px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
-      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+      <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <aside className="lg:sticky lg:top-24">
           <div className="rounded-md border border-white/10 bg-[#141414] p-5 shadow-xl shadow-black/20">
             <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">

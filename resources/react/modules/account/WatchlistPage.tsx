@@ -11,6 +11,7 @@ const tabs = [
   { key: 'all', label: 'All' },
   { key: 'movie', label: 'Movies' },
   { key: 'tvshow', label: 'TV Shows' },
+  { key: 'ondemand', label: 'On Demand' },
   { key: 'video', label: 'Videos' },
 ]
 
@@ -54,7 +55,7 @@ export function WatchlistPage() {
       <AccountHero title="My Watchlist" description="Keep track of movies, shows, and videos you want to watch next." actionLabel="Explore Content" actionHref="/" />
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/watch-list" />
 
           <div className="min-w-0">
@@ -117,11 +118,12 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
   const title = item.name ?? item.details?.name ?? 'Untitled'
   const type = item.entertainment_type ?? item.type ?? item.details?.type ?? 'video'
   const href = itemHref(item)
-  const image = item.poster_tv_image ?? item.poster_image ?? item.thumbnail_image ?? item.thumbnail_url ?? item.details?.thumbnail_image
+  const image = watchlistImage(item, type)
+  const label = typeLabel(displayType(item))
 
   return (
     <article className="group overflow-hidden rounded-md border border-white/10 bg-white/[0.035] transition hover:border-white/20">
-      <a href={href} className="relative block aspect-[2/3] overflow-hidden bg-white/[0.04]">
+      <a href={href} className="relative block aspect-video overflow-hidden bg-white/[0.04]">
         {image ? (
           <img src={image} alt={title} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" loading="lazy" />
         ) : (
@@ -130,7 +132,7 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
           </div>
         )}
         <span className="absolute left-3 top-3 rounded-md border border-black/30 bg-black/72 px-2 py-1 text-xs font-black uppercase text-white/86">
-          {typeLabel(type)}
+          {label}
         </span>
       </a>
       <div className="p-4">
@@ -159,6 +161,22 @@ function WatchlistCard({ item, removing, onRemove }: { item: WatchlistItem; remo
   )
 }
 
+function watchlistImage(item: WatchlistItem, type: string) {
+  if (type === 'video') {
+    return item.thumbnail_image
+      ?? item.thumbnail_url
+      ?? item.details?.thumbnail_image
+      ?? item.poster_image
+      ?? item.poster_tv_image
+  }
+
+  return item.poster_tv_image
+    ?? item.poster_image
+    ?? item.thumbnail_image
+    ?? item.thumbnail_url
+    ?? item.details?.thumbnail_image
+}
+
 function EmptyWatchlist({ activeType }: { activeType: string }) {
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.035] p-8 text-center">
@@ -179,16 +197,31 @@ function itemHref(item: WatchlistItem) {
   const slug = item.slug ?? item.details?.slug
   const id = item.entertainment_id ?? item.details?.id ?? item.id
 
-  if (type === 'video') return slug ? `/video-details/${slug}` : `/video-details/${id}`
+  if (type === 'video') {
+    const videoPath = slug ? `/video-details/${slug}` : `/video-details/${id}`
+
+    return isOnDemandVideo(item) && item.ondemand_channel_id
+      ? `${videoPath}?autoplay=1&ondemand_channel=${encodeURIComponent(String(item.ondemand_channel_id))}`
+      : videoPath
+  }
   if (type === 'tvshow') return `/tvshow-details/${slug ?? id}`
   return `/movie-details/${slug ?? id}`
 }
 
+function displayType(item: WatchlistItem) {
+  return isOnDemandVideo(item) ? 'ondemand' : (item.entertainment_type ?? item.type ?? item.details?.type ?? 'video')
+}
+
 function typeLabel(type: string) {
+  if (type === 'ondemand') return 'On Demand'
   if (type === 'tvshow') return 'TV Show'
   if (type === 'movie') return 'Movie'
   if (type === 'video') return 'Video'
   return type || 'Title'
+}
+
+function isOnDemandVideo(item: WatchlistItem) {
+  return Boolean(item.is_ondemand_video || item.ondemand_channel_id || item.ondemand_channel_username)
 }
 
 function isAuthenticated() {
