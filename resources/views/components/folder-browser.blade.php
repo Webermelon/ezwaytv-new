@@ -413,7 +413,7 @@
                     const safeVideoUrl = escapeHtml(videoUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeVideoUrl}">
                                 <video class="img-fluid object-fit-cover media-thumb-10" preload="none" controlsList="nodownload" controls>
                                     <source src="${safeVideoUrl}" type="video/mp4">
                                 </video>
@@ -433,7 +433,7 @@
                     const safeImageUrl = escapeHtml(imageUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
-                            <div class="iq-media-images position-relative" data-file-name="${safeName}">
+                            <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeImageUrl}">
                                 <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>

@@ -16,6 +16,7 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Entertainment\Models\Entertainment;
 use Illuminate\Support\Facades\Log;
 
@@ -108,7 +109,7 @@ class FilemanagersController extends Controller
             $extension = $file->getClientOriginalExtension();
             $fileType = $this->getFileType($extension);
             $baseName = pathinfo($originalName, PATHINFO_FILENAME);
-            $sanitizedBaseName = str_replace([' ', '-', '.','%20'], '_', $baseName);
+            $sanitizedBaseName = $this->sanitizeUploadBaseName($baseName);
             $uniqueFileName = $sanitizedBaseName . '_' . uniqid() . '.' . $extension;
             $temporaryPath = $file->storeAs('temp/uploads', $uniqueFileName);
             // If chunk-assembled temp (original name) exists, remove to avoid duplicate
@@ -116,12 +117,14 @@ class FilemanagersController extends Controller
             if (file_exists($assembledTempPath)) {
                 @unlink($assembledTempPath);
             }
-            $filemanager = Filemanager::create([
+            $filemanagerData = [
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
-                // mark as processing for immediate handling, avoid leaving video in pending queue
-                'status' => $fileType === 'video' ? 'processing' : 'ready',
-            ]);
+            ];
+            if (Schema::hasColumn('filemanagers', 'status')) {
+                $filemanagerData['status'] = $fileType === 'video' ? 'processing' : 'ready';
+            }
+            $filemanager = Filemanager::create($filemanagerData);
             $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
@@ -145,16 +148,18 @@ class FilemanagersController extends Controller
             $extension = pathinfo($originalName, PATHINFO_EXTENSION);
             $fileType = $this->getFileType($extension);
             $baseName = pathinfo($originalName, PATHINFO_FILENAME);
-            $sanitizedBaseName = str_replace([' ', '-', '.','%20'], '_', $baseName);
+            $sanitizedBaseName = $this->sanitizeUploadBaseName($baseName);
             $uniqueFileName = $sanitizedBaseName . '_' . uniqid() . '.' . $extension;
             // Source path is the assembled temp file produced by /upload
             $temporaryPath = 'temp/uploads/' . $originalName;
-            $filemanager = Filemanager::create([
+            $filemanagerData = [
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
-                // mark as processing for immediate handling, avoid leaving video in pending queue
-                'status' => $fileType === 'video' ? 'processing' : 'ready',
-            ]);
+            ];
+            if (Schema::hasColumn('filemanagers', 'status')) {
+                $filemanagerData['status'] = $fileType === 'video' ? 'processing' : 'ready';
+            }
+            $filemanager = Filemanager::create($filemanagerData);
             $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
@@ -246,6 +251,14 @@ private function getFileType($extension)
     } else {
         return 'other';
     }
+}
+
+private function sanitizeUploadBaseName(string $baseName): string
+{
+    $sanitized = preg_replace('/[^A-Za-z0-9_]+/', '_', rawurldecode($baseName)) ?: '';
+    $sanitized = trim($sanitized, '_');
+
+    return $sanitized !== '' ? $sanitized : 'media';
 }
 
 

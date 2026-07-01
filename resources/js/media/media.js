@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (mediaSubmitButton) {
     mediaSubmitButton.addEventListener('click', function () {
       if (!selectedMediaUrl) {
-        var selectedTile = document.querySelector('#mediaLibraryContent .iq-media-images.selected[data-media-url]');
+        var selectedTile = document.querySelector('.iq-media-images.selected[data-media-url]');
         selectedMediaUrl = selectedTile ? selectedTile.getAttribute('data-media-url') : '';
       }
       var activeElement = document.activeElement;

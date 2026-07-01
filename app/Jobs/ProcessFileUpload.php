@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Aws\S3\S3Client;
 use Aws\S3\MultipartUploader;
+use Illuminate\Support\Facades\Schema;
 
 class ProcessFileUpload implements ShouldQueue
 {
@@ -262,6 +263,9 @@ class ProcessFileUpload implements ShouldQueue
             }
 
             $this->filemanager->file_url = $folderPath;
+            if (Schema::hasColumn('filemanagers', 'status')) {
+                $this->filemanager->status = 'ready';
+            }
             $this->filemanager->save();
 
             // Delete the unique file (with ID)
@@ -287,6 +291,14 @@ class ProcessFileUpload implements ShouldQueue
         } catch (\Exception $e) {
 
             Log::info("Error processing file upload: " . $e->getMessage());
+            try {
+                if (Schema::hasColumn('filemanagers', 'status')) {
+                    $this->filemanager->status = 'failed';
+                    $this->filemanager->save();
+                }
+            } catch (\Throwable $statusException) {
+                Log::warning("Unable to mark file upload as failed: " . $statusException->getMessage());
+            }
 
             throw $e;
         }
