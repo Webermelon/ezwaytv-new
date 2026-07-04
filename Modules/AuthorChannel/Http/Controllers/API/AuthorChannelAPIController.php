@@ -88,7 +88,14 @@ class AuthorChannelAPIController extends Controller
     {
             $channel = AuthorChannel::where('username', $username)
                 ->where('is_active', 1)
-                ->with('plan:id,name,level')
+                ->with([
+                    'plan:id,name,level',
+                    'playlists' => fn ($query) => $query->where('is_active', 1),
+                    'playlists.videos' => fn ($query) => $query
+                        ->with('plan:id,name,level')
+                        ->whereNull('videos.deleted_at')
+                        ->where('videos.status', 1),
+                ])
                 ->withCount('videos')
                 ->first();
 
@@ -295,9 +302,23 @@ class AuthorChannelAPIController extends Controller
 
         if ($includeDescription) {
             $data['description'] = $channel->description;
+            $data['playlists'] = $channel->relationLoaded('playlists')
+                ? $channel->playlists->map(fn ($playlist) => $this->formatPlaylist($playlist))->values()->all()
+                : [];
         }
 
         return $data;
+    }
+
+    private function formatPlaylist($playlist): array
+    {
+        return [
+            'id' => $playlist->id,
+            'name' => $playlist->name,
+            'description' => $playlist->description,
+            'video_count' => $playlist->videos->count(),
+            'videos' => $playlist->videos->map(fn ($video) => $this->formatVideo($video))->values()->all(),
+        ];
     }
 
     private function formatVideo($video): array

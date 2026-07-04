@@ -9,6 +9,7 @@ import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { useBranding } from '@/lib/branding'
 import type { MediaItem } from '@/modules/home/types'
+import { loadOnDemandProfile } from '@/modules/ondemand/ondemandApi'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
 import { loadContentStats, loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type ContentStats, type VideoAd } from './videoDetailApi'
@@ -65,6 +66,7 @@ type VideoDetail = MediaItem & {
 export function VideoDetailPage() {
   const slug = getSlugFromPath()
   const ondemandChannel = getQueryValue('ondemand_channel')
+  const playlistId = getQueryValue('playlist')
   const autoplay = getQueryValue('autoplay') === '1'
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
@@ -86,7 +88,33 @@ export function VideoDetailPage() {
   const video = videoQuery.data as VideoDetail | null | undefined
   const videoId = video?.id
   const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
+  const channelUsername = video?.ondemand_channel_context?.username
   const statsContentType = channelId ? 'ondemand_video' : 'video'
+  const playlistQuery = useQuery({
+    queryKey: ['ondemand-playlist-context', channelUsername, playlistId],
+    queryFn: () => loadOnDemandProfile(channelUsername as string),
+    enabled: Boolean(channelUsername && playlistId),
+    staleTime: 60_000,
+  })
+  const playlistVideos = useMemo(() => {
+    const playlists = playlistQuery.data?.playlists ?? []
+    const playlist = playlists.find((item) => String(item.id) === String(playlistId))
+
+    return playlist?.videos ?? []
+  }, [playlistId, playlistQuery.data?.playlists])
+  const activePlaylist = useMemo(() => {
+    const playlists = playlistQuery.data?.playlists ?? []
+
+    return playlists.find((item) => String(item.id) === String(playlistId)) ?? null
+  }, [playlistId, playlistQuery.data?.playlists])
+  const nextPlaylistVideo = useMemo(() => {
+    if (!video?.id || playlistVideos.length === 0) return null
+
+    const currentIndex = playlistVideos.findIndex((item) => String(item.id) === String(video.id) || item.slug === video.slug)
+    if (currentIndex < 0 || currentIndex >= playlistVideos.length - 1) return null
+
+    return playlistVideos[currentIndex + 1] ?? null
+  }, [playlistVideos, video?.id, video?.slug])
   const adsQuery = useQuery({
     queryKey: ['video-ads', videoId],
     queryFn: () => loadVideoAds(videoId as string | number),
@@ -132,6 +160,12 @@ export function VideoDetailPage() {
   }, [channelId, trackViewMutation, video])
 
   const related = video?.more_items ?? []
+  const railItems = activePlaylist && playlistVideos.length > 0 ? playlistVideos : related
+  const railTitle = activePlaylist
+    ? activePlaylist.name
+    : video?.ondemand_channel_context?.name
+      ? `More from ${video.ondemand_channel_context.name}`
+      : 'More Like This'
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
   const isLocked = isPayPerViewLocked || isSubscriptionLocked
@@ -194,11 +228,15 @@ export function VideoDetailPage() {
                         updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
                       }}
                       onEnded={(seconds) => {
-                        if (!playIdRef.current) return
+                        if (playIdRef.current) {
+                          const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                          lastWatchUpdateRef.current = finalSeconds
+                          updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                        }
 
-                        const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
-                        lastWatchUpdateRef.current = finalSeconds
-                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                        if (nextPlaylistVideo?.slug && playlistId) {
+                          window.location.href = buildPlaylistWatchUrl(nextPlaylistVideo, channelId, playlistId)
+                        }
                       }}
                     />
                   )
@@ -297,14 +335,12 @@ export function VideoDetailPage() {
 
           <AdStrip ads={ads.custom} />
 
-          {related.length > 0 ? (
+          {railItems.length > 0 ? (
             <section className="px-3 pb-16 sm:px-6 lg:px-8">
-              <h2 className="mb-4 text-2xl font-bold">
-                {video.ondemand_channel_context?.name ? `More from ${video.ondemand_channel_context.name}` : 'More Like This'}
-              </h2>
+              <h2 className="mb-4 text-2xl font-bold">{railTitle}</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
-                {related.map((item) => (
-                  <RelatedCard key={item.id} item={item} channelId={channelId} />
+                {railItems.map((item) => (
+                  <RelatedCard key={item.id} item={item} channelId={channelId} playlistId={playlistId} />
                 ))}
               </div>
             </section>
@@ -587,8 +623,8 @@ function ChannelBadge({ channel }: { channel: AuthorChannel }) {
   )
 }
 
-function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string | number | null }) {
-  const href = buildVideoHref(item, channelId)
+function RelatedCard({ item, channelId, playlistId }: { item: MediaItem; channelId?: string | number | null; playlistId?: string | null }) {
+  const href = playlistId ? buildPlaylistWatchUrl(item, channelId, playlistId) : buildVideoHref(item, channelId)
   const image = item.poster_image ?? item.poster_tv_image ?? item.thumbnail_url ?? item.cover_image_url ?? item.details?.thumbnail_image
 
   return (
@@ -965,6 +1001,20 @@ function buildVideoHref(video: MediaItem, channelId?: string | number | null) {
   const params = new URLSearchParams({ autoplay: '1' })
   if (video.ondemand_channel_id ?? channelId) {
     params.set('ondemand_channel', String(video.ondemand_channel_id ?? channelId))
+  }
+
+  return `/video-details/${video.slug}?${params.toString()}`
+}
+
+function buildPlaylistWatchUrl(video: MediaItem, channelId?: string | number | null, playlistId?: string | null) {
+  if (!video.slug) return '/videos'
+
+  const params = new URLSearchParams({ autoplay: '1' })
+  if (video.ondemand_channel_id ?? channelId) {
+    params.set('ondemand_channel', String(video.ondemand_channel_id ?? channelId))
+  }
+  if (playlistId) {
+    params.set('playlist', playlistId)
   }
 
   return `/video-details/${video.slug}?${params.toString()}`

@@ -35,6 +35,11 @@
     .ondemand-video-thumb { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; background: #050b0f; display: block; }
     .ondemand-video-body { padding: .85rem; display: grid; gap: .7rem; }
     .ondemand-video-title { min-height: 2.5rem; line-height: 1.25; }
+    .ondemand-playlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .ondemand-playlist-card { border: 1px solid rgba(255,255,255,.10); border-radius: .7rem; background: rgba(255,255,255,.025); padding: 1rem; display: grid; gap: .85rem; }
+    .ondemand-playlist-videos { display: grid; gap: .45rem; }
+    .ondemand-playlist-video { min-width: 0; display: flex; align-items: center; gap: .55rem; color: rgba(255,255,255,.72); font-size: .8rem; }
+    .ondemand-playlist-video img { width: 48px; aspect-ratio: 16 / 9; border-radius: .35rem; object-fit: cover; background: #050b0f; }
     .ondemand-empty { border: 1px dashed rgba(255,255,255,.18); border-radius: .7rem; padding: 2rem; text-align: center; color: rgba(255,255,255,.55); }
     @media (max-width: 991.98px) { .ondemand-preview { position: static; } }
 </style>
@@ -177,8 +182,110 @@
     <div class="card ondemand-card">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
+                <h5 class="mb-1">Playlists</h5>
+                <p class="mb-0 text-muted small">Create named playlists for this On Demand channel. These show on the public channel page.</p>
+            </div>
+            <span class="badge bg-primary">{{ $channel->playlists->count() }} playlist(s)</span>
+        </div>
+        <div class="card-body">
+            <form action="{{ route('backend.author_channels.playlists.store', $channel->id) }}" method="POST" class="row g-3 align-items-end">
+                @csrf
+                <div class="col-lg-5">
+                    <label class="form-label fw-semibold">Playlist Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="Featured Interviews" required>
+                </div>
+                <div class="col-lg-5">
+                    <label class="form-label fw-semibold">Description</label>
+                    <input type="text" name="description" class="form-control" placeholder="Optional short note">
+                </div>
+                <div class="col-lg-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="ph ph-list-plus"></i> Create
+                    </button>
+                </div>
+            </form>
+
+            <hr class="my-4">
+
+            <div class="ondemand-playlist-grid">
+                @forelse($channel->playlists as $playlist)
+                    @php
+                        $playlistVideoIds = $playlist->videos->pluck('id')->map(fn ($videoId) => (int) $videoId)->all();
+                        $playlistAvailableVideos = $channel->videos->reject(fn ($video) => in_array((int) $video->id, $playlistVideoIds, true));
+                    @endphp
+                    <div class="ondemand-playlist-card">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div class="min-w-0">
+                                <h6 class="mb-1">{{ $playlist->name }}</h6>
+                                @if($playlist->description)
+                                    <p class="mb-0 text-muted small">{{ Str::limit($playlist->description, 100) }}</p>
+                                @endif
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary align-self-start">{{ $playlist->videos->count() }} video(s)</span>
+                        </div>
+                        <form action="{{ route('backend.author_channels.playlists.videos.add', [$channel->id, $playlist->id]) }}" method="POST" class="row g-2 align-items-end">
+                            @csrf
+                            <div class="col-8">
+                                <label class="form-label small fw-semibold">Add Video</label>
+                                <select name="video_id" class="form-control playlist-video-select" required @disabled($playlistAvailableVideos->isEmpty())>
+                                    <option value="">-- Select video --</option>
+                                    @foreach($playlistAvailableVideos as $video)
+                                        <option value="{{ $video->id }}">{{ $video->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <button type="submit" class="btn btn-sm btn-success w-100" @disabled($playlistAvailableVideos->isEmpty())>
+                                    <i class="ph ph-plus-circle"></i> Add
+                                </button>
+                            </div>
+                        </form>
+                        <div class="ondemand-playlist-videos">
+                            @forelse($playlist->videos as $video)
+                                @php
+                                    $playlistThumb = ($video->thumbnail_url ?: $video->poster_url)
+                                        ? setBaseUrlWithFileNameV2($video->thumbnail_url ?: $video->poster_url)
+                                        : asset('default-image/Default-Image.jpg');
+                                @endphp
+                                <div class="ondemand-playlist-video">
+                                    <img src="{{ $playlistThumb }}" alt="" onerror="this.onerror=null;this.src='{{ asset('default-image/Default-Image.jpg') }}';">
+                                    <span class="text-truncate">{{ $video->name }}</span>
+                                    <form action="{{ route('backend.author_channels.playlists.videos.remove', [$channel->id, $playlist->id, $video->id]) }}" method="POST" class="ms-auto" onsubmit="return confirm('Remove this video from the playlist?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">
+                                            <i class="ph ph-x"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            @empty
+                                <div class="rounded border border-dashed border-secondary-subtle p-3 text-center text-muted small">
+                                    No videos in this playlist yet.
+                                </div>
+                            @endforelse
+                        </div>
+                        <form action="{{ route('backend.author_channels.playlists.destroy', [$channel->id, $playlist->id]) }}" method="POST" onsubmit="return confirm('Delete this playlist? Videos stay assigned to the channel.')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="ph ph-trash"></i> Delete Playlist
+                            </button>
+                        </form>
+                    </div>
+                @empty
+                    <div class="ondemand-empty">
+                        <i class="ph ph-list-bullets d-block mb-2" style="font-size: 2rem;"></i>
+                        No playlists yet. Create one from assigned videos above.
+                    </div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+
+    <div class="card ondemand-card">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
                 <h5 class="mb-1">Assigned Videos</h5>
-                <p class="mb-0 text-muted small">Attach existing videos or upload a new one directly into this channel.</p>
+                <p class="mb-0 text-muted small">Attach videos here, then add them to playlists above.</p>
             </div>
             <span class="badge bg-primary">{{ $channel->videos->count() }} video(s)</span>
         </div>
@@ -270,6 +377,15 @@ if (window.jQuery) {
             $sel.select2({
                 theme: 'bootstrap-5',
                 placeholder: '-- Select a video --',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+        var $playlistVideos = jQuery('.playlist-video-select');
+        if ($playlistVideos.length && typeof jQuery.fn.select2 !== 'undefined') {
+            $playlistVideos.select2({
+                theme: 'bootstrap-5',
+                placeholder: '-- Select video --',
                 allowClear: true,
                 width: '100%'
             });

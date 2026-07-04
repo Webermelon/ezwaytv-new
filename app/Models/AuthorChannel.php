@@ -61,6 +61,13 @@ class AuthorChannel extends Model
         return $this->belongsToMany(\Modules\Video\Models\Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
     }
 
+    public function playlists()
+    {
+        return $this->hasMany(AuthorChannelPlaylist::class, 'author_channel_id')
+            ->orderBy('sort_order')
+            ->orderBy('created_at');
+    }
+
     public function plan()
     {
         return $this->belongsTo(Plan::class, 'plan_id');

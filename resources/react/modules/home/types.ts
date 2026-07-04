@@ -36,6 +36,13 @@ export type MediaItem = {
   videos_count?: number
   video_count?: number
   total_videos?: number
+  playlists?: Array<{
+    id: number | string
+    name: string
+    description?: string | null
+    video_count?: number
+    videos?: MediaItem[]
+  }>
   is_active?: boolean
   is_watch_list?: number | boolean | string | null
   is_in_watchlist?: number | boolean | string | null

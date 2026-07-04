@@ -16,6 +16,13 @@ type ShareIconProps = {
   className?: string
 }
 
+type PlaylistGroup = {
+  id: string
+  name: string
+  description?: string | null
+  videos: MediaItem[]
+}
+
 export function OnDemandPage() {
   const path = useSpaPath()
   const routeUsername = getUsernameFromPath(path)
@@ -35,7 +42,7 @@ export function OnDemandPage() {
     enabled: Boolean(routeUsername),
     staleTime: 60_000,
   })
-  const profileState = profileQuery.data ?? { profile: null, videos: [] }
+  const profileState = profileQuery.data ?? { profile: null, videos: [], playlists: [] }
 
   useEffect(() => {
     const profile = profileState.profile
@@ -92,7 +99,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} manualPlaylists={profileState.playlists} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -197,8 +204,27 @@ function ChannelSidebar({
   )
 }
 
-function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile: MediaItem | null; videos: MediaItem[] }) {
+function ProfilePanel({
+  loading,
+  profile,
+  videos,
+  manualPlaylists,
+}: {
+  loading: boolean
+  profile: MediaItem | null
+  videos: MediaItem[]
+  manualPlaylists: NonNullable<MediaItem['playlists']>
+}) {
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+  const [activePlaylistId, setActivePlaylistId] = useState('all')
+  const playlists = useMemo(() => buildChannelPlaylists(videos, manualPlaylists), [videos, manualPlaylists])
+  const activePlaylist = playlists.find((playlist) => playlist.id === activePlaylistId) ?? playlists[0]
+
+  useEffect(() => {
+    if (!playlists.some((playlist) => playlist.id === activePlaylistId)) {
+      setActivePlaylistId('all')
+    }
+  }, [activePlaylistId, playlists])
 
   if (loading) {
     return <div className="min-h-[620px] animate-pulse rounded-md border border-white/10 bg-white/[0.04]" />
@@ -280,41 +306,95 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
 
         {channelLocked ? <OnDemandPremiumPanel item={profile} /> : null}
 
-        <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xl font-bold">Videos</h3>
-            <Badge variant="outline" className="border-white/16 text-white/70">{videos.length} videos</Badge>
-          </div>
-
-          {channelLocked && videos.length > 0 ? (
-            <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
-              <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {videos.map((video) => (
-                  <VideoCard key={video.id} video={video} channelId={profile.id} />
-                ))}
-              </div>
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
-                <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
-                  <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
-                  <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
-                </div>
-              </div>
-            </div>
-          ) : videos.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {videos.map((video) => (
-                <VideoCard key={video.id} video={video} channelId={profile.id} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
-              <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
-              No videos yet.
-            </div>
-          )}
-        </div>
+        <PlaylistSection
+          channelId={profile.id}
+          channelLocked={channelLocked}
+          profile={profile}
+          playlists={playlists}
+          activePlaylist={activePlaylist}
+          activePlaylistId={activePlaylistId}
+          onPlaylistChange={setActivePlaylistId}
+        />
       </div>
     </article>
+  )
+}
+
+function PlaylistSection({
+  channelId,
+  channelLocked,
+  profile,
+  playlists,
+  activePlaylist,
+  activePlaylistId,
+  onPlaylistChange,
+}: {
+  channelId: string | number
+  channelLocked: boolean
+  profile: MediaItem
+  playlists: PlaylistGroup[]
+  activePlaylist?: PlaylistGroup
+  activePlaylistId: string
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  const videos = activePlaylist?.videos ?? []
+
+  return (
+    <div className="mt-8">
+      <div className="mb-5 border-b border-white/10">
+        <div className="flex gap-8 overflow-x-auto">
+          {playlists.map((playlist) => (
+            <button
+              key={playlist.id}
+              type="button"
+              onClick={() => onPlaylistChange(playlist.id)}
+              className={[
+                'relative h-12 shrink-0 text-sm font-black uppercase tracking-normal transition',
+                playlist.id === activePlaylistId ? 'text-white' : 'text-white/62 hover:text-white',
+              ].join(' ')}
+            >
+              {playlist.name}
+              {playlist.id === activePlaylistId ? <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-white" /> : null}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <h4 className="line-clamp-1 text-xl font-black">{activePlaylist?.name ?? 'Videos'}</h4>
+        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">{formatVideoCount(videos.length)}</Badge>
+      </div>
+      {activePlaylist?.description ? (
+        <p className="mb-4 max-w-3xl text-sm leading-6 text-white/56">{activePlaylist.description}</p>
+      ) : null}
+
+      {channelLocked && videos.length > 0 ? (
+        <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
+          <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {videos.map((video) => (
+              <VideoCard key={video.id} video={video} channelId={channelId} playlistId={activePlaylist?.id} />
+            ))}
+          </div>
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
+            <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
+              <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
+              <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+            </div>
+          </div>
+        </div>
+      ) : videos.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {videos.map((video) => (
+            <VideoCard key={video.id} video={video} channelId={channelId} playlistId={activePlaylist?.id} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
+          <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
+          No videos yet.
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -581,9 +661,9 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
   )
 }
 
-function VideoCard({ video, channelId }: { video: MediaItem; channelId: string | number }) {
+function VideoCard({ video, channelId, playlistId }: { video: MediaItem; channelId: string | number; playlistId?: string }) {
   const image = videoThumb(video)
-  const href = `/video-details/${video.slug}?autoplay=1&ondemand_channel=${channelId}`
+  const href = buildPlaylistVideoHref(video, channelId, playlistId)
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
   const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
@@ -627,6 +707,21 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
       <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h4>
     </a>
   )
+}
+
+function buildPlaylistVideoHref(video: MediaItem, channelId: string | number, playlistId?: string) {
+  if (!video.slug) return '/videos'
+
+  const params = new URLSearchParams({
+    autoplay: '1',
+    ondemand_channel: String(channelId),
+  })
+  const normalizedPlaylistId = playlistId?.startsWith('playlist:') ? playlistId.slice('playlist:'.length) : null
+  if (normalizedPlaylistId) {
+    params.set('playlist', normalizedPlaylistId)
+  }
+
+  return `/video-details/${video.slug}?${params.toString()}`
 }
 
 function SearchBox({
@@ -692,6 +787,29 @@ async function copyText(value: string) {
   textArea.select()
   document.execCommand('copy')
   document.body.removeChild(textArea)
+}
+
+function buildChannelPlaylists(videos: MediaItem[], manualPlaylists: NonNullable<MediaItem['playlists']> = []): PlaylistGroup[] {
+  const curatedPlaylists = manualPlaylists
+    .map((playlist) => ({
+      id: `playlist:${playlist.id}`,
+      name: playlist.name,
+      description: playlist.description,
+      videos: playlist.videos ?? [],
+    }))
+
+  return [
+    {
+      id: 'all',
+      name: 'All Videos',
+      videos,
+    },
+    ...curatedPlaylists,
+  ]
+}
+
+function profileVideoTotal(profile: MediaItem, playlists: PlaylistGroup[]) {
+  return channelVideoCount(profile) || playlists[0]?.videos.length || 0
 }
 
 function videoThumb(video: MediaItem) {

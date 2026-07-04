@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Traits\ModuleTrait;
 use Illuminate\Http\Request;
 use App\Models\AuthorChannel;
+use App\Models\AuthorChannelPlaylist;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Video\Models\Video;
@@ -141,7 +143,11 @@ class AuthorChannelController extends Controller
 
     public function edit($id)
     {
-        $channel = AuthorChannel::with(['videos', 'plan'])->findOrFail($id);
+        $channel = AuthorChannel::with([
+            'videos',
+            'playlists.videos:id,name,thumbnail_url,poster_url,duration',
+            'plan',
+        ])->findOrFail($id);
         $plans = Plan::where('status', 1)->orderBy('level')->orderBy('name')->get();
 
         $assignedIds = $channel->videos->pluck('id')->toArray();
@@ -210,6 +216,7 @@ class AuthorChannelController extends Controller
         if (!$channel->videos()->where('video_id', $videoId)->exists()) {
             $channel->videos()->attach($videoId);
         }
+        $this->clearPublicChannelCache($channel);
 
         return redirect()->route('backend.author_channels.edit', $id)
             ->with('success', 'Video assigned to On Demand Channel.');
@@ -222,9 +229,82 @@ class AuthorChannelController extends Controller
     {
         $channel = AuthorChannel::findOrFail($id);
         $channel->videos()->detach((int) $videoId);
+        AuthorChannelPlaylist::where('author_channel_id', $channel->id)
+            ->each(fn ($playlist) => $playlist->videos()->detach((int) $videoId));
+        $this->clearPublicChannelCache($channel);
 
         return redirect()->route('backend.author_channels.edit', $id)
             ->with('success', 'Video removed from On Demand Channel.');
+    }
+
+    public function storePlaylist(Request $request, $id)
+    {
+        $channel = AuthorChannel::findOrFail($id);
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        $channel->playlists()->create([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'sort_order' => (int) $channel->playlists()->max('sort_order') + 1,
+            'is_active' => true,
+        ]);
+        $this->clearPublicChannelCache($channel);
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Playlist created.');
+    }
+
+    public function addPlaylistVideo(Request $request, $id, $playlistId)
+    {
+        $channel = AuthorChannel::with('videos:id')->findOrFail($id);
+        $playlist = AuthorChannelPlaylist::where('author_channel_id', $channel->id)->findOrFail($playlistId);
+        $assignedVideoIds = $channel->videos->pluck('id')->map(fn ($videoId) => (int) $videoId)->all();
+
+        $data = $request->validate([
+            'video_id' => ['required', 'integer', Rule::in($assignedVideoIds)],
+        ]);
+
+        $videoId = (int) $data['video_id'];
+        if (!$playlist->videos()->where('videos.id', $videoId)->exists()) {
+            $playlist->videos()->attach($videoId, [
+                'sort_order' => $playlist->videos()->count() + 1,
+            ]);
+        }
+        $this->clearPublicChannelCache($channel);
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Video added to playlist.');
+    }
+
+    public function removePlaylistVideo($id, $playlistId, $videoId)
+    {
+        $playlist = AuthorChannelPlaylist::where('author_channel_id', $id)->findOrFail($playlistId);
+        $channel = $playlist->channel;
+        $playlist->videos()->detach((int) $videoId);
+        if ($channel) {
+            $this->clearPublicChannelCache($channel);
+        }
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Video removed from playlist.');
+    }
+
+    public function destroyPlaylist($id, $playlistId)
+    {
+        $playlist = AuthorChannelPlaylist::where('author_channel_id', $id)->findOrFail($playlistId);
+        $channel = $playlist->channel;
+        $playlist->videos()->detach();
+        $playlist->delete();
+        if ($channel) {
+            $this->clearPublicChannelCache($channel);
+        }
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Playlist deleted.');
     }
 
     /**
@@ -251,5 +331,15 @@ class AuthorChannelController extends Controller
         });
 
         return response()->json(['results' => $videos]);
+    }
+
+    private function clearPublicChannelCache(AuthorChannel $channel): void
+    {
+        Cache::forget("spa:ondemand:show:{$channel->username}");
+        Cache::forget('spa:ondemand:index:' . md5(json_encode([
+            'page' => 1,
+            'per_page' => 50,
+            'search' => null,
+        ])));
     }
 }
