@@ -9,12 +9,14 @@ use App\Models\User;
 use App\Authorizable;
 use App\Traits\ModuleTrait;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Mail;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Mail\ExpiringSubscriptionEmail;
+use Spatie\Permission\Models\Role;
 use Modules\Frontend\Models\PayPerView;
 use Modules\User\Http\Requests\UserRequest;
 use Modules\Subscriptions\Models\Subscription;
@@ -246,25 +248,41 @@ class UsersController extends Controller
         $module_title = __('messages.new_user');
         $mediaUrls = getMediaUrls();
         $page_type='users';
+        $assignableRoles = $this->assignableRoles();
+        $selectedRole = old('access_role', 'user');
 
-      return view('user::backend.users.form',compact('module_title','mediaUrls','page_type'));
+      return view('user::backend.users.form',compact('module_title','mediaUrls','page_type','assignableRoles','selectedRole'));
     }
 
     public function store(UserRequest $request)
     {
-        $data = $request->except('profile_image');
+        $accessRole = $request->input('access_role', 'user');
+        $data = $request->except(
+            'profile_image',
+            'access_role',
+            'thumbnail_input',
+            'remove_image',
+            'password_confirmation'
+        );
 
         $data['password']=Hash::make($data['password']);
-        $data['user_type']='user';
+        $data['user_type'] = $accessRole === 'user' ? 'user' : 'admin';
 
         $data['file_url'] = extractFileNameFromUrl($data['file_url'],'users');
 
 
         $user = User::create($data);
-        $user->assignRole('user');
+        $user->syncRoles([]);
+        $user->assignRole($accessRole);
         $user->createOrUpdateProfileWithAvatar();
 
         $message = trans('messages.create_form_user');
+        if ($accessRole !== 'user') {
+            return redirect()
+                ->route('backend.permission-role.list')
+                ->with('success', 'Backend user added successfully. You can manage their access here.');
+        }
+
         return redirect()->route('backend.users.index')->with('success', 'User added successfully!');
 
     }
@@ -281,7 +299,9 @@ class UsersController extends Controller
         $mediaUrls = getMediaUrls();
         $page_type='users';
         $module_title = __('users.lbl_edit_user');
-    return view('user::backend.users.form', compact('data','mediaUrls','module_title','page_type'));
+        $assignableRoles = $this->assignableRoles();
+        $selectedRole = old('access_role', $data?->roles()->whereIn('name', $assignableRoles->pluck('name'))->value('name') ?? 'user');
+    return view('user::backend.users.form', compact('data','mediaUrls','module_title','page_type','assignableRoles','selectedRole'));
 
     }
 
@@ -294,17 +314,56 @@ class UsersController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        $data = $request->all();
+        $assignableRoleNames = $this->assignableRoles()->pluck('name')->all();
+
+        $request->validate([
+            'first_name' => ['required', 'string'],
+            'last_name' => ['required', 'string'],
+            'file_url' => ['required'],
+            'mobile' => ['required'],
+            'gender' => ['required', 'in:male,female,other'],
+            'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
+            'status' => ['nullable', 'boolean'],
+            'access_role' => ['required', 'string', Rule::in($assignableRoleNames)],
+        ]);
+
+        $accessRole = $request->input('access_role', $user->hasRole('user') ? 'user' : 'content_manager');
+        $data = $request->only([
+            'first_name',
+            'last_name',
+            'mobile',
+            'country_code',
+            'gender',
+            'date_of_birth',
+            'status',
+            'address',
+            'file_url',
+        ]);
 
         $data['file_url'] = extractFileNameFromUrl($data['file_url'],'users');
+        $data['user_type'] = $accessRole === 'user' ? 'user' : 'admin';
 
         $user->update($data);
+        $user->syncRoles([$accessRole]);
         $user->createOrUpdateProfileWithAvatar();
 
         $message = trans('messages.update_form_user');
+        if ($accessRole !== 'user') {
+            return redirect()
+                ->route('backend.permission-role.list')
+                ->with('success', 'Admin user profile updated successfully.');
+        }
 
         return redirect()->route('backend.users.index')->with('success', $message);
 
+    }
+
+    private function assignableRoles()
+    {
+        return Role::query()
+            ->whereIn('name', ['user', 'content_manager', 'admin'])
+            ->orderByRaw("FIELD(name, 'user', 'content_manager', 'admin')")
+            ->get(['id', 'name', 'title']);
     }
 
     /**

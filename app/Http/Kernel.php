@@ -45,6 +45,7 @@ class Kernel extends HttpKernel
             // \App\Http\Middleware\CheckDeviceAuthorization::class,
             \App\Http\Middleware\UpdateDeviceActivity::class,
             \App\Http\Middleware\RoleBasedRouteAccess::class, 
+            \App\Http\Middleware\CheckAdminAccess::class,
         ],
 
         'api' => [
@@ -80,6 +81,7 @@ class Kernel extends HttpKernel
         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'admin' => \App\Http\Middleware\CheckAdmin::class,
+        'admin.access' => \App\Http\Middleware\CheckAdminAccess::class,
         'user' => \App\Http\Middleware\CheckUser::class,
         'checkModule' => \App\Http\Middleware\CheckModule::class,
         'checkInstallation' => \App\Http\Middleware\CheckInstallation::class,

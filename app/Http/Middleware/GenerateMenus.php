@@ -17,7 +17,7 @@ class GenerateMenus
     public function handle()
     {
         return \Menu::make('menu', function ($menu) {
-            if (auth()->user()->hasRole('admin') || auth()->user()->hasRole('demo_admin')) {
+            if (! auth()->user()->hasRole('user')) {
                 $this->staticMenu($menu, ['title' =>  __('sidebar.main'), 'order' => 0]);
                 $this->mainRoute($menu, [
                     'icon' => 'ph ph-squares-four',
@@ -38,8 +38,8 @@ class GenerateMenus
                 'order' => 0,
             ]);
 
-            $permissionsToCheck = ['view_genres', 'view_movies', 'view_tvshow', 'view_seasons','view_episodes','view_videos','view_livetv',
-            'view_tvcategory','view_tvchannel','view_castcrew','view_director','view_ads','view_vastads','view_customads'];
+            $permissionsToCheck = ['view_author_channels', 'view_genres', 'view_categories', 'view_movies', 'view_tvshows', 'view_seasons','view_episodes','view_videos','view_livetv',
+            'view_tvcategory','view_tvchannel','view_castcrew','view_actor','view_director','view_ads','view_vastads','view_customads','view_users_submission'];
 
             if (collect($permissionsToCheck)->contains(fn ($permission) => auth()->user()->can($permission))) {
                 $this->staticMenu($menu, ['title' => __('sidebar.media_management'), 'order' => 0]);
@@ -51,6 +51,7 @@ class GenerateMenus
                 'route' => 'backend.author_channels.index',
                 'title' => 'On Demand Channels',
                 'active' => ['app/on-demand-channels','app/on-demand-channels/*','app/author-channels','app/author-channels/*'],
+                'permission' => ['view_author_channels'],
                 'order' => 0,
             ]);
 
@@ -68,6 +69,7 @@ class GenerateMenus
                 'route' => 'backend.categories.index',
                 'title' => 'Categories',
                 'active' => ['app/categories','app/categories/*'],
+                'permission' => ['view_categories'],
                 'order' => 0,
             ]);
 
@@ -88,7 +90,7 @@ class GenerateMenus
                 'icon' => 'ph ph-monitor-play',
                 'title' => __('sidebar.tv_show'),
                 'nickname' => 'tv_show',
-                'permission' => ['view_tvshow'],
+                'permission' => ['view_tvshows'],
                 'order' => 0,
             ]);
 
@@ -142,6 +144,7 @@ class GenerateMenus
             'route' => 'backend.users_submission.index',
             'title' => 'Users Submission',
             'active' => ['app/users-submission', 'app/users-submission/*', 'app/music-video-submissions', 'app/music-video-submissions/*'],
+            'permission' => ['view_users_submission'],
             'order' => 0,
         ]);
 
@@ -333,10 +336,11 @@ class GenerateMenus
                 'title' => __('sidebar.coupon'),
                 'route' => 'backend.coupon.index',
                 'active' => ['app/coupon','app/coupon/*'],
+                'permission' => ['view_coupon'],
                 'order' => 0,
             ]);
 
-            $permissionsToCheck = ['view_subscriptions'];
+            $permissionsToCheck = ['view_users', 'view_subscriptions'];
 
             if (collect($permissionsToCheck)->contains(fn ($permission) => auth()->user()->can($permission))) {
                 $this->staticMenu($menu, ['title' => __('sidebar.user'), 'order' => 0]);
@@ -347,6 +351,7 @@ class GenerateMenus
                 'title' => __('sidebar.user'),
                 'route' => 'backend.users.index',
                 'active' => ['app/users','app/users/*','app/change-password/*'],
+                'permission' => ['view_users'],
                 'order' => 0,
             ]);
 
@@ -366,6 +371,7 @@ class GenerateMenus
     'title' => __('sidebar.review'),
     'route' => 'backend.reviews.index',
     'active' => ['app/reviews'],
+    'permission' => ['view_reviews'],
     'order' => 0,
 ]);
 
@@ -398,6 +404,7 @@ class GenerateMenus
                 'route' => '',
                 'title' => __('sidebar.mobile_setting'),
                 'nickname' => 'mobile_setting',
+                'permission' => ['view_dashboard_setting'],
                 'order' => 0,
             ]);
             $this->childMain($mobile_setting, [
@@ -405,7 +412,7 @@ class GenerateMenus
                 'title' => __('sidebar.dashboard_setting'),
                 'route' => 'backend.mobile-setting.index',
                 'active' => 'app/mobile-setting',
-                'permission' => ['view_setting'],
+                'permission' => ['view_dashboard_setting'],
                 'order' => 0,
             ]);
 
@@ -459,12 +466,13 @@ class GenerateMenus
 
                 $this->childMain($notification, [
                     'icon' => 'ph ph-envelope-open',
-                    'title' => __('Email Logs'),
-                    'route' => 'backend.email-logs.index',
-                    'shortTitle' => 'EL',
-                    'active' => ['app/email-logs'],
-                    'order' => 0,
-                ]);
+                'title' => __('Email Logs'),
+                'route' => 'backend.email-logs.index',
+                'shortTitle' => 'EL',
+                'active' => ['app/email-logs'],
+                'permission' => ['view_email_logs'],
+                'order' => 0,
+            ]);
 
 
 
@@ -473,6 +481,7 @@ class GenerateMenus
                 'title' => 'API Keys',
                 'route' => 'backend.core-api-keys.index',
                 'active' => ['app/core-api-keys', 'app/core-api-keys/*'],
+                'permission' => ['view_core_api_keys'],
                 'order' => 0,
             ]);
 
@@ -481,7 +490,7 @@ class GenerateMenus
                 'title' => __('sidebar.settings'),
                 'route' => 'backend.settings.general',
                 'active' => 'app/setting/general-setting',
-                // 'permission' => ['view_setting'],
+                'permission' => ['view_setting'],
                 'order' => 0,
             ]);
 
@@ -490,6 +499,7 @@ class GenerateMenus
                 'title' => __('Email Logs'),
                 'route' => 'backend.email-logs.index',
                 'active' => ['app/email-logs', 'app/email-logs/*'],
+                'permission' => ['view_email_logs'],
                 'order' => 0,
             ]);
 
@@ -537,17 +547,18 @@ class GenerateMenus
                 'title' => __('faq.title'),
                 'route' => 'backend.faqs.index',
                 'active' => ['app/faqs','app/faqs/*'],
-                // 'permission' => ['view_faqs'],
+                'permission' => ['view_faqs'],
                 'order' => 0,
             ]);
 
-            if (auth()->user()->hasRole('admin') || auth()->user()->hasRole('demo_admin')) {
-                $this->staticMenu($menu, ['title' => 'Analytics', 'order' => 0]);
+            if (auth()->user()->hasRole('admin') || auth()->user()->can('view_statistics')) {
+                $this->staticMenu($menu, ['title' => 'Analytics', 'permission' => ['view_statistics'], 'order' => 0]);
                 $this->mainRoute($menu, [
                     'icon' => 'ph ph-chart-bar',
                     'title' => 'Statistics',
                     'route' => 'backend.statistics.index',
                     'active' => ['app/statistics', 'app/statistics/*'],
+                    'permission' => ['view_statistics'],
                     'order' => 0,
                 ]);
             }

@@ -31,6 +31,14 @@ return [
             'is_custom_permission' => 0,
         ],
         [
+            'module_name' => 'author_channels',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'categories',
+            'is_custom_permission' => 0,
+        ],
+        [
             'module_name' => 'movies',
             'is_custom_permission' => 0,
         ],
@@ -76,6 +84,18 @@ return [
         ],
         [
             'module_name' => 'subscriptions',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'users',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'users_submission',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'reviews',
             'is_custom_permission' => 0,
         ],
         [
@@ -169,6 +189,26 @@ return [
 
         [
             'module_name' => 'coupon',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'core_api_keys',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'email_logs',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'faqs',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'statistics',
+            'is_custom_permission' => 0,
+        ],
+        [
+            'module_name' => 'statistics_booster',
             'is_custom_permission' => 0,
         ],
 

@@ -37,7 +37,7 @@ class RolePermission extends Controller
             ->where(function ($query) {
                 $query->whereIn('user_type', ['admin', 'demo_admin'])
                     ->orWhereHas('roles', function ($roleQuery) {
-                        $roleQuery->whereIn('name', ['admin', 'demo_admin']);
+                        $roleQuery->where('name', '!=', 'user');
                     });
             })
             ->orderByDesc('id')
@@ -134,6 +134,8 @@ class RolePermission extends Controller
             $user->user_type = 'admin';
         } elseif (in_array('demo_admin', $newRoles, true)) {
             $user->user_type = 'demo_admin';
+        } else {
+            $user->user_type = 'admin';
         }
         $user->save();
 
