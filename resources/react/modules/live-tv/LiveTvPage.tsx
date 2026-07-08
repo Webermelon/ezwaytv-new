@@ -1556,6 +1556,6 @@ function formatScheduleTime(value?: string | null, timezone?: string | null) {
   })
 }
 
-function scheduleDisplayTimeZone(_timezone?: string | null) {
-  return 'Asia/Dhaka'
+function scheduleDisplayTimeZone(_timezone?: string | null): string | undefined {
+  return undefined
 }
