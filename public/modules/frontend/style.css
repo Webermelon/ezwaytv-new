@@ -19872,11 +19872,19 @@ img {
   left: -18px;
 }
 
+.video-player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: #000;
+}
 .video-player .video-js {
   position: relative;
-  padding-bottom: 43%;
+  display: block;
   width: 100%;
-  height: 0;
+  height: 100%;
+  padding-bottom: 0;
 }
 .video-player .vjs-tech {
   position: absolute;
@@ -19892,8 +19900,11 @@ img {
 .video-container {
   position: relative;
   width: 100%;
-  padding-bottom: 43%;
-  height: 0;
+  aspect-ratio: 16/9;
+  height: auto;
+  padding-bottom: 0;
+  overflow: hidden;
+  background: #000;
 }
 .video-container iframe {
   position: absolute;
@@ -19901,6 +19912,46 @@ img {
   left: 0;
   width: 100%;
   height: 100%;
+}
+.video-container .vjs-ima-ad-container,
+.video-container .ima-ad-container,
+.video-container .bumpable-ima-ad-container,
+.video-container div[id^=google_ads_iframe_],
+.video-container iframe[id^=google_ads_iframe_] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+.video-container .vjs-ad-seek-disabled .vjs-progress-control,
+.video-container .vjs-ad-seek-disabled .vjs-progress-holder,
+.video-container .vjs-ad-seek-disabled .ima-seek-bar-div,
+.video-container .vjs-ad-seek-disabled .ima-progress-div,
+.video-container .vjs-ad-seek-disabled .ima-progress-bar-div,
+.video-container .vjs-ad-playing .vjs-progress-control,
+.video-container .vjs-ad-playing .vjs-progress-holder,
+.video-container .vjs-ad-playing .ima-seek-bar-div,
+.video-container .vjs-ad-playing .ima-progress-div,
+.video-container .vjs-ad-playing .ima-progress-bar-div,
+.video-container .vjs-ad-loading .vjs-progress-control,
+.video-container .vjs-ad-loading .vjs-progress-holder,
+.video-container .vjs-ad-loading .ima-seek-bar-div,
+.video-container .vjs-ad-loading .ima-progress-div,
+.video-container .vjs-ad-loading .ima-progress-bar-div,
+.video-container .vjs-ad-showing .vjs-progress-control,
+.video-container .vjs-ad-showing .vjs-progress-holder,
+.video-container .vjs-ad-showing .ima-seek-bar-div,
+.video-container .vjs-ad-showing .ima-progress-div,
+.video-container .vjs-ad-showing .ima-progress-bar-div,
+.video-container .vjs-ima-ad-playing .vjs-progress-control,
+.video-container .vjs-ima-ad-playing .vjs-progress-holder,
+.video-container .vjs-ima-ad-playing .ima-seek-bar-div,
+.video-container .vjs-ima-ad-playing .ima-progress-div,
+.video-container .vjs-ima-ad-playing .ima-progress-bar-div {
+  pointer-events: none !important;
+  cursor: default !important;
 }
 
 .video-js .vjs-skip-intro-button.vjs-control {
@@ -19966,10 +20017,10 @@ img {
 
 @media (max-width: 1199.98px) {
   .video-player .video-js {
-    padding-bottom: 56.25%;
+    padding-bottom: 0;
   }
   .video-container {
-    padding-bottom: 56.25%;
+    padding-bottom: 0;
   }
 }
 @media (max-width: 575.98px) {

@@ -115,6 +115,7 @@
 <style>
     .video-player-wrapper {
         position: relative;
+        width: 100%;
     }
 
     #vimeoContainer {
@@ -470,20 +471,81 @@
     }
 
     .video-js.vjs-ima {
-        overflow: visible;
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden;
     }
 
-    .video-js.vjs-ima .vjs-ima-ad-container {
+    .video-player .video-js,
+    .video-player .vjs-poster,
+    .video-player .vjs-tech,
+    .video-player .vjs-text-track-display,
+    .video-player .vjs-loading-spinner,
+    .video-js.vjs-ima .vjs-ima-ad-container,
+    .video-js.vjs-ima .ima-ad-container,
+    .video-js.vjs-ima .bumpable-ima-ad-container,
+    .video-js.vjs-ima div[id^="google_ads_iframe_"],
+    .video-js.vjs-ima iframe[id^="google_ads_iframe_"] {
         position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        pointer-events: none;
+        inset: 0;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        box-sizing: border-box;
     }
 
-    .video-js.vjs-ima .vjs-ima-ad-container>div {
+    .video-js.vjs-ima .vjs-ima-ad-container,
+    .video-js.vjs-ima .ima-ad-container {
         pointer-events: auto;
+        z-index: 50;
+    }
+
+    .video-js.vjs-ima .vjs-control-bar {
+        z-index: 60;
+    }
+
+    .video-js.vjs-ima .ima-controls-div,
+    .video-js.vjs-ima .ima-countdown-div,
+    .video-js.vjs-ima .ima-ad-attribution {
+        max-width: calc(100% - 24px) !important;
+        box-sizing: border-box;
+    }
+
+    .video-js.vjs-ima .ima-controls-div {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    .video-js.vjs-ad-seek-disabled .vjs-progress-control,
+    .video-js.vjs-ad-seek-disabled .vjs-progress-holder,
+    .video-js.vjs-ad-playing .vjs-progress-control,
+    .video-js.vjs-ad-playing .vjs-progress-holder,
+    .video-js.vjs-ad-loading .vjs-progress-control,
+    .video-js.vjs-ad-loading .vjs-progress-holder,
+    .video-js.vjs-ad-showing .vjs-progress-control,
+    .video-js.vjs-ad-showing .vjs-progress-holder,
+    .video-js.vjs-ima-ad-playing .vjs-progress-control,
+    .video-js.vjs-ima-ad-playing .vjs-progress-holder,
+    .video-js.vjs-ad-seek-disabled .ima-seek-bar-div,
+    .video-js.vjs-ad-seek-disabled .ima-progress-div,
+    .video-js.vjs-ad-seek-disabled .ima-progress-bar-div,
+    .video-js.vjs-ad-playing .ima-seek-bar-div,
+    .video-js.vjs-ad-playing .ima-progress-div,
+    .video-js.vjs-ad-playing .ima-progress-bar-div,
+    .video-js.vjs-ad-loading .ima-seek-bar-div,
+    .video-js.vjs-ad-loading .ima-progress-div,
+    .video-js.vjs-ad-loading .ima-progress-bar-div,
+    .video-js.vjs-ad-showing .ima-seek-bar-div,
+    .video-js.vjs-ad-showing .ima-progress-div,
+    .video-js.vjs-ad-showing .ima-progress-bar-div,
+    .video-js.vjs-ima-ad-playing .ima-seek-bar-div,
+    .video-js.vjs-ima-ad-playing .ima-progress-div,
+    .video-js.vjs-ima-ad-playing .ima-progress-bar-div {
+        pointer-events: none !important;
+        cursor: default !important;
     }
 
     .vjs-ad-cue {
@@ -533,6 +595,9 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        max-width: calc(100% - 40px);
+        white-space: nowrap;
+        box-sizing: border-box;
     }
 
     .vjs-skip-ad-button:hover {
@@ -592,6 +657,10 @@
 
     .video-player {
         position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: #000;
         z-index: 0;
     }
 
