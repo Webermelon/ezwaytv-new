@@ -338,35 +338,71 @@ function PlaylistSection({
   onPlaylistChange: (playlistId: string) => void
 }) {
   const videos = activePlaylist?.videos ?? []
+  const activePlaylistIndex = Math.max(0, playlists.findIndex((playlist) => playlist.id === activePlaylistId))
 
   return (
     <div className="mt-8">
-      <div className="mb-5 border-b border-white/10">
-        <div className="flex gap-8 overflow-x-auto">
-          {playlists.map((playlist) => (
-            <button
-              key={playlist.id}
-              type="button"
-              onClick={() => onPlaylistChange(playlist.id)}
-              className={[
-                'relative h-12 shrink-0 text-sm font-black uppercase tracking-normal transition',
-                playlist.id === activePlaylistId ? 'text-white' : 'text-white/62 hover:text-white',
-              ].join(' ')}
-            >
-              {playlist.name}
-              {playlist.id === activePlaylistId ? <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-white" /> : null}
-            </button>
-          ))}
+      <div className="mb-5 rounded-md border border-white/10 bg-black/24 p-3">
+        <div className="grid gap-3 lg:grid-cols-[minmax(220px,0.4fr)_minmax(0,1fr)] lg:items-center">
+          <div className="min-w-0">
+            <span className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Playlist</span>
+            <div className="mt-1 flex min-w-0 items-center gap-2">
+              <h4 className="line-clamp-1 text-lg font-black text-white">{activePlaylist?.name ?? 'Videos'}</h4>
+              <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">
+                {activePlaylistIndex + 1}/{playlists.length}
+              </Badge>
+            </div>
+          </div>
+
+          <label className="sr-only" htmlFor="ondemand-playlist-select">Choose playlist</label>
+          <select
+            id="ondemand-playlist-select"
+            value={activePlaylistId}
+            onChange={(event) => onPlaylistChange(event.target.value)}
+            className="h-11 w-full rounded-md border border-white/12 bg-[#151515] px-3 text-sm font-bold text-white outline-none transition focus:border-primary lg:hidden"
+          >
+            {playlists.map((playlist) => (
+              <option key={playlist.id} value={playlist.id}>{playlist.name}</option>
+            ))}
+          </select>
+
+          <div className="hidden min-w-0 flex-wrap justify-end gap-2 lg:flex">
+            {playlists.map((playlist) => {
+              const isActive = playlist.id === activePlaylistId
+
+              return (
+                <button
+                  key={playlist.id}
+                  type="button"
+                  onClick={() => onPlaylistChange(playlist.id)}
+                  className={[
+                    'min-h-10 max-w-[220px] rounded-md border px-3 py-2 text-left text-sm font-black leading-tight transition',
+                    isActive
+                      ? 'border-primary bg-primary text-black shadow-lg shadow-primary/15'
+                      : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/24 hover:bg-white/[0.08] hover:text-white',
+                  ].join(' ')}
+                >
+                  <span className="line-clamp-2">{playlist.name}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
+
+        {activePlaylist?.description ? (
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/56 lg:hidden">{activePlaylist.description}</p>
+        ) : null}
       </div>
 
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
-        <h4 className="line-clamp-1 text-xl font-black">{activePlaylist?.name ?? 'Videos'}</h4>
+        <div className="min-w-0">
+          <h4 className="line-clamp-1 text-xl font-black">{activePlaylist?.name ?? 'Videos'}</h4>
+          {activePlaylist?.description ? (
+            <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-white/56 lg:block">{activePlaylist.description}</p>
+          ) : null}
+        </div>
         <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">{formatVideoCount(videos.length)}</Badge>
       </div>
-      {activePlaylist?.description ? (
-        <p className="mb-4 max-w-3xl text-sm leading-6 text-white/56">{activePlaylist.description}</p>
-      ) : null}
 
       {channelLocked && videos.length > 0 ? (
         <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
