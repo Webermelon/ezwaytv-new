@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Clock3, ExternalLink, Pause, Play, Settings, Volume2, VolumeX } from 'lucide-react'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import 'videojs-contrib-ads'
@@ -52,6 +53,8 @@ type AdUiState = {
   skippable: boolean
   skipAfterSeconds?: number | null
   canSkip: boolean
+  muted?: boolean
+  paused?: boolean
 }
 
 export function VideoJsPlayer({
@@ -95,6 +98,7 @@ export function VideoJsPlayer({
       player.muted(true)
     }
     player.controls(false)
+    player.addClass('vjs-ezway-ad-playing')
     player.poster('')
     player.src({ src: creative.mediaUrl, type: creative.mimeType })
     let durationTimer: number | null = null
@@ -110,6 +114,8 @@ export function VideoJsPlayer({
       skippable: creative.skippable,
       skipAfterSeconds: creative.skipAfterSeconds,
       canSkip: creative.skippable && (creative.skipAfterSeconds ?? 0) <= 0,
+      muted: player.muted() || player.volume() === 0,
+      paused: player.paused(),
     })
 
     let finished = false
@@ -123,9 +129,13 @@ export function VideoJsPlayer({
       finishPrerollRef.current = null
       player.off('ended', finishPreroll)
       player.off('timeupdate', updateAdUi)
+      player.off('volumechange', updateAdMuteState)
+      player.off('play', updateAdPlaybackState)
+      player.off('pause', updateAdPlaybackState)
       isAdPlayingRef.current = false
       prerollStateRef.current = 'done'
       setAdUi({ visible: false, skippable: false, canSkip: false })
+      player.removeClass('vjs-ezway-ad-playing')
       player.muted(autoplay ? true : wasMuted)
       player.controls(true)
       playMainSource(player, source, wasMuted, poster)
@@ -147,11 +157,27 @@ export function VideoJsPlayer({
         remainingSeconds,
         elapsedSeconds: currentTime,
         canSkip,
+        paused: player.paused(),
+      }))
+    }
+    const updateAdMuteState = () => {
+      setAdUi((current) => ({
+        ...current,
+        muted: player.muted() || player.volume() === 0,
+      }))
+    }
+    const updateAdPlaybackState = () => {
+      setAdUi((current) => ({
+        ...current,
+        paused: player.paused(),
       }))
     }
 
     player.one('ended', finishPreroll)
     player.on('timeupdate', updateAdUi)
+    player.on('volumechange', updateAdMuteState)
+    player.on('play', updateAdPlaybackState)
+    player.on('pause', updateAdPlaybackState)
     const playResult = player.play()
     if (playResult && typeof playResult.catch === 'function') {
       playResult.catch(() => {
@@ -380,47 +406,128 @@ export function VideoJsPlayer({
       )}
       <video id="react-video-player" ref={videoNodeRef} className="video-js vjs-big-play-centered vjs-theme-ezway relative z-10 h-full w-full" playsInline />
       {adUi.visible ? (
-        <div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-between bg-gradient-to-b from-black/20 via-transparent to-black/58 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4 rounded-md border border-white/14 bg-black/38 px-3 py-2 shadow-lg backdrop-blur-md">
-            <div className="min-w-0 text-sm font-semibold text-white/88">
-              Your video will resume
-              {typeof adUi.remainingSeconds === 'number' ? ` in ${Math.max(0, Math.ceil(adUi.remainingSeconds))} seconds` : ' soon'}
+        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-[inherit] bg-gradient-to-t from-black/80 via-transparent to-transparent">
+          <div className="absolute inset-x-0 top-0 flex min-h-12 items-center justify-between gap-2 border-b border-white/12 bg-[#05080a] px-2.5 py-2 shadow-[0_12px_28px_rgba(0,0,0,0.34)] sm:min-h-16 sm:px-5 sm:py-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="pointer-events-auto min-w-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 sm:px-4 sm:py-2 sm:text-sm">
+                <span className="truncate">
+                  Sponsored <span className="text-[#f6c400]">•</span> {adSponsorName(adUi.advertiser)}
+                </span>
+              </div>
+              {adUi.clickThrough ? (
+                <a
+                  href={adUi.clickThrough}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-[#f6c400] px-3 py-1.5 text-xs font-black text-black shadow-xl transition hover:bg-[#ffd84a] sm:px-5 sm:py-2 sm:text-sm"
+                >
+                  Visit
+                  <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </a>
+              ) : null}
             </div>
-            {adUi.clickThrough ? (
-              <a
-                href={adUi.clickThrough}
-                target="_blank"
-                rel="noreferrer"
-                className="pointer-events-auto shrink-0 text-sm font-black text-white hover:text-primary"
-              >
-                Learn more &gt;&gt;
-              </a>
-            ) : null}
+            <div className="flex shrink-0 items-center">
+              <div className="rounded-full bg-black/54 px-2.5 py-1.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 backdrop-blur sm:px-3 sm:py-2 sm:text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Ad ends in</span>
+                  <span className="text-[#f6c400]">{adEtaTime(adUi.remainingSeconds)}</span>
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-end justify-between gap-3">
-            <span className="rounded-sm bg-black/60 px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white/76 backdrop-blur">
-              Advertisement
-            </span>
-            {adUi.skippable ? (
+          <div className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-black/62 px-2.5 pb-2.5 pt-2 shadow-[0_-18px_40px_rgba(0,0,0,0.34)] backdrop-blur-md sm:px-5 sm:pb-4 sm:pt-3">
+            <div className="mb-2 h-1 overflow-hidden rounded-full bg-white/24 sm:mb-3">
+              <div
+                className="h-full rounded-full bg-[#f6c400]"
+                style={{
+                  width: `${adProgressPercent(adUi.elapsedSeconds, adUi.durationSeconds)}%`,
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 text-white sm:gap-4">
               <button
                 type="button"
-                disabled={!adUi.canSkip}
+                aria-label={adUi.paused ? 'Play ad' : 'Pause ad'}
+                title={adUi.paused ? 'Play' : 'Pause'}
                 onClick={() => {
-                  finishPrerollRef.current?.()
+                  const player = playerRef.current
+                  if (!player) return
+
+                  if (player.paused()) {
+                    const result = player.play()
+                    if (result && typeof result.catch === 'function') {
+                      result.catch(() => undefined)
+                    }
+                  } else {
+                    player.pause()
+                  }
                 }}
-                className={[
-                  'pointer-events-auto rounded-md border px-4 py-2 text-sm font-black shadow-lg transition',
-                  adUi.canSkip
-                    ? 'cursor-pointer border-white/20 bg-white text-black hover:bg-white/88'
-                    : 'cursor-not-allowed border-white/12 bg-black/72 text-white/58',
-                ].join(' ')}
+                className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition hover:bg-white/10 sm:h-10 sm:w-10"
               >
-                {adUi.canSkip
-                  ? 'Skip Ad'
-                  : `Skip in ${Math.max(0, Math.ceil((adUi.skipAfterSeconds ?? 0) - (adUi.elapsedSeconds ?? 0)))}`}
+                {adUi.paused ? <Play className="h-6 w-6 fill-white" /> : <Pause className="h-6 w-6 fill-white" />}
               </button>
-            ) : null}
+
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-white sm:text-sm">
+                {formatSeconds(adUi.elapsedSeconds ?? 0)}
+                {typeof adUi.durationSeconds === 'number' ? ` / ${formatSeconds(adUi.durationSeconds)}` : ''}
+              </span>
+
+              <button
+                type="button"
+                aria-label={adUi.muted ? 'Turn sound on' : 'Mute ad'}
+                title={adUi.muted ? 'Turn sound on' : 'Mute'}
+                onClick={() => {
+                  const player = playerRef.current
+                  if (!player) return
+
+                  if (player.muted() || player.volume() === 0) {
+                    player.volume(1)
+                    player.muted(false)
+                    setAdUi((current) => ({ ...current, muted: false }))
+                  } else {
+                    player.muted(true)
+                    setAdUi((current) => ({ ...current, muted: true }))
+                  }
+                }}
+                className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition hover:bg-white/10 sm:h-10 sm:w-10"
+              >
+                {adUi.muted ? <VolumeX className="h-5 w-5 sm:h-6 sm:w-6" /> : <Volume2 className="h-5 w-5 sm:h-6 sm:w-6" />}
+              </button>
+
+              <div className="min-w-0 flex-1" />
+
+              {adUi.skippable ? (
+                <button
+                  type="button"
+                  disabled={!adUi.canSkip}
+                  onClick={() => {
+                    finishPrerollRef.current?.()
+                  }}
+                  className={[
+                    'pointer-events-auto shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition sm:px-4 sm:py-2 sm:text-sm',
+                    adUi.canSkip
+                      ? 'bg-white text-black hover:bg-white/86'
+                      : 'cursor-not-allowed bg-white/10 text-white/62',
+                  ].join(' ')}
+                >
+                  {adUi.canSkip
+                    ? 'Skip'
+                    : `Skip in ${Math.max(0, Math.ceil((adUi.skipAfterSeconds ?? 0) - (adUi.elapsedSeconds ?? 0)))}`}
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                aria-label="Ad settings"
+                title="Ad settings"
+                className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition hover:bg-white/10 sm:h-10 sm:w-10"
+              >
+                <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -494,6 +601,24 @@ function formatSeconds(value: number) {
   const rest = String(seconds % 60).padStart(2, '0')
 
   return `${minutes}:${rest}`
+}
+
+function adSponsorName(value?: string | null) {
+  const normalized = String(value ?? '').trim()
+
+  return normalized || 'eZWay Connect'
+}
+
+function adEtaTime(remainingSeconds?: number | null) {
+  if (typeof remainingSeconds !== 'number') return '--'
+
+  return formatSeconds(remainingSeconds)
+}
+
+function adProgressPercent(elapsed?: number | null, duration?: number | null) {
+  if (!duration || duration <= 0) return 0
+
+  return Math.min(100, Math.max(0, ((elapsed ?? 0) / duration) * 100))
 }
 
 function playMainSource(player: VideoJsImaPlayer, source: string, preferredMuted: boolean, poster?: string | null) {

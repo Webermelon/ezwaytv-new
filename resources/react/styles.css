@@ -519,6 +519,14 @@ body {
   margin-left: auto !important;
 }
 
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-control-bar,
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-progress-control,
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-control.vjs-progress-control {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .vjs-theme-ezway .vjs-menu-button-popup .vjs-menu {
   bottom: 3rem !important;
 }
