@@ -32,6 +32,7 @@ class CheckAdminAccess
     ];
 
     private const PATH_PERMISSION_MODULES = [
+        'app/media-library' => 'media',
         'app/media' => 'media',
         'app/on-demand-channels' => 'author_channels',
         'app/author-channels' => 'author_channels',
