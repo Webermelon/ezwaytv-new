@@ -535,7 +535,7 @@
   <div class="platforms-list">
     @foreach([
       'EZWAY.TV', 'XOTV', 'BVC TV', 'NATIONAL BIZ TV', 'EZWAY MUSIC',
-      'THE WOMEN\'S CHANNEL', 'BE SPIRE TV', 'XPN TV', 'FAN TV GLOBAL', 'EZWAY MOVIES',
+      'BE SPIRE TV', 'XPN TV', 'FAN TV GLOBAL', 'EZWAY MOVIES',
       'KATE LINDER TV', 'POWER TV NETWORK', 'I&C TV'
     ] as $platform)
       <span class="plat-chip">{{ $platform }}</span>
