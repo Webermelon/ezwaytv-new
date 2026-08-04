@@ -347,6 +347,8 @@ class LiveTVsController extends Controller
             $isBanner = MobileSetting::getCacheValueBySlug('banner');
             
             // Get ALL channels for category grouping (not limited to 6)
+            $selectedChannelIds = $this->liveTvMobileSettingChannelIds();
+
             $allChannelData = LiveTvChannel::select([
                 'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
             ])
@@ -357,7 +359,6 @@ class LiveTVsController extends Controller
             ])
             ->where('status',1)
             ->where('deleted_at',null)
-            ->featuredFirst()
             ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function ($item) {
@@ -370,6 +371,8 @@ class LiveTVsController extends Controller
                 $item->base_url = $item->poster_url;
                 return $item;
             });
+
+            $allChannelData = $this->sortLiveTvChannelsByMobileSetting($allChannelData, $selectedChannelIds);
 
             // OPTIMIZATION: Select only needed columns for categories
             $categoryData = LiveTvCategory::select('id', 'name', 'file_url', 'status')
@@ -515,11 +518,73 @@ class LiveTVsController extends Controller
                 });
 
             $responseData['category_data'] = LiveTvCategoryResourceV3::collection($categoryData);
+            $responseData['channel_data'] = LiveTvChannelResourceV3::collection($allChannelData);
 
             return $responseData;
         });
 
         return ApiResponse::success($cachedResult['data'], __('livetv.livetv_dashboard'), 200);
+    }
+
+    private function liveTvMobileSettingChannelIds(): array
+    {
+        $setting = MobileSetting::getNameAndValueBySlug('live-tv')
+            ?? MobileSetting::getNameAndValueBySlug('top-channels');
+
+        if (!$setting || empty($setting['value'])) {
+            return [];
+        }
+
+        $decoded = json_decode($setting['value'], true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return collect($decoded)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sortLiveTvChannelsByMobileSetting(Collection $channels, array $selectedChannelIds): Collection
+    {
+        if (count($selectedChannelIds) === 0) {
+            return $channels->values()->each(function ($channel, $index) {
+                $channel->dashboard_order = $index;
+            });
+        }
+
+        $selectedOrder = array_flip(array_map('intval', $selectedChannelIds));
+        $fallbackOffset = count($selectedOrder);
+
+        return $channels
+            ->map(function ($channel, $index) {
+                $channel->original_dashboard_order = $index;
+                return $channel;
+            })
+            ->sort(function ($a, $b) use ($selectedOrder, $fallbackOffset) {
+                $aId = (int) $a->id;
+                $bId = (int) $b->id;
+                $aSelectedOrder = $selectedOrder[$aId] ?? $fallbackOffset;
+                $bSelectedOrder = $selectedOrder[$bId] ?? $fallbackOffset;
+
+                if ($aSelectedOrder !== $bSelectedOrder) {
+                    return $aSelectedOrder <=> $bSelectedOrder;
+                }
+
+                $aFallbackOrder = $selectedOrder[$aId] ?? $a->original_dashboard_order;
+                $bFallbackOrder = $selectedOrder[$bId] ?? $b->original_dashboard_order;
+
+                return $aFallbackOrder <=> $bFallbackOrder;
+            })
+            ->values()
+            ->each(function ($channel, $index) {
+                $channel->dashboard_order = $index;
+                unset($channel->original_dashboard_order);
+            });
     }
 
     /**

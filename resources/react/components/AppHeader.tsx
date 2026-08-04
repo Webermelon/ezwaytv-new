@@ -681,13 +681,24 @@ async function loadHeaderNavData() {
   return {
     videos: videos.status === 'fulfilled' ? videos.value.items : [],
     liveTv: liveTv.status === 'fulfilled'
-      ? (liveTv.value.data?.category_data?.flatMap((category) => category.channel_data ?? []) ?? []).slice(0, 14)
+      ? liveTvChannelsFromDashboard(liveTv.value.data ?? {}).slice(0, 14)
       : [],
     ondemand: ondemand.status === 'fulfilled' ? ondemand.value.data?.data ?? [] : [],
     hasMovies: movieCount > 0,
     hasTvshows: tvshowCount > 0,
     visibleMenuKeys: navigationMenuData?.burger_menu?.map((item) => item.key) ?? null,
   }
+}
+
+function liveTvChannelsFromDashboard(liveTv: LiveTvDashboard) {
+  const channels = liveTv.channel_data ?? liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? []
+
+  return [...channels].sort((a, b) => {
+    const aOrder = typeof a.dashboard_order === 'number' ? a.dashboard_order : Number.MAX_SAFE_INTEGER
+    const bOrder = typeof b.dashboard_order === 'number' ? b.dashboard_order : Number.MAX_SAFE_INTEGER
+
+    return aOrder - bOrder
+  })
 }
 
 function isMenuVisible(visibleMenuKeys: string[] | null, key: string) {

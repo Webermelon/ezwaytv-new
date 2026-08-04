@@ -161,6 +161,9 @@ class MobileSettingController extends Controller
         // and also affect multiple homepage/dashboard sections.
         clearRelatedCache(['setting', 'genres', 'genres_v2', 'home_banners'], null);
         clearDashboardCache();
+        if (function_exists('clearLiveTvDashboardCache')) {
+            clearLiveTvDashboardCache();
+        }
         if ($request->ajax()) {
 
             return response()->json(['success' => true, 'message' => $message]);

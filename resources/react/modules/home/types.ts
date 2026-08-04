@@ -19,6 +19,7 @@ export type MediaItem = {
   avatar_image_url?: string
   profile_image?: string
   duration?: string | null
+  dashboard_order?: number | null
   access?: string
   has_content_access?: number | boolean | null
   is_premium?: number | boolean | null
@@ -118,6 +119,7 @@ export type NamedRail = {
 
 export type LiveTvDashboard = {
   slider?: MediaItem[]
+  channel_data?: MediaItem[]
   category_data?: Array<{
     id: number | string
     name: string

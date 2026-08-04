@@ -33,18 +33,6 @@ type ShareIconProps = {
 }
 
 const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
-const featuredLiveTvSlugGroups = [
-  ['ezway-tv'],
-  ['music-channel', 'ezway-music-channel', 'ezway-music'],
-  ['xo-tv'],
-  ['xpn-tv'],
-  ['bill-duke-tv'],
-  ['kate-linder-tv'],
-  ['movie-channel'],
-  ['podstream-tv'],
-  ['the-womens-channel'],
-  ['patrion-tv', 'patrion'],
-]
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -60,7 +48,7 @@ export function LiveTvPage() {
   const dashboard = dashboardQuery.data ?? {}
 
   const categories = dashboard.category_data ?? []
-  const allChannels = useMemo(() => categories.flatMap((category) => category.channel_data ?? []), [categories])
+  const allChannels = useMemo(() => liveTvChannelsFromDashboard(dashboard), [dashboard])
   const matchedChannel = useMemo(
     () => (channelKey ? findChannel(allChannels, dashboard.slider ?? [], channelKey) : undefined),
     [allChannels, channelKey, dashboard.slider],
@@ -81,9 +69,9 @@ export function LiveTvPage() {
       ? allChannels
       : categories.find((category) => String(category.id) === activeCategory)?.channel_data ?? []
 
-    if (!term) return sortFeaturedLiveTvFirst(source)
+    if (!term) return sortByDashboardOrder(source)
 
-    return sortFeaturedLiveTvFirst(source.filter((channel) => {
+    return sortByDashboardOrder(source.filter((channel) => {
       const name = channel.details?.name ?? channel.name
       const category = channel.details?.category
 
@@ -874,12 +862,12 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
       .filter((item): item is { row: LiveTvGuideChannel; loadedAt: number; index: number } => Boolean(item.row))
       .filter(({ row }) => tvGuidePrograms(row, currentTime).length > 0)
       .sort((a, b) => {
-        const aFeatured = featuredLiveTvOrder(a.row.channel)
-        const bFeatured = featuredLiveTvOrder(b.row.channel)
+        const aOrder = channelDashboardOrder(a.row.channel)
+        const bOrder = channelDashboardOrder(b.row.channel)
         const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
-        const featuredCompare = aFeatured - bFeatured
+        const orderCompare = aOrder - bOrder
 
-        return featuredCompare || nameCompare || a.loadedAt - b.loadedAt || a.index - b.index
+        return orderCompare || nameCompare || a.loadedAt - b.loadedAt || a.index - b.index
       })
   ), [currentTime, guideQueries])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
@@ -1436,7 +1424,11 @@ function rowHasOnAirProgram(row: LiveTvGuideChannel, currentTime: number) {
 }
 
 function isEzWayTvChannel(channel: MediaItem) {
-  return featuredLiveTvOrder(channel) === 0
+  return [
+    channel.slug,
+    channel.details?.slug,
+    channelName(channel),
+  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value))).includes('ezway-tv')
 }
 
 function channelName(channel: MediaItem) {
@@ -1445,36 +1437,29 @@ function channelName(channel: MediaItem) {
 
 function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
   if (!channel) return undefined
-  const featuredOrder = featuredLiveTvOrder(channel)
-
-  if (featuredOrder < featuredLiveTvSlugGroups.length) return featuredOrder + 1
-
-  const channelIndex = sortFeaturedLiveTvFirst(channels)
-    .filter((item) => featuredLiveTvOrder(item) >= featuredLiveTvSlugGroups.length)
+  const channelIndex = sortByDashboardOrder(channels)
     .findIndex((item) => String(item.id) === String(channel.id))
 
-  return channelIndex >= 0 ? channelIndex + featuredLiveTvSlugGroups.length + 1 : undefined
+  return channelIndex >= 0 ? channelIndex + 1 : undefined
 }
 
-function sortFeaturedLiveTvFirst(channels: MediaItem[]) {
-  return [...channels].sort((a, b) => {
-    const featuredCompare = featuredLiveTvOrder(a) - featuredLiveTvOrder(b)
-    if (featuredCompare !== 0) return featuredCompare
+function liveTvChannelsFromDashboard(dashboard: LiveTvDashboard) {
+  const channels = dashboard.channel_data ?? dashboard.category_data?.flatMap((category) => category.channel_data ?? []) ?? []
 
-    return 0
+  return sortByDashboardOrder(channels)
+}
+
+function sortByDashboardOrder(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => {
+    const aOrder = channelDashboardOrder(a)
+    const bOrder = channelDashboardOrder(b)
+
+    return aOrder - bOrder
   })
 }
 
-function featuredLiveTvOrder(channel: MediaItem) {
-  const values = [
-    channel.slug,
-    channel.details?.slug,
-    channelName(channel),
-  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value)))
-
-  const index = featuredLiveTvSlugGroups.findIndex((slugs) => slugs.some((slug) => values.includes(slug)))
-
-  return index >= 0 ? index : featuredLiveTvSlugGroups.length
+function channelDashboardOrder(channel: MediaItem) {
+  return typeof channel.dashboard_order === 'number' ? channel.dashboard_order : Number.MAX_SAFE_INTEGER
 }
 
 function normalizeLiveTvSlug(value: string) {
