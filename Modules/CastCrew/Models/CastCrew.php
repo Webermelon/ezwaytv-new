@@ -85,5 +85,59 @@ class CastCrew extends BaseModel
         })->all();
     }
 
+    /**
+     * Return active personality cards with selected IDs first, then remaining actors.
+     *
+     * @param array<int|string> $castIds
+     * @return array<int, array<string, mixed>>
+     */
+    public static function getFrontendPersonalityCardsSortedWithAll(array $castIds): array
+    {
+        $selectedIds = collect($castIds)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $selectedOrder = array_flip($selectedIds);
+        $fallbackOffset = count($selectedOrder);
+
+        $casts = self::query()
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($selectedIds) {
+                $query->where('type', 'actor');
+
+                if (count($selectedIds) > 0) {
+                    $query->orWhereIn('id', $selectedIds);
+                }
+            })
+            ->get(['id', 'name', 'type', 'file_url']);
+
+        return $casts
+            ->sort(function (self $a, self $b) use ($selectedOrder, $fallbackOffset) {
+                $aId = (int) $a->id;
+                $bId = (int) $b->id;
+                $aSelectedOrder = $selectedOrder[$aId] ?? $fallbackOffset;
+                $bSelectedOrder = $selectedOrder[$bId] ?? $fallbackOffset;
+
+                if ($aSelectedOrder !== $bSelectedOrder) {
+                    return $aSelectedOrder <=> $bSelectedOrder;
+                }
+
+                return strcasecmp((string) $a->name, (string) $b->name);
+            })
+            ->values()
+            ->map(function (self $value): array {
+                return [
+                    'id' => $value->id,
+                    'name' => $value->name,
+                    'type' => $value->type,
+                    'profile_image' => setBaseUrlWithFileName($value->file_url, 'image', 'castcrew'),
+                ];
+            })
+            ->all();
+    }
+
 
 }

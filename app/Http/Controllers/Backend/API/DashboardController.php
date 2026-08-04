@@ -151,18 +151,7 @@ class DashboardController extends Controller
 
            $castIds = MobileSetting::getValueBySlug('your-favorite-personality');
            $castIdsArray = json_decode($castIds, true);
-           $personality = [];
-            if (!empty($castIdsArray)) {
-               $casts = CastCrew::whereIn('id', $castIdsArray)->where('status', 1)->where('deleted_at', null)->get();
-               foreach ($casts as $value) {
-                   $personality[] = [
-                       'id' => $value->id,
-                       'name' => $value->name,
-                       'type' => $value->type,
-                       'profile_image' => setBaseUrlWithFileName($value->file_url, 'image', 'castcrew'),
-                   ];
-               }
-            }
+           $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(is_array($castIdsArray) ? $castIdsArray : []);
 
            $movieIds = MobileSetting::getValueBySlug('500-free-movies');
            $movieIdsArray = json_decode($movieIds, true);
@@ -849,22 +838,7 @@ public function getTrandingData(Request $request){
            $setting_castIds = $mobileSettings['your-favorite-personality'] ?? null;
             $castIds = ($setting_castIds && empty($setting_castIds['type'])) ? $setting_castIds['value'] : null;
            $castIdsArray = !empty($castIds) ? json_decode($castIds, true) : null;
-           $personality = [];
-            if (!empty($castIdsArray)) {
-               $casts = CastCrew::whereIn('id', $castIdsArray)
-                   ->where('deleted_at',null)
-                   ->where('status',1)
-                   ->select('id', 'name', 'type', 'file_url')
-                   ->get();
-               foreach ($casts as $value) {
-                   $personality[] = [
-                       'id' => $value->id,
-                       'name' => $value->name,
-                       'type' => $value->type,
-                       'profile_image' => setBaseUrlWithFileName($value->file_url,'image','castcrew'),
-                   ];
-               }
-            }
+           $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(is_array($castIdsArray) ? $castIdsArray : []);
 
            // OPTIMIZATION: Use batched MobileSetting values
            $setting_movieIds = $mobileSettings['500-free-movies'] ?? null;
@@ -1712,9 +1686,9 @@ public function getTrandingData(Request $request){
             $settingPersonalityIds = MobileSetting::getNameAndValueBySlug('your-favorite-personality');
             $personalityIds = ($settingPersonalityIds && empty($settingPersonalityIds['type'])) ? $settingPersonalityIds['value'] : null;
             $personalityIdsArray = json_decode($personalityIds, true);
-            $personality = !empty($personalityIdsArray) && is_array($personalityIdsArray)
-                ? CastCrew::getFrontendCardsByIds(array_slice($personalityIdsArray, 0, 100))
-                : [];
+            $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(
+                is_array($personalityIdsArray) ? array_slice($personalityIdsArray, 0, 100) : []
+            );
 
             $today = Carbon::now()->toDateString();
             // $is_advertisement_enabled = MobileSetting::where('slug', 'advertisement')->first();

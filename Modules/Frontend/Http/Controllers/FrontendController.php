@@ -374,9 +374,9 @@ class FrontendController extends Controller
                 ];
             }
 
-            if ($settings['your-favorite-personality'] && $settings['your-favorite-personality']['value'] && empty($settings['your-favorite-personality']['type'])) {
+            if ($settings['your-favorite-personality'] && empty($settings['your-favorite-personality']['type'])) {
                 $castIdsArray = json_decode($settings['your-favorite-personality']['value'], true) ?: [];
-                $personality =(!empty($castIdsArray)) ? CastCrew::getFrontendCardsByIds($castIdsArray) : collect();
+                $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll($castIdsArray);
                 $responseData['popular_personality'] = [
                     'name' => $this->translateTabName($settings['your-favorite-personality']['name'] ?? ''),
                     'data' => $personality,
