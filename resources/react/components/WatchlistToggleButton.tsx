@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Loader2, Plus } from 'lucide-react'
 
 import { addToWatchlist, removeFromWatchlist } from '@/modules/account/watchlistApi'
+import { isNativeIosApp } from '@/lib/native-platform'
 
 type WatchlistToggleButtonProps = {
   entertainmentId?: string | number | null
@@ -52,6 +53,8 @@ export function WatchlistToggleButton({
     event.stopPropagation()
     mutation.mutate()
   }
+
+  if (isNativeIosApp() && !window.isAuthenticated) return null
 
   return (
     <span className="relative inline-flex">

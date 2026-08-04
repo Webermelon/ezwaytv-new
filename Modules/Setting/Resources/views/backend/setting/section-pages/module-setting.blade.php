@@ -200,6 +200,29 @@
             </div>
         </div>
 
+        {{-- Capacitor iOS App Store restrictions --}}
+        <div class="form-group border-bottom pb-3">
+            <div class="d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <label class="form-label m-0" for="ios_app_restrictions_enabled">Enable iOS App Store Restrictions</label>
+                    <div class="form-text">Hide login, pricing, subscriptions, payments, and external purchase links only inside the Capacitor iOS app.</div>
+                </div>
+                @if($isDemoAdmin)
+                    @php $iosRestrictionsStatus = old('ios_app_restrictions_enabled', $settings['ios_app_restrictions_enabled'] ?? 1); @endphp
+                    <span class="badge {{ $iosRestrictionsStatus == 1 ? 'bg-success-subtle' : 'bg-danger-subtle' }}">
+                        {{ $iosRestrictionsStatus == 1 ? __('messages.active') : __('messages.inactive') }}
+                    </span>
+                    <input type="hidden" value="{{ $iosRestrictionsStatus }}" name="ios_app_restrictions_enabled">
+                @else
+                    <input type="hidden" value="0" name="ios_app_restrictions_enabled">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="ios_app_restrictions_enabled" id="ios_app_restrictions_enabled"
+                            type="checkbox" {{ old('ios_app_restrictions_enabled', $settings['ios_app_restrictions_enabled'] ?? 1) == 1 ? 'checked' : '' }} />
+                    </div>
+                @endif
+            </div>
+        </div>
+
         @if (auth()->user()->user_type == 'admin')
             <!-- Demo Login Section -->
             <div class="form-group border-bottom pb-3">

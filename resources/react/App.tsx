@@ -22,6 +22,7 @@ import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
 import { AuthPage } from '@/modules/auth/AuthPage'
 import { useAnalyticsPageView } from '@/lib/analytics'
+import { isIosRestrictedPath, isNativeIosApp } from '@/lib/native-platform'
 
 export default function App() {
   const path = useSpaPath()
@@ -29,7 +30,9 @@ export default function App() {
   useAnalyticsPageView(path)
   let page
 
-  if (pathname === '/' || pathname === '/spa' || pathname === '/spa/' || pathname === '/react-home') {
+  if (isNativeIosApp() && isIosRestrictedPath(pathname)) {
+    page = <HomePage />
+  } else if (pathname === '/' || pathname === '/spa' || pathname === '/spa/' || pathname === '/react-home') {
     page = <HomePage />
   } else if (pathname.startsWith('/on-demand') || pathname.startsWith('/spa/ondemand') || pathname.startsWith('/react-ondemand')) {
     page = <OnDemandPage />

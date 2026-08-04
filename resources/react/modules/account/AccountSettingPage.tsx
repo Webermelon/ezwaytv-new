@@ -5,6 +5,7 @@ import { AlertTriangle, Check, Crown, Edit3, Loader2, LogOut, MonitorSmartphone,
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { deleteAccount, loadAccountSettings, logoutAllDevices, logoutDevice, type AccountDevice } from '@/modules/account/accountApi'
 import { AccountSidebar } from '@/modules/account/ProfileDetailsPage'
 
@@ -219,9 +220,11 @@ function SubscriptionPanel({ plan }: { plan: Record<string, unknown> | null }) {
             </p>
           </div>
         </div>
-        <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
-          <a href="/subscription-plan">{isActive ? 'Manage Plan' : 'Subscribe Now'}</a>
-        </Button>
+        {!isNativeIosApp() ? (
+          <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
+            <a href="/subscription-plan">{isActive ? 'Manage Plan' : 'Subscribe Now'}</a>
+          </Button>
+        ) : null}
       </div>
 
       {isActive ? (

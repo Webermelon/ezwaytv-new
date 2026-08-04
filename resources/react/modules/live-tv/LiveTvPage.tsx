@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { useSpaPath } from '@/lib/spa-router'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { LiveTvDashboard, MediaItem, ProgramInfo } from '@/modules/home/types'
 import { VideoJsPlayer } from '@/modules/video-detail/VideoJsPlayer'
 import { loadContentStats, type ContentStats, type VideoAd } from '@/modules/video-detail/videoDetailApi'
@@ -1161,6 +1162,8 @@ function LiveTvPremiumNotice({ channel }: { channel?: MediaItem }) {
 }
 
 function PremiumActionButton() {
+  if (isNativeIosApp()) return null
+
   if (!isAuthenticated()) {
     return (
       <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">

@@ -112,6 +112,7 @@
         window.isAuthenticated = {{ $authUser ? 'true' : 'false' }};
         window.ezwayAuth = @json($authPayload);
         window.ezwayVisibleMenuKeys = @json($visibleMenuKeys);
+        window.ezwayIosRestrictionsEnabled = @json((bool) setting('ios_app_restrictions_enabled', true));
     </script>
     <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     @vite('resources/react/main.tsx')

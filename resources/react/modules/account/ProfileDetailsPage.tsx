@@ -5,6 +5,7 @@ import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, PackageCh
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { loadAccountSettings, type AccountProfile } from '@/modules/account/accountApi'
 
 type ProfileForm = {
@@ -181,8 +182,10 @@ export function AccountSidebar({ activeHref }: { activeHref: string }) {
   const items = [
     { label: 'Account Settings', href: '/account-setting', icon: UserCircle },
     { label: 'My Watchlist', href: '/watch-list', icon: Bookmark },
-    { label: 'Payment History', href: '/payment-history', icon: CreditCard },
-    { label: 'Orders', href: '/orders', icon: PackageCheck },
+    ...(!isNativeIosApp() ? [
+      { label: 'Payment History', href: '/payment-history', icon: CreditCard },
+      { label: 'Orders', href: '/orders', icon: PackageCheck },
+    ] : []),
     { label: 'Profile Details', href: '/update-profile', icon: UserCircle },
     { label: 'Change Password', href: '/change-password', icon: KeyRound },
   ]

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { WatchlistToggleButton } from '@/components/WatchlistToggleButton'
 import { trackView } from '@/lib/analytics'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { useSpaPath } from '@/lib/spa-router'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandChannels, loadOnDemandProfile } from './ondemandApi'
@@ -451,9 +452,11 @@ function OnDemandPremiumPanel({ item }: { item: MediaItem }) {
         </div>
         <div className="grid gap-2 sm:flex md:justify-end">
           <PremiumActionButton item={item} />
-          <Button asChild variant="outline" className="border-white/14 bg-white/[0.04] text-white hover:bg-white/[0.09]">
-            <a href="/login">Sign In</a>
-          </Button>
+          {!isNativeIosApp() ? (
+            <Button asChild variant="outline" className="border-white/14 bg-white/[0.04] text-white hover:bg-white/[0.09]">
+              <a href="/login">Sign In</a>
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -461,6 +464,8 @@ function OnDemandPremiumPanel({ item }: { item: MediaItem }) {
 }
 
 function PremiumActionButton({ item }: { item: MediaItem }) {
+  if (isNativeIosApp()) return null
+
   const isSignedIn = Number(item.current_plan_level ?? 0) > 0
 
   return (

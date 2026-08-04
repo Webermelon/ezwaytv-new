@@ -89,10 +89,10 @@ class SettingsController extends Controller
             'show_stream_music_menu',
             'show_subscribe_button',
             'show_login_button',
+            'ios_app_restrictions_enabled',
             'demo_login',
             'enable_tmdb_api',
             'tmdb_api_key',
-            'show_login_button',
         ];
         $settings = $this->fieldsData($fields);
 

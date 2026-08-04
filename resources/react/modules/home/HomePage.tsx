@@ -8,6 +8,7 @@ import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { loadHomeModule } from './homeApi'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { DashboardData, LiveTvDashboard, MediaItem } from './types'
 
 type HomeState = {
@@ -267,7 +268,7 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(212,168,67,0.12),transparent_38%)]" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-80" />
-        {item.access ? (
+        {item.access && !(isNativeIosApp() && item.access.toLowerCase() === 'free') ? (
           <Badge className="absolute left-2 top-2 rounded-sm bg-black/62 text-white backdrop-blur">
             {item.access}
           </Badge>

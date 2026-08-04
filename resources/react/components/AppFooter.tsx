@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Film, Globe2, Home, Mail, Phone, Search, Send, Tv, X } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { BrandLogo } from '@/components/BrandLogo'
 import type { ApiEnvelope } from '@/modules/home/types'
 
@@ -69,7 +70,7 @@ export function AppFooter() {
 
   return (
     <>
-      <SubscriberFooterSection onSubscribe={() => setSubscriberFormOpen(true)} />
+      {!isNativeIosApp() ? <SubscriberFooterSection onSubscribe={() => setSubscriberFormOpen(true)} /> : null}
       <footer className="border-t border-white/10 bg-[#050505] px-4 pb-24 pt-12 text-white sm:px-8 lg:px-12 lg:pb-0">
         <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.9fr)_1px_minmax(0,2fr)]">
           <section className="min-w-0">
@@ -141,7 +142,7 @@ export function AppFooter() {
       </footer>
 
       <MobileFooterMenu />
-      {subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
+      {!isNativeIosApp() && subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
     </>
   )
 }

@@ -427,6 +427,17 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'ios_app_restrictions_enabled',
+                'label' => 'Enable iOS App Store Restrictions',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Hide login, subscription, pricing, payment, and external purchase features inside the Capacitor iOS app.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'enable_tmdb_api',
                 'label' => 'Import Data From TMDB',
                 'rules' => 'boolean',

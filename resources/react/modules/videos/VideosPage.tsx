@@ -7,12 +7,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { WatchlistToggleButton } from '@/components/WatchlistToggleButton'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { MediaItem } from '@/modules/home/types'
 import { loadVideosPage } from './videosApi'
 
 const accessFilters = ['all', 'free', 'paid', 'pay-per-view'] as const
 
 export function VideosPage() {
+  const visibleAccessFilters = isNativeIosApp()
+    ? accessFilters.filter((filter) => filter !== 'free')
+    : accessFilters
   const [query, setQuery] = useState('')
   const [access, setAccess] = useState<(typeof accessFilters)[number]>('all')
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -84,7 +88,7 @@ export function VideosPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="hidden h-4 w-4 text-white/44 sm:block" />
-            {accessFilters.map((filter) => (
+            {visibleAccessFilters.map((filter) => (
               <button
                 key={filter}
                 type="button"
@@ -207,6 +211,7 @@ function VideoCard({ video }: { video: MediaItem }) {
 
 function formatAccessLabel(access?: string | null) {
   if (!access) return null
+  if (isNativeIosApp() && access.toLowerCase() === 'free') return null
 
   return access.replaceAll('-', ' ')
 }

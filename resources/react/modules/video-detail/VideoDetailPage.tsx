@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { useBranding } from '@/lib/branding'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandProfile } from '@/modules/ondemand/ondemandApi'
 import { PublicPage } from '@/modules/public/PublicPage'
@@ -260,7 +261,9 @@ export function VideoDetailPage() {
                     <ChannelIdentity video={video} />
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
-                    <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    {!(isNativeIosApp() && video.access?.toLowerCase() === 'free') ? (
+                      <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    ) : null}
                     {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
                     {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
                     {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
@@ -516,6 +519,8 @@ function PremiumAccessNotice({ video }: { video: VideoDetail }) {
 }
 
 function PremiumActionButton({ video }: { video: VideoDetail }) {
+  if (isNativeIosApp()) return null
+
   if (!isAuthenticated()) {
     return (
       <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">

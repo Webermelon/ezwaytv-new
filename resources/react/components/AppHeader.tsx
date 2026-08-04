@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { useSpaNavigate } from '@/lib/spa-router'
 import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from '@/modules/home/types'
 import { loadVideosPage } from '@/modules/videos/videosApi'
+import { isNativeIosApp } from '@/lib/native-platform'
 
 type AppHeaderProps = {
   active?: 'home' | 'on-demand' | 'livetv' | 'videos' | 'castcrew' | 'search' | 'distribution' | 'stream-music' | 'movies' | 'tvshows' | 'ppv'
@@ -78,6 +79,7 @@ const mobileNavItems = [
 ] as const
 
 export function AppHeader({ active }: AppHeaderProps) {
+  const nativeIos = isNativeIosApp()
   const activeKey = active ?? inferActiveKey()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useSpaNavigate()
@@ -95,7 +97,9 @@ export function AppHeader({ active }: AppHeaderProps) {
     hasTvshows: false,
     visibleMenuKeys: getInitialVisibleMenuKeys(),
   }
-  const visibleNavItems = navItems.filter((item) => isMenuVisible(navData.visibleMenuKeys, item.key))
+  const visibleNavItems = navItems.filter((item) =>
+    isMenuVisible(navData.visibleMenuKeys, item.key) && (!nativeIos || !['pricing', 'stream-music'].includes(item.key)),
+  )
 
   const dropdowns = useMemo(() => ({
     videos: navData.videos,
@@ -163,7 +167,7 @@ export function AppHeader({ active }: AppHeaderProps) {
               <span className="ez-header-search-label">Search</span>
             </a>
 
-            {!authUser || !authUser.is_subscribe ? (
+            {!nativeIos && (!authUser || !authUser.is_subscribe) ? (
               <a
                 href="/subscription-plan"
                 className="hidden h-9 items-center gap-2 rounded-md bg-[#d4a843] px-3 text-sm font-black text-black transition hover:bg-[#efc955] lg:inline-flex"
@@ -172,7 +176,7 @@ export function AppHeader({ active }: AppHeaderProps) {
               </a>
             ) : null}
 
-            {authUser ? <ProfileMenu user={authUser} /> : (
+            {authUser ? <ProfileMenu user={authUser} nativeIos={nativeIos} /> : !nativeIos ? (
               <a
                 href="/login"
                 className="hidden h-9 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-black text-white transition hover:bg-white/[0.14] lg:inline-flex"
@@ -180,7 +184,7 @@ export function AppHeader({ active }: AppHeaderProps) {
                 <UserCircle className="h-4 w-4" />
                 <span>Login</span>
               </a>
-            )}
+            ) : null}
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] md:hidden"
@@ -201,6 +205,7 @@ export function AppHeader({ active }: AppHeaderProps) {
           hasTvshows={navData.hasTvshows}
           visibleMenuKeys={navData.visibleMenuKeys}
           authUser={authUser}
+          nativeIos={nativeIos}
           navigate={navigate}
 
           onNavigate={() => setMobileMenuOpen(false)}
@@ -218,6 +223,7 @@ function MobileMenu({
   hasTvshows,
   visibleMenuKeys,
   authUser,
+  nativeIos,
   navigate,
   onNavigate,
   onClose,
@@ -228,12 +234,14 @@ function MobileMenu({
   hasTvshows: boolean
   visibleMenuKeys: string[] | null
   authUser: AuthUser | null
+  nativeIos: boolean
   navigate: (to: string, options?: { replace?: boolean }) => void
   onNavigate: () => void
   onClose: () => void
 }) {
   const [openSection, setOpenSection] = useState<DropdownKey | null>(null)
   const visibleMobileNavItems = mobileNavItems.filter((item) => {
+    if (nativeIos && ['pricing', 'stream-music'].includes(item.key)) return false
     if (!isMenuVisible(visibleMenuKeys, item.key)) return false
     if (item.key === 'movies') return hasMovies
     if (item.key === 'tvshows') return hasTvshows
@@ -371,7 +379,7 @@ function MobileMenu({
             })}
           </div>
 
-          {!authUser || !authUser.is_subscribe ? (
+          {!nativeIos && (!authUser || !authUser.is_subscribe) ? (
             <a
               href="/subscription-plan"
               onClick={onNavigate}
@@ -382,8 +390,8 @@ function MobileMenu({
           ) : null}
 
           {authUser ? (
-            <MobileProfileMenu user={authUser} onNavigate={onNavigate} />
-          ) : (
+            <MobileProfileMenu user={authUser} nativeIos={nativeIos} onNavigate={onNavigate} />
+          ) : !nativeIos ? (
             <div className="mt-3 grid gap-3">
               <a
                 href="/login"
@@ -403,7 +411,7 @@ function MobileMenu({
               </a>
 
             </div>
-          )}
+          ) : null}
 
           <div className="mt-5 flex items-center gap-3">
             {[
@@ -431,8 +439,8 @@ function MobileMenu({
   )
 }
 
-function ProfileMenu({ user }: { user: AuthUser }) {
-  const menuItems = profileMenuItems(user)
+function ProfileMenu({ user, nativeIos }: { user: AuthUser; nativeIos: boolean }) {
+  const menuItems = profileMenuItems(user, nativeIos)
 
   return (
     <div className="group relative hidden lg:block">
@@ -491,8 +499,8 @@ function ProfileMenu({ user }: { user: AuthUser }) {
   )
 }
 
-function MobileProfileMenu({ user, onNavigate }: { user: AuthUser; onNavigate: () => void }) {
-  const menuItems = profileMenuItems(user)
+function MobileProfileMenu({ user, nativeIos, onNavigate }: { user: AuthUser; nativeIos: boolean; onNavigate: () => void }) {
+  const menuItems = profileMenuItems(user, nativeIos)
 
   return (
     <div className="mt-5 overflow-hidden rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 shadow-[0_0_28px_rgba(212,168,67,0.10)]">
@@ -550,7 +558,7 @@ function UserAvatar({ user, sizeClassName }: { user: AuthUser; sizeClassName: st
   )
 }
 
-function profileMenuItems(user: AuthUser) {
+function profileMenuItems(user: AuthUser, nativeIos = false) {
   if (user.is_admin) {
     return [
       { label: 'Admin Dashboard', href: user.dashboard_url || '/app/dashboard', icon: HomeIcon },
@@ -563,12 +571,14 @@ function profileMenuItems(user: AuthUser) {
     { label: 'My Dashboard', href: user.dashboard_url || '/account-setting', icon: HomeIcon },
     { label: 'Account Settings', href: '/account-setting', icon: Settings },
     { label: 'Watchlist', href: '/watch-list', icon: Film },
-    { label: 'Payment History', href: '/payment-history', icon: Share2 },
-    { label: 'Orders', href: '/orders', icon: PackageCheck },
+    ...(!nativeIos ? [
+      { label: 'Payment History', href: '/payment-history', icon: Share2 },
+      { label: 'Orders', href: '/orders', icon: PackageCheck },
+    ] : []),
     { label: 'Manage Profiles', href: '/manage-profile', icon: UsersRound },
   ]
 
-  if (!user.is_subscribe) {
+  if (!nativeIos && !user.is_subscribe) {
     items.splice(3, 0, { label: 'Subscription', href: '/subscription-plan', icon: Radio })
   }
 
@@ -713,7 +723,8 @@ function navItemImage(item: MediaItem) {
 }
 
 function navItemMeta(item: MediaItem, kind: 'videos' | 'livetv' | 'ondemand') {
-  if (kind === 'videos') return [item.duration, item.access].filter(Boolean).join(' - ') || 'Video'
+  const access = isNativeIosApp() && item.access?.toLowerCase() === 'free' ? null : item.access
+  if (kind === 'videos') return [item.duration, access].filter(Boolean).join(' - ') || 'Video'
   if (kind === 'livetv') return item.details?.category ?? 'Live channel'
 
   return `${item.videos_count ?? 0} videos`
