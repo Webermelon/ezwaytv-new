@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, type MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight, Info, Play } from 'lucide-react'
 
@@ -191,7 +191,78 @@ function Rail({
   shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
   index?: number
 }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    scrollLeft: 0,
+  })
+  const dragCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.()
+      document.body.classList.remove('ez-home-rail-drag-lock')
+    }
+  }, [])
+
   if (items.length === 0) return null
+
+  function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    dragCleanupRef.current?.()
+
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const activeScroller = scrollerRef.current
+      if (!dragRef.current.active || !activeScroller) return
+
+      const deltaX = moveEvent.pageX - dragRef.current.startX
+      if (Math.abs(deltaX) > 4) {
+        dragRef.current.moved = true
+      }
+
+      activeScroller.scrollLeft = dragRef.current.scrollLeft - deltaX
+    }
+
+    const handleMouseUp = () => {
+      stopDragging()
+      dragCleanupRef.current?.()
+    }
+
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startX: event.pageX,
+      scrollLeft: scroller.scrollLeft,
+    }
+    scroller.classList.add('ez-home-rail-dragging')
+    document.body.classList.add('ez-home-rail-drag-lock')
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    dragCleanupRef.current = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      dragCleanupRef.current = null
+    }
+  }
+
+  function stopDragging() {
+    dragRef.current.active = false
+    scrollerRef.current?.classList.remove('ez-home-rail-dragging')
+    document.body.classList.remove('ez-home-rail-drag-lock')
+  }
+
+  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (!dragRef.current.moved) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragRef.current.moved = false
+  }
 
   return (
     <section className="ez-home-rail" style={{ animationDelay: `${index * 90}ms` }}>
@@ -206,8 +277,12 @@ function Rail({
       </div>
 
       <div
+        ref={scrollerRef}
+        onMouseDown={handleMouseDown}
+        onDragStart={(event) => event.preventDefault()}
+        onClickCapture={handleClickCapture}
         className={[
-          'grid grid-flow-col gap-4 overflow-x-auto pb-5 [scrollbar-width:none]',
+          'ez-home-rail-scroller grid grid-flow-col gap-4 overflow-x-auto pb-5 [scrollbar-width:none]',
           shape === 'personality'
             ? 'auto-cols-[minmax(150px,48vw)] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
             : 'auto-cols-[minmax(220px,72vw)] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)]',
@@ -228,7 +303,7 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
 
   if (shape === 'personality') {
     return (
-      <a href={contentHref(item)} className="ez-home-card group block min-w-0 text-center" style={cardStyle}>
+      <a href={contentHref(item)} draggable={false} className="ez-home-card group block min-w-0 text-center" style={cardStyle}>
         <div className="mx-auto aspect-square w-[72%] overflow-hidden rounded-full border border-white/10 bg-white/[0.06] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:scale-[1.04] group-hover:border-primary/70 group-hover:shadow-[0_18px_46px_rgba(212,168,67,0.18)]">
           <MediaThumbnail src={image} alt={title} className="aspect-square rounded-full" />
         </div>
@@ -239,7 +314,7 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
   }
 
   return (
-    <a href={contentHref(item)} className="ez-home-card group block min-w-0" style={cardStyle}>
+    <a href={contentHref(item)} draggable={false} className="ez-home-card group block min-w-0" style={cardStyle}>
       <div
         className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]"
       >

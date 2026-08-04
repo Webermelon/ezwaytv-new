@@ -90,6 +90,29 @@ input[type="radio"]:not(:disabled) {
   cursor: pointer;
 }
 
+.ez-home-rail-scroller {
+  cursor: grab;
+  user-select: none;
+}
+
+.ez-home-rail-scroller.ez-home-rail-dragging {
+  cursor: grabbing;
+}
+
+body.ez-home-rail-drag-lock {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.ez-home-rail-scroller a {
+  cursor: inherit;
+}
+
+.ez-home-rail-scroller img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 button:disabled,
 select:disabled,
 input:disabled,
