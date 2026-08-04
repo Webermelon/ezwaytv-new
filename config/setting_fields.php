@@ -568,6 +568,16 @@ return [
                 'datatype' => 'misc',
             ],
             [
+                'type' => 'number',
+                'data' => 'misc',
+                'name' => 'homepage_rail_item_limit',
+                'label' => 'Homepage Rail Item Limit',
+                'rules' => 'nullable|integer|min:1|max:100',
+                'class' => '',
+                'value' => '15',
+                'datatype' => 'misc',
+            ],
+            [
                 'type' => 'text', // input fields type
                 'data' => 'misc', // data type, string, int, boolean
                 'name' => 'default_date_format', // unique name for field

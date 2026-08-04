@@ -100,6 +100,7 @@ export type ScheduleProgram = ProgramInfo & {
 }
 
 export type DashboardData = {
+  homepage_rail_item_limit?: number | string | null
   continue_watch?: MediaItem[]
   top_10?: NamedRail
   latest_movie?: NamedRail
@@ -132,4 +133,8 @@ export type PaginatedData<T> = {
   current_page?: number
   last_page?: number
   total?: number
+}
+
+export type AppConfiguration = {
+  homepage_rail_item_limit?: number | string | null
 }

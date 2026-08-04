@@ -339,6 +339,7 @@ class SettingController extends Controller
         $response['enable_demo_login'] = isset($settings['demo_login']) ? (int)$settings['demo_login'] : 0;
         $response['video_forward_seek_seconds'] = isset($settings['forward_seconds']) ? (int)$settings['forward_seconds'] : 0;
         $response['video_backward_seek_seconds'] = isset($settings['backward_seconds']) ? (int)$settings['backward_seconds'] : 0;
+        $response['homepage_rail_item_limit'] = max(1, (int) ($settings['homepage_rail_item_limit'] ?? setting('homepage_rail_item_limit', 15)));
         $response['date_format'] = isset($settings['default_date_format']) ? $settings['default_date_format'] : 'Y-m-d';
         $response['time_format'] = isset($settings['default_time_format']) ? $settings['default_time_format'] : 'H:i:s';
         $response['default_timezone'] = isset($settings['default_time_zone']) ? $settings['default_time_zone'] : 'UTC';

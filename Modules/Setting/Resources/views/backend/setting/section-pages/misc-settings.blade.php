@@ -49,6 +49,13 @@
                             ])->class('form-control select2')->value(old('data_table_limit', $settings['data_table_limit'] ?? 10)) }}
                     </div>
                     <div class="col-md-4">
+                        {{ html()->label('Homepage Rail Item Limit')->class('form-label') }}
+                        {{ html()->number('homepage_rail_item_limit')->class('form-control')->attribute('min', '1')->attribute('max', '100')->value(old('homepage_rail_item_limit', $settings['homepage_rail_item_limit'] ?? 15)) }}
+                        @error('homepage_rail_item_limit')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div class="col-md-4">
                         {{ html()->label(__('messages.lbl_date_format'))->class('form-label') }}
                         {{ html()->select('default_date_format')->options(array_column($dateFormat, 'text', 'id'))->class('form-control select2')->value(old('default_date_format', $settings['default_date_format'] ?? '')) }}
                         @error('default_date_format')

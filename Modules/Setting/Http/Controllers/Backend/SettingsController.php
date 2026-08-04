@@ -460,7 +460,7 @@ class SettingsController extends Controller
             }
             $timeFormatList = $data;
 
-        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled'];
+        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'homepage_rail_item_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled'];
         $settings = $this->fieldsData($fields);
         return view('setting::backend.setting.section-pages.misc-settings', compact('settings', 'languages', 'timezones','dateFormat','timeFormatList'));
     }
@@ -712,6 +712,13 @@ class SettingsController extends Controller
         // If business/general settings are updated, clear cached footer data
         if ($tab === 'business') {
             Cache::forget('footer_data');
+        }
+
+        if ($tab === 'misc') {
+            Cache::forget('settings:all_by_name');
+            if (function_exists('clearDashboardCache')) {
+                clearDashboardCache();
+            }
         }
 
         if ($tab === 'module') {

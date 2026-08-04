@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 class SettingController extends Controller
 {
@@ -89,6 +90,10 @@ class SettingController extends Controller
         }
 
         $message = __('settings.save_setting');
+        Cache::forget('settings:all_by_name');
+        if (function_exists('clearDashboardCache')) {
+            clearDashboardCache();
+        }
 
         if ($request->wantsJson()) {
             return response()->json(['message' => $message, 'status' => true], 200);

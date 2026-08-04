@@ -35,11 +35,19 @@ export function HomePage() {
     staleTime: 60_000,
   })
   const state = homeQuery.data ?? emptyState
+  const railLimit = normalizeRailLimit(state.dashboard.homepage_rail_item_limit)
 
   const liveChannels = useMemo(
-    () => liveTvChannelsFromDashboard(state.liveTv),
-    [state.liveTv],
+    () => liveTvChannelsFromDashboard(state.liveTv).slice(0, railLimit),
+    [railLimit, state.liveTv],
   )
+  const ondemandChannels = useMemo(() => state.ondemandChannels.slice(0, railLimit), [railLimit, state.ondemandChannels])
+  const latestVideos = useMemo(() => state.videos.slice(0, railLimit), [railLimit, state.videos])
+  const personalities = useMemo(
+    () => (state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []).slice(0, railLimit),
+    [railLimit, state.dashboard.personality?.data, state.dashboard.popular_personality?.data],
+  )
+  const latestMovies = useMemo(() => (state.dashboard.latest_movie?.data ?? []).slice(0, railLimit), [railLimit, state.dashboard.latest_movie?.data])
   const featured = state.liveTv.slider?.[0] ?? state.videos[0] ?? liveChannels[0]
 
   return (
@@ -59,16 +67,16 @@ export function HomePage() {
         ) : (
           <>
             <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} />
-            <Rail title="On Demand Channels" items={state.ondemandChannels} href="/on-demand" shape="channel" index={1} />
-            <Rail title="Latest Videos" items={state.videos} href="/videos" shape="video" index={2} />
+            <Rail title="On Demand Channels" items={ondemandChannels} href="/on-demand" shape="channel" index={1} />
+            <Rail title="Latest Videos" items={latestVideos} href="/videos" shape="video" index={2} />
             <Rail
               title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
-              items={state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []}
+              items={personalities}
               href="/castcrew-list"
               shape="personality"
               index={3}
             />
-            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={state.dashboard.latest_movie?.data ?? []} href="/movies" shape="poster" index={4} />
+            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={4} />
             <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
           </>
         )}
@@ -429,4 +437,14 @@ function sortByDashboardOrder(channels: MediaItem[]) {
 
     return aOrder - bOrder
   })
+}
+
+function normalizeRailLimit(value?: number | string | null) {
+  const limit = Number(value)
+
+  if (!Number.isFinite(limit) || limit < 1) {
+    return 15
+  }
+
+  return Math.floor(limit)
 }
