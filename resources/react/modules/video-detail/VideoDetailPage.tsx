@@ -90,7 +90,7 @@ export function VideoDetailPage() {
   const videoId = video?.id
   const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
   const channelUsername = video?.ondemand_channel_context?.username
-  const statsContentType = channelId ? 'ondemand_video' : 'video'
+  const statsContentType = 'video'
   const playlistQuery = useQuery({
     queryKey: ['ondemand-playlist-context', channelUsername, playlistId],
     queryFn: () => loadOnDemandProfile(channelUsername as string),
