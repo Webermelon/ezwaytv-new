@@ -809,17 +809,23 @@ function LiveTvCard({ channel, channelNumber }: { channel: MediaItem; channelNum
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail src={channel.poster_tv_image ?? channel.poster_image ?? channel.details?.thumbnail_image} alt={name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/34 via-transparent to-transparent" />
+        <LiveChannelBadge />
       </div>
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{name}</h3>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
         {label ? <span className="text-[#d4a843]">{label}</span> : null}
-        <span className="inline-flex items-center gap-1 text-red-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-          Live
-        </span>
         {channel.details?.category ? <span className="text-white/58">{channel.details.category}</span> : null}
       </div>
     </a>
+  )
+}
+
+function LiveChannelBadge() {
+  return (
+    <span className="absolute right-2 top-2 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/72 px-2.5 py-1 text-[11px] font-extrabold uppercase leading-none tracking-normal text-white shadow-lg backdrop-blur-md">
+      <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.95)]" aria-hidden="true" />
+      LIVE
+    </span>
   )
 }
 

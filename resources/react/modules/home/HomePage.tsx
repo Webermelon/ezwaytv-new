@@ -66,7 +66,7 @@ export function HomePage() {
           <HomeSectionsSkeleton />
         ) : (
           <>
-            <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} />
+            <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} showLiveBadge />
             <Rail title="On Demand Channels" items={ondemandChannels} href="/on-demand" shape="channel" index={1} />
             <Rail title="Latest Videos" items={latestVideos} href="/videos" shape="video" index={2} />
             <Rail
@@ -192,12 +192,14 @@ function Rail({
   href,
   shape,
   index = 0,
+  showLiveBadge = false,
 }: {
   title: string
   items: MediaItem[]
   href?: string
   shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
   index?: number
+  showLiveBadge?: boolean
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef({
@@ -297,14 +299,24 @@ function Rail({
         ].join(' ')}
       >
         {items.map((item, itemIndex) => (
-          <PosterCard key={`${title}-${item.id}`} item={item} shape={shape} index={itemIndex} />
+          <PosterCard key={`${title}-${item.id}`} item={item} shape={shape} index={itemIndex} showLiveBadge={showLiveBadge} />
         ))}
       </div>
     </section>
   )
 }
 
-function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'; index?: number }) {
+function PosterCard({
+  item,
+  shape,
+  index = 0,
+  showLiveBadge = false,
+}: {
+  item: MediaItem
+  shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
+  index?: number
+  showLiveBadge?: boolean
+}) {
   const image = cardImage(item, shape)
   const title = item.details?.name ?? item.name
   const cardStyle = { animationDelay: `${Math.min(index, 9) * 55}ms` }
@@ -338,6 +350,7 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(212,168,67,0.12),transparent_38%)]" />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-80" />
+        {showLiveBadge ? <LiveChannelBadge /> : null}
         {item.access && !(isNativeIosApp() && item.access.toLowerCase() === 'free') ? (
           <Badge className="absolute left-2 top-2 rounded-sm bg-black/62 text-white backdrop-blur">
             {item.access}
@@ -348,6 +361,15 @@ function PosterCard({ item, shape, index = 0 }: { item: MediaItem; shape: 'poste
       {item.videos_count ? <p className="mt-1 text-xs text-white/58">{item.videos_count} videos</p> : null}
       {!item.videos_count && item.duration ? <p className="mt-1 text-xs text-white/58">{item.duration}</p> : null}
     </a>
+  )
+}
+
+function LiveChannelBadge() {
+  return (
+    <span className="absolute right-2 top-2 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[11px] font-extrabold uppercase leading-none tracking-normal text-white shadow-lg backdrop-blur-md">
+      <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.95)]" aria-hidden="true" />
+      LIVE
+    </span>
   )
 }
 
