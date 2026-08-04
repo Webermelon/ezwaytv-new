@@ -58,8 +58,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
 
 
     });
-    Route::resource("media-library", FilemanagersController::class);
+    Route::resource("media-library", FilemanagersController::class)->except(['destroy']);
 });
-
 
 
