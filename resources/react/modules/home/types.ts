@@ -10,6 +10,7 @@ export type MediaItem = {
   name: string
   slug?: string
   type?: string
+  designation?: string | null
   poster_image?: string
   poster_tv_image?: string
   poster_url?: string

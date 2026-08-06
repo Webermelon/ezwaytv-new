@@ -73,13 +73,14 @@ class CastCrew extends BaseModel
      */
     public static function getFrontendCardsByIds(array $castIds): array
     {
-        $casts = self::whereIn('id', $castIds)->where('deleted_at', null)->get(['id', 'name', 'type', 'file_url']);
+        $casts = self::whereIn('id', $castIds)->where('deleted_at', null)->get(['id', 'name', 'type', 'file_url', 'designation']);
 
         return $casts->map(function (self $value): array {
             return [
                 'id' => $value->id,
                 'name' => $value->name,
                 'type' => $value->type,
+                'designation' => $value->designation,
                 'profile_image' => setBaseUrlWithFileName($value->file_url, 'image', 'castcrew'),
             ];
         })->all();
@@ -112,7 +113,7 @@ class CastCrew extends BaseModel
                     $query->orWhereIn('id', $selectedIds);
                 }
             })
-            ->get(['id', 'name', 'type', 'file_url']);
+            ->get(['id', 'name', 'type', 'file_url', 'designation']);
 
         return $casts
             ->sort(function (self $a, self $b) use ($selectedOrder, $fallbackOffset) {
@@ -133,6 +134,7 @@ class CastCrew extends BaseModel
                     'id' => $value->id,
                     'name' => $value->name,
                     'type' => $value->type,
+                    'designation' => $value->designation,
                     'profile_image' => setBaseUrlWithFileName($value->file_url, 'image', 'castcrew'),
                 ];
             })

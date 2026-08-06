@@ -319,6 +319,7 @@ function PosterCard({
 }) {
   const image = cardImage(item, shape)
   const title = item.details?.name ?? item.name
+  const personalitySubtitle = item.designation?.trim()
   const cardStyle = { animationDelay: `${Math.min(index, 9) * 55}ms` }
 
   if (shape === 'personality') {
@@ -328,7 +329,7 @@ function PosterCard({
           <MediaThumbnail src={image} alt={title} className="aspect-square rounded-full" />
         </div>
         <h3 className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{title}</h3>
-        {item.type ? <p className="mt-1 text-xs capitalize text-white/50">{item.type}</p> : null}
+        {personalitySubtitle ? <p className="mt-1 text-xs text-white/50">{personalitySubtitle}</p> : null}
       </a>
     )
   }
