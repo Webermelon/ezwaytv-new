@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api'
@@ -21,24 +21,38 @@ type AdBannerSliderProps = {
 }
 
 export function AdBannerSlider({ placement, className = '', showNetworkAd = false }: AdBannerSliderProps) {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(1)
+  const [isTransitioning, setIsTransitioning] = useState(true)
   const slidesQuery = useQuery({
     queryKey: ['ad-banner-sliders', placement],
     queryFn: () => loadAdBannerSlides(placement),
     staleTime: 60_000,
   })
   const slides = (slidesQuery.data ?? []).filter((slide) => Boolean(slide.image))
-  const activeSlide = slides[activeIndex] ?? slides[0]
+  const displaySlides = useMemo(() => {
+    if (slides.length < 2) return slides
+
+    return [slides[slides.length - 1], ...slides, slides[0]]
+  }, [slides])
+  const realActiveIndex = slides.length < 2 ? 0 : normalizeSlideIndex(activeIndex, slides.length)
 
   useEffect(() => {
-    setActiveIndex(0)
+    setIsTransitioning(false)
+    setActiveIndex(slides.length < 2 ? 0 : 1)
+
+    const frame = window.requestAnimationFrame(() => {
+      setIsTransitioning(true)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
   }, [placement, slides.length])
 
   useEffect(() => {
     if (slides.length < 2) return
 
     const timer = window.setInterval(() => {
-      setActiveIndex((index) => (index + 1) % slides.length)
+      setIsTransitioning(true)
+      setActiveIndex((index) => index + 1)
     }, 3000)
 
     return () => window.clearInterval(timer)
@@ -48,7 +62,27 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
     clearCachedAdBannerSlides()
   }, [])
 
-  if (slides.length === 0 || !activeSlide) return null
+  if (slides.length === 0) return null
+
+  const handleTransitionEnd = () => {
+    if (slides.length < 2) return
+
+    if (activeIndex === 0) {
+      setIsTransitioning(false)
+      setActiveIndex(slides.length)
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setIsTransitioning(true))
+      })
+    }
+
+    if (activeIndex === slides.length + 1) {
+      setIsTransitioning(false)
+      setActiveIndex(1)
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setIsTransitioning(true))
+      })
+    }
+  }
 
   return (
     <section className={['bg-[#050505] px-4 py-5 sm:px-8 lg:px-12', className].filter(Boolean).join(' ')}>
@@ -56,11 +90,15 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
         <div className={showNetworkAd ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]' : undefined}>
           <div className="relative aspect-[16/5] min-h-[150px] min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#050505] shadow-2xl shadow-black/40 sm:min-h-[210px] lg:min-h-[300px]">
             <div
-              className="flex h-full w-full transition-transform duration-700 ease-out motion-reduce:transition-none"
+              className={[
+                'flex h-full w-full motion-reduce:transition-none',
+                isTransitioning ? 'transition-transform duration-700 ease-out' : '',
+              ].join(' ')}
               style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+              onTransitionEnd={handleTransitionEnd}
             >
-              {slides.map((slide, index) => (
-                <div key={`${slide.id ?? index}-slide`} className="h-full w-full flex-none">
+              {displaySlides.map((slide, index) => (
+                <div key={`${slide.id ?? index}-slide-${index}`} className="h-full w-full flex-none">
                   <SlideImage slide={slide} eager={index === activeIndex} />
                 </div>
               ))}
@@ -73,10 +111,13 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
                     key={`${slide.id ?? index}-dot`}
                     type="button"
                     aria-label={`Show banner ${index + 1}`}
-                    onClick={() => setActiveIndex(index)}
+                    onClick={() => {
+                      setIsTransitioning(true)
+                      setActiveIndex(index + 1)
+                    }}
                     className={[
                       'h-1.5 rounded-full transition',
-                      index === activeIndex ? 'w-7 bg-white' : 'w-1.5 bg-white/45 hover:bg-white/75',
+                      index === realActiveIndex ? 'w-7 bg-white' : 'w-1.5 bg-white/45 hover:bg-white/75',
                     ].join(' ')}
                   />
                 ))}
@@ -97,6 +138,14 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
       </div>
     </section>
   )
+}
+
+function normalizeSlideIndex(index: number, slideCount: number) {
+  if (slideCount < 2) return 0
+  if (index === 0) return slideCount - 1
+  if (index === slideCount + 1) return 0
+
+  return index - 1
 }
 
 function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: boolean }) {
