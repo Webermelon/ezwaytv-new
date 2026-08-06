@@ -67,6 +67,13 @@ export type MediaItem = {
     url_type?: string | null
     url?: string | null
   }>
+  stats?: {
+    real_views?: number | null
+    boost_views?: number | null
+    display_views?: number | null
+    total_views?: number | null
+    show_views_frontend?: boolean | null
+  } | null
   details?: {
     name?: string
     slug?: string

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Check, Clapperboard, Copy, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clapperboard, Copy, Eye, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -246,6 +246,7 @@ function ProfilePanel({
 
   const channelLocked = isPremiumChannelLocked(profile)
   const profileVideoCount = formatVideoCount(channelVideoCount(profile) || videos.length)
+  const profileViews = channelTotalViews(profile)
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
@@ -278,7 +279,21 @@ function ProfilePanel({
                   </Badge>
                 ) : null}
               </div>
-              <p className="mt-1 text-sm leading-5 text-white/58">@{profile.username} · {profileVideoCount}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-sm border border-white/10 bg-black/24 px-2.5 py-1 text-xs font-semibold text-white/62">
+                  @{profile.username}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-sm border border-white/10 bg-black/24 px-2.5 py-1 text-xs font-bold text-white/72">
+                  <Clapperboard className="h-3.5 w-3.5 text-primary" />
+                  {profileVideoCount}
+                </span>
+                {profileViews !== null ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/12 px-2.5 py-1 text-xs font-black text-primary shadow-[0_0_22px_rgba(214,168,58,0.10)]">
+                    <Eye className="h-3.5 w-3.5" />
+                    {formatCompactNumber(profileViews)} video views
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="grid gap-2 sm:mb-2 sm:flex sm:w-auto">
@@ -632,6 +647,7 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
   const href = channel.username ? `/on-demand/${channel.username}` : '/on-demand'
   const videoCount = channelVideoCount(channel)
   const videoCountLabel = formatVideoCount(videoCount)
+  const channelViews = channelTotalViews(channel)
 
   return (
     <a href={href} className="group block min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#141414] transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-[#191919]">
@@ -658,10 +674,17 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
         <div className="min-w-0">
           <h2 className="line-clamp-2 text-base font-black leading-tight text-white">{channel.name}</h2>
           <p className="mt-1 truncate text-xs font-semibold text-white/52">@{channel.username}</p>
-          <p className="mt-1 inline-flex items-center gap-1 rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
-            <Clapperboard className="h-3 w-3 text-primary" />
-            {videoCountLabel}
-          </p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <p className="inline-flex items-center gap-1 rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
+              <Clapperboard className="h-3 w-3 text-primary" />
+              {videoCountLabel}
+            </p>
+            {channelViews !== null ? (
+              <p className="inline-flex items-center rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
+                {formatCompactNumber(channelViews)} video views
+              </p>
+            ) : null}
+          </div>
         </div>
         <span className="col-span-2 mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-white px-3 text-xs font-black text-black shadow-sm transition group-hover:bg-primary group-hover:text-black">
           View Channel
@@ -675,6 +698,8 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
 function ChannelListItem({ channel, active }: { channel: MediaItem; active: boolean }) {
   const href = channel.username ? `/on-demand/${channel.username}` : '/on-demand'
   const videoCountLabel = formatVideoCount(channelVideoCount(channel))
+  const channelViews = channelTotalViews(channel)
+  const statsLabel = channelViews !== null ? `${videoCountLabel} · ${formatCompactNumber(channelViews)} video views` : videoCountLabel
 
   return (
     <a
@@ -696,7 +721,7 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
           <span className="block min-w-0 truncate text-sm font-bold">{channel.name}</span>
           {channel.access === 'paid' ? <Lock className="h-3.5 w-3.5 shrink-0 text-primary" /> : null}
         </span>
-        <span className="mt-1 block truncate text-xs text-white/52">@{channel.username} · {videoCountLabel}</span>
+        <span className="mt-1 block truncate text-xs text-white/52">@{channel.username} · {statsLabel}</span>
       </span>
     </a>
   )
@@ -913,8 +938,26 @@ function channelVideoCount(channel: MediaItem) {
   return Number.isFinite(count) ? Math.max(0, count) : 0
 }
 
+function channelTotalViews(channel: MediaItem) {
+  if (channel.stats?.show_views_frontend === false) {
+    return null
+  }
+
+  const value = channel.stats?.display_views ?? channel.stats?.total_views
+  const count = Number(value)
+
+  return Number.isFinite(count) ? Math.max(0, count) : null
+}
+
 function formatVideoCount(count: number) {
   return `${count.toLocaleString()} ${count === 1 ? 'video' : 'videos'}`
+}
+
+function formatCompactNumber(count: number) {
+  return new Intl.NumberFormat(undefined, {
+    notation: count >= 10_000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(count)
 }
 
 function isPremiumVideoCard(video: MediaItem) {
