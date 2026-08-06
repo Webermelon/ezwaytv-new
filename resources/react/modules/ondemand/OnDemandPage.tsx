@@ -290,7 +290,7 @@ function ProfilePanel({
                 {profileViews !== null ? (
                   <span className="inline-flex items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/12 px-2.5 py-1 text-xs font-black text-primary shadow-[0_0_22px_rgba(214,168,58,0.10)]">
                     <Eye className="h-3.5 w-3.5" />
-                    {formatCompactNumber(profileViews)} video views
+                    {formatCompactNumber(profileViews)} total views
                   </span>
                 ) : null}
               </div>
@@ -681,7 +681,7 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
             </p>
             {channelViews !== null ? (
               <p className="inline-flex items-center rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
-                {formatCompactNumber(channelViews)} video views
+                {formatCompactNumber(channelViews)} total views
               </p>
             ) : null}
           </div>
@@ -699,7 +699,7 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
   const href = channel.username ? `/on-demand/${channel.username}` : '/on-demand'
   const videoCountLabel = formatVideoCount(channelVideoCount(channel))
   const channelViews = channelTotalViews(channel)
-  const statsLabel = channelViews !== null ? `${videoCountLabel} · ${formatCompactNumber(channelViews)} video views` : videoCountLabel
+  const statsLabel = channelViews !== null ? `${videoCountLabel} · ${formatCompactNumber(channelViews)} total views` : videoCountLabel
 
   return (
     <a
