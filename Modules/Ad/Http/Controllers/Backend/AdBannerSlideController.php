@@ -22,7 +22,7 @@ class AdBannerSlideController extends Controller
 
         return $datatable->eloquent($query)
             ->addColumn('check', fn($row) => '<input type="checkbox" class="form-check-input select-table-row" id="datatable-row-' . $row->id . '" name="datatable_ids[]" value="' . $row->id . '" data-type="ad_banner_slides" onclick="dataTableRowCheck(' . $row->id . ',this)">')
-            ->editColumn('image', fn($row) => $row->image ? '<img src="' . $row->image . '" class="img-fluid rounded" style="height:50px;object-fit:cover;">' : '-')
+            ->editColumn('image', fn($row) => $row->image ? '<img src="' . e($row->image_proxy_url) . '" class="img-fluid rounded" style="height:50px;object-fit:cover;">' : '-')
             ->editColumn('placements', fn($row) => $row->placements ? implode(', ', (array) $row->placements) : '-')
             ->editColumn('status', function ($row) {
                 $checked = $row->status ? 'checked="checked"' : '';

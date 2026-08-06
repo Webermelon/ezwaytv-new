@@ -429,12 +429,14 @@
                     hasSelectable = true;
                     hasMediaFiles = true; // Mark that folder has media files
                     const imageUrl = item.media_url;
+                    const previewUrl = item.preview_url || imageUrl;
                     const safeName = escapeHtml(item.name);
                     const safeImageUrl = escapeHtml(imageUrl);
+                    const safePreviewUrl = escapeHtml(previewUrl);
                     html += `
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeImageUrl}">
-                                <img class="img-fluid object-fit-cover media-thumb-10" src="${safeImageUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
+                                <img class="img-fluid object-fit-cover media-thumb-10" src="${safePreviewUrl}"  loading="lazy" decoding="async" style="opacity:0;transition:opacity .2s" onload="this.style.opacity=1">
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="deleteImage('${escapeJsString(imageUrl)}', 'image', '${escapeJsString(item.name)}', getFolderFromUrl('${escapeJsString(imageUrl)}'), '${escapeJsString(item.path || '')}')">
                                     <i class="ph ph-trash"></i>
                                 </button>

@@ -145,10 +145,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const mediaSubmitButton = document.getElementById('mediaSubmitButton');
   if (mediaSubmitButton) {
     mediaSubmitButton.addEventListener('click', function () {
+      var selectedTile = document.querySelector('.iq-media-images.selected[data-media-url]');
       if (!selectedMediaUrl) {
-        var selectedTile = document.querySelector('.iq-media-images.selected[data-media-url]');
         selectedMediaUrl = selectedTile ? selectedTile.getAttribute('data-media-url') : '';
       }
+      var selectedPreviewUrl = selectedTile ? (selectedTile.querySelector('img, video')?.getAttribute('src') || selectedMediaUrl) : selectedMediaUrl;
       var activeElement = document.activeElement;
       if ((!currentImageContainer || !currentHiddenInput) && activeElement && activeElement.matches('[data-bs-target="#exampleModal"][data-hidden-input]')) {
         setCurrentSelectionTarget(activeElement);
@@ -303,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isImageUrl(selectedMediaUrl)) {
               // For other cases, default behavior (assuming image upload or other media)
               var img = document.createElement('img');
-              img.src = selectedMediaUrl;
+              img.src = selectedPreviewUrl;
               img.classList.add('img-fluid', 'mb-2');
               img.style.maxWidth = '100px';
               img.style.maxHeight = '100px';

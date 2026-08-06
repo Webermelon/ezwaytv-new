@@ -8,6 +8,7 @@ type AdBannerSlide = {
   id?: number | string
   title?: string | null
   image?: string | null
+  image_proxy_url?: string | null
   link?: string | null
   link_url?: string | null
   placements?: string[] | null
@@ -25,7 +26,6 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
     queryKey: ['ad-banner-sliders', placement],
     queryFn: () => loadAdBannerSlides(placement),
     staleTime: 60_000,
-    initialData: () => readCachedAdBannerSlides(placement),
   })
   const slides = (slidesQuery.data ?? []).filter((slide) => Boolean(slide.image))
   const activeSlide = slides[activeIndex] ?? slides[0]
@@ -45,10 +45,8 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
   }, [slides.length])
 
   useEffect(() => {
-    if (slidesQuery.data) {
-      writeCachedAdBannerSlides(placement, slidesQuery.data)
-    }
-  }, [placement, slidesQuery.data])
+    clearCachedAdBannerSlides()
+  }, [])
 
   if (slides.length === 0 || !activeSlide) return null
 
@@ -56,7 +54,7 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
     <section className={['bg-[#050505] px-4 py-5 sm:px-8 lg:px-12', className].filter(Boolean).join(' ')}>
       <div className="mx-auto max-w-[1800px]">
         <div className={showNetworkAd ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]' : undefined}>
-          <div className="relative aspect-[16/5] min-h-[150px] min-w-0 overflow-hidden rounded-md border border-white/10 bg-black shadow-2xl shadow-black/40 sm:min-h-[210px] lg:min-h-[300px]">
+          <div className="relative aspect-[16/5] min-h-[150px] min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#050505] shadow-2xl shadow-black/40 sm:min-h-[210px] lg:min-h-[300px]">
             <div
               className="flex h-full w-full transition-transform duration-700 ease-out motion-reduce:transition-none"
               style={{ transform: `translateX(-${activeIndex * 100}%)` }}
@@ -102,11 +100,12 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
 }
 
 function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: boolean }) {
+  const imageSrc = resolveSlideImage(slide)
   const image = (
     <img
-      src={slide.image ?? ''}
-      alt={slide.title ?? 'Advertisement'}
-      className="h-full w-full object-cover"
+      src={imageSrc}
+      alt={slide.title ?? 'Promotion'}
+      className="h-full w-full object-contain"
       loading={eager ? 'eager' : 'lazy'}
     />
   )
@@ -121,29 +120,28 @@ function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: bo
   )
 }
 
+function resolveSlideImage(slide: AdBannerSlide) {
+  if (slide.image_proxy_url) return slide.image_proxy_url
+  if (slide.id) return `/api/v3/promo-slides/${slide.id}/image`
+
+  return slide.image ?? ''
+}
+
 async function loadAdBannerSlides(placement: AdBannerSliderProps['placement']) {
   const params = new URLSearchParams({
     placements: placement,
     limit: '20',
   })
-  const response = await api.get<ApiEnvelope<AdBannerSlide[]>>(`/api/v3/ad-banner-sliders?${params.toString()}`)
+  const response = await api.get<ApiEnvelope<AdBannerSlide[]>>(`/api/v3/promo-slides?${params.toString()}`)
 
   return response.data ?? []
 }
 
-function readCachedAdBannerSlides(placement: AdBannerSliderProps['placement']) {
+function clearCachedAdBannerSlides() {
   try {
-    const cached = window.localStorage.getItem(`ezway_ad_banner_slides_${placement}`)
-
-    return cached ? JSON.parse(cached) as AdBannerSlide[] : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function writeCachedAdBannerSlides(placement: AdBannerSliderProps['placement'], slides: AdBannerSlide[]) {
-  try {
-    window.localStorage.setItem(`ezway_ad_banner_slides_${placement}`, JSON.stringify(slides))
+    ;['home', 'video', 'livetv', 'tvshow'].forEach((placement) => {
+      window.localStorage.removeItem(`ezway_ad_banner_slides_${placement}`)
+    })
   } catch {
     // Ignore storage failures; the live API data is still rendered.
   }

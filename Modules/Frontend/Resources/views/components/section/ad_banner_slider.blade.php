@@ -18,7 +18,7 @@
                     @if($slide->link_url)
                         <a href="{{ $slide->link_url }}" target="_blank" rel="noopener noreferrer">
                     @endif
-                        <img src="{{ $slide->image }}"
+                        <img src="{{ $slide->image_proxy_url }}"
                              alt="{{ $slide->title ?? __('messages.advertisement') }}"
                              class="ad-banner-img"
                              loading="lazy">

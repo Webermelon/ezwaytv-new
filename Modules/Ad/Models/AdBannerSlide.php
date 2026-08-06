@@ -26,6 +26,11 @@ class AdBannerSlide extends Model
         return $query->where('status', 1);
     }
 
+    public function getImageProxyUrlAttribute(): string
+    {
+        return route('api.v3.promo-slides.image', ['slide' => $this->id]);
+    }
+
     /**
      * Get active slides for a given placement, with caching.
      */

@@ -4,6 +4,7 @@ namespace Modules\Ad\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Modules\Ad\Models\AdBannerSlide;
 use App\Http\Responses\ApiResponse;
 
@@ -39,6 +40,7 @@ class AdBannerSlideApiController extends Controller
                 'title' => $s->title,
                 'description' => $s->description,
                 'image' => $s->image,
+                'image_proxy_url' => $s->image_proxy_url,
                 'link' => $s->link_url ?? null,
                 'link_url' => $s->link_url ?? null,
                 'placements' => $s->placements,
@@ -46,5 +48,61 @@ class AdBannerSlideApiController extends Controller
         });
 
         return ApiResponse::success($slides, 'Ad banner sliders retrieved', 200);
+    }
+
+    public function image(AdBannerSlide $slide)
+    {
+        abort_unless((bool) $slide->status && is_null($slide->deleted_at), 404);
+
+        $imageUrl = (string) $slide->image;
+        $path = function_exists('mediaStoragePathFromUrl')
+            ? mediaStoragePathFromUrl($imageUrl)
+            : ltrim((string) parse_url($imageUrl, PHP_URL_PATH), '/');
+        $path = ltrim($path, '/');
+        abort_if($path === '', 404);
+
+        $activeDisk = config('filesystems.active') === 'dg-ocean' ? 'dg-ocean' : 'local';
+        $bucket = (string) config("filesystems.disks.{$activeDisk}.bucket");
+        $pathCandidates = [$path];
+
+        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
+            $pathCandidates[] = substr($path, strlen($bucket) + 1);
+        }
+
+        $host = (string) parse_url($imageUrl, PHP_URL_HOST);
+        if (str_ends_with($host, 'digitaloceanspaces.com') && str_contains($path, '/')) {
+            $pathCandidates[] = substr($path, strpos($path, '/') + 1);
+        }
+
+        foreach (array_values(array_unique(array_filter($pathCandidates))) as $candidatePath) {
+            if ($activeDisk === 'dg-ocean' && Storage::disk('dg-ocean')->exists($candidatePath)) {
+                $stream = Storage::disk('dg-ocean')->readStream($candidatePath);
+                abort_if($stream === false, 404);
+
+                return response()->stream(function () use ($stream) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }, 200, [
+                    'Content-Type' => Storage::disk('dg-ocean')->mimeType($candidatePath) ?: 'image/jpeg',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+
+            foreach ([public_path($candidatePath), public_path('storage/' . $candidatePath)] as $candidate) {
+                if (is_file($candidate)) {
+                    return response()->file($candidate, [
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            }
+        }
+
+        if (filter_var($imageUrl, FILTER_VALIDATE_URL) !== false) {
+            return redirect()->away($imageUrl, 302, [
+                'Cache-Control' => 'public, max-age=300',
+            ]);
+        }
+
+        abort(404);
     }
 }

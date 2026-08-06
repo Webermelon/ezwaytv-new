@@ -580,6 +580,7 @@ private function sanitizeUploadBaseName(string $baseName): string
                                 'modified' => $modified,
                                 'uploaded_at' => null,
                                 'media_url' => $mediaUrl,
+                                'preview_url' => $this->previewUrl($relativePath, $isImage),
                                 'is_video' => $isVideo,
                                 'is_image' => $isImage,
                             ];
@@ -733,9 +734,55 @@ private function sanitizeUploadBaseName(string $baseName): string
             'modified' => $modified,
             'uploaded_at' => null,
             'media_url' => $mediaUrl,
+            'preview_url' => $this->previewUrl($relativePath !== null ? $relativePath : $absolutePath, (bool) $isImage),
             'is_video' => $isVideo,
             'is_image' => $isImage,
         ];
+    }
+
+    private function previewUrl(?string $path, bool $isImage): ?string
+    {
+        $path = ltrim((string) $path, '/');
+
+        if (!$isImage || $path === '' || !str_starts_with($path, 'ads/image/')) {
+            return null;
+        }
+
+        $key = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
+
+        return route('backend.media-library.preview', ['key' => $key]);
+    }
+
+    public function preview(Request $request)
+    {
+        $key = (string) $request->query('key');
+        $path = $key !== ''
+            ? (string) base64_decode(strtr($key, '-_', '+/'), true)
+            : (string) $request->query('path');
+        $path = ltrim($path, '/');
+        abort_if($path === '' || str_contains($path, '..') || !str_starts_with($path, 'ads/image/'), 404);
+
+        $activeDisk = env('ACTIVE_STORAGE', 'local');
+
+        if ($activeDisk !== 'local' && Storage::disk($activeDisk)->exists($path)) {
+            $stream = Storage::disk($activeDisk)->readStream($path);
+            abort_if($stream === false, 404);
+
+            return response()->stream(function () use ($stream) {
+                fpassthru($stream);
+                fclose($stream);
+            }, 200, [
+                'Content-Type' => Storage::disk($activeDisk)->mimeType($path) ?: 'image/jpeg',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+
+        $localPath = storage_path('app/public/' . $path);
+        abort_unless(is_file($localPath), 404);
+
+        return response()->file($localPath, [
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     private function attachUploadTimestamps(array $items): array
