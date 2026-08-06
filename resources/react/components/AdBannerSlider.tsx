@@ -151,12 +151,22 @@ function normalizeSlideIndex(index: number, slideCount: number) {
 function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: boolean }) {
   const imageSrc = resolveSlideImage(slide)
   const image = (
-    <img
-      src={imageSrc}
-      alt={slide.title ?? 'Promotion'}
-      className="h-full w-full object-contain"
-      loading={eager ? 'eager' : 'lazy'}
-    />
+    <div className="relative h-full w-full overflow-hidden bg-[#050505]">
+      <img
+        src={imageSrc}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-2xl"
+        loading={eager ? 'eager' : 'lazy'}
+      />
+      <div className="absolute inset-0 bg-black/18 backdrop-blur-[2px]" />
+      <img
+        src={imageSrc}
+        alt={slide.title ?? 'Promotion'}
+        className="relative z-10 h-full w-full object-contain"
+        loading={eager ? 'eager' : 'lazy'}
+      />
+    </div>
   )
   const href = slide.link_url ?? slide.link
 
