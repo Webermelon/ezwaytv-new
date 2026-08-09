@@ -166,7 +166,10 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('banner-data', [DashboardController::class, 'getEntertainmentDataV3']);
     Route::get('footer-data', [FooterController::class, 'show'])->name('api.v3.footer-data');
     Route::get('navigation-menu', [NavigationMenuController::class, 'show'])->name('api.v3.navigation-menu');
-    // Ad banner sliders (public)
+    // Ad banner sliders (public). Keep legacy ad/promo routes, but expose
+    // neutral aliases so browser content blockers do not hide these images.
+    Route::get('showcase-media', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.showcase-media');
+    Route::get('showcase-media/{slide}/image', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'image'])->name('api.v3.showcase-media.image');
     Route::get('ad-banner-sliders', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.ad-banner-sliders');
     Route::get('promo-slides', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.promo-slides');
     Route::get('promo-slides/{slide}/image', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'image'])->name('api.v3.promo-slides.image');

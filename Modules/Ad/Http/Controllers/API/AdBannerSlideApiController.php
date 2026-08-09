@@ -4,6 +4,7 @@ namespace Modules\Ad\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Modules\Ad\Models\AdBannerSlide;
 use App\Http\Responses\ApiResponse;
@@ -79,6 +80,8 @@ class AdBannerSlideApiController extends Controller
                 $stream = Storage::disk('dg-ocean')->readStream($candidatePath);
                 abort_if($stream === false, 404);
 
+                $this->clearOutputBuffers();
+
                 return response()->stream(function () use ($stream) {
                     fpassthru($stream);
                     fclose($stream);
@@ -90,6 +93,8 @@ class AdBannerSlideApiController extends Controller
 
             foreach ([public_path($candidatePath), public_path('storage/' . $candidatePath)] as $candidate) {
                 if (is_file($candidate)) {
+                    $this->clearOutputBuffers();
+
                     return response()->file($candidate, [
                         'Cache-Control' => 'public, max-age=86400',
                     ]);
@@ -98,11 +103,28 @@ class AdBannerSlideApiController extends Controller
         }
 
         if (filter_var($imageUrl, FILTER_VALIDATE_URL) !== false) {
-            return redirect()->away($imageUrl, 302, [
-                'Cache-Control' => 'public, max-age=300',
-            ]);
+            try {
+                $response = Http::timeout(12)->get($imageUrl);
+                if ($response->successful()) {
+                    $this->clearOutputBuffers();
+
+                    return response($response->body(), 200, [
+                        'Content-Type' => $response->header('Content-Type', 'image/jpeg'),
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
         }
 
         abort(404);
+    }
+
+    private function clearOutputBuffers(): void
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
     }
 }

@@ -28,7 +28,7 @@ class AdBannerSlide extends Model
 
     public function getImageProxyUrlAttribute(): string
     {
-        return route('api.v3.promo-slides.image', ['slide' => $this->id]);
+        return route('api.v3.showcase-media.image', ['slide' => $this->id]);
     }
 
     /**

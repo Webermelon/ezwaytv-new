@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, PackageCheck, UserCircle, X } from 'lucide-react'
+import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, PackageCheck, RefreshCw, UserCircle, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
 import { isNativeIosApp } from '@/lib/native-platform'
-import { loadAccountSettings, type AccountProfile } from '@/modules/account/accountApi'
+import { loadAccountSettings, syncAccountProfile, type AccountProfile } from '@/modules/account/accountApi'
 
 type ProfileForm = {
   first_name: string
@@ -36,6 +36,8 @@ const emptyForm: ProfileForm = {
 
 export function ProfileDetailsPage() {
   const [form, setForm] = useState<ProfileForm>(emptyForm)
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const queryClient = useQueryClient()
 
   const accountQuery = useQuery({
     queryKey: ['account-settings'],
@@ -45,6 +47,34 @@ export function ProfileDetailsPage() {
 
   const profile = accountQuery.data?.profile
   const avatar = form.previewUrl || profile?.avatar || window.ezwayAuth?.avatar || '/dummy-images/avatars/icon1.png'
+  const syncMutation = useMutation({
+    mutationFn: syncAccountProfile,
+    onSuccess: (response) => {
+      if (window.ezwayAuth && response.data) {
+        window.ezwayAuth = {
+          ...window.ezwayAuth,
+          avatar: response.data.avatar || window.ezwayAuth.avatar,
+          name: response.data.name || window.ezwayAuth.name,
+          current_profile: window.ezwayAuth.current_profile
+            ? {
+                ...window.ezwayAuth.current_profile,
+                name: response.data.name || window.ezwayAuth.current_profile.name,
+              }
+            : window.ezwayAuth.current_profile,
+        }
+      }
+
+      queryClient.setQueryData(['account-settings'], (current: unknown) => ({
+        ...((current && typeof current === 'object') ? current as Record<string, unknown> : {}),
+        profile: response.data,
+      }))
+      queryClient.invalidateQueries({ queryKey: ['account-settings'] })
+      setNotice({ tone: 'success', text: response.message || 'Profile synced from eZWay Network.' })
+    },
+    onError: (error) => {
+      setNotice({ tone: 'error', text: readApiError(error, 'Could not sync profile from eZWay Network right now.') })
+    },
+  })
 
   useEffect(() => {
     if (!profile) return
@@ -91,6 +121,7 @@ export function ProfileDetailsPage() {
         <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <AccountSidebar activeHref="/update-profile" />
           <div className="min-w-0">
+            {notice ? <Notice tone={notice.tone} text={notice.text} onClose={() => setNotice(null)} /> : null}
             {accountQuery.isLoading ? (
               <div className="flex min-h-72 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#edc342]" />
@@ -104,10 +135,16 @@ export function ProfileDetailsPage() {
                   <div>
                     <h2 className="text-2xl font-black">Profile Information</h2>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-white/54">Profile changes are managed on eZWay Network so your identity stays consistent across all eZWay apps.</p>
-                    <a href="https://ezwaynetwork.com" className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
-                      <ExternalLink className="h-4 w-4" />
-                      Update on eZWay Network
-                    </a>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button type="button" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate()} className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d] disabled:opacity-60">
+                        {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        Sync Profile
+                      </Button>
+                      <a href="https://ezwaynetwork.com" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
+                        <ExternalLink className="h-4 w-4" />
+                        Update on eZWay Network
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -144,7 +181,11 @@ export function ProfileDetailsPage() {
                   />
                 </label>
 
-                <div className="mt-6 flex justify-end">
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
+                  <Button type="button" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate()} className="border border-white/10 bg-white/[0.06] font-black text-white hover:bg-white/[0.1] disabled:opacity-60">
+                    {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Sync Profile
+                  </Button>
                   <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
                     <a href="https://ezwaynetwork.com">
                       <ExternalLink className="h-4 w-4" />

@@ -181,7 +181,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
 
 function RegisterPanel() {
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string; actionHref?: string; actionLabel?: string } | null>(null)
   const [step, setStep] = useState<RegisterStep>('account')
   const [inviteCode, setInviteCode] = useState('')
   const [firstName, setFirstName] = useState('')

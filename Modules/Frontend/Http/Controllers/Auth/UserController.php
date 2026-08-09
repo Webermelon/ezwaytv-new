@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Models\UserMultiProfile;
 use Modules\Entertainment\Models\Watchlist;
@@ -20,6 +22,8 @@ class UserController extends Controller
     public function accountSettingsData()
     {
         $user = Auth::user();
+        $this->syncCoreProfileData($user);
+        $user = $user->fresh();
         $devices = Device::where('user_id', $user->id)->orderByDesc('updated_at')->get();
         $currentDevice = $devices->firstWhere('device_id', request()->ip()) ?? $devices->first();
         $otherDevices = $devices
@@ -72,6 +76,26 @@ class UserController extends Controller
             'status' => true,
             'data' => $this->serializeUser($user),
             'message' => __('messages.profile_update'),
+        ]);
+    }
+
+    public function syncProfileData()
+    {
+        $user = Auth::user();
+
+        if (!$this->syncCoreProfileData($user)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Core profile data could not be found for this account.',
+            ], 404);
+        }
+
+        $user = $user->fresh();
+
+        return response()->json([
+            'status' => true,
+            'data' => $this->serializeUser($user),
+            'message' => 'Profile synced from eZWay Network.',
         ]);
     }
 
@@ -401,17 +425,269 @@ private function serializeUser($user)
         'id' => $user->id,
         'first_name' => $user->first_name,
         'last_name' => $user->last_name,
-        'name' => $user->full_name ?? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+        'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
         'email' => $user->email,
         'mobile' => $user->mobile,
         'country_code' => $user->country_code,
         'address' => $user->address,
         'gender' => $user->gender,
         'date_of_birth' => $user->date_of_birth ? \Carbon\Carbon::parse($user->date_of_birth)->format('Y-m-d') : null,
-        'avatar' => $user->file_url ? setBaseUrlWithFileName($user->file_url, 'image', 'users') : asset('dummy-images/avatars/icon1.png'),
+        'avatar' => $this->profileAvatarUrl($user->file_url),
         'login' => $user->login ?? null,
         'login_type' => $user->login_type ?? null,
     ];
+}
+
+private function syncCoreProfileData($user): bool
+{
+    if (!$user || !$user->email) {
+        return false;
+    }
+
+    $coreUser = $this->fetchCoreUserData($user);
+    if (!$coreUser) {
+        return false;
+    }
+
+    $values = $this->mapCoreUserData($coreUser, $user);
+    if (!$values) {
+        return false;
+    }
+
+    try {
+        $user->forceFill($values)->save();
+        $this->syncPrimaryViewingProfile($user->fresh(), $values);
+        return true;
+    } catch (\Throwable $exception) {
+        report($exception);
+        return false;
+    }
+}
+
+private function syncPrimaryViewingProfile($user, array $values): void
+{
+    if (!$user) {
+        return;
+    }
+
+    $name = trim((string) (($values['first_name'] ?? $user->first_name ?? '').' '.($values['last_name'] ?? $user->last_name ?? '')));
+    if ($name === '') {
+        $name = trim((string) ($user->first_name ?? $user->email ?? 'Profile'));
+    }
+
+    $profile = UserMultiProfile::query()
+        ->where('user_id', $user->id)
+        ->where('is_child_profile', 0)
+        ->orderBy('id')
+        ->first();
+
+    if (!$profile) {
+        $profile = new UserMultiProfile();
+        $profile->user_id = $user->id;
+        $profile->is_child_profile = 0;
+    }
+
+    $profile->name = $name;
+
+    if (!empty($values['file_url'])) {
+        $profile->avatar = $values['file_url'];
+    }
+
+    $profile->save();
+
+    $currentProfile = getCurrentProfileSession();
+    if ($currentProfile && (int) ($currentProfile->id ?? 0) === (int) $profile->id) {
+        session()->put('current_profile_'.$user->id, $profile->fresh());
+    }
+}
+
+private function profileAvatarUrl($fileUrl): string
+{
+    $fileUrl = trim((string) $fileUrl);
+    if ($fileUrl === '') {
+        return asset('dummy-images/avatars/icon1.png');
+    }
+
+    if (filter_var($fileUrl, FILTER_VALIDATE_URL)) {
+        return $fileUrl;
+    }
+
+    return setBaseUrlWithFileName($fileUrl, 'image', 'users');
+}
+
+private function fetchCoreUserData($user): ?array
+{
+    $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+    $token = (string) config('services.core_api.token');
+
+    if ($baseUrl === '' || $token === '') {
+        return null;
+    }
+
+    $client = Http::withToken($token)->acceptJson()->timeout(12);
+    $host = trim((string) config('services.core_api.host'));
+    if ($host !== '') {
+        $client = $client->withHeaders(['Host' => $host]);
+    }
+
+    $attempts = [];
+    if (!empty($user->network_user_id)) {
+        $attempts[] = ['path' => '/api/users/'.$user->network_user_id, 'query' => []];
+        $attempts[] = ['path' => '/api/wo-users/'.$user->network_user_id, 'query' => []];
+    }
+
+    $attempts[] = ['path' => '/api/tv/login-user', 'query' => [
+        'email' => $user->email,
+        'package_slug' => (string) config('services.core_api.tv_package_slug', 'tv-subscription-monthly'),
+    ]];
+    $attempts[] = ['path' => '/api/users', 'query' => ['search' => $user->email, 'limit' => 10]];
+    $attempts[] = ['path' => '/api/users/check-email', 'query' => ['email' => $user->email]];
+
+    foreach ($attempts as $attempt) {
+        try {
+            $response = $client->get($baseUrl.$attempt['path'], $attempt['query']);
+        } catch (\Throwable $exception) {
+            report($exception);
+            continue;
+        }
+
+        if (!$response->successful()) {
+            continue;
+        }
+
+        $payload = $response->json();
+        if (!is_array($payload)) {
+            continue;
+        }
+
+        $coreUser = $this->extractCoreUserData($payload, $user->email);
+        if ($coreUser) {
+            return $coreUser;
+        }
+    }
+
+    Log::info('Core profile data could not be resolved for TV user.', [
+        'tv_user_id' => $user->id,
+        'email' => $user->email,
+        'network_user_id' => $user->network_user_id,
+    ]);
+
+    return null;
+}
+
+private function extractCoreUserData(array $payload, ?string $email = null): ?array
+{
+    $email = strtolower(trim((string) $email));
+
+    foreach ([
+        $payload['data']['wo_user'] ?? null,
+        $payload['data']['user']['wo_user'] ?? null,
+        $payload['data']['user'] ?? null,
+        $payload['data'] ?? null,
+        $payload['wo_user'] ?? null,
+        $payload['user']['wo_user'] ?? null,
+        $payload['user'] ?? null,
+    ] as $candidate) {
+        if (is_array($candidate) && $this->hasProfileSignal($candidate, $email)) {
+            return $candidate;
+        }
+    }
+
+    if (isset($payload['data']) && is_array($payload['data'])) {
+        foreach ($payload['data'] as $candidate) {
+            if (is_array($candidate) && $this->hasProfileSignal($candidate, $email)) {
+                return $candidate;
+            }
+        }
+    }
+
+    return null;
+}
+
+private function hasProfileSignal(array $data, ?string $email = null): bool
+{
+    if ($email) {
+        $candidateEmail = strtolower(trim((string) ($data['email'] ?? $data['user_email'] ?? '')));
+        if ($candidateEmail !== '' && $candidateEmail !== $email) {
+            return false;
+        }
+    }
+
+    foreach (['email', 'user_email', 'first_name', 'firstName', 'fname', 'last_name', 'lastName', 'lname', 'phone', 'phone_number', 'avatar', 'image', 'profile'] as $key) {
+        if (!empty($data[$key])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+private function mapCoreUserData(array $coreUser, $localUser = null): array
+{
+    $profile = isset($coreUser['profile']) && is_array($coreUser['profile']) ? $coreUser['profile'] : [];
+    $nameParts = $this->splitCoreName((string) ($coreUser['name'] ?? $coreUser['full_name'] ?? ''));
+    $username = trim((string) ($coreUser['username'] ?? $coreUser['user_name'] ?? ''));
+    if ($username !== '' && \App\Models\User::withTrashed()
+        ->where('username', $username)
+        ->when($localUser, fn ($query) => $query->where('id', '!=', $localUser->id))
+        ->exists()) {
+        $username = '';
+    }
+
+    $lastName = trim((string) ($coreUser['last_name'] ?? $coreUser['lastName'] ?? $coreUser['lname'] ?? $profile['last_name'] ?? $nameParts['last_name'] ?? ''));
+    $values = array_filter([
+        'network_user_id' => (int) ($coreUser['core_user_id'] ?? $coreUser['network_id'] ?? $coreUser['id'] ?? $coreUser['user_id'] ?? 0) ?: null,
+        'is_network_user' => 1,
+        'first_name' => trim((string) ($coreUser['first_name'] ?? $coreUser['firstName'] ?? $coreUser['fname'] ?? $profile['first_name'] ?? $nameParts['first_name'] ?? '')),
+        'last_name' => $lastName,
+        'username' => $username,
+        'mobile' => trim((string) ($coreUser['phone'] ?? $coreUser['phone_number'] ?? $coreUser['mobile'] ?? $profile['phone'] ?? $profile['phone_number'] ?? '')),
+        'country_code' => trim((string) ($coreUser['country_code'] ?? $coreUser['countryCode'] ?? $profile['country_code'] ?? '')),
+        'address' => trim((string) ($coreUser['address'] ?? $coreUser['location'] ?? $profile['address'] ?? $profile['location'] ?? '')),
+        'gender' => $this->normalizeGender($coreUser['gender'] ?? $profile['gender'] ?? null),
+        'date_of_birth' => $this->normalizeCoreDate($coreUser['date_of_birth'] ?? $coreUser['birthday'] ?? $coreUser['dob'] ?? $profile['date_of_birth'] ?? $profile['birthday'] ?? null),
+        'file_url' => trim((string) ($coreUser['avatar'] ?? $coreUser['profile_image'] ?? $coreUser['image'] ?? $profile['avatar'] ?? $profile['image'] ?? '')),
+    ], fn ($value) => $value !== null && $value !== '');
+
+    if (array_key_exists('last_name', $coreUser) || array_key_exists('lastName', $coreUser) || array_key_exists('lname', $coreUser) || array_key_exists('last_name', $profile)) {
+        $values['last_name'] = $lastName;
+    }
+
+    return $values;
+}
+
+private function splitCoreName(string $name): array
+{
+    $name = trim($name);
+    if ($name === '') {
+        return ['first_name' => '', 'last_name' => ''];
+    }
+
+    $parts = preg_split('/\s+/', $name, 2);
+
+    return [
+        'first_name' => $parts[0] ?? '',
+        'last_name' => $parts[1] ?? '',
+    ];
+}
+
+private function normalizeGender($gender): ?string
+{
+    $gender = strtolower(trim((string) $gender));
+    return in_array($gender, ['male', 'female', 'other'], true) ? $gender : null;
+}
+
+private function normalizeCoreDate($date): ?string
+{
+    if (!$date) {
+        return null;
+    }
+
+    try {
+        return \Carbon\Carbon::parse($date)->format('Y-m-d');
+    } catch (\Throwable) {
+        return null;
+    }
 }
 
 }

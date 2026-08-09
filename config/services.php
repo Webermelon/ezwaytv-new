@@ -78,6 +78,7 @@ return [
         'base_url' => env('CORE_API_URL', 'https://ezwaycore.webermelon.dev'),
         'token' => env('CORE_API_TOKEN'),
         'host' => env('CORE_API_HOST'),
+        'tv_package_slug' => env('CORE_TV_PACKAGE_SLUG', 'tv-subscription-monthly'),
     ],
 
 ];

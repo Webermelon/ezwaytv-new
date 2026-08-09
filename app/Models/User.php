@@ -197,8 +197,8 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
         }
 
         // Update or set profile fields
-        $profile->name = $this->first_name ?? $data['name'] ?? $profile->name;
-        $profile->avatar =  asset('storage/avatars/image/icon2.png'); // Generate a new avatar
+        $profile->name = trim((string) ($this->first_name ?? $data['name'] ?? $profile->name));
+        $profile->avatar = $this->file_url ?: ($profile->avatar ?: asset('storage/avatars/image/icon2.png'));
 
         // Additional data can be added if passed (e.g., other profile fields)
         foreach ($data as $key => $value) {
@@ -209,16 +209,6 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
 
         // Save the profile (this will either create or update the profile)
         $profile->save();
-
-        // After main profile is saved for the first time, create Kids profile
-        if (isset($creatingMain) && !empty($creatingMain)) {
-            $kidsProfile = new UserMultiProfile();
-            $kidsProfile->user_id = $this->id;
-            $kidsProfile->name = 'Kids';
-            $kidsProfile->is_child_profile = 1;
-            $kidsProfile->avatar = asset('storage/avatars/image/icon4.png');
-            $kidsProfile->save();
-        }
 
         return $profile;
     }

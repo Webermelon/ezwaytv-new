@@ -90,6 +90,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     });
     Route::resource('video-ads', \Modules\Ad\Http\Controllers\Backend\VideoAdController::class);
 
+    Route::get('showcase-media/{slide}/file', [AdBannerSlideController::class, 'preview'])->name('adbannersides.preview');
+
     // Ad Banner Slides
     Route::group(['prefix' => 'adbannersides', 'as' => 'adbannersides.'], function () {
         Route::get('index_data', [AdBannerSlideController::class, 'index_data'])->name('index_data');
@@ -102,6 +104,5 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     });
     Route::resource('adbannersides', AdBannerSlideController::class)->except(['show']);
 });
-
 
 

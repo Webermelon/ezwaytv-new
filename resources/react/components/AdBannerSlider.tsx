@@ -181,7 +181,7 @@ function SlideImage({ slide, eager = false }: { slide: AdBannerSlide; eager?: bo
 
 function resolveSlideImage(slide: AdBannerSlide) {
   if (slide.image_proxy_url) return slide.image_proxy_url
-  if (slide.id) return `/api/v3/promo-slides/${slide.id}/image`
+  if (slide.id) return `/api/v3/showcase-media/${slide.id}/image`
 
   return slide.image ?? ''
 }
@@ -191,7 +191,7 @@ async function loadAdBannerSlides(placement: AdBannerSliderProps['placement']) {
     placements: placement,
     limit: '20',
   })
-  const response = await api.get<ApiEnvelope<AdBannerSlide[]>>(`/api/v3/promo-slides?${params.toString()}`)
+  const response = await api.get<ApiEnvelope<AdBannerSlide[]>>(`/api/v3/showcase-media?${params.toString()}`)
 
   return response.data ?? []
 }

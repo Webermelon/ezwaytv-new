@@ -65,13 +65,16 @@
             $authIsAdmin = (method_exists($authUser, 'hasRole') && $authUser->hasRole(['admin', 'super-admin', 'demo_admin']))
                 || in_array($authUser->user_type, ['admin', 'super-admin', 'super_admin', 'demo_admin'], true);
             $authAvatar = $authUser->file_url
-                ? setBaseUrlWithFileName($authUser->file_url, 'image', 'users')
+                ? (filter_var($authUser->file_url, FILTER_VALIDATE_URL) ? $authUser->file_url : setBaseUrlWithFileName($authUser->file_url, 'image', 'users'))
                 : asset('dummy-images/avatars/icon1.png');
 
             if (function_exists('getCurrentProfileSession')) {
                 $authProfile = getCurrentProfileSession();
+                if ($authProfile && !empty($authProfile->id)) {
+                    $authProfile = \App\Models\UserMultiProfile::where('user_id', $authUser->id)->find($authProfile->id) ?: $authProfile;
+                }
                 if ($authProfile && !empty($authProfile->avatar)) {
-                    $authAvatar = setBaseUrlWithFileName($authProfile->avatar);
+                    $authAvatar = filter_var($authProfile->avatar, FILTER_VALIDATE_URL) ? $authProfile->avatar : setBaseUrlWithFileName($authProfile->avatar);
                 }
             }
 

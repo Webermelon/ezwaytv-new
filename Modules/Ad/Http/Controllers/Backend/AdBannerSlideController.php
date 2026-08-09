@@ -5,6 +5,7 @@ namespace Modules\Ad\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Modules\Ad\Http\Requests\AdBannerSlideRequest;
+use Modules\Ad\Http\Controllers\API\AdBannerSlideApiController;
 use Modules\Ad\Models\AdBannerSlide;
 use Modules\Setting\Models\Setting;
 use Yajra\DataTables\DataTables;
@@ -22,7 +23,7 @@ class AdBannerSlideController extends Controller
 
         return $datatable->eloquent($query)
             ->addColumn('check', fn($row) => '<input type="checkbox" class="form-check-input select-table-row" id="datatable-row-' . $row->id . '" name="datatable_ids[]" value="' . $row->id . '" data-type="ad_banner_slides" onclick="dataTableRowCheck(' . $row->id . ',this)">')
-            ->editColumn('image', fn($row) => $row->image ? '<img src="' . e($row->image_proxy_url) . '" class="img-fluid rounded" style="height:50px;object-fit:cover;">' : '-')
+            ->editColumn('image', fn($row) => $row->image ? '<img src="' . e(route('backend.adbannersides.preview', ['slide' => $row->id])) . '" class="img-fluid rounded" style="height:50px;object-fit:cover;">' : '-')
             ->editColumn('placements', fn($row) => $row->placements ? implode(', ', (array) $row->placements) : '-')
             ->editColumn('status', function ($row) {
                 $checked = $row->status ? 'checked="checked"' : '';
@@ -63,6 +64,11 @@ class AdBannerSlideController extends Controller
     {
         $data = AdBannerSlide::findOrFail($id);
         return view('ad::backend.adbanner.edit', compact('data'));
+    }
+
+    public function preview(AdBannerSlide $slide)
+    {
+        return app(AdBannerSlideApiController::class)->image($slide);
     }
 
     public function update(AdBannerSlideRequest $request, int $id)

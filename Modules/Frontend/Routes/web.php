@@ -249,6 +249,7 @@ Route::group(['middleware' => ['user']], function () {
     Route::get('/account/watchlist-data', [UserController::class, 'watchlistData'])->name('account.watchlist.data');
     Route::post('/account/watchlist/save', [UserController::class, 'saveWatchlistItem'])->name('account.watchlist.save');
     Route::post('/account/watchlist/delete', [UserController::class, 'deleteWatchlistItem'])->name('account.watchlist.delete');
+    Route::post('/account/profile/sync', [UserController::class, 'syncProfileData'])->name('account.profile.sync');
     Route::post('/account/profile/update', [UserController::class, 'updateProfileData'])->name('account.profile.update');
     Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');

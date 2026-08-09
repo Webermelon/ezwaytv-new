@@ -32,7 +32,7 @@
                         </div>
                         <div class="uploaded-image" id="selectedAdBannerImageContainer">
                             @if(old('image', $data->image))
-                                <img src="{{ old('image') ? old('image') : $data->image_proxy_url }}" class="img-fluid avatar-150">
+                                <img src="{{ old('image') ? old('image') : route('backend.adbannersides.preview', ['slide' => $data->id]) }}" class="img-fluid avatar-150">
                             @endif
                         </div>
                         {{ html()->text('image')->id('image')->class('form-control mt-2' . ($errors->has('image') ? ' is-invalid' : ''))->value(old('image', $data->image))->placeholder('https://...or select from media above') }}
