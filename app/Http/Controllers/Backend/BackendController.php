@@ -100,6 +100,7 @@ class BackendController extends Controller
 
         // Optimize: Use single query for basic counts
         $basicCounts = $this->getBasicCounts();
+        $contentInventoryCounts = $this->getContentInventoryCounts();
 
         // Optimize: Use single query for entertainment data
     
@@ -150,6 +151,9 @@ class BackendController extends Controller
 
         $totalDownloads = $basicCounts['totalDownloads'];
         $totalTransactions = $basicCounts['totalTransactions'];
+        $totalOnDemandChannels = $contentInventoryCounts['totalOnDemandChannels'];
+        $totalOnDemandVideos = $contentInventoryCounts['totalOnDemandVideos'];
+        $totalTvChannels = $contentInventoryCounts['totalTvChannels'];
 
         // $entertainments = $entertainmentData['entertainments'];
 
@@ -216,8 +220,29 @@ class BackendController extends Controller
             'usersTrend','subsTrend','soonExpireTrend','reviewsTrend',
             'subscriptionRevenueTrend','rentRevenueTrend','totalRevenueTrend','rentContentTrend',
             'usersTrendDates','subsTrendDates','soonExpireTrendDates','reviewsTrendDates',
-            'subscriptionRevenueTrendDates','rentRevenueTrendDates','totalRevenueTrendDates','rentContentTrendDates'
+            'subscriptionRevenueTrendDates','rentRevenueTrendDates','totalRevenueTrendDates','rentContentTrendDates',
+            'totalOnDemandChannels','totalOnDemandVideos','totalTvChannels'
         ));
+    }
+
+    /**
+     * Get the real content inventory totals shown on the dashboard.
+     */
+    private function getContentInventoryCounts(): array
+    {
+        return [
+            'totalOnDemandChannels' => DB::table('author_channels')
+                ->whereNull('deleted_at')
+                ->count(),
+            'totalOnDemandVideos' => DB::table('author_channel_video')
+                ->join('videos', 'videos.id', '=', 'author_channel_video.video_id')
+                ->whereNull('videos.deleted_at')
+                ->distinct('author_channel_video.video_id')
+                ->count('author_channel_video.video_id'),
+            'totalTvChannels' => DB::table('live_tv_channel')
+                ->whereNull('deleted_at')
+                ->count(),
+        ];
     }
 
     /**
