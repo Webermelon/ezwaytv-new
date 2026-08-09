@@ -740,6 +740,7 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
           </div>
           <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Username" value={username} onChange={(value) => setUsername(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="username" required />
           <CheckoutInput icon={<Phone className="h-4 w-4" />} label="Phone" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
+          <p className="-mt-2 text-xs font-semibold text-white/48">Enter your phone number with country code, for example +1 555 123 4567.</p>
           <button type="submit" disabled={busy || !canCreate} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
             {busy ? 'Creating...' : 'Create Account and Continue'}

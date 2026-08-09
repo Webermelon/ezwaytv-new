@@ -291,6 +291,7 @@ function RegisterPanel() {
           <Field icon={<Mail className="h-5 w-5" />} label="Email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
           <AvailabilityText check={emailCheck} idleText="We will send your login code here." />
           <Field icon={<Phone className="h-5 w-5" />} label="Phone" name="phone_number" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
+          <p className="-mt-2 text-xs font-semibold text-white/42">Enter your phone number with country code, for example +1 555 123 4567.</p>
           <PrimaryButton loading={loading} label="Create Account" disabled={!canCreate} />
         </form>
       ) : (
