@@ -102,7 +102,7 @@ class OTPController extends Controller
     public function checkSpaUsername(Request $request)
     {
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^(?=(?:.*[A-Za-z]){3,})[A-Za-z0-9_.-]+$/'],
         ]);
 
         $localExists = User::withTrashed()->where('username', $validated['username'])->exists();
@@ -183,7 +183,7 @@ class OTPController extends Controller
             'invite_code' => ['nullable', 'string', 'max:32'],
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:32'],
-            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^(?=(?:.*[A-Za-z]){3,})[A-Za-z0-9_.-]+$/'],
             'email' => ['required', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:32'],
         ]);

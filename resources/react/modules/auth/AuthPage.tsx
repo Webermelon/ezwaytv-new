@@ -266,7 +266,7 @@ function RegisterPanel() {
             <Field icon={<UserRound className="h-5 w-5" />} label="Last name" name="last_name" value={lastName} onChange={setLastName} autoComplete="family-name" required />
           </div>
           <Field icon={<AtSign className="h-5 w-5" />} label="Username" name="username" value={username} onChange={(value) => setUsername(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="username" required />
-          <AvailabilityText check={usernameCheck} idleText="Use 3-32 letters, numbers, dot, dash, or underscore." />
+          <AvailabilityText check={usernameCheck} idleText="Use 3-32 characters with at least 3 letters. Numbers, dot, dash, and underscore are allowed." />
           <Field icon={<Mail className="h-5 w-5" />} label="Email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
           <AvailabilityText check={emailCheck} idleText="We will send your login code here." />
           <Field icon={<Phone className="h-5 w-5" />} label="Phone" name="phone_number" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
@@ -368,9 +368,9 @@ function useAvailability(path: string, key: string, value: string) {
       return
     }
 
-    if (key === 'username' && !/^[A-Za-z0-9_.-]{3,32}$/.test(normalized)) {
+    if (key === 'username' && !/^(?=(?:.*[A-Za-z]){3,})[A-Za-z0-9_.-]{3,32}$/.test(normalized)) {
       setState('invalid')
-      setMessage('Use 3-32 letters, numbers, dot, dash, or underscore.')
+      setMessage('Use 3-32 characters with at least 3 letters.')
       return
     }
 
