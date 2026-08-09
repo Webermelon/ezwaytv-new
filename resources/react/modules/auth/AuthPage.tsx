@@ -15,9 +15,20 @@ type ApiEnvelope = {
   errors?: Record<string, string[] | string>
   data?: unknown
   available?: boolean
+  retry_after_seconds?: unknown
 }
 
 const authBackground = '/dummy-images/login_banner.jpg'
+
+class AuthRequestError extends Error {
+  payload: ApiEnvelope
+
+  constructor(message: string, payload: ApiEnvelope = {}) {
+    super(message)
+    this.name = 'AuthRequestError'
+    this.payload = payload
+  }
+}
 
 export function AuthPage() {
   const mode = inferAuthMode()
@@ -74,6 +85,8 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [otpStep, setOtpStep] = useState<OtpStep>('email')
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const blockedSeconds = useCountdown(blockedUntil)
 
   const isForgot = mode === 'forgot'
 
@@ -120,6 +133,8 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
       window.location.href = getRedirectUrl(response) || '/'
     } catch (error) {
       const text = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+      const retryAfter = retryAfterSecondsFromError(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       setMessage({ tone: 'error', text })
     } finally {
       setLoading(false)
@@ -141,6 +156,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
       </div>
 
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
+      {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
       {isForgot ? (
         <form className="grid gap-4" onSubmit={handleForgotSubmit}>
@@ -155,7 +171,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
             <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
           ) : null}
 
-          <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={!email.trim() || (otpStep === 'code' && otp.length !== 4)} />
+          <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={blockedSeconds > 0 || !email.trim() || (otpStep === 'code' && otp.length !== 4)} />
 
           {otpStep === 'code' ? (
             <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
@@ -190,6 +206,8 @@ function RegisterPanel() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const blockedSeconds = useCountdown(blockedUntil)
 
   const usernameCheck = useAvailability('/auth/check-username', 'username', username)
   const emailCheck = useAvailability('/auth/check-email', 'email', email)
@@ -234,6 +252,8 @@ function RegisterPanel() {
       window.location.href = '/subscription-plan'
     } catch (error) {
       const text = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+      const retryAfter = retryAfterSecondsFromError(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       const shouldRegister = /could not find|not find|not registered|no active/i.test(text)
       setMessage({
         tone: 'error',
@@ -257,6 +277,7 @@ function RegisterPanel() {
       </div>
 
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
+      {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
       {step === 'account' ? (
         <form className="grid gap-4" onSubmit={handleRegisterSubmit}>
@@ -275,7 +296,7 @@ function RegisterPanel() {
       ) : (
         <form className="grid gap-4" onSubmit={handleVerifySubmit}>
           <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          <PrimaryButton loading={loading} label="Verify and Continue" disabled={otp.length !== 4} />
+          <PrimaryButton loading={loading} label="Verify and Continue" disabled={blockedSeconds > 0 || otp.length !== 4} />
           <button type="button" disabled={loading} onClick={() => { setStep('account'); setOtp(''); setMessage(null) }} className="text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
             Edit account details
           </button>
@@ -299,6 +320,14 @@ function StatusMessage({ tone, text, actionHref, actionLabel }: { tone: 'success
           {actionLabel}
         </a>
       ) : null}
+    </div>
+  )
+}
+
+function BlockedCountdown({ seconds }: { seconds: number }) {
+  return (
+    <div className="mb-5 rounded-md border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm font-semibold leading-6 text-red-100">
+      You are temporarily blocked. Try again in <span className="font-black text-white">{formatCountdown(seconds)}</span>.
     </div>
   )
 }
@@ -418,7 +447,7 @@ async function postAuth(path: string, body: FormData): Promise<ApiEnvelope> {
 
   const payload = await parseJson(response)
 
-  if (!response.ok) throw new Error(getApiMessage(payload, response.statusText || 'Request failed.'))
+  if (!response.ok) throw new AuthRequestError(getApiMessage(payload, response.statusText || 'Request failed.'), payload)
 
   return payload
 }
@@ -469,6 +498,37 @@ function getApiMessage(payload: ApiEnvelope, fallback: string) {
     if (first) return String(first)
   }
   return fallback
+}
+
+function retryAfterSecondsFromError(error: unknown) {
+  if (!(error instanceof AuthRequestError)) return 0
+  const seconds = Number(error.payload.retry_after_seconds)
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0
+}
+
+function useCountdown(until: number | null) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!until) {
+      setSeconds(0)
+      return
+    }
+
+    const tick = () => setSeconds(Math.max(0, Math.ceil((until - Date.now()) / 1000)))
+    tick()
+    const interval = window.setInterval(tick, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [until])
+
+  return seconds
+}
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 function getCsrfFromPayload(payload: ApiEnvelope) {

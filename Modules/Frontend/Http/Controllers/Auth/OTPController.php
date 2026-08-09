@@ -11,6 +11,7 @@ use Auth;
 use Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\CoreTvAccessService;
 use App\Models\Device;
 use App\Models\Setting;
@@ -21,6 +22,11 @@ use App\Models\WebQrSession;
 class OTPController extends Controller
 {
     use LoginTrait;
+
+    private const OTP_SEND_MAX_ATTEMPTS = 5;
+    private const OTP_VERIFY_MAX_ATTEMPTS = 5;
+    private const OTP_ATTEMPT_WINDOW_SECONDS = 900;
+    private const OTP_BLOCK_SECONDS = 900;
 
     public function otpLogin()
     {
@@ -324,6 +330,19 @@ class OTPController extends Controller
         ]);
 
         $email = $this->normalizeEmail($validated['email']);
+
+        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'verify')) {
+            return $response;
+        }
+
+        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'send')) {
+            return $response;
+        }
+
+        if ($response = $this->recordOtpAttempt($request, $email, 'send', self::OTP_SEND_MAX_ATTEMPTS)) {
+            return $response;
+        }
+
         $user = User::withTrashed()->where('email', $email)->first();
 
         if ($user && $user->trashed()) {
@@ -371,10 +390,17 @@ class OTPController extends Controller
             'otp' => 'required|digits:4',
         ]);
 
+        $email = $this->normalizeEmail($validated['email']);
+        $otp = (string) $validated['otp'];
+
+        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'verify')) {
+            return $response;
+        }
+
         $sessionEmail = $request->session()->get('tv_login_otp_email');
         $expiresAt = (int) $request->session()->get('tv_login_otp_expires_at', 0);
 
-        if (!$sessionEmail || strcasecmp($sessionEmail, $validated['email']) !== 0 || $expiresAt < now()->timestamp) {
+        if (!$sessionEmail || strcasecmp($sessionEmail, $email) !== 0 || $expiresAt < now()->timestamp) {
             return response()->json([
                 'status' => false,
                 'message' => 'Your login code has expired. Please request a new one.',
@@ -382,7 +408,7 @@ class OTPController extends Controller
         }
 
         $pendingRegistration = $request->session()->get('tv_pending_registration');
-        if (is_array($pendingRegistration) && strcasecmp((string) ($pendingRegistration['email'] ?? ''), $validated['email']) === 0) {
+        if (is_array($pendingRegistration) && strcasecmp((string) ($pendingRegistration['email'] ?? ''), $email) === 0) {
             if ((int) ($pendingRegistration['expires_at'] ?? 0) < now()->timestamp) {
                 $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
 
@@ -392,11 +418,8 @@ class OTPController extends Controller
                 ], 422);
             }
 
-            if (!hash_equals((string) ($pendingRegistration['otp'] ?? ''), $validated['otp'])) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'The code you entered is not valid.',
-                ], 422);
+            if (!hash_equals((string) ($pendingRegistration['otp'] ?? ''), $otp)) {
+                return $this->recordOtpFailure($request, $email);
             }
 
             $registrationData = $pendingRegistration['data'] ?? null;
@@ -417,6 +440,7 @@ class OTPController extends Controller
             $user = $result['user'];
             $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
             $request->session()->regenerate();
+            $this->clearOtpAttempts($request, $email);
 
             Auth::login($user);
             $this->setDevice($user, $request);
@@ -431,7 +455,7 @@ class OTPController extends Controller
         }
 
         $pendingCoreLogin = $request->session()->get('tv_pending_core_login');
-        if (is_array($pendingCoreLogin) && strcasecmp((string) ($pendingCoreLogin['email'] ?? ''), $validated['email']) === 0) {
+        if (is_array($pendingCoreLogin) && strcasecmp((string) ($pendingCoreLogin['email'] ?? ''), $email) === 0) {
             if ((int) ($pendingCoreLogin['expires_at'] ?? 0) < now()->timestamp) {
                 $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
 
@@ -441,11 +465,8 @@ class OTPController extends Controller
                 ], 422);
             }
 
-            if (!hash_equals((string) ($pendingCoreLogin['otp'] ?? ''), $validated['otp'])) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'The code you entered is not valid.',
-                ], 422);
+            if (!hash_equals((string) ($pendingCoreLogin['otp'] ?? ''), $otp)) {
+                return $this->recordOtpFailure($request, $email);
             }
 
             try {
@@ -468,6 +489,7 @@ class OTPController extends Controller
 
             $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
             $request->session()->regenerate();
+            $this->clearOtpAttempts($request, $email);
 
             Auth::login($user);
             $this->setDevice($user, $request);
@@ -481,17 +503,15 @@ class OTPController extends Controller
             ]);
         }
 
-        $user = User::where('email', $validated['email'])->where('otp', $validated['otp'])->first();
+        $user = User::where('email', $email)->where('otp', $otp)->first();
 
         if (!$user || $user->user_type !== 'user') {
-            return response()->json([
-                'status' => false,
-                'message' => 'The code you entered is not valid.',
-            ], 422);
+            return $this->recordOtpFailure($request, $email);
         }
 
         $request->session()->forget(['tv_login_otp_email', 'tv_login_otp_expires_at']);
         $request->session()->regenerate();
+        $this->clearOtpAttempts($request, $email);
         $user->forceFill(['otp' => null])->save();
 
         Auth::login($user);
@@ -564,6 +584,105 @@ class OTPController extends Controller
         $user->forceFill(['otp' => $otp])->save();
         $request->session()->put('tv_login_otp_email', $user->email);
         $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+    }
+
+    private function recordOtpFailure(Request $request, string $email)
+    {
+        if ($response = $this->recordOtpAttempt($request, $email, 'verify', self::OTP_VERIFY_MAX_ATTEMPTS)) {
+            return $response;
+        }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'The code you entered is not valid.',
+        ], 422);
+    }
+
+    private function recordOtpAttempt(Request $request, string $email, string $action, int $maxAttempts)
+    {
+        $email = $this->normalizeEmail($email);
+
+        foreach ($this->otpAttemptKeys($request, $email, $action) as $key) {
+            Cache::add($key, 0, now()->addSeconds(self::OTP_ATTEMPT_WINDOW_SECONDS));
+            $attempts = Cache::increment($key);
+
+            if ($attempts >= $maxAttempts) {
+                $this->blockOtpIdentity($request, $email, $action);
+
+                return $this->otpBlockedResponse($this->otpBlockRemainingSeconds($request, $email, $action));
+            }
+        }
+
+        return null;
+    }
+
+    private function otpBlockedResponseIfNeeded(Request $request, string $email, string $action)
+    {
+        $remainingSeconds = $this->otpBlockRemainingSeconds($request, $email, $action);
+
+        return $remainingSeconds > 0 ? $this->otpBlockedResponse($remainingSeconds) : null;
+    }
+
+    private function otpBlockedResponse(int $remainingSeconds)
+    {
+        $remainingSeconds = max(1, $remainingSeconds);
+        $minutes = max(1, (int) ceil($remainingSeconds / 60));
+
+        return response()->json([
+            'status' => false,
+            'message' => "Too Many Attempts. Please try again in {$minutes} minute".($minutes === 1 ? '' : 's').'.',
+            'retry_after_seconds' => $remainingSeconds,
+            'retry_after_at' => now()->addSeconds($remainingSeconds)->toIso8601String(),
+        ], 429)->header('Retry-After', (string) $remainingSeconds);
+    }
+
+    private function blockOtpIdentity(Request $request, string $email, string $action): void
+    {
+        $blockedUntil = now()->addSeconds(self::OTP_BLOCK_SECONDS)->timestamp;
+
+        foreach ($this->otpBlockKeys($request, $email, $action) as $key) {
+            Cache::put($key, $blockedUntil, now()->addSeconds(self::OTP_BLOCK_SECONDS));
+        }
+    }
+
+    private function otpBlockRemainingSeconds(Request $request, string $email, string $action): int
+    {
+        $remainingSeconds = 0;
+
+        foreach ($this->otpBlockKeys($request, $email, $action) as $key) {
+            $blockedUntil = (int) Cache::get($key, 0);
+            $remainingSeconds = max($remainingSeconds, $blockedUntil - now()->timestamp);
+        }
+
+        return max(0, $remainingSeconds);
+    }
+
+    private function clearOtpAttempts(Request $request, string $email): void
+    {
+        foreach (['send', 'verify'] as $action) {
+            foreach (array_merge(
+                $this->otpAttemptKeys($request, $email, $action),
+                $this->otpBlockKeys($request, $email, $action)
+            ) as $key) {
+                Cache::forget($key);
+            }
+        }
+    }
+
+    private function otpAttemptKeys(Request $request, string $email, string $action): array
+    {
+        return [
+            'tv_otp_attempts:'.$action.':email:'.sha1($this->normalizeEmail($email)),
+            'tv_otp_attempts:'.$action.':ip:'.sha1((string) $request->ip()),
+        ];
+    }
+
+    private function otpBlockKeys(Request $request, string $email, string $action): array
+    {
+        return [
+            'tv_otp_block:'.$action.':email:'.sha1($this->normalizeEmail($email)),
+            'tv_otp_block:'.$action.':ip:'.sha1((string) $request->ip()),
+        ];
     }
 
     private function coreGet(string $path, array $query = [], int $timeout = 12): ?\Illuminate\Http\Client\Response

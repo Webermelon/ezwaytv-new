@@ -14,6 +14,7 @@ type CheckoutAuthResponse = {
   errors?: Record<string, string[] | string>
   available?: boolean
   data?: { redirect_url?: string }
+  retry_after_seconds?: unknown
 }
 
 type Plan = {
@@ -608,10 +609,12 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
   const [lastName, setLastName] = useState('')
   const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
 
   const cleanEmail = email.trim().toLowerCase()
   const cleanOtp = otp.replace(/\D/g, '').slice(0, 4)
   const canCreate = firstName.trim() && lastName.trim() && username.trim().length >= 3 && cleanEmail
+  const blockedSeconds = useCountdown(blockedUntil)
 
   async function sendOtp() {
     setBusy(true)
@@ -625,6 +628,8 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'We sent a login code to your email.') })
     } catch (error) {
       const text = checkoutErrorMessage(error)
+      const retryAfter = checkoutRetryAfterSeconds(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       if (error instanceof ApiError && error.status === 404) {
         setMode('register')
         setMessage({ tone: 'error', text: 'No TV account found for this email. Create your account here to continue checkout.' })
@@ -648,6 +653,8 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'You are signed in. Loading checkout...') })
       await onSignedIn()
     } catch (error) {
+      const retryAfter = checkoutRetryAfterSeconds(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       setMessage({ tone: 'error', text: checkoutErrorMessage(error) })
     } finally {
       setBusy(false)
@@ -693,11 +700,16 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
           {message.text}
         </div>
       ) : null}
+      {blockedSeconds > 0 ? (
+        <div className="mt-5 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-semibold leading-6 text-red-100">
+          You are temporarily blocked. Try again in <span className="font-black text-white">{formatCountdown(blockedSeconds)}</span>.
+        </div>
+      ) : null}
 
       {mode === 'email' ? (
         <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void sendOtp() }}>
           <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
-          <button type="submit" disabled={busy || !cleanEmail} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="submit" disabled={busy || blockedSeconds > 0 || !cleanEmail} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
             {busy ? 'Checking...' : 'Continue with Email'}
           </button>
@@ -708,7 +720,7 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
         <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void verifyOtp() }}>
           <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} disabled />
           <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label="Login code" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          <button type="submit" disabled={busy || cleanOtp.length !== 4} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="submit" disabled={busy || blockedSeconds > 0 || cleanOtp.length !== 4} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
             {busy ? 'Verifying...' : 'Verify and Continue'}
           </button>
@@ -999,4 +1011,36 @@ function checkoutErrorMessage(error: unknown) {
   }
 
   return error instanceof Error ? error.message : 'Unable to start checkout.'
+}
+
+function checkoutRetryAfterSeconds(error: unknown) {
+  if (!(error instanceof ApiError)) return 0
+  const payload = error.payload as { retry_after_seconds?: unknown } | null
+  const seconds = Number(payload?.retry_after_seconds)
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0
+}
+
+function useCountdown(until: number | null) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!until) {
+      setSeconds(0)
+      return
+    }
+
+    const tick = () => setSeconds(Math.max(0, Math.ceil((until - Date.now()) / 1000)))
+    tick()
+    const interval = window.setInterval(tick, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [until])
+
+  return seconds
+}
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
