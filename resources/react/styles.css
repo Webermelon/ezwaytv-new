@@ -497,19 +497,26 @@ body {
 
 .vjs-theme-ezway .vjs-volume-bar {
   height: 0.22rem !important;
-  margin: 1.28rem 0.45rem !important;
+  margin: 1.19rem 0.45rem !important;
   border-radius: 999px !important;
   background: rgba(255, 255, 255, 0.35) !important;
 }
 
 .vjs-theme-ezway .vjs-volume-level {
+  height: 100% !important;
   border-radius: inherit !important;
   background: #fff !important;
 }
 
 .vjs-theme-ezway .vjs-volume-level::before {
-  top: -0.28rem !important;
+  top: 50% !important;
+  right: -0.34rem !important;
+  width: 0.68rem !important;
+  height: 0.68rem !important;
+  margin-top: -0.34rem !important;
   color: #fff !important;
+  font-size: 0.68rem !important;
+  line-height: 0.68rem !important;
 }
 
 .vjs-theme-ezway .vjs-remaining-time,
