@@ -11,7 +11,7 @@ import { isNativeIosApp } from '@/lib/native-platform'
 import type { MediaItem } from '@/modules/home/types'
 import { loadVideosPage } from './videosApi'
 
-const accessFilters = ['all', 'free', 'paid', 'pay-per-view'] as const
+const accessFilters = ['all', 'free', 'paid'] as const
 
 export function VideosPage() {
   const visibleAccessFilters = isNativeIosApp()

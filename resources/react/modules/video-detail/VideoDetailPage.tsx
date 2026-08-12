@@ -255,7 +255,7 @@ export function VideoDetailPage() {
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0 flex-1">
                   <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.8rem]">
-                    {video.name}
+                    {cleanDisplayText(video.name, 'Video')}
                   </h1>
                   <div className="mt-3">
                     <ChannelIdentity video={video} />
@@ -305,7 +305,7 @@ export function VideoDetailPage() {
                     <PremiumActionButton video={video} />
                   ) : null}
                   <ShareMenu
-                    title={video.name}
+                    title={cleanDisplayText(video.name, 'Video')}
                     embedCode={buildEmbedCode(video, ondemandChannel)}
                     copied={copiedShareUrl}
                     embedCopied={copiedEmbedCode}
@@ -571,7 +571,7 @@ function PremiumPlayerLock({ video }: { video: VideoDetail }) {
 
 function ChannelIdentity({ video }: { video: VideoDetail }) {
   const channel = video.author_channels?.[0]
-  const name = channel?.name ?? video.ondemand_channel_context?.name ?? 'eZWay TV'
+  const name = cleanDisplayText(channel?.name ?? video.ondemand_channel_context?.name, 'eZWay TV')
   const username = channel?.username ?? video.ondemand_channel_context?.username
   const image = channel?.avatar_image_url ?? channel?.avatar ?? video.avatar_image_url ?? video.profile_image ?? null
   const href = username ? `/on-demand/${username}` : video.ondemand_channel_context?.url ?? '/on-demand'
@@ -605,7 +605,7 @@ function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
 
 function ChannelBadge({ channel }: { channel: AuthorChannel }) {
   const image = channel.avatar_image_url ?? channel.avatar ?? null
-  const name = channel.name ?? 'On Demand Channel'
+  const name = cleanDisplayText(channel.name, 'On Demand Channel')
 
   return (
     <a
@@ -637,7 +637,7 @@ function RelatedCard({ item, channelId, playlistId }: { item: MediaItem; channel
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail
           src={image}
-          alt={item.name}
+          alt={cleanDisplayText(item.name)}
           previewSrc={previewHref(item)}
           className="aspect-video"
           imageClassName="object-cover"
@@ -648,7 +648,7 @@ function RelatedCard({ item, channelId, playlistId }: { item: MediaItem; channel
         </div>
         {item.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{item.duration}</Badge> : null}
       </div>
-      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug">{item.name}</h3>
+      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug">{cleanDisplayText(item.name, 'Video')}</h3>
     </a>
   )
 }
@@ -677,7 +677,7 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
             href={ad.redirect_url ?? ad.url ?? ad.vast_url ?? '#'}
             className="rounded-md border border-white/10 bg-white/[0.045] p-4 text-sm font-semibold text-white/78 hover:bg-white/[0.08]"
           >
-            {ad.title ?? ad.name ?? `Ad ${index + 1}`}
+            {cleanDisplayText(ad.title ?? ad.name, `Ad ${index + 1}`)}
           </a>
         ))}
       </div>
@@ -1093,6 +1093,29 @@ function escapeHtmlAttribute(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 }
 
+function cleanDisplayText(value?: string | null, fallback = '') {
+  const text = stripHtml(value ?? '')
+
+  return text || fallback
+}
+
 function stripHtml(value: string) {
-  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return decodeHtmlEntities(value.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()
+}
+
+function decodeHtmlEntities(value: string) {
+  if (!value) return ''
+
+  if (typeof document !== 'undefined') {
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = value
+    return textarea.value
+  }
+
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
 }
