@@ -43,6 +43,11 @@ export function HomePage() {
   )
   const ondemandChannels = useMemo(() => state.ondemandChannels.slice(0, railLimit), [railLimit, state.ondemandChannels])
   const latestVideos = useMemo(() => state.videos.slice(0, railLimit), [railLimit, state.videos])
+  const mostWatchedRail = useMemo(() => resolveMostWatchedRail(state.dashboard), [state.dashboard])
+  const mostWatchedVideos = useMemo(
+    () => (mostWatchedRail?.data ?? []).slice(0, railLimit),
+    [railLimit, mostWatchedRail?.data],
+  )
   const personalities = useMemo(
     () => (state.dashboard.personality?.data ?? state.dashboard.popular_personality?.data ?? []).slice(0, railLimit),
     [railLimit, state.dashboard.personality?.data, state.dashboard.popular_personality?.data],
@@ -67,17 +72,24 @@ export function HomePage() {
           <HomeSectionsSkeleton />
         ) : (
           <>
-            <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={0} showLiveBadge />
-            <Rail title="On Demand Channels" items={ondemandChannels} href="/on-demand" shape="channel" index={1} />
-            <Rail title="Latest Videos" items={latestVideos} href="/videos" shape="video" index={2} />
+            <Rail
+              title={mostWatchedRail?.name ?? 'Most Watched Videos'}
+              items={mostWatchedVideos}
+              href="/videos"
+              shape="video"
+              index={0}
+            />
+            <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={1} showLiveBadge />
+            <Rail title="On Demand Channels" items={ondemandChannels} href="/on-demand" shape="channel" index={2} />
+            <Rail title="Latest Videos" items={latestVideos} href="/videos" shape="video" index={3} />
             <Rail
               title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
               items={personalities}
               href="/castcrew-list"
               shape="personality"
-              index={3}
+              index={4}
             />
-            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={4} />
+            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={5} />
             <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
           </>
         )}
@@ -517,6 +529,18 @@ function liveTvChannelsFromDashboard(liveTv: LiveTvDashboard) {
   const channels = liveTv.channel_data ?? liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? []
 
   return sortByDashboardOrder(channels)
+}
+
+function resolveMostWatchedRail(dashboard: DashboardData) {
+  const dynamicRails = Object.entries(dashboard.dynamic_data ?? {})
+  const selectedRail = dynamicRails.find(([slug, rail]) => {
+    const slugMatch = slug.toLowerCase().includes('most-watched') || slug.toLowerCase().includes('popular-video')
+    const nameMatch = (rail.name ?? '').toLowerCase().includes('most watched')
+
+    return rail.type === 'video' && (slugMatch || nameMatch)
+  })?.[1]
+
+  return selectedRail ?? dashboard.popular_video
 }
 
 function sortByDashboardOrder(channels: MediaItem[]) {

@@ -115,11 +115,13 @@ export type DashboardData = {
   popular_language?: NamedRail
   popular_movie?: NamedRail
   popular_tvshow?: NamedRail
+  popular_video?: NamedRail
   free_movie?: NamedRail
   personality?: NamedRail
   popular_personality?: NamedRail
   pay_per_view?: MediaItem[]
   custom_ads?: CustomPromo[]
+  dynamic_data?: Record<string, NamedRail & { type?: string | null }>
 }
 
 export type NamedRail = {

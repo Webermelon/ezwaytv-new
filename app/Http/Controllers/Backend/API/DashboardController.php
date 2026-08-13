@@ -1679,6 +1679,41 @@ public function getTrandingData(Request $request){
                 $popular_movie = [];
             }
 
+            $settingPopularVideoIds = MobileSetting::getNameAndValueBySlug('most-watched-videos')
+                ?? MobileSetting::getNameAndValueBySlug('popular-videos');
+            $popularVideoIds = $settingPopularVideoIds['value'] ?? null;
+            $popularVideoIdsArray = json_decode($popularVideoIds, true);
+
+            if (!empty($popularVideoIdsArray) && is_array($popularVideoIdsArray)) {
+                $popularVideoIdsArray = array_slice($popularVideoIdsArray, 0, 100);
+                $popular_video = Video::get_popular_videos($popularVideoIdsArray);
+
+                if ($popular_video->isNotEmpty()) {
+                    if ($request->has('user_id')) {
+                        $popular_video->each(function ($video) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                            $video->user_id = $user_id;
+                            $video->type = 'video';
+                            $video->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                            $video = setContentAccess($video, $user_id, $userPlanId, $purchasedIds ?? []);
+                            $video->poster_image = $device_type == 'tv' ? $video->poster_tv_url : $video->poster_url ?? null;
+                        });
+                    } else {
+                        $popular_video->each(function ($video) use ($device_type) {
+                            $video->type = 'video';
+                            $video->isDeviceSupported = 0;
+                            $video = setContentAccess($video, null, null, []);
+                            $video->poster_image = $device_type == 'tv' ? $video->poster_tv_url : $video->poster_url ?? null;
+                        });
+                    }
+
+                    $popular_video = VideoResourceV3::collection($popular_video)->toArray(request());
+                } else {
+                    $popular_video = [];
+                }
+            } else {
+                $popular_video = [];
+            }
+
             // Show PayPerView even when user_id is null
             $payPerViewRequest = new Request(['user_id' => $user_id, 'per_page' => 20]); // Limit to 20 items
             $payPerViewContent = $this->getPayPerViewUnlockedContentV3($payPerViewRequest);
@@ -1755,6 +1790,10 @@ public function getTrandingData(Request $request){
                         'popular_movie' => [
                             'name' => $sectionNamesAdditional['popular-movies'] ?? 'Popular Movies',
                             'data' => $popular_movie,
+                        ],
+                        'popular_video' => [
+                            'name' => $settingPopularVideoIds['name'] ?? 'Most Watched Videos',
+                            'data' => $popular_video,
                         ],
                         'personality' => [
                             'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
