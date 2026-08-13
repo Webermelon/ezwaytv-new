@@ -9,7 +9,7 @@ import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { loadHomeModule } from './homeApi'
 import { isNativeIosApp } from '@/lib/native-platform'
-import type { DashboardData, LiveTvDashboard, MediaItem } from './types'
+import type { CustomPromo, DashboardData, LiveTvDashboard, MediaItem } from './types'
 
 type HomeState = {
   dashboard: DashboardData
@@ -54,8 +54,9 @@ export function HomePage() {
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
       <Hero featured={featured} loading={homeQuery.isLoading} />
+      {!homeQuery.isLoading ? <HomepagePromos promos={state.dashboard.custom_ads ?? []} /> : null}
 
-      <section className="relative z-10 -mt-10 space-y-9 px-4 pb-16 sm:px-8 lg:px-12">
+      <section className="relative z-10 space-y-9 px-4 pb-16 pt-3 sm:px-8 sm:pt-4 lg:px-12">
         {homeQuery.isError ? (
           <div className="rounded-md border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
             Some home APIs did not respond. Existing backend remains untouched.
@@ -85,18 +86,83 @@ export function HomePage() {
   )
 }
 
+function HomepagePromos({ promos }: { promos: CustomPromo[] }) {
+  const visiblePromos = promos.filter((promo) => Boolean(resolvePromoUrl(promo) || resolvePromoMobileUrl(promo)))
+
+  if (visiblePromos.length === 0) return null
+
+  return (
+    <section className="ez-home-promo-wrap relative z-10 bg-[#050505] px-4 py-[52px] sm:px-8 sm:py-[60px] lg:px-12">
+      <div className="mx-auto max-w-[1800px]">
+        <div className="grid gap-4">
+          {visiblePromos.map((promo, index) => (
+            <PromoPanel key={`${promo.name ?? 'promo'}-${index}`} promo={promo} eager={index === 0} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PromoPanel({ promo, eager }: { promo: CustomPromo; eager: boolean }) {
+  const mediaUrl = resolvePromoUrl(promo)
+  const mobileMediaUrl = resolvePromoMobileUrl(promo) || mediaUrl
+  const panel = (
+    <div className="relative aspect-[8/3] overflow-hidden rounded-md border border-white/10 bg-[#050505] shadow-2xl shadow-black/40 sm:aspect-[16/5]">
+      {promo.type === 'video' ? (
+        <video src={mediaUrl} className="h-full w-full object-contain" autoPlay muted loop playsInline />
+      ) : (
+        <picture className="block h-full w-full">
+          <source media="(max-width: 767px)" srcSet={mobileMediaUrl} />
+          <img
+            src={mediaUrl}
+            alt={promo.name ?? 'Promotion'}
+            className="block h-full w-full object-contain"
+            loading={eager ? 'eager' : 'lazy'}
+            referrerPolicy="no-referrer"
+          />
+        </picture>
+      )}
+    </div>
+  )
+
+  if (!promo.redirect_url) return panel
+
+  return (
+    <a href={promo.redirect_url} target="_blank" rel="noreferrer" className="block">
+      {panel}
+    </a>
+  )
+}
+
+function resolvePromoUrl(promo: CustomPromo) {
+  if (promo.type !== 'video' && promo.id) {
+    return `/api/v3/promo-media/${promo.id}/image`
+  }
+
+  return promo.url ?? promo.media ?? ''
+}
+
+function resolvePromoMobileUrl(promo: CustomPromo) {
+  if (promo.type !== 'video' && promo.id) {
+    return `/api/v3/promo-media/${promo.id}/image?device=mobile`
+  }
+
+  return promo.mobile_url ?? promo.mobile_media ?? promo.url ?? promo.media ?? ''
+}
+
 function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean }) {
   const title = featured?.details?.name ?? featured?.name ?? 'eZWay TV'
   const category = featured?.details?.category ?? featured?.type ?? 'Streaming'
 
   return (
-    <section className="relative min-h-[70vh] overflow-hidden bg-[#050505]">
+    <section className="relative min-h-[340px] overflow-hidden bg-[#050505] sm:min-h-[70vh]">
       <img src={homeHeroImage} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover opacity-80" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_36%,rgba(5,5,5,0.58)_66%,rgba(5,5,5,0.24)_100%)]" />
       <div className="ez-home-gold-sweep absolute inset-y-0 left-[-18%] w-[38%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(212,168,67,0.16),transparent)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] via-[#050505]/82 to-transparent" />
 
-      <div className="relative z-10 flex min-h-[70vh] items-center px-4 pb-20 pt-16 sm:px-8 lg:px-12">
+      <div className="relative z-10 flex min-h-[340px] items-center px-4 pb-8 pt-12 sm:min-h-[70vh] sm:px-8 sm:pb-20 sm:pt-16 lg:px-12">
         <div className="ez-home-hero-copy max-w-3xl">
           <Badge className={[
             'ez-home-badge mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase',

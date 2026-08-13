@@ -173,6 +173,7 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('ad-banner-sliders', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.ad-banner-sliders');
     Route::get('promo-slides', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.promo-slides');
     Route::get('promo-slides/{slide}/image', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'image'])->name('api.v3.promo-slides.image');
+    Route::get('promo-media/{customAd}/image', [\Modules\Ad\Http\Controllers\API\CustomAdsSettingController::class, 'media'])->name('api.v3.promo-media.image');
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');
 
 });

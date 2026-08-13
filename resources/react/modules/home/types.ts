@@ -119,11 +119,23 @@ export type DashboardData = {
   personality?: NamedRail
   popular_personality?: NamedRail
   pay_per_view?: MediaItem[]
+  custom_ads?: CustomPromo[]
 }
 
 export type NamedRail = {
   name: string
   data?: MediaItem[]
+}
+
+export type CustomPromo = {
+  id?: number | string
+  type?: 'image' | 'video' | string | null
+  url?: string | null
+  mobile_url?: string | null
+  media?: string | null
+  mobile_media?: string | null
+  redirect_url?: string | null
+  name?: string | null
 }
 
 export type LiveTvDashboard = {

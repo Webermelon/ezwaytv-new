@@ -257,8 +257,12 @@ class CustomAdsSettingController extends Controller
                     } else {
                         $data['media'] = $data['media'] ?? null;
                     }
+                    $data['mobile_media'] = $request->filled('file_url_mobile')
+                        ? extractFileNameFromUrl($request->input('file_url_mobile'), 'ads')
+                        : null;
                 } else {
                     $data['media'] = $request->input('media_url') ?? null;
+                    $data['mobile_media'] = $request->input('mobile_media_url') ?? null;
                 }
             }
 
@@ -298,8 +302,10 @@ class CustomAdsSettingController extends Controller
         } elseif ($type === 'image') {
             if ($urlType === 'local') {
                 $data->file_url = setBaseUrlWithFileName($data->media, 'image', 'ads');
+                $data->mobile_file_url = $data->mobile_media ? setBaseUrlWithFileName($data->mobile_media, 'image', 'ads') : null;
             } else {
                 $data->media_url = $data->media;
+                $data->mobile_media_url = $data->mobile_media;
             }
         }
         $data->target_categories = json_decode($data->target_categories, true);
@@ -361,6 +367,20 @@ class CustomAdsSettingController extends Controller
                 $media = $request->input('media_url') ?? null;
             }
         }
+
+        $mobileMedia = $customad->mobile_media;
+        if ($type === 'image') {
+            if ($urlType === 'local') {
+                $mobileMedia = $request->filled('file_url_mobile')
+                    ? extractFileNameFromUrl($request->input('file_url_mobile'), 'ads')
+                    : null;
+            } else {
+                $mobileMedia = $request->input('mobile_media_url') ?? null;
+            }
+        } elseif ($type !== $customad->type || $urlType !== $customad->url_type) {
+            $mobileMedia = null;
+        }
+
         if (! $media) {
             if ($type === $customad->type && $urlType === $customad->url_type) {
                 $media = $customad->media;
@@ -369,6 +389,7 @@ class CustomAdsSettingController extends Controller
             }
         }
         $data['media'] = $media;
+        $data['mobile_media'] = $mobileMedia;
         $targetCategories = array_map('intval', $request->input('target_categories', []));
         $data['target_categories'] = json_encode($targetCategories);
         $customad->update($data);

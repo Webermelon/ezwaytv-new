@@ -9,10 +9,94 @@ use Modules\Ad\Models\CustomAdsSetting;
 use Modules\Ad\Transformers\CustomAdsSettingResource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class CustomAdsSettingController extends Controller
 {
+    public function media(CustomAdsSetting $customAd)
+    {
+        abort_unless((bool) $customAd->status && is_null($customAd->deleted_at), 404);
+
+        $media = request()->query('device') === 'mobile' && $customAd->mobile_media
+            ? $customAd->mobile_media
+            : $customAd->media;
+        $mediaUrl = $customAd->url_type === 'local'
+            ? setBaseUrlWithFileName($media, $customAd->type, 'ads')
+            : (string) $media;
+        $path = function_exists('mediaStoragePathFromUrl')
+            ? mediaStoragePathFromUrl($mediaUrl)
+            : ltrim((string) parse_url($mediaUrl, PHP_URL_PATH), '/');
+        $path = ltrim($path, '/');
+        abort_if($path === '', 404);
+
+        $activeDisk = config('filesystems.active') === 'dg-ocean' ? 'dg-ocean' : 'local';
+        $bucket = (string) config("filesystems.disks.{$activeDisk}.bucket");
+        $pathCandidates = [$path];
+
+        if ($bucket !== '' && str_starts_with($path, $bucket . '/')) {
+            $pathCandidates[] = substr($path, strlen($bucket) + 1);
+        }
+
+        $host = (string) parse_url($mediaUrl, PHP_URL_HOST);
+        if (str_ends_with($host, 'digitaloceanspaces.com') && str_contains($path, '/')) {
+            $pathCandidates[] = substr($path, strpos($path, '/') + 1);
+        }
+
+        foreach (array_values(array_unique(array_filter($pathCandidates))) as $candidatePath) {
+            if ($activeDisk === 'dg-ocean' && Storage::disk('dg-ocean')->exists($candidatePath)) {
+                $stream = Storage::disk('dg-ocean')->readStream($candidatePath);
+                abort_if($stream === false, 404);
+
+                $this->clearOutputBuffers();
+
+                return response()->stream(function () use ($stream) {
+                    fpassthru($stream);
+                    fclose($stream);
+                }, 200, [
+                    'Content-Type' => Storage::disk('dg-ocean')->mimeType($candidatePath) ?: 'image/jpeg',
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+
+            foreach ([public_path($candidatePath), public_path('storage/' . $candidatePath)] as $candidate) {
+                if (is_file($candidate)) {
+                    $this->clearOutputBuffers();
+
+                    return response()->file($candidate, [
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            }
+        }
+
+        if (filter_var($mediaUrl, FILTER_VALIDATE_URL) !== false) {
+            try {
+                $response = Http::timeout(12)->get($mediaUrl);
+                if ($response->successful()) {
+                    $this->clearOutputBuffers();
+
+                    return response($response->body(), 200, [
+                        'Content-Type' => $response->header('Content-Type', 'image/jpeg'),
+                        'Cache-Control' => 'public, max-age=86400',
+                    ]);
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        abort(404);
+    }
+
+    private function clearOutputBuffers(): void
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+
     public function getActiveAds(Request $request)
     {
         try {

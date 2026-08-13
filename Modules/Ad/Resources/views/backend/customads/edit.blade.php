@@ -40,7 +40,7 @@
                                 'video' => __('messages.video'),
                                 'image' => __('messages.image'),
                             ],
-                            old('type', $data->type ?? nul),
+                            old('type', $data->type ?? null),
                         )->class('form-control select2')->id('type')->placeholder(__('messages.select_type')) }}
 
                     @error('type')
@@ -58,7 +58,7 @@
                                 'local' => __('messages.local'),
                                 'url' => __('messages.url'),
                             ],
-                            old('url_type', $data->url_type ?? nul),
+                            old('url_type', $data->url_type ?? null),
                         )->class('form-control select2')->id('url_type')->placeholder(__('messages.select_type')) }}
 
                     @error('url_type')
@@ -88,9 +88,30 @@
                     {{ html()->hidden('remove_image')->id('remove_image_flag')->value(0) }}
 
                     <div id="image-size-note" class="form-text text-warning" style="display:none;">
-                        {{ __('Please upload a 1000x600 size Image.') }}
+                        {{ __('Please upload a 1000x600 size Image for desktop. Mobile image is optional.') }}
                     </div>
 
+                </div>
+
+                <div class="col-md-6 col-lg-4 position-relative" id="local_mobile_image_upload_section">
+                    {{ html()->label(__('Mobile Image'), 'Mobile Image')->class('form-label') }}
+                    <div class="input-group btn-file-upload">
+                        {{ html()->button(__('<i class="ph ph-device-mobile"></i>' . __('messages.lbl_choose_image')))->class('input-group-text form-control')->type('button')->attribute('data-bs-toggle', 'modal')->attribute('data-bs-target', '#exampleModal')->attribute('data-image-container', 'selectedMobileImageContainer')->attribute('data-hidden-input', 'file_url_mobile') }}
+
+                        {{ html()->text('mobile_image_input')->class('form-control')->placeholder(__('Optional mobile image'))->attribute('aria-label', 'Mobile Image')->attribute('data-bs-toggle', 'modal')->attribute('data-bs-target', '#exampleModal')->attribute('data-image-container', 'selectedMobileImageContainer')->attribute('data-hidden-input', 'file_url_mobile')->attribute('aria-describedby', 'basic-addon1') }}
+                    </div>
+
+                    <div class="mb-3 uploaded-image" id="selectedMobileImageContainer">
+                        @if ($data->mobile_file_url)
+                            <img src="{{ $data->mobile_file_url }}" class="img-fluid mb-2"
+                                style="max-width: 100px; max-height: 100px;">
+                            <span class="remove-media-icon"
+                                style="cursor: pointer; font-size: 24px; position: absolute; top: 0; right: 0; color: red;"
+                                onclick="removeThumbnail('file_url_mobile', 'remove_mobile_image_flag', 'selectedMobileImageContainer')">×</span>
+                        @endif
+                    </div>
+                    {{ html()->hidden('file_url_mobile')->id('file_url_mobile')->value($data->mobile_file_url) }}
+                    {{ html()->hidden('remove_mobile_image')->id('remove_mobile_image_flag')->value(0) }}
                 </div>
 
                 <div class="col-md-6 col-lg-4 d-none" id="video_file_input_section">
@@ -124,6 +145,12 @@
                     <input type="text" name="media_url" class="form-control"
                         value="{{ old('media_url', $data->url_type === 'url' ? $data->media : '') }}"
                         placeholder="https://example.com/video.mp4" />
+                    <div id="mobile_url_input_group">
+                        <label for="mobile_media_url" class="form-label mt-2">{{ __('Mobile URL') }}</label>
+                        <input type="text" name="mobile_media_url" class="form-control"
+                            value="{{ old('mobile_media_url', $data->url_type === 'url' ? $data->mobile_media : '') }}"
+                            placeholder="https://example.com/mobile-image.jpg" />
+                    </div>
                     <div class="invalid-feedback" id="media-url-error">{{ __('messages.invalid_url') }}</div>
                 </div>
                 <div class="col-md-6 col-lg-4">
@@ -252,6 +279,8 @@
             const fileSection = $('#video_file_input_section');
             const urlSection = $('#url_input_section');
             const localImageSection = $('#local_image_upload_section');
+            const localMobileImageSection = $('#local_mobile_image_upload_section');
+            const mobileUrlInputGroup = $('#mobile_url_input_group');
             const urlTypeSelect = $('#url_type');
             const typeSelect = $('select[name="type"]');
             const mediaUrlInput = $('input[name="media_url"]');
@@ -268,6 +297,8 @@
                 fileSection.addClass('d-none');
                 urlSection.addClass('d-none');
                 localImageSection.addClass('d-none');
+                localMobileImageSection.addClass('d-none');
+                mobileUrlInputGroup.addClass('d-none');
 
                 if (type === 'video') {
                     if (urlType === 'local') {
@@ -278,8 +309,10 @@
                 } else if (type === 'image') {
                     if (urlType === 'local') {
                         localImageSection.removeClass('d-none');
+                        localMobileImageSection.removeClass('d-none');
                     } else if (urlType === 'url') {
                         urlSection.removeClass('d-none');
+                        mobileUrlInputGroup.removeClass('d-none');
                     }
                 }
             }
@@ -438,14 +471,14 @@
             }
         });
 
-        function removeThumbnail(hiddenInputId, removedFlagId) {
-            const container = document.getElementById('selectedImageContainer1');
+        function removeThumbnail(hiddenInputId, removedFlagId, containerId = 'selectedImageContainer1') {
+            const container = document.getElementById(containerId);
             const hiddenInput = document.getElementById(hiddenInputId);
             const removedFlag = document.getElementById(removedFlagId);
 
-            container.innerHTML = '';
-            hiddenInput.value = '';
-            removedFlag.value = 1;
+            if (container) container.innerHTML = '';
+            if (hiddenInput) hiddenInput.value = '';
+            if (removedFlag) removedFlag.value = 1;
         }
         $('#target_categories').on('select2:opening', function(e) {
             const targetType = $('#target_content_type').val();

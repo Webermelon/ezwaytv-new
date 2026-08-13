@@ -22,6 +22,7 @@ class CustomAdsSetting extends Model
         'url_type',
         'placement',
         'media',
+        'mobile_media',
         'redirect_url',
         'duration',
         'skip_enabled',

@@ -622,6 +622,32 @@
             input.remove();
         },
 
+        selectTile: (tile) => {
+            if (!tile) return;
+
+            document.querySelectorAll('#mediaLibraryContent .iq-media-images.selected').forEach(function(selectedTile) {
+                if (selectedTile !== tile) {
+                    selectedTile.classList.remove('selected');
+                }
+            });
+
+            document.querySelectorAll('#mediaLibraryContent .iq-media-select-button').forEach(function(button) {
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-outline-primary');
+                button.innerHTML = '<i class="ph ph-check"></i> Select';
+            });
+
+            tile.classList.add('selected');
+            const selectButton = tile.querySelector('.iq-media-select-button');
+            if (selectButton) {
+                selectButton.classList.remove('btn-outline-primary');
+                selectButton.classList.add('btn-primary');
+                selectButton.innerHTML = '<i class="ph ph-check-circle"></i> Selected';
+            }
+
+            FileManager.dom.updateSaveButtonState();
+        },
+
         // Content rendering
         render: {
             mediaInfoHTML: (item, url, type) => {
@@ -643,6 +669,9 @@
                         <span class="ez-media-url" title="${safeUrl}"><i class="ph ph-link me-1"></i>${safeUrl}</span>
                     </div>
                     <div class="ez-media-actions">
+                        <button type="button" class="btn btn-sm btn-outline-primary iq-media-action iq-media-select-button" onclick="event.stopPropagation(); FileManager.selectTile(this.closest('.iq-media-images'))">
+                            <i class="ph ph-check"></i> Select
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); FileManager.copyUrl('${jsUrl}', this)">
                             <i class="ph ph-copy"></i> URL
                         </button>
@@ -1226,12 +1255,7 @@
                 if (actionBtn) return;
                 const tile = e.target.closest('.iq-media-images');
                 if (tile) {
-                    // If already selected, keep it selected (don't toggle off)
-                    // Only toggle if not selected
-                    if (!tile.classList.contains('selected')) {
-                        tile.classList.add('selected');
-                    }
-                    FileManager.dom.updateSaveButtonState();
+                    FileManager.selectTile(tile);
                 }
             });
         }
