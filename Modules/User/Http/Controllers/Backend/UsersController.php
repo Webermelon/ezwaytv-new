@@ -300,7 +300,7 @@ class UsersController extends Controller
         $page_type='users';
         $module_title = __('users.lbl_edit_user');
         $assignableRoles = $this->assignableRoles();
-        $selectedRole = old('access_role', $data?->roles()->whereIn('name', $assignableRoles->pluck('name'))->value('name') ?? 'user');
+        $selectedRole = old('access_role', $this->selectedAccessRole($data, $assignableRoles) ?? 'user');
     return view('user::backend.users.form', compact('data','mediaUrls','module_title','page_type','assignableRoles','selectedRole'));
 
     }
@@ -344,7 +344,11 @@ class UsersController extends Controller
         $data['user_type'] = $accessRole === 'user' ? 'user' : 'admin';
 
         $user->update($data);
-        $user->syncRoles([$accessRole]);
+        $rolesToSync = [$accessRole];
+        if ($user->hasRole('super-admin') && $accessRole === 'admin') {
+            $rolesToSync = ['super-admin', 'admin'];
+        }
+        $user->syncRoles($rolesToSync);
         $user->createOrUpdateProfileWithAvatar();
 
         $message = trans('messages.update_form_user');
@@ -360,10 +364,31 @@ class UsersController extends Controller
 
     private function assignableRoles()
     {
+        $roles = ['user', 'content_manager', 'admin'];
+
+        if (auth()->user()?->hasRole('super-admin')) {
+            $roles[] = 'super-admin';
+        }
+
         return Role::query()
-            ->whereIn('name', ['user', 'content_manager', 'admin'])
-            ->orderByRaw("FIELD(name, 'user', 'content_manager', 'admin')")
+            ->whereIn('name', $roles)
+            ->orderByRaw("FIELD(name, 'user', 'content_manager', 'admin', 'super-admin')")
             ->get(['id', 'name', 'title']);
+    }
+
+    private function selectedAccessRole(?User $user, $assignableRoles): ?string
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $roleNames = $assignableRoles->pluck('name');
+
+        if ($user->hasRole('super-admin') && $roleNames->contains('super-admin')) {
+            return 'super-admin';
+        }
+
+        return $user->roles()->whereIn('name', $roleNames)->value('name');
     }
 
     /**
