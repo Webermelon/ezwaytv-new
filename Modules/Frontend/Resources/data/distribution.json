@@ -113,6 +113,13 @@
       "tag": "Premium · Originals"
     },
     {
+      "name": "Prime Video",
+      "slug": "prime-video",
+      "image": "/img/distribution/prime-video.jpg",
+      "description": "Prime Video connects entertainment brands with Amazon's global streaming audience across web, mobile, Fire TV, and connected TV devices.",
+      "tag": "Amazon · Premium Streaming"
+    },
+    {
       "name": "Peacock",
       "slug": "peacock",
       "image": "/img/distribution/peacock-tv-logo.png",
