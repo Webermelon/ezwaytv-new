@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, ClipboardCheck, FileCheck2, Lock, Plus, Save, Send, ShieldCheck, Trash2, Upload } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
+import { api } from '@/lib/api'
 
 type FieldValue = string | boolean
 type FormState = Record<string, FieldValue>
@@ -17,6 +18,11 @@ type DraftState = {
   producers: CreditRow[]
   cast: CastRow[]
   languages: LanguageRow[]
+}
+
+type SubmissionResponse = {
+  message: string
+  submission_id: number
 }
 
 const draftKey = 'tribeca-one-distribution-draft-v1'
@@ -225,6 +231,9 @@ export function TribecaOneDistributionFormPage() {
   const [languages, setLanguages] = useState<LanguageRow[]>(initialDraft.languages)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
+  const [submissionId, setSubmissionId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null)
 
   const draft = useMemo(() => ({ fields, writers, producers, cast, languages }), [fields, writers, producers, cast, languages])
@@ -256,17 +265,28 @@ export function TribecaOneDistributionFormPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function submitForm() {
+  async function submitForm() {
     setAttemptedStep(currentStep)
+    setSubmitError(null)
     if (allRequiredErrors.length > 0) {
       const firstInvalidStep = Number(Object.keys(requiredByStep).find((step) => getRequiredErrors(fields, Number(step)).length > 0) ?? 0)
       setCurrentStep(firstInvalidStep)
       return
     }
 
-    saveDraft(draft, setLastSavedAt)
-    setSubmitted(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setIsSubmitting(true)
+
+    try {
+      const response = await api.post<SubmissionResponse>('/tribeka-one-distribution/submissions', toSubmissionPayload(draft))
+      setSubmissionId(response.submission_id)
+      window.localStorage.removeItem(draftKey)
+      setSubmitted(true)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (error) {
+      setSubmitError(submissionErrorMessage(error))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -323,13 +343,13 @@ export function TribecaOneDistributionFormPage() {
 
         <div className="min-w-0">
           {submitted ? (
-            <SubmissionSuccess fields={fields} onEdit={() => { setSubmitted(false); setCurrentStep(8) }} />
+            <SubmissionSuccess fields={fields} submissionId={submissionId} onEdit={() => { setSubmitted(false); setCurrentStep(8) }} />
           ) : (
             <form
               className="rounded-md border border-white/10 bg-[#101010] shadow-2xl shadow-black/30"
               onSubmit={(event) => {
                 event.preventDefault()
-                submitForm()
+                void submitForm()
               }}
             >
               <div className="border-b border-white/10 p-5 sm:p-7">
@@ -339,6 +359,7 @@ export function TribecaOneDistributionFormPage() {
 
               <div className="p-5 sm:p-7">
                 {attemptedStep === currentStep && requiredErrors.length > 0 ? <ErrorPanel errors={requiredErrors} /> : null}
+                {submitError ? <ErrorPanel errors={[submitError]} /> : null}
 
                 {currentStep === 0 ? <CompanyStep fields={fields} updateField={updateField} /> : null}
                 {currentStep === 1 ? <TitleStep fields={fields} updateField={updateField} /> : null}
@@ -400,10 +421,11 @@ export function TribecaOneDistributionFormPage() {
                   ) : (
                     <button
                       type="submit"
+                      disabled={isSubmitting}
                       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#d4a843] px-5 text-sm font-black text-black transition hover:bg-[#efc955]"
                     >
                       <Send className="h-4 w-4" />
-                      Submit
+                      {isSubmitting ? 'Saving...' : 'Submit'}
                     </button>
                   )}
                 </div>
@@ -974,16 +996,17 @@ function ReviewSummary({ fields, writers, producers, cast, languages }: {
   )
 }
 
-function SubmissionSuccess({ fields, onEdit }: { fields: FormState; onEdit: () => void }) {
+function SubmissionSuccess({ fields, submissionId, onEdit }: { fields: FormState; submissionId: number | null; onEdit: () => void }) {
   return (
     <div className="rounded-md border border-emerald-400/22 bg-[#101010] p-8 text-center shadow-2xl shadow-black/30">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-400/12 text-emerald-200">
         <ClipboardCheck className="h-8 w-8" />
       </div>
-      <h2 className="mt-5 text-2xl font-black text-white">Submission Ready</h2>
+      <h2 className="mt-5 text-2xl font-black text-white">Submission Saved</h2>
       <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-white/62">
-        The Tribeca One Distribution onboarding form for <strong className="text-white">{String(fields.titleName || 'this title')}</strong> has passed the required-field checks. The draft remains saved locally in this browser.
+        The Tribeca One Distribution onboarding form for <strong className="text-white">{String(fields.titleName || 'this title')}</strong> has been saved to the database. The email HTML template has been prepared, but no email was sent.
       </p>
+      {submissionId ? <div className="mt-4 text-sm font-black text-[#f0c96a]">Submission #{submissionId}</div> : null}
       <button type="button" onClick={onEdit} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/10 px-5 text-sm font-black text-white transition hover:bg-white/[0.07]">
         <ArrowLeft className="h-4 w-4" />
         Back to Review
@@ -1005,4 +1028,39 @@ function saveDraft(draft: DraftState, setLastSavedAt: (value: string) => void) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(draftKey, JSON.stringify(draft))
   setLastSavedAt(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+}
+
+function toSubmissionPayload(draft: DraftState) {
+  return {
+    fields: draft.fields,
+    writers: draft.writers.map(({ name }) => ({ name })),
+    producers: draft.producers.map(({ name }) => ({ name })),
+    cast: draft.cast.map(({ characterName, creditedName }) => ({ characterName, creditedName })),
+    languages: draft.languages.map(({ language, fileFormat }) => ({ language, fileFormat })),
+  }
+}
+
+function submissionErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    const payload = (error as Error & { payload?: unknown }).payload
+
+    if (payload && typeof payload === 'object') {
+      const message = 'message' in payload && typeof payload.message === 'string' ? payload.message : null
+      const errors = 'errors' in payload && payload.errors && typeof payload.errors === 'object'
+        ? Object.values(payload.errors).flat().filter((value): value is string => typeof value === 'string')
+        : []
+
+      if (errors.length > 0) {
+        return errors[0]
+      }
+
+      if (message) {
+        return message
+      }
+    }
+
+    return error.message
+  }
+
+  return 'The submission could not be saved. Please try again.'
 }

@@ -20,6 +20,7 @@ use Modules\Frontend\Http\Controllers\Auth\UserController;
 use Modules\Frontend\Http\Controllers\PerviewPaymentController;
 use Modules\Entertainment\Http\Controllers\Backend\EntertainmentsController;
 use Modules\NotificationTemplate\Http\Controllers\Backend\NotificationTemplatesController;
+use App\Http\Controllers\TribecaOneDistributionSubmissionController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -310,6 +311,9 @@ Route::view('/change-password', 'react-modernization')->name('change-password');
 // Distribution page route (static view)
 Route::view('/distribution', 'react-modernization')->name('distribution');
 Route::view('/tribeka-one-distribution', 'react-modernization')->name('tribeka-one-distribution');
+Route::post('/tribeka-one-distribution/submissions', [TribecaOneDistributionSubmissionController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('tribeka-one-distribution.submissions.store');
 
 // API: distribution data
 Route::get('/api/distribution', function () {
