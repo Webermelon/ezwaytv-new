@@ -309,6 +309,7 @@ Route::view('/change-password', 'react-modernization')->name('change-password');
 
 // Distribution page route (static view)
 Route::view('/distribution', 'react-modernization')->name('distribution');
+Route::view('/tribeka-one-distribution', 'react-modernization')->name('tribeka-one-distribution');
 
 // API: distribution data
 Route::get('/api/distribution', function () {

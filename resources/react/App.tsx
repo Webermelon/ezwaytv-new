@@ -7,6 +7,7 @@ import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
 import { OrdersPage } from '@/modules/account/OrdersPage'
 import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
+import { TribecaOneDistributionFormPage } from '@/modules/distribution/TribecaOneDistributionFormPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { LiveTvPage } from '@/modules/live-tv/LiveTvPage'
 import { MusicPage } from '@/modules/music/MusicPage'
@@ -46,6 +47,8 @@ export default function App() {
     page = <AuthPage />
   } else if (pathname === '/distribution') {
     page = <DistributionPage />
+  } else if (pathname === '/tribeka-one-distribution') {
+    page = <TribecaOneDistributionFormPage />
   } else if (pathname === '/subscription-plan') {
     page = <SubscriptionPlanPage />
   } else if (pathname === '/payment-history') {
