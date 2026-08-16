@@ -6,6 +6,8 @@ export type DistributionNetwork = {
   image?: string | null
   description?: string | null
   tag?: string | null
+  href?: string | null
+  showOnboardingCta?: boolean
 }
 
 type DistributionResponse = {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { RadioTower } from 'lucide-react'
+import { ArrowRight, RadioTower } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { loadDistribution, type DistributionNetwork } from './distributionApi'
@@ -146,6 +146,15 @@ function NetworkCard({ network }: { network: DistributionNetwork }) {
         <span className="w-fit rounded-sm border border-[#d4a843]/24 bg-[#d4a843]/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#f0c96a]">
           {network.tag}
         </span>
+      ) : null}
+      {network.href && network.showOnboardingCta ? (
+        <a
+          href={network.href}
+          className="mt-auto inline-flex w-fit items-center gap-2 rounded-sm border border-[#d4a843]/35 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-[#f0c96a] transition hover:bg-[#d4a843] hover:text-[#0d0d0d]"
+        >
+          Start Onboarding
+          <ArrowRight className="h-3.5 w-3.5" />
+        </a>
       ) : null}
     </article>
   )

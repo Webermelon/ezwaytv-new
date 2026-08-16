@@ -8,6 +8,15 @@
       "tag": "Flagship · Network Hub"
     },
     {
+      "name": "Tribeca One Distribution",
+      "slug": "tribeca-one-distribution",
+      "image": "/img/distribution/tribeca-one-distribution.svg",
+      "description": "Distribution onboarding partner for licensors submitting company details, film metadata, feature masters, audio, captions, trailers, and final artwork for platform delivery review.",
+      "tag": "Film Distribution · Onboarding",
+      "href": "/tribeka-one-distribution",
+      "showOnboardingCta": false
+    },
+    {
       "name": "XOTV",
       "slug": "xotv",
       "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/IMG_20260426_WA0016_69ee16da67dc3.jpg",

@@ -317,6 +317,6 @@ Route::get('/api/distribution', function () {
     if (!file_exists($path)) {
         return response()->json(['error' => 'Data not found'], 404);
     }
-    $json = Cache::remember('spa:distribution:json', 3600, fn () => file_get_contents($path));
+    $json = Cache::remember('spa:distribution:json:' . filemtime($path), 3600, fn () => file_get_contents($path));
     return response($json, 200)->header('Content-Type', 'application/json');
 })->name('api.distribution');

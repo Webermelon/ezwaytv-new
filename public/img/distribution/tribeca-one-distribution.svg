@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Tribeca One Distribution logo</title>
+  <desc id="desc">Circular black and white Tribeca One Distribution mark with a geometric T monogram.</desc>
+  <defs>
+    <path id="topTextPath" d="M 70 256 A 186 186 0 0 1 442 256" />
+    <path id="bottomTextPath" d="M 442 256 A 186 186 0 0 1 70 256" />
+  </defs>
+  <rect width="512" height="512" fill="#f4eeee" />
+  <circle cx="256" cy="256" r="246" fill="#000" />
+  <circle cx="256" cy="256" r="184" fill="none" stroke="#fff" stroke-width="7" />
+  <text fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700" letter-spacing="4">
+    <textPath href="#topTextPath" startOffset="50%" text-anchor="middle">TRIBECA ONE</textPath>
+  </text>
+  <text fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" letter-spacing="4">
+    <textPath href="#bottomTextPath" startOffset="50%" text-anchor="middle">DISTRIBUTION</textPath>
+  </text>
+  <circle cx="116" cy="154" r="5" fill="#fff" />
+  <circle cx="396" cy="154" r="5" fill="#fff" />
+  <g fill="none" stroke="#fff" stroke-linejoin="round">
+    <path d="M184 164h144l52 52v102L256 412 132 318V216z" stroke-width="16" />
+    <path d="M204 204h104l26 26H178z" stroke-width="18" />
+    <path d="M256 230v118" stroke-width="18" stroke-linecap="square" />
+    <path d="M206 258h100" stroke-width="18" stroke-linecap="square" />
+    <path d="M212 258v72l44 34 44-34v-72" stroke-width="18" />
+  </g>
+</svg>
