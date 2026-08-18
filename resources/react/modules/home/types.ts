@@ -116,6 +116,7 @@ export type DashboardData = {
   popular_movie?: NamedRail
   popular_tvshow?: NamedRail
   popular_video?: NamedRail
+  hero_banner_slider_livetv?: NamedRail
   free_movie?: NamedRail
   personality?: NamedRail
   popular_personality?: NamedRail

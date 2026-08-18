@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronRight, Info, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +41,10 @@ export function HomePage() {
     () => liveTvChannelsFromDashboard(state.liveTv).slice(0, railLimit),
     [railLimit, state.liveTv],
   )
+  const heroLiveChannels = useMemo(
+    () => (state.dashboard.hero_banner_slider_livetv?.data?.length ? state.dashboard.hero_banner_slider_livetv.data : liveChannels),
+    [liveChannels, state.dashboard.hero_banner_slider_livetv?.data],
+  )
   const ondemandChannels = useMemo(() => state.ondemandChannels.slice(0, railLimit), [railLimit, state.ondemandChannels])
   const latestVideos = useMemo(() => state.videos.slice(0, railLimit), [railLimit, state.videos])
   const mostWatchedRail = useMemo(() => resolveMostWatchedRail(state.dashboard), [state.dashboard])
@@ -53,12 +57,12 @@ export function HomePage() {
     [railLimit, state.dashboard.personality?.data, state.dashboard.popular_personality?.data],
   )
   const latestMovies = useMemo(() => (state.dashboard.latest_movie?.data ?? []).slice(0, railLimit), [railLimit, state.dashboard.latest_movie?.data])
-  const featured = state.liveTv.slider?.[0] ?? state.videos[0] ?? liveChannels[0]
+  const featured = heroLiveChannels[0] ?? state.liveTv.slider?.[0] ?? liveChannels[0] ?? state.videos[0]
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
-      <Hero featured={featured} loading={homeQuery.isLoading} />
+      <Hero featured={featured} liveChannels={heroLiveChannels} loading={homeQuery.isLoading} />
       {!homeQuery.isLoading ? <HomepagePromos promos={state.dashboard.custom_ads ?? []} /> : null}
 
       <section className="relative z-10 space-y-9 px-4 pb-16 pt-3 sm:px-8 sm:pt-4 lg:px-12">
@@ -163,46 +167,144 @@ function resolvePromoMobileUrl(promo: CustomPromo) {
   return promo.mobile_url ?? promo.mobile_media ?? promo.url ?? promo.media ?? ''
 }
 
-function Hero({ featured, loading }: { featured?: MediaItem; loading: boolean }) {
-  const title = featured?.details?.name ?? featured?.name ?? 'eZWay TV'
-  const category = featured?.details?.category ?? featured?.type ?? 'Streaming'
+function Hero({
+  featured,
+  liveChannels,
+  loading,
+}: {
+  featured?: MediaItem
+  liveChannels: MediaItem[]
+  loading: boolean
+}) {
+  const channelSlides = useMemo(() => {
+    const channels = liveChannels
+
+    if (channels.length > 0) return channels.slice(0, 8)
+    return featured ? [featured] : []
+  }, [featured, liveChannels])
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    if (activeIndex < channelSlides.length) return
+    setActiveIndex(0)
+  }, [activeIndex, channelSlides.length])
+
+  useEffect(() => {
+    if (channelSlides.length < 2) return undefined
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % channelSlides.length)
+    }, 6500)
+
+    return () => window.clearInterval(timer)
+  }, [channelSlides.length])
+
+  const activeChannel = channelSlides[activeIndex] ?? featured
+  const hasActiveChannel = Boolean(activeChannel)
+  const title = activeChannel?.details?.name ?? activeChannel?.name ?? 'eZWay TV Live'
+  const category = activeChannel?.details?.category ?? 'Live TV'
+  const heroImage = cardImage(activeChannel ?? featured, 'square') ?? homeHeroImage
+  const channelDescription = activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
+
+  function goToPrevious() {
+    if (channelSlides.length < 2) return
+    setActiveIndex((current) => (current - 1 + channelSlides.length) % channelSlides.length)
+  }
+
+  function goToNext() {
+    if (channelSlides.length < 2) return
+    setActiveIndex((current) => (current + 1) % channelSlides.length)
+  }
+
+  if (!hasActiveChannel) {
+    return null
+  }
 
   return (
-    <section className="relative min-h-[340px] overflow-hidden bg-[#050505] sm:min-h-[70vh]">
-      <img src={homeHeroImage} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover opacity-80" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.9)_36%,rgba(5,5,5,0.58)_66%,rgba(5,5,5,0.24)_100%)]" />
-      <div className="ez-home-gold-sweep absolute inset-y-0 left-[-18%] w-[38%] rotate-12 bg-[linear-gradient(90deg,transparent,rgba(212,168,67,0.16),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#050505] via-[#050505]/82 to-transparent" />
+    <section className="relative min-h-[520px] overflow-hidden bg-[#050505] sm:min-h-[72vh]">
+      {heroImage ? (
+        <>
+          <img src={heroImage} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover object-center opacity-95" />
+          <img src={heroImage} alt="" className="absolute inset-0 h-full w-full scale-[1.02] object-cover object-center opacity-18 blur-xl" />
+        </>
+      ) : null}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.74)_28%,rgba(5,5,5,0.24)_60%,rgba(5,5,5,0.04)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(0deg,#050505_0%,rgba(5,5,5,0.42)_18%,rgba(5,5,5,0)_52%)]" />
+      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#050505]/72 to-transparent" />
 
-      <div className="relative z-10 flex min-h-[340px] items-center px-4 pb-8 pt-12 sm:min-h-[70vh] sm:px-8 sm:pb-20 sm:pt-16 lg:px-12">
-        <div className="ez-home-hero-copy max-w-3xl">
-          <Badge className={[
-            'ez-home-badge mb-4 w-fit rounded-sm px-3 py-1 text-xs uppercase',
-            loading ? 'bg-white/14 text-white' : 'bg-[#d4a843] text-black',
-          ].join(' ')}>
-            {loading ? 'Featured' : category}
-          </Badge>
-          <h1 className="max-w-2xl text-4xl font-black leading-none text-white sm:text-6xl lg:text-7xl">
-            {title}
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-white/72 sm:text-lg">
-            Stream standout shows, live channels, and on-demand stories from the eZWay TV network.
+      <div className="relative z-10 flex min-h-[520px] flex-col justify-end px-4 pb-10 pt-20 sm:min-h-[72vh] sm:px-8 sm:pb-14 lg:px-12">
+        <div className="ez-home-hero-copy max-w-2xl rounded-md bg-black/58 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-[2px] sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Badge className="ez-home-badge inline-flex w-fit items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black uppercase text-white">
+              <span className="h-2 w-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.95)]" aria-hidden="true" />
+              Live Now
+            </Badge>
+            <Badge className="w-fit rounded-full border border-[#d4a843]/35 bg-[#d4a843]/14 px-3 py-1.5 text-xs font-bold uppercase text-[#f4d36a]">
+              {loading ? 'Loading' : category}
+            </Badge>
+          </div>
+          <h1 className="max-w-2xl text-4xl font-black leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.95)] sm:text-6xl lg:text-7xl">{title}</h1>
+          <p className="mt-4 max-w-xl text-base font-medium leading-7 text-white/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] sm:text-lg">
+            {channelDescription || 'Stream eZWay related live channels, featured programming, and network broadcasts.'}
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="ez-home-cta-primary bg-[#d4a843] text-black hover:bg-[#edc342]">
-              <a href={contentHref(featured)}>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <Button asChild size="lg" className="ez-home-cta-primary rounded-sm bg-white text-black hover:bg-white/90">
+              <a href={contentHref(activeChannel)}>
                 <Play className="h-5 w-5 fill-current" />
-                Watch Now
+                Watch Live
               </a>
             </Button>
-            <Button asChild size="lg" variant="secondary" className="ez-home-cta-secondary bg-white/12 text-white hover:bg-white/22">
-              <a href={contentHref(featured)}>
-                <Info className="h-5 w-5" />
-                Details
+            <Button asChild size="lg" variant="secondary" className="ez-home-cta-secondary rounded-sm bg-white/18 text-white hover:bg-white/28">
+              <a href="/livetv">
+                All Channels
+                <ChevronRight className="h-5 w-5" />
               </a>
             </Button>
           </div>
         </div>
+
+        {channelSlides.length > 1 ? (
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={goToPrevious}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-black/44 text-white backdrop-blur transition hover:border-white/50 hover:bg-white/16"
+                aria-label="Previous live channel"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToNext}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-black/44 text-white backdrop-blur transition hover:border-white/50 hover:bg-white/16"
+                aria-label="Next live channel"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {channelSlides.map((channel, index) => {
+                const channelTitle = channel.details?.name ?? channel.name
+
+                return (
+                  <button
+                    key={`hero-channel-dot-${channel.id}`}
+                    type="button"
+                    onClick={() => setActiveIndex(index)}
+                    className={[
+                      'h-1.5 rounded-full transition-all',
+                      index === activeIndex ? 'w-12 bg-white' : 'w-5 bg-white/36 hover:bg-white/70',
+                    ].join(' ')}
+                    aria-label={`Show ${channelTitle}`}
+                  />
+                )
+              })}
+            </div>
+
+          </div>
+        ) : null}
       </div>
     </section>
   )
@@ -452,7 +554,9 @@ function LiveChannelBadge() {
   )
 }
 
-function cardImage(item: MediaItem, shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality') {
+function cardImage(item: MediaItem | undefined, shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality') {
+  if (!item) return undefined
+
   if (shape === 'video') {
     return item.thumbnail_url
       ?? item.details?.thumbnail_image

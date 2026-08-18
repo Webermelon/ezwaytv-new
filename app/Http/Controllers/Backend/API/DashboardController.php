@@ -1333,7 +1333,7 @@ public function getTrandingData(Request $request){
                         'TvCategory:id,name'
                     ])
                     ->whereIn('id', $ids)
-                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'trailer_url', 'access', 'category_id'])
+                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
                         ->where('status', 1)
                         ->whereNull('deleted_at')
                         ->featuredFirst()
@@ -1725,6 +1725,33 @@ public function getTrandingData(Request $request){
                 is_array($personalityIdsArray) ? array_slice($personalityIdsArray, 0, 100) : []
             );
 
+            $heroLiveTvSetting = MobileSetting::getNameAndValueBySlug('hero-banner-slider-live-tv');
+            $heroLiveTvIds = json_decode($heroLiveTvSetting['value'] ?? null, true);
+            $heroLiveTvChannels = [];
+            if (!empty($heroLiveTvIds) && is_array($heroLiveTvIds)) {
+                $heroLiveTvIds = array_values(array_filter(array_map('intval', $heroLiveTvIds)));
+                $heroLiveTvOrder = array_flip($heroLiveTvIds);
+                $heroLiveTvChannelsCollection = LiveTvChannel::with(['plan:id,level', 'TvCategory:id,name'])
+                    ->whereIn('id', $heroLiveTvIds)
+                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
+                    ->where('status', 1)
+                    ->whereNull('deleted_at')
+                    ->get()
+                    ->sortBy(fn ($channel) => $heroLiveTvOrder[(int) $channel->id] ?? PHP_INT_MAX)
+                    ->values();
+
+                $heroLiveTvChannelsCollection->each(function ($channel) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                    $channel->user_id = $user_id;
+                    $channel->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                    $channel->poster_image = $device_type == 'tv'
+                        ? setBaseUrlWithFileName($channel->poster_tv_url, 'image', 'livetv')
+                        : setBaseUrlWithFileName($channel->poster_url, 'image', 'livetv');
+                    setContentAccess($channel, $user_id, $userPlanId, $purchasedIds ?? []);
+                });
+
+                $heroLiveTvChannels = LiveTvChannelResourceV3::collection($heroLiveTvChannelsCollection)->toArray(request());
+            }
+
             $today = Carbon::now()->toDateString();
             // $is_advertisement_enabled = MobileSetting::where('slug', 'advertisement')->first();
             $customAds = CustomAdsSetting::
@@ -1794,6 +1821,10 @@ public function getTrandingData(Request $request){
                         'popular_video' => [
                             'name' => $settingPopularVideoIds['name'] ?? 'Most Watched Videos',
                             'data' => $popular_video,
+                        ],
+                        'hero_banner_slider_livetv' => [
+                            'name' => $heroLiveTvSetting['name'] ?? 'Hero Banner Slider Live Tv',
+                            'data' => $heroLiveTvChannels,
                         ],
                         'personality' => [
                             'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
