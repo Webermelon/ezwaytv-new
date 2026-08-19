@@ -446,6 +446,13 @@ class MobileSettingController extends Controller
                 break;
         }
 
+        if ($selected_values && !empty($selectedIds)) {
+            $selectedOrder = array_flip(array_map('strval', $selectedIds));
+            $selected_values = $selected_values
+                ->sortBy(fn ($item) => $selectedOrder[(string) $item->id] ?? PHP_INT_MAX)
+                ->values();
+        }
+
         if ($value && !empty($selectedIds)) {
             $value = $value->reject(function ($item) use ($selectedIds) {
                 return in_array($item->id, $selectedIds);
