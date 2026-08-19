@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, Check, Clapperboard, Copy, Eye, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clapperboard, Copy, Eye, ListVideo, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -353,80 +354,190 @@ function PlaylistSection({
   activePlaylistId: string
   onPlaylistChange: (playlistId: string) => void
 }) {
-  const videos = activePlaylist?.videos ?? []
-  const activePlaylistIndex = Math.max(0, playlists.findIndex((playlist) => playlist.id === activePlaylistId))
+  const allVideosPlaylist = playlists.find((playlist) => playlist.id === 'all') ?? playlists[0]
+  const curatedPlaylists = playlists.filter((playlist) => playlist.id !== 'all' && playlist.videos.length > 0)
+  const selectedPlaylist = activePlaylist && activePlaylist.id !== 'all' ? activePlaylist : null
 
   return (
-    <div className="mt-8">
-      <div className="mb-5 rounded-md border border-white/10 bg-black/24 p-3">
-        <div className="grid gap-3 lg:grid-cols-[minmax(220px,0.4fr)_minmax(0,1fr)] lg:items-center">
-          <div className="min-w-0">
-            <span className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Playlist</span>
-            <div className="mt-1 flex min-w-0 items-center gap-2">
-              <h4 className="line-clamp-1 text-lg font-black text-white">{activePlaylist?.name ?? 'Videos'}</h4>
-              <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">
-                {activePlaylistIndex + 1}/{playlists.length}
-              </Badge>
-            </div>
-          </div>
-
-          <label className="sr-only" htmlFor="ondemand-playlist-select">Choose playlist</label>
-          <select
-            id="ondemand-playlist-select"
-            value={activePlaylistId}
-            onChange={(event) => onPlaylistChange(event.target.value)}
-            className="h-11 w-full rounded-md border border-white/12 bg-[#151515] px-3 text-sm font-bold text-white outline-none transition focus:border-primary lg:hidden"
-          >
-            {playlists.map((playlist) => (
-              <option key={playlist.id} value={playlist.id}>{playlist.name}</option>
-            ))}
-          </select>
-
-          <div className="hidden min-w-0 flex-wrap justify-end gap-2 lg:flex">
-            {playlists.map((playlist) => {
-              const isActive = playlist.id === activePlaylistId
-
-              return (
-                <button
-                  key={playlist.id}
-                  type="button"
-                  onClick={() => onPlaylistChange(playlist.id)}
-                  className={[
-                    'min-h-10 max-w-[220px] rounded-md border px-3 py-2 text-left text-sm font-black leading-tight transition',
-                    isActive
-                      ? 'border-primary bg-primary text-black shadow-lg shadow-primary/15'
-                      : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/24 hover:bg-white/[0.08] hover:text-white',
-                  ].join(' ')}
-                >
-                  <span className="line-clamp-2">{playlist.name}</span>
-                </button>
-              )
-            })}
-          </div>
+    <div className="mt-8 space-y-8">
+      {allVideosPlaylist?.videos.length ? (
+        <VideoRail
+          title="All Videos"
+          videos={allVideosPlaylist.videos}
+          channelId={channelId}
+          channelLocked={channelLocked}
+          profile={profile}
+        />
+      ) : (
+        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
+          <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
+          No videos yet.
         </div>
+      )}
 
-        {activePlaylist?.description ? (
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/56 lg:hidden">{activePlaylist.description}</p>
-        ) : null}
-      </div>
+      {curatedPlaylists.length ? (
+        <PlaylistCardsRail
+          playlists={curatedPlaylists}
+          channelId={channelId}
+          activePlaylistId={activePlaylistId}
+          onPlaylistChange={onPlaylistChange}
+        />
+      ) : null}
 
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+      {selectedPlaylist ? (
+        <VideoRail
+          title={selectedPlaylist.name}
+          description={selectedPlaylist.description}
+          videos={selectedPlaylist.videos}
+          channelId={channelId}
+          playlistId={selectedPlaylist.id}
+          channelLocked={channelLocked}
+          profile={profile}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function VideoRail({
+  title,
+  description,
+  videos,
+  channelId,
+  playlistId,
+  channelLocked,
+  profile,
+}: {
+  title: string
+  description?: string | null
+  videos: MediaItem[]
+  channelId: string | number
+  playlistId?: string
+  channelLocked: boolean
+  profile: MediaItem
+}) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    scrollLeft: 0,
+  })
+  const dragCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.()
+      document.body.classList.remove('ez-home-rail-drag-lock')
+    }
+  }, [])
+
+  function scrollRail(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * 720, behavior: 'smooth' })
+  }
+
+  function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    dragCleanupRef.current?.()
+
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const activeScroller = scrollerRef.current
+      if (!dragRef.current.active || !activeScroller) return
+
+      const deltaX = moveEvent.pageX - dragRef.current.startX
+      if (Math.abs(deltaX) > 4) {
+        dragRef.current.moved = true
+      }
+
+      activeScroller.scrollLeft = dragRef.current.scrollLeft - deltaX
+    }
+
+    const handleMouseUp = () => {
+      stopDragging()
+      dragCleanupRef.current?.()
+    }
+
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startX: event.pageX,
+      scrollLeft: scroller.scrollLeft,
+    }
+    scroller.classList.add('ez-home-rail-dragging')
+    document.body.classList.add('ez-home-rail-drag-lock')
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    dragCleanupRef.current = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      dragCleanupRef.current = null
+    }
+  }
+
+  function stopDragging() {
+    dragRef.current.active = false
+    scrollerRef.current?.classList.remove('ez-home-rail-dragging')
+    document.body.classList.remove('ez-home-rail-drag-lock')
+  }
+
+  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (!dragRef.current.moved) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragRef.current.moved = false
+  }
+
+  const rail = (
+    <div
+      ref={scrollerRef}
+      onMouseDown={handleMouseDown}
+      onDragStart={(event) => event.preventDefault()}
+      onClickCapture={handleClickCapture}
+      className="ez-home-rail-scroller grid grid-flow-col auto-cols-[minmax(220px,72vw)] gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [-ms-overflow-style:none] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)] [&::-webkit-scrollbar]:hidden"
+    >
+      {videos.map((video) => (
+        <div key={video.id} className="min-w-0">
+          <VideoCard video={video} channelId={channelId} playlistId={playlistId} />
+        </div>
+      ))}
+    </div>
+  )
+
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-white/10 pb-3">
         <div className="min-w-0">
-          <h4 className="line-clamp-1 text-xl font-black">{activePlaylist?.name ?? 'Videos'}</h4>
-          {activePlaylist?.description ? (
-            <p className="mt-1 hidden max-w-3xl text-sm leading-6 text-white/56 lg:block">{activePlaylist.description}</p>
-          ) : null}
+          <h4 className="line-clamp-1 text-xl font-black text-white">{title}</h4>
+          {description ? <p className="mt-1 line-clamp-2 max-w-3xl text-sm leading-6 text-white/56">{stripHtml(description)}</p> : null}
         </div>
-        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">{formatVideoCount(videos.length)}</Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollRail(-1)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex"
+            aria-label={`Scroll ${title} left`}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollRail(1)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex"
+            aria-label={`Scroll ${title} right`}
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <Badge variant="outline" className="border-white/16 text-white/70">{formatVideoCount(videos.length)}</Badge>
+        </div>
       </div>
 
       {channelLocked && videos.length > 0 ? (
         <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
-          <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {videos.map((video) => (
-              <VideoCard key={video.id} video={video} channelId={channelId} playlistId={activePlaylist?.id} />
-            ))}
-          </div>
+          <div className="pointer-events-none p-1 opacity-65 blur-sm">{rail}</div>
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
             <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
               <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
@@ -434,19 +545,99 @@ function PlaylistSection({
             </div>
           </div>
         </div>
-      ) : videos.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {videos.map((video) => (
-            <VideoCard key={video.id} video={video} channelId={channelId} playlistId={activePlaylist?.id} />
-          ))}
-        </div>
       ) : (
-        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
-          <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
-          No videos yet.
-        </div>
+        rail
       )}
-    </div>
+    </section>
+  )
+}
+
+function PlaylistCardsRail({
+  playlists,
+  channelId,
+  activePlaylistId,
+  onPlaylistChange,
+}: {
+  playlists: PlaylistGroup[]
+  channelId: string | number
+  activePlaylistId: string
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <div>
+          <span className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Playlist</span>
+          <h4 className="mt-1 text-xl font-black text-white">Playlists</h4>
+        </div>
+        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">{playlists.length}</Badge>
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        {playlists.map((playlist) => (
+          <PlaylistRailCard
+            key={playlist.id}
+            playlist={playlist}
+            channelId={channelId}
+            active={playlist.id === activePlaylistId}
+            onSelect={() => onPlaylistChange(playlist.id)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PlaylistRailCard({
+  playlist,
+  channelId,
+  active,
+  onSelect,
+}: {
+  playlist: PlaylistGroup
+  channelId: string | number
+  active: boolean
+  onSelect: () => void
+}) {
+  const firstVideo = playlist.videos[0]
+  const image = firstVideo ? videoThumb(firstVideo) : null
+  const href = firstVideo ? buildPlaylistVideoHref(firstVideo, channelId, playlist.id) : undefined
+
+  return (
+    <a
+      href={href}
+      draggable={false}
+      onClick={onSelect}
+      className={[
+        'group block w-full text-left transition sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)] 2xl:w-[calc((100%-3rem)/4)]',
+        active ? 'text-white' : 'text-white/82 hover:text-white',
+      ].join(' ')}
+    >
+      <div className="relative pt-2">
+        <div className="absolute left-3 right-3 top-0 h-full rounded-md bg-white/14" />
+        <div className="absolute left-1.5 right-1.5 top-1 h-full rounded-md bg-white/10" />
+        <div className={[
+          'relative overflow-hidden rounded-md border bg-black shadow-xl transition',
+          active ? 'border-primary/70 shadow-primary/10' : 'border-white/10 group-hover:border-white/24',
+        ].join(' ')}>
+          <MediaThumbnail
+            src={image}
+            previewSrc={firstVideo ? previewHref(firstVideo) : null}
+            alt={playlist.name}
+            className="aspect-video"
+            imageClassName="object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/86 to-transparent" />
+          <span className="absolute bottom-2 right-2 z-20 inline-flex h-7 items-center gap-1.5 rounded-sm bg-black/78 px-2.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+            <ListVideo className="h-3.5 w-3.5" />
+            {playlist.videos.length} {playlist.videos.length === 1 ? 'video' : 'videos'}
+          </span>
+        </div>
+      </div>
+      <h5 className="mt-3 line-clamp-2 text-sm font-black leading-snug">{playlist.name}</h5>
+      {playlist.description ? <p className="mt-1 line-clamp-1 text-xs text-white/52">{stripHtml(playlist.description)}</p> : null}
+      <span className="mt-1 inline-flex text-xs font-bold text-white/56 transition group-hover:text-primary">View full playlist</span>
+    </a>
   )
 }
 
@@ -736,7 +927,7 @@ function VideoCard({ video, channelId, playlistId }: { video: MediaItem; channel
   const durationLabel = formatDurationLabel(video.duration)
 
   return (
-    <a href={href} className="group block min-w-0">
+    <a href={href} draggable={false} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.02] group-hover:border-primary/60">
         <MediaThumbnail
           src={image}
