@@ -25,6 +25,15 @@ export function isNativeIosApp() {
   return platform === 'ios' && isNative !== false
 }
 
+export function isNativeCapacitorApp() {
+  if (typeof window === 'undefined') return false
+
+  const capacitor = window.Capacitor
+  if (!capacitor) return false
+
+  return capacitor.isNativePlatform?.() === true
+}
+
 export function isIosRestrictedPath(pathname: string) {
   const restrictedPrefixes = [
     '/login',

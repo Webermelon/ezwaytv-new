@@ -21,6 +21,7 @@ import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDet
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
+import { OpenInAppPrompt } from '@/components/OpenInAppPrompt'
 import { AuthPage } from '@/modules/auth/AuthPage'
 import { useAnalyticsPageView } from '@/lib/analytics'
 import { isIosRestrictedPath, isNativeIosApp } from '@/lib/native-platform'
@@ -84,6 +85,7 @@ export default function App() {
   return (
     <>
       {page}
+      {pathname.startsWith('/video-embed') ? null : <OpenInAppPrompt />}
       {pathname.startsWith('/video-embed') ? null : <AppFooter />}
     </>
   )
