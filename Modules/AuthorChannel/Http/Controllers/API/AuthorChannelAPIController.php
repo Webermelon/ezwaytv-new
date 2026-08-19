@@ -5,6 +5,7 @@ namespace Modules\AuthorChannel\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuthorChannel;
+use App\Models\MobileSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -27,25 +28,27 @@ class AuthorChannelAPIController extends Controller
     {
         $perPage = (int) $request->input('per_page', 15);
         $perPage = min($perPage, 100);
+        $selectedChannelIds = $this->onDemandMobileSettingChannelIds();
 
         $cacheKey = 'spa:ondemand:index:' . md5(json_encode([
             'page' => $request->input('page', 1),
             'per_page' => $perPage,
             'search' => $request->input('search'),
+            'selected' => $selectedChannelIds,
         ]));
 
         try {
-            $channels = Auth::check() ? $this->buildChannelIndex($request, $perPage) : Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
-                return $this->buildChannelIndex($request, $perPage);
+            $channels = Auth::check() ? $this->buildChannelIndex($request, $perPage, $selectedChannelIds) : Cache::remember($cacheKey, 300, function () use ($request, $perPage, $selectedChannelIds) {
+                return $this->buildChannelIndex($request, $perPage, $selectedChannelIds);
             });
         } catch (\Throwable $e) {
-            $channels = $this->buildChannelIndex($request, $perPage);
+            $channels = $this->buildChannelIndex($request, $perPage, $selectedChannelIds);
         }
 
         return ApiResponse::success($channels, 'Author channel list');
     }
 
-    private function buildChannelIndex(Request $request, int $perPage)
+    private function buildChannelIndex(Request $request, int $perPage, array $selectedChannelIds = [])
     {
             $query = AuthorChannel::where('is_active', 1)
                 ->with('plan:id,name,level')
@@ -57,6 +60,13 @@ class AuthorChannelAPIController extends Controller
                       ->orWhere('username', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
                 });
+            }
+
+            if (count($selectedChannelIds) > 0) {
+                $ids = implode(',', $selectedChannelIds);
+                $query
+                    ->orderByRaw("CASE WHEN id IN ({$ids}) THEN 0 ELSE 1 END")
+                    ->orderByRaw("FIELD(id, {$ids})");
             }
 
             $channels = $query->orderBy('name')->paginate($perPage);
@@ -271,6 +281,29 @@ class AuthorChannelAPIController extends Controller
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    private function onDemandMobileSettingChannelIds(): array
+    {
+        $setting = MobileSetting::getNameAndValueBySlug('on-demand-channels');
+
+        if (!$setting || empty($setting['value'])) {
+            return [];
+        }
+
+        $decoded = json_decode($setting['value'], true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return collect($decoded)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
 
     private function formatChannel(AuthorChannel $channel, bool $includeDescription = false): array
     {
