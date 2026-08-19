@@ -14,6 +14,7 @@ class LiveTvChannelResourceV3 extends JsonResource
         return [
             'id' => $this->id,
             'slug' => $this->slug,
+            'channel_number' => $this->channel_number !== null ? (int) $this->channel_number : null,
             'dashboard_order' => $this->dashboard_order ?? null,
             'poster_image' => $this->poster_image,
             'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url,'image','livetv'),

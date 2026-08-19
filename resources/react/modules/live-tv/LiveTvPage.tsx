@@ -1443,6 +1443,12 @@ function channelName(channel: MediaItem) {
 
 function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
   if (!channel) return undefined
+  const storedChannelNumber = Number(channel.channel_number)
+
+  if (Number.isFinite(storedChannelNumber) && storedChannelNumber > 0) {
+    return storedChannelNumber
+  }
+
   const channelIndex = sortByDashboardOrder(channels)
     .findIndex((item) => String(item.id) === String(channel.id))
 

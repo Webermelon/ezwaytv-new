@@ -30,6 +30,8 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
 
         return [
             'id' => $this->id,
+            'slug' => $this->slug,
+            'channel_number' => $this->channel_number !== null ? (int) $this->channel_number : null,
             'details' => [
                 'name' => $this->name,
                 'type' => 'livetv',

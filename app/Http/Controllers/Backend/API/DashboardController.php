@@ -1333,7 +1333,7 @@ public function getTrandingData(Request $request){
                         'TvCategory:id,name'
                     ])
                     ->whereIn('id', $ids)
-                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
+                    ->select(['id', 'name', 'slug', 'channel_number', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
                         ->where('status', 1)
                         ->whereNull('deleted_at')
                         ->featuredFirst()
@@ -1733,7 +1733,7 @@ public function getTrandingData(Request $request){
                 $heroLiveTvOrder = array_flip($heroLiveTvIds);
                 $heroLiveTvChannelsCollection = LiveTvChannel::with(['plan:id,level', 'TvCategory:id,name'])
                     ->whereIn('id', $heroLiveTvIds)
-                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
+                    ->select(['id', 'name', 'slug', 'channel_number', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
                     ->where('status', 1)
                     ->whereNull('deleted_at')
                     ->get()

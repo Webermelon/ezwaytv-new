@@ -350,7 +350,7 @@ class LiveTVsController extends Controller
             $selectedChannelIds = $this->liveTvMobileSettingChannelIds();
 
             $allChannelData = LiveTvChannel::select([
-                'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+                'id','category_id','name','plan_id','slug','channel_number','description','status','access','poster_url','poster_tv_url',
             ])
             ->with([
                 'plan:id,level',
@@ -431,7 +431,7 @@ class LiveTVsController extends Controller
 
                 $bannerChannelIds = $bannerList->pluck('type_id')->filter()->unique()->toArray();
                 $bannerChannels = LiveTvChannel::select([
-                    'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+                    'id','category_id','name','plan_id','slug','channel_number','description','status','access','poster_url','poster_tv_url',
                 ])
                 ->with([
                     'plan:id,level',

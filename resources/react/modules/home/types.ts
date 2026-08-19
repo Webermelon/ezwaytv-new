@@ -20,6 +20,7 @@ export type MediaItem = {
   avatar_image_url?: string
   profile_image?: string
   duration?: string | null
+  channel_number?: number | string | null
   dashboard_order?: number | null
   access?: string
   has_content_access?: number | boolean | null
