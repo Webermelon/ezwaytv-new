@@ -193,6 +193,7 @@ export function VideoDetailPage() {
             autoplay={autoplay}
             playTrigger={playTrigger}
             vastAds={ads.vast}
+            customAds={ads.custom}
             onPlay={() => {
               if (playIdRef.current) return
               trackPlayMutation.mutate({ nextVideo: video, nextChannelId: channelId })
@@ -357,7 +358,7 @@ export function VideoDetailPage() {
             </div>
           </section>
 
-          <AdStrip ads={ads.custom} />
+          <AdStrip ads={ads.custom.filter((ad) => String(ad.placement ?? '').toLowerCase() !== 'player')} />
 
           {railItems.length > 0 ? (
             <section className="px-3 pb-16 sm:px-6 lg:px-8">

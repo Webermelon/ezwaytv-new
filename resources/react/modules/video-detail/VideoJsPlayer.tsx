@@ -17,6 +17,7 @@ type VideoJsPlayerProps = {
   playTrigger?: number
   unmuteOnPlayTrigger?: boolean
   vastAds: VideoAd[]
+  customAds?: VideoAd[]
   isLive?: boolean
   onPlay?: () => void
   onTimeUpdate?: (seconds: number) => void
@@ -57,6 +58,16 @@ type AdUiState = {
   paused?: boolean
 }
 
+type CustomAdUiState = {
+  visible: boolean
+  ad?: VideoAd | null
+  remainingSeconds?: number | null
+  elapsedSeconds?: number
+  durationSeconds?: number | null
+  skipAfterSeconds?: number
+  canSkip: boolean
+}
+
 export function VideoJsPlayer({
   source,
   poster,
@@ -65,6 +76,7 @@ export function VideoJsPlayer({
   playTrigger = 0,
   unmuteOnPlayTrigger = false,
   vastAds,
+  customAds = [],
   isLive = false,
   onPlay,
   onTimeUpdate,
@@ -81,12 +93,20 @@ export function VideoJsPlayer({
   const prerollStateRef = useRef<'idle' | 'loading' | 'ready' | 'playing' | 'done'>('idle')
   const prerollCreativeRef = useRef<VastCreative | null>(null)
   const finishPrerollRef = useRef<(() => void) | null>(null)
+  const customAdPlayedRef = useRef(false)
+  const customAdShowingRef = useRef(false)
+  const customAdTimerRef = useRef<number | null>(null)
+  const customAdRef = useRef<VideoAd | null>(null)
+  const finishCustomAdRef = useRef<(() => void) | null>(null)
   const onPlayRef = useRef(onPlay)
   const onTimeUpdateRef = useRef(onTimeUpdate)
   const onPauseRef = useRef(onPause)
   const onEndedRef = useRef(onEnded)
   const [adUi, setAdUi] = useState<AdUiState>({ visible: false, skippable: false, canSkip: false })
+  const [customAdUi, setCustomAdUi] = useState<CustomAdUiState>({ visible: false, canSkip: false })
   const hasVastAds = vastAds.length > 0
+  const selectedCustomAd = resolveCustomPlayerAd(customAds)
+  const hasCustomPlayerAd = Boolean(selectedCustomAd)
 
   const startPreroll = useCallback((player: VideoJsImaPlayer, creative: VastCreative) => {
     if (prerollStateRef.current === 'playing' || prerollStateRef.current === 'done') return
@@ -187,6 +207,93 @@ export function VideoJsPlayer({
   }, [autoplay, source])
 
   useEffect(() => {
+    customAdRef.current = selectedCustomAd
+    customAdPlayedRef.current = false
+    customAdShowingRef.current = false
+    finishCustomAdRef.current = null
+    setCustomAdUi({ visible: false, canSkip: false })
+  }, [selectedCustomAd?.id, source])
+
+  const continueAfterCustomAd = useCallback((player: VideoJsImaPlayer) => {
+    customAdShowingRef.current = false
+    customAdPlayedRef.current = true
+    finishCustomAdRef.current = null
+    if (customAdTimerRef.current) {
+      window.clearInterval(customAdTimerRef.current)
+      customAdTimerRef.current = null
+    }
+    setCustomAdUi({ visible: false, canSkip: false })
+    player.controls(true)
+
+    if (prerollStateRef.current === 'ready' && prerollCreativeRef.current) {
+      startPreroll(player, prerollCreativeRef.current)
+      return
+    }
+
+    if (prerollStateRef.current === 'loading' || prerollStateRef.current === 'playing') {
+      pendingPlayRef.current = true
+      return
+    }
+
+    const playResult = player.play()
+    if (playResult && typeof playResult.catch === 'function') {
+      playResult.catch(() => undefined)
+    }
+  }, [startPreroll])
+
+  const startCustomAd = useCallback((player: VideoJsImaPlayer, ad: VideoAd) => {
+    if (customAdShowingRef.current || customAdPlayedRef.current) return
+
+    const mediaUrl = resolveCustomAdMedia(ad)
+    if (!mediaUrl) {
+      customAdPlayedRef.current = true
+      continueAfterCustomAd(player)
+      return
+    }
+
+    const skipAfterSeconds = parseTimecode(ad.skip_after) ?? 5
+    const durationSeconds = ad.type === 'video' ? null : Math.max(skipAfterSeconds, 8)
+    customAdShowingRef.current = true
+    pendingPlayRef.current = true
+    player.pause()
+    player.currentTime(0)
+    player.controls(false)
+
+    setCustomAdUi({
+      visible: true,
+      ad,
+      remainingSeconds: durationSeconds,
+      durationSeconds,
+      elapsedSeconds: 0,
+      skipAfterSeconds,
+      canSkip: skipAfterSeconds <= 0,
+    })
+
+    const startedAt = Date.now()
+    if (customAdTimerRef.current) {
+      window.clearInterval(customAdTimerRef.current)
+    }
+    customAdTimerRef.current = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
+      const remainingSeconds = typeof durationSeconds === 'number' ? Math.max(0, durationSeconds - elapsedSeconds) : null
+      const canSkip = elapsedSeconds >= skipAfterSeconds
+
+      setCustomAdUi((current) => ({
+        ...current,
+        elapsedSeconds,
+        remainingSeconds,
+        canSkip,
+      }))
+
+      if (typeof durationSeconds === 'number' && elapsedSeconds >= durationSeconds) {
+        finishCustomAdRef.current?.()
+      }
+    }, 250)
+
+    finishCustomAdRef.current = () => continueAfterCustomAd(player)
+  }, [continueAfterCustomAd])
+
+  useEffect(() => {
     onPlayRef.current = onPlay
     onTimeUpdateRef.current = onTimeUpdate
     onPauseRef.current = onPause
@@ -197,7 +304,7 @@ export function VideoJsPlayer({
     if (!videoNodeRef.current) return
 
     const player = videojs(videoNodeRef.current, {
-      autoplay: autoplay && !hasVastAds,
+      autoplay: autoplay && !hasVastAds && !hasCustomPlayerAd,
       controls: true,
       fill: true,
       fluid: false,
@@ -225,6 +332,13 @@ export function VideoJsPlayer({
 
     const handlePlay = () => {
       if (isAdPlayingRef.current) return
+
+      const customAd = customAdRef.current
+      if (customAd && !customAdPlayedRef.current && !customAdShowingRef.current) {
+        player.pause()
+        startCustomAd(player, customAd)
+        return
+      }
 
       if (adTagUrlRef.current && typeof player.ima?.initializeAdDisplayContainer === 'function') {
         try {
@@ -289,8 +403,13 @@ export function VideoJsPlayer({
       prerollStateRef.current = 'idle'
       prerollCreativeRef.current = null
       finishPrerollRef.current = null
+      finishCustomAdRef.current = null
+      if (customAdTimerRef.current) {
+        window.clearInterval(customAdTimerRef.current)
+        customAdTimerRef.current = null
+      }
     }
-  }, [autoplay, hasVastAds, isLive, muted, poster, source])
+  }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd])
 
   useEffect(() => {
     const player = playerRef.current
@@ -302,7 +421,7 @@ export function VideoJsPlayer({
     pendingPlayRef.current = autoplay
 
     if (!player || !adTagUrl || initializedAdTagRef.current === adTagUrl) {
-      if (autoplay && !adTagUrl && player) {
+      if (autoplay && !adTagUrl && player && !customAdRef.current) {
         const playResult = player.play()
         if (playResult && typeof playResult.catch === 'function') {
           playResult.catch(() => undefined)
@@ -322,7 +441,7 @@ export function VideoJsPlayer({
 
         if (!creative) {
           prerollStateRef.current = 'done'
-          if (pendingPlayRef.current) {
+          if (pendingPlayRef.current && !customAdRef.current) {
             const playResult = playerRef.current.play()
             if (playResult && typeof playResult.catch === 'function') {
               playResult.catch(() => undefined)
@@ -334,14 +453,14 @@ export function VideoJsPlayer({
         prerollCreativeRef.current = creative
         prerollStateRef.current = 'ready'
 
-        if (pendingPlayRef.current) {
+        if (pendingPlayRef.current && !customAdRef.current) {
           startPreroll(playerRef.current, creative)
         }
       })
       .catch(() => {
         if (cancelled || !playerRef.current) return
         prerollStateRef.current = 'done'
-        if (pendingPlayRef.current) {
+        if (pendingPlayRef.current && !customAdRef.current) {
           const playResult = playerRef.current.play()
           if (playResult && typeof playResult.catch === 'function') {
             playResult.catch(() => undefined)
@@ -356,7 +475,7 @@ export function VideoJsPlayer({
 
   useEffect(() => {
     const player = playerRef.current
-    if (!player || hasVastAds) return
+    if (!player || hasVastAds || hasCustomPlayerAd) return
 
     if (autoplay) {
       const playResult = player.play()
@@ -378,6 +497,12 @@ export function VideoJsPlayer({
     }
 
     pendingPlayRef.current = true
+
+    const customAd = customAdRef.current
+    if (customAd && !customAdPlayedRef.current) {
+      startCustomAd(player, customAd)
+      return
+    }
 
     if (prerollStateRef.current === 'ready' && prerollCreativeRef.current) {
       startPreroll(player, prerollCreativeRef.current)
@@ -531,12 +656,129 @@ export function VideoJsPlayer({
           </div>
         </div>
       ) : null}
+      {customAdUi.visible && customAdUi.ad ? (
+        <CustomPlayerAdOverlay
+          ad={customAdUi.ad}
+          elapsedSeconds={customAdUi.elapsedSeconds ?? 0}
+          remainingSeconds={customAdUi.remainingSeconds}
+          durationSeconds={customAdUi.durationSeconds}
+          skipAfterSeconds={customAdUi.skipAfterSeconds}
+          canSkip={customAdUi.canSkip}
+          onSkip={() => finishCustomAdRef.current?.()}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function CustomPlayerAdOverlay({
+  ad,
+  elapsedSeconds,
+  remainingSeconds,
+  durationSeconds,
+  skipAfterSeconds = 5,
+  canSkip,
+  onSkip,
+}: {
+  ad: VideoAd
+  elapsedSeconds: number
+  remainingSeconds?: number | null
+  durationSeconds?: number | null
+  skipAfterSeconds?: number
+  canSkip: boolean
+  onSkip: () => void
+}) {
+  const mediaUrl = resolveCustomAdMedia(ad)
+  const mobileMediaUrl = ad.mobile_media || mediaUrl
+  const isVideoAd = String(ad.type ?? '').toLowerCase() === 'video'
+  const adName = adSponsorName(ad.name ?? ad.title)
+
+  if (!mediaUrl) return null
+
+  const media = isVideoAd ? (
+    <video src={mediaUrl} className="h-full w-full object-contain" autoPlay muted playsInline onEnded={onSkip} />
+  ) : (
+    <picture className="block h-full w-full">
+      <source media="(max-width: 767px)" srcSet={mobileMediaUrl} />
+      <img src={mediaUrl} alt={adName} className="block h-full w-full object-contain" referrerPolicy="no-referrer" />
+    </picture>
+  )
+
+  return (
+    <div className="absolute inset-0 z-40 overflow-hidden rounded-[inherit] bg-black">
+      <div className="absolute inset-0">
+        {!isVideoAd ? <img src={mediaUrl} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-2xl" /> : null}
+        <div className="relative z-10 h-full w-full">{media}</div>
+      </div>
+
+      <div className="absolute inset-x-0 top-0 z-20 flex min-h-12 items-center justify-between gap-2 border-b border-white/12 bg-black/60 px-2.5 py-2 shadow-[0_12px_28px_rgba(0,0,0,0.34)] backdrop-blur-md sm:min-h-16 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 rounded-full bg-white/12 px-3 py-1.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 sm:px-4 sm:py-2 sm:text-sm">
+            <span className="truncate">
+              Sponsored <span className="text-[#f6c400]">•</span> {adName}
+            </span>
+          </div>
+          {ad.redirect_url ? (
+            <a
+              href={ad.redirect_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#f6c400] px-3 py-1.5 text-xs font-black text-black shadow-xl transition hover:bg-[#ffd84a] sm:px-5 sm:py-2 sm:text-sm"
+            >
+              Visit
+              <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </a>
+          ) : null}
+        </div>
+        <div className="rounded-full bg-black/54 px-2.5 py-1.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 backdrop-blur sm:px-3 sm:py-2 sm:text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <Clock3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Ad ends in</span>
+            <span className="text-[#f6c400]">{adEtaTime(remainingSeconds)}</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-black/62 px-2.5 pb-2.5 pt-2 shadow-[0_-18px_40px_rgba(0,0,0,0.34)] backdrop-blur-md sm:px-5 sm:pb-4 sm:pt-3">
+        <div className="mb-2 h-1 overflow-hidden rounded-full bg-white/24 sm:mb-3">
+          <div className="h-full rounded-full bg-[#f6c400]" style={{ width: `${adProgressPercent(elapsedSeconds, durationSeconds)}%` }} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold tabular-nums text-white sm:text-sm">
+            {formatSeconds(elapsedSeconds)}
+            {typeof durationSeconds === 'number' ? ` / ${formatSeconds(durationSeconds)}` : ''}
+          </span>
+          <button
+            type="button"
+            disabled={!canSkip}
+            onClick={onSkip}
+            className={[
+              'shrink-0 rounded-full px-3 py-1.5 text-xs font-black transition sm:px-4 sm:py-2 sm:text-sm',
+              canSkip ? 'bg-white text-black hover:bg-white/86' : 'cursor-not-allowed bg-white/10 text-white/62',
+            ].join(' ')}
+          >
+            {canSkip ? 'Skip' : `Skip in ${Math.max(0, Math.ceil(skipAfterSeconds - elapsedSeconds))}`}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
 function resolveVastAd(vastAds: VideoAd[]) {
   return vastAds.find((ad) => ad.url || ad.vast_url || ad.redirect_url) ?? null
+}
+
+function resolveCustomPlayerAd(customAds: VideoAd[]) {
+  return customAds.find((ad) => {
+    const placement = String(ad.placement ?? '').toLowerCase()
+    const status = String(ad.status ?? '1').toLowerCase()
+    return placement === 'player' && !['0', 'false', 'inactive'].includes(status) && Boolean(resolveCustomAdMedia(ad))
+  }) ?? null
+}
+
+function resolveCustomAdMedia(ad: VideoAd) {
+  return ad.media ?? ad.image_url ?? ad.image ?? ad.url ?? ''
 }
 
 async function loadVastCreative(adTagUrl: string, ad?: VideoAd | null) {

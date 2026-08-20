@@ -104,16 +104,112 @@ export function HomePage() {
 
 function HomepagePromos({ promos }: { promos: CustomPromo[] }) {
   const visiblePromos = promos.filter((promo) => Boolean(resolvePromoUrl(promo) || resolvePromoMobileUrl(promo)))
+  const [activeIndex, setActiveIndex] = useState(1)
+  const [isTransitioning, setIsTransitioning] = useState(true)
+  const hasMultiplePromos = visiblePromos.length > 1
+  const sliderPromos = hasMultiplePromos
+    ? [visiblePromos[visiblePromos.length - 1], ...visiblePromos, visiblePromos[0]]
+    : visiblePromos
+  const realActiveIndex = hasMultiplePromos
+    ? (activeIndex - 1 + visiblePromos.length) % visiblePromos.length
+    : 0
+
+  useEffect(() => {
+    setIsTransitioning(false)
+    setActiveIndex(hasMultiplePromos ? 1 : 0)
+    const frame = window.requestAnimationFrame(() => setIsTransitioning(true))
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasMultiplePromos, visiblePromos.length])
+
+  useEffect(() => {
+    if (!hasMultiplePromos) return undefined
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => current + 1)
+    }, 7000)
+
+    return () => window.clearInterval(timer)
+  }, [hasMultiplePromos, visiblePromos.length])
 
   if (visiblePromos.length === 0) return null
+
+  function goToPrevious() {
+    if (!hasMultiplePromos) return
+    setActiveIndex((current) => current - 1)
+  }
+
+  function goToNext() {
+    if (!hasMultiplePromos) return
+    setActiveIndex((current) => current + 1)
+  }
+
+  function handleTransitionEnd() {
+    if (!hasMultiplePromos) return
+
+    if (activeIndex === 0) {
+      setIsTransitioning(false)
+      setActiveIndex(visiblePromos.length)
+      window.requestAnimationFrame(() => setIsTransitioning(true))
+    }
+
+    if (activeIndex === visiblePromos.length + 1) {
+      setIsTransitioning(false)
+      setActiveIndex(1)
+      window.requestAnimationFrame(() => setIsTransitioning(true))
+    }
+  }
 
   return (
     <section className="ez-home-promo-wrap relative z-10 bg-[#050505] px-4 py-[52px] sm:px-8 sm:py-[60px] lg:px-12">
       <div className="mx-auto max-w-[1800px]">
-        <div className="grid gap-4">
-          {visiblePromos.map((promo, index) => (
-            <PromoPanel key={`${promo.name ?? 'promo'}-${index}`} promo={promo} eager={index === 0} />
-          ))}
+        <div className="relative overflow-hidden rounded-md">
+          <div
+            className={['flex', isTransitioning ? 'transition-transform duration-500 ease-out' : 'transition-none'].join(' ')}
+            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            {sliderPromos.map((promo, index) => (
+              <div key={`${promo.id ?? promo.name ?? 'promo'}-${index}`} className="min-w-full">
+                <PromoPanel promo={promo} eager={index <= 1 || index === activeIndex} />
+              </div>
+            ))}
+          </div>
+
+          {hasMultiplePromos ? (
+            <>
+              <button
+                type="button"
+                onClick={goToPrevious}
+                className="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/75 sm:inline-flex"
+                aria-label="Previous promotion"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToNext}
+                className="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white shadow-lg backdrop-blur transition hover:bg-black/75 sm:inline-flex"
+                aria-label="Next promotion"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 px-3 py-2 backdrop-blur">
+                {visiblePromos.map((promo, index) => (
+                  <button
+                    key={`promo-dot-${promo.id ?? index}`}
+                    type="button"
+                    onClick={() => setActiveIndex(index + 1)}
+                    className={[
+                      'h-1.5 rounded-full transition-all',
+                      index === realActiveIndex ? 'w-8 bg-white' : 'w-2 bg-white/45 hover:bg-white/80',
+                    ].join(' ')}
+                    aria-label={`Show promotion ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </section>

@@ -9,8 +9,14 @@ export type VideoAd = {
   url?: string
   vast_url?: string
   redirect_url?: string
+  media?: string
+  mobile_media?: string | null
   image?: string
   image_url?: string
+  placement?: string
+  status?: number | string | boolean
+  type?: string | null
+  url_type?: string | null
   enable_skip?: boolean | number | string
   skip_after?: string | number | null
 }
