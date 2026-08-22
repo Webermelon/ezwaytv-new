@@ -25,6 +25,8 @@ type PlaylistGroup = {
   videos: MediaItem[]
 }
 
+type PlaylistSortOption = 'default' | 'name-asc' | 'name-desc' | 'videos-desc' | 'videos-asc'
+
 export function OnDemandPage() {
   const path = useSpaPath()
   const routeUsername = getUsernameFromPath(path)
@@ -354,8 +356,21 @@ function PlaylistSection({
   activePlaylistId: string
   onPlaylistChange: (playlistId: string) => void
 }) {
+  const [playlistQuery, setPlaylistQuery] = useState('')
+  const [playlistSort, setPlaylistSort] = useState<PlaylistSortOption>('default')
   const allVideosPlaylist = playlists.find((playlist) => playlist.id === 'all') ?? playlists[0]
   const curatedPlaylists = playlists.filter((playlist) => playlist.id !== 'all' && playlist.videos.length > 0)
+  const visiblePlaylists = useMemo(
+    () => sortPlaylists(
+      curatedPlaylists.filter((playlist) => (
+        (activePlaylistId === 'all' || playlist.id === activePlaylistId)
+        && playlistMatchesQuery(playlist, playlistQuery)
+      )),
+      playlistSort,
+      curatedPlaylists,
+    ),
+    [activePlaylistId, curatedPlaylists, playlistQuery, playlistSort],
+  )
   const selectedPlaylist = activePlaylist && activePlaylist.id !== 'all' ? activePlaylist : null
 
   return (
@@ -376,12 +391,24 @@ function PlaylistSection({
       )}
 
       {curatedPlaylists.length ? (
-        <PlaylistCardsRail
-          playlists={curatedPlaylists}
-          channelId={channelId}
-          activePlaylistId={activePlaylistId}
-          onPlaylistChange={onPlaylistChange}
-        />
+        <>
+          <PlaylistControls
+            query={playlistQuery}
+            sort={playlistSort}
+            playlists={curatedPlaylists}
+            activePlaylistId={activePlaylistId}
+            onQueryChange={setPlaylistQuery}
+            onSortChange={setPlaylistSort}
+            onPlaylistChange={onPlaylistChange}
+          />
+          <PlaylistCardsRail
+            playlists={visiblePlaylists}
+            totalCount={curatedPlaylists.length}
+            channelId={channelId}
+            activePlaylistId={activePlaylistId}
+            onPlaylistChange={onPlaylistChange}
+          />
+        </>
       ) : null}
 
       {selectedPlaylist ? (
@@ -554,11 +581,13 @@ function VideoRail({
 
 function PlaylistCardsRail({
   playlists,
+  totalCount,
   channelId,
   activePlaylistId,
   onPlaylistChange,
 }: {
   playlists: PlaylistGroup[]
+  totalCount: number
   channelId: string | number
   activePlaylistId: string
   onPlaylistChange: (playlistId: string) => void
@@ -570,8 +599,17 @@ function PlaylistCardsRail({
           <span className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Playlist</span>
           <h4 className="mt-1 text-xl font-black text-white">Playlists</h4>
         </div>
-        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">{playlists.length}</Badge>
+        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">
+          {playlists.length === totalCount ? totalCount : `${playlists.length}/${totalCount}`}
+        </Badge>
       </div>
+
+      {playlists.length === 0 ? (
+        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
+          <ListVideo className="mx-auto mb-3 h-8 w-8 text-white/36" />
+          No playlists match your search.
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-4">
         {playlists.map((playlist) => (
@@ -585,6 +623,69 @@ function PlaylistCardsRail({
         ))}
       </div>
     </section>
+  )
+}
+
+function PlaylistControls({
+  query,
+  sort,
+  playlists,
+  activePlaylistId,
+  onQueryChange,
+  onSortChange,
+  onPlaylistChange,
+}: {
+  query: string
+  sort: PlaylistSortOption
+  playlists: PlaylistGroup[]
+  activePlaylistId: string
+  onQueryChange: (query: string) => void
+  onSortChange: (sort: PlaylistSortOption) => void
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  return (
+    <div className="grid gap-3 rounded-md border border-white/10 bg-black/24 p-3 lg:grid-cols-[minmax(0,1fr)_240px_220px] lg:items-center">
+      <label className="relative block min-w-0">
+        <span className="sr-only">Search playlists</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/42" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search playlists"
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] pl-10 pr-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        />
+      </label>
+      <label className="block min-w-0">
+        <span className="sr-only">Select playlist</span>
+        <select
+          value={activePlaylistId === 'all' ? '' : activePlaylistId}
+          onChange={(event) => onPlaylistChange(event.target.value || 'all')}
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] px-3 text-sm font-black text-white outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">All playlists</option>
+          {playlists.map((playlist) => (
+            <option key={playlist.id} value={playlist.id}>
+              {playlist.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block min-w-0">
+        <span className="sr-only">Sort playlists</span>
+        <select
+          value={sort}
+          onChange={(event) => onSortChange(event.target.value as PlaylistSortOption)}
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] px-3 text-sm font-black text-white outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="default">Default order</option>
+          <option value="name-asc">A to Z</option>
+          <option value="name-desc">Z to A</option>
+          <option value="videos-desc">Most videos</option>
+          <option value="videos-asc">Fewest videos</option>
+        </select>
+      </label>
+    </div>
   )
 }
 
@@ -1063,6 +1164,37 @@ function buildChannelPlaylists(videos: MediaItem[], manualPlaylists: NonNullable
     },
     ...curatedPlaylists,
   ]
+}
+
+function playlistMatchesQuery(playlist: PlaylistGroup, query: string) {
+  const term = query.trim().toLowerCase()
+  if (!term) return true
+
+  return [playlist.name, playlist.description]
+    .filter(Boolean)
+    .some((value) => stripHtml(String(value)).toLowerCase().includes(term))
+}
+
+function sortPlaylists(playlists: PlaylistGroup[], sort: PlaylistSortOption, originalOrder: PlaylistGroup[]) {
+  const ordered = [...playlists]
+
+  if (sort === 'name-asc') {
+    return ordered.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  if (sort === 'name-desc') {
+    return ordered.sort((a, b) => b.name.localeCompare(a.name))
+  }
+
+  if (sort === 'videos-desc') {
+    return ordered.sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name))
+  }
+
+  if (sort === 'videos-asc') {
+    return ordered.sort((a, b) => a.videos.length - b.videos.length || a.name.localeCompare(b.name))
+  }
+
+  return ordered.sort((a, b) => originalOrder.findIndex((playlist) => playlist.id === a.id) - originalOrder.findIndex((playlist) => playlist.id === b.id))
 }
 
 function profileVideoTotal(profile: MediaItem, playlists: PlaylistGroup[]) {
