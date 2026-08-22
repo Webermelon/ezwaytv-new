@@ -85,10 +85,10 @@ export function AdBannerSlider({ placement, className = '', showNetworkAd = fals
   }
 
   return (
-    <section className={['bg-[#050505] px-4 py-5 sm:px-8 lg:px-12', className].filter(Boolean).join(' ')}>
+    <section className={['bg-[#050505] px-4 py-3 sm:px-8 sm:py-5 lg:px-12', className].filter(Boolean).join(' ')}>
       <div className="mx-auto max-w-[1800px]">
         <div className={showNetworkAd ? 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]' : undefined}>
-          <div className="relative aspect-[16/5] min-h-[150px] min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#050505] shadow-2xl shadow-black/40 sm:min-h-[210px] lg:min-h-[300px]">
+          <div className="relative aspect-[8/3] min-h-0 min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#050505] shadow-2xl shadow-black/40 sm:aspect-[16/5] sm:min-h-[210px] lg:min-h-[300px]">
             <div
               className={[
                 'flex h-full w-full motion-reduce:transition-none',
