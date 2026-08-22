@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { PlayerBackButton } from '@/components/PlayerBackButton'
 import { useBranding } from '@/lib/branding'
 import { isNativeIosApp } from '@/lib/native-platform'
 import type { MediaItem } from '@/modules/home/types'
@@ -173,6 +174,7 @@ export function VideoDetailPage() {
   const playerUrl = video ? resolvePlayerUrl(video) : null
   const playerPoster = video ? resolvePreviewImage(video) : null
   const hasPlaylistPanel = Boolean(activePlaylist && playlistVideos.length > 0)
+  const playerBackFallback = video?.ondemand_channel_context?.slug ? `/on-demand/${video.ondemand_channel_context.slug}` : '/videos'
   const playerStage = video ? (
     <div className="video-detail-player aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
       {isSubscriptionLocked ? (
@@ -253,6 +255,7 @@ export function VideoDetailPage() {
             <section className="bg-[#050505] px-3 pt-3 sm:px-6 lg:px-8 lg:pt-5">
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_520px] xl:items-start">
                 <div className="overflow-hidden rounded-md bg-black ring-1 ring-white/10">
+                  <PlayerHeader fallbackHref={playerBackFallback} />
                   {playerStage}
                 </div>
                 <PlaylistWatchPanel
@@ -268,7 +271,10 @@ export function VideoDetailPage() {
             </section>
           ) : (
             <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
-              <div className="w-screen">{playerStage}</div>
+              <div className="w-screen">
+                <PlayerHeader fallbackHref={playerBackFallback} />
+                {playerStage}
+              </div>
             </section>
           )}
 
@@ -561,6 +567,14 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
         Upgrade Plan
       </a>
     </Button>
+  )
+}
+
+function PlayerHeader({ fallbackHref }: { fallbackHref: string }) {
+  return (
+    <div className="flex min-h-12 items-center border-b border-white/10 bg-[#050505] px-3 py-2 sm:min-h-14 sm:px-5">
+      <PlayerBackButton fallbackHref={fallbackHref} />
+    </div>
   )
 }
 

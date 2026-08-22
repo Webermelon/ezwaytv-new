@@ -7,6 +7,7 @@ import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { PlayerBackButton } from '@/components/PlayerBackButton'
 import { useSpaPath } from '@/lib/spa-router'
 import { isNativeIosApp } from '@/lib/native-platform'
 import type { LiveTvDashboard, MediaItem, ProgramInfo } from '@/modules/home/types'
@@ -288,7 +289,8 @@ function LiveTvDetailPage({
       <AppHeader active="livetv" />
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
-          <div className="livetv-player relative h-[76svh] min-h-[430px] w-full overflow-hidden bg-black">
+          <PlayerHeader fallbackHref="/livetv" />
+          <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
             {isSubscriptionLocked ? (
               <PremiumPlayerLock
                 image={image}
@@ -630,6 +632,14 @@ function LiveTvPlayerPreparing({ image, title }: { image?: string; title: string
           <p className="mt-1 max-w-sm px-6 text-xs text-white/48">{title}</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PlayerHeader({ fallbackHref }: { fallbackHref: string }) {
+  return (
+    <div className="flex min-h-12 items-center border-b border-white/10 bg-[#050505] px-3 py-2 sm:min-h-14 sm:px-5">
+      <PlayerBackButton fallbackHref={fallbackHref} />
     </div>
   )
 }
