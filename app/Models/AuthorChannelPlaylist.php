@@ -15,6 +15,7 @@ class AuthorChannelPlaylist extends Model
         'author_channel_id',
         'name',
         'description',
+        'thumbnail',
         'sort_order',
         'is_active',
     ];

@@ -22,6 +22,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['web', 'au
     Route::post('on-demand-channels/{id}/videos/{videoId}/unassign',   [AuthorChannelController::class, 'unassignVideo'])->name('author_channels.videos.unassign');
     Route::get('on-demand-channels/{id}/videos/available',             [AuthorChannelController::class, 'availableVideos'])->name('author_channels.videos.available');
     Route::post('on-demand-channels/{id}/playlists',                   [AuthorChannelController::class, 'storePlaylist'])->name('author_channels.playlists.store');
+    Route::post('on-demand-channels/{id}/playlists/{playlistId}/update', [AuthorChannelController::class, 'updatePlaylist'])->name('author_channels.playlists.update');
+    Route::post('on-demand-channels/{id}/playlists/{playlistId}/reorder', [AuthorChannelController::class, 'reorderPlaylistVideos'])->name('author_channels.playlists.videos.reorder');
     Route::post('on-demand-channels/{id}/playlists/{playlistId}/videos', [AuthorChannelController::class, 'addPlaylistVideo'])->name('author_channels.playlists.videos.add');
     Route::post('on-demand-channels/{id}/playlists/{playlistId}/videos/{videoId}/remove', [AuthorChannelController::class, 'removePlaylistVideo'])->name('author_channels.playlists.videos.remove');
     Route::delete('on-demand-channels/{id}/playlists/{playlistId}',    [AuthorChannelController::class, 'destroyPlaylist'])->name('author_channels.playlists.destroy');
@@ -41,6 +43,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['web', 'au
     Route::post('author-channels/{id}/videos/{videoId}/unassign', [AuthorChannelController::class, 'unassignVideo']);
     Route::get('author-channels/{id}/videos/available', [AuthorChannelController::class, 'availableVideos']);
     Route::post('author-channels/{id}/playlists', [AuthorChannelController::class, 'storePlaylist']);
+    Route::post('author-channels/{id}/playlists/{playlistId}/update', [AuthorChannelController::class, 'updatePlaylist']);
+    Route::post('author-channels/{id}/playlists/{playlistId}/reorder', [AuthorChannelController::class, 'reorderPlaylistVideos']);
     Route::post('author-channels/{id}/playlists/{playlistId}/videos', [AuthorChannelController::class, 'addPlaylistVideo']);
     Route::post('author-channels/{id}/playlists/{playlistId}/videos/{videoId}/remove', [AuthorChannelController::class, 'removePlaylistVideo']);
     Route::delete('author-channels/{id}/playlists/{playlistId}', [AuthorChannelController::class, 'destroyPlaylist']);
