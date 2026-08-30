@@ -22,6 +22,7 @@ use Modules\Frontend\Http\Controllers\API\DistributionController;
 use Modules\Frontend\Http\Controllers\API\FooterController;
 use Modules\Frontend\Http\Controllers\API\NavigationMenuController;
 use App\Http\Controllers\Api\Private\CoreTvAccessController;
+use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -42,6 +43,13 @@ Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivat
     Route::post('subscriptions/activate', [CoreTvAccessController::class, 'activate']);
     Route::post('subscriptions/cancel', [CoreTvAccessController::class, 'cancel']);
     Route::get('users/{coreUserId}/access', [CoreTvAccessController::class, 'status'])->whereNumber('coreUserId');
+    Route::get('on-demand/channels', [CoreOnDemandPublishingController::class, 'channels']);
+    Route::post('on-demand/channels', [CoreOnDemandPublishingController::class, 'storeChannel']);
+    Route::put('on-demand/channels/{channel}', [CoreOnDemandPublishingController::class, 'updateChannel'])->whereNumber('channel');
+    Route::get('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'videos'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'storeVideo'])->whereNumber('channel');
+    Route::put('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'updateVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::delete('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'deleteVideo'])->whereNumber('channel')->whereNumber('video');
 });
 
 Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');

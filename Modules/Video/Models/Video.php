@@ -35,6 +35,8 @@ class Video extends BaseModel
         'access',
         'plan_id',
         'status',
+        'processing_status',
+        'processing_message',
         'duration',
         'start_time', // Skip intro start time
         'end_time', // Skip intro end time
