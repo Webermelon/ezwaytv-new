@@ -15,7 +15,6 @@
 @endphp
 
 <style>
-    .ondemand-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
     .ondemand-card { border: 1px solid rgba(255,255,255,.08); border-radius: .75rem; overflow: hidden; }
     .ondemand-card .card-header { padding: 1.1rem 1.25rem; }
     .ondemand-card .card-body { padding: 1.25rem; }

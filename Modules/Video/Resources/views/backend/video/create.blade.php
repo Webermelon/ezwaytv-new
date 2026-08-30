@@ -153,7 +153,7 @@
                                                 <input class="form-check-input" type="radio" name="access"
                                                     id="paid" value="paid"
                                                     onchange="showPlanSelection(this.value === 'paid')"
-                                                    {{ old('access') == 'paid' ? 'checked' : '' }} checked>
+                                                    {{ old('access', 'free') == 'paid' ? 'checked' : '' }}>
                                                 <span class="form-check-label">{{ __('movie.lbl_paid') }}</span>
                                             </div>
                                         </label>
@@ -162,7 +162,7 @@
                                                 <input class="form-check-input" type="radio" name="access"
                                                     id="free" value="free"
                                                     onchange="showPlanSelection(this.value === 'paid')"
-                                                    {{ old('access') == 'free' ? 'checked' : '' }}>
+                                                    {{ old('access', 'free') == 'free' ? 'checked' : '' }}>
                                                 <span class="form-check-label">{{ __('movie.lbl_free') }}</span>
                                             </div>
                                         </label>
@@ -171,7 +171,7 @@
                                                 <input class="form-check-input" type="radio" name="access"
                                                     id="pay-per-view" value="pay-per-view"
                                                     onchange="showPlanSelection(this.value === 'pay-per-view')"
-                                                    {{ old('access') == 'pay-per-view' ? 'checked' : '' }}>
+                                                    {{ old('access', 'free') == 'pay-per-view' ? 'checked' : '' }}>
                                                 <span class="form-check-label"
                                                     for="pay-per-view">{{ __('messages.lbl_pay_per_view') }}</span>
                                             </div>
@@ -182,7 +182,7 @@
                                     @enderror
                                     <div class="invalid-feedback" id="access-error" style="display: none;">The access field is required.</div>
                                 </div>
-                                <div class="col-12 row g-3 mt-2 {{ old('movie_access') == 'pay-per-view' ? '' : 'd-none' }}"
+                                <div class="col-12 row g-3 mt-2 {{ old('access', 'free') == 'pay-per-view' ? '' : 'd-none' }}"
                                     id="payPerViewFields">
                                     <div class="col-md-4">
                                         {{ html()->label(__('messages.lbl_price') . '<span class="text-danger">*</span>', 'price')->class('form-label')->for('price') }}
@@ -243,7 +243,7 @@
                                             required</div>
                                     </div>
                                 </div>
-                                <div class="col-md-6 {{ old('access', 'paid') == 'free' ? 'd-none' : '' }}"
+                                <div class="col-md-6 {{ old('access', 'free') == 'paid' ? '' : 'd-none' }}"
                                     id="planSelection">
                                     {{ html()->label(__('movie.lbl_select_plan') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
                                     {{ html()->select('plan_id', $plan->pluck('name', 'id')->prepend(__('placeholder.lbl_select_plan'), ''), old('plan_id'))->class('form-control select2')->id('plan_id') }}
@@ -330,7 +330,7 @@
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', old('release_date'))->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->required() }}
+                            {{ html()->date('release_date')->attribute('value', old('release_date', now()->toDateString()))->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->required() }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -355,7 +355,7 @@
                                 {{ html()->label(__('movie.lbl_download_status'), 'download_status')->class('form-label mb-0 text-body') }}
                                 <div class="form-check form-switch">
                                     {{ html()->hidden('download_status', 0) }}
-                                    {{ html()->checkbox('download_status', old('download_status', 1))->class('form-check-input')->id('download_status')->value(1) }}
+                                    {{ html()->checkbox('download_status', old('download_status', 0))->class('form-check-input')->id('download_status')->value(1) }}
                                 </div>
                             </div>
                             @error('download_status')
@@ -411,7 +411,7 @@
                             {{ html()->select(
                                     'video_upload_type',
                                     $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), '')->merge(['Embedded' => 'Embedded']), // Add Embedded option
-                                    old('video_upload_type', ''),
+                                    old('video_upload_type', 'Local'),
                                 )->class('form-control select2')->id('video_upload_type')->required() }}
                             @error('video_upload_type')
                                 <span class="text-danger">{{ $message }}</span>
