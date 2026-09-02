@@ -826,17 +826,29 @@ class OTPController extends Controller
         $email = $this->normalizeEmail($email);
         $response = $this->coreGet('/api/users/check-email', ['email' => $email]);
 
-        if (!$response || !$response->successful()) {
+        if (!$response) {
             return null;
         }
 
         $payload = $response->json();
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        if (!$response->successful() && $response->serverError()) {
+            return null;
+        }
+
         if (!is_array($payload) || !$this->coreEmailExists($payload)) {
             return null;
         }
 
+        $syncData = $this->coreUserFromLookupPayload($payload)
+            ?: $this->coreLookupUserDetailsByEmail($email)
+            ?: $this->fallbackCoreUserFromEmail($email);
+
         return [
-            'sync_data' => $this->coreUserFromLookupPayload($payload) ?: $this->fallbackCoreUserFromEmail($email),
+            'sync_data' => $syncData,
             'access_data' => null,
         ];
     }
@@ -929,13 +941,28 @@ class OTPController extends Controller
             return $payload['available'] === false || $payload['available'] === 0 || $payload['available'] === 'false';
         }
 
+        foreach ([
+            $payload['data'] ?? null,
+            $payload['data']['user'] ?? null,
+            $payload['data']['wo_user'] ?? null,
+            $payload['user'] ?? null,
+            $payload['wo_user'] ?? null,
+        ] as $candidate) {
+            if (is_array($candidate) && $this->coreEmailExists($candidate)) {
+                return true;
+            }
+        }
+
         foreach (['exists', 'registered', 'is_registered', 'taken'] as $key) {
             if (array_key_exists($key, $payload) && filter_var($payload[$key], FILTER_VALIDATE_BOOLEAN)) {
                 return true;
             }
         }
 
-        $message = strtolower((string) ($payload['message'] ?? ''));
+        $message = strtolower((string) ($payload['message'] ?? $payload['error'] ?? ''));
+        if (isset($payload['errors']) && is_array($payload['errors'])) {
+            $message .= ' '.strtolower(json_encode($payload['errors']));
+        }
 
         return str_contains($message, 'already')
             || str_contains($message, 'registered')
@@ -950,24 +977,93 @@ class OTPController extends Controller
 
     private function coreUserFromLookupPayload(array $payload): ?array
     {
-        $coreUser = $payload['data']['user'] ?? $payload['data'] ?? $payload['user'] ?? null;
-        if (!is_array($coreUser)) {
+        foreach ([
+            $payload['data']['wo_user'] ?? null,
+            $payload['data']['user']['wo_user'] ?? null,
+            $payload['data']['user'] ?? null,
+            $payload['data'] ?? null,
+            $payload['wo_user'] ?? null,
+            $payload['user']['wo_user'] ?? null,
+            $payload['user'] ?? null,
+        ] as $coreUser) {
+            if (is_array($coreUser) && ($mapped = $this->mapCoreLookupUser($coreUser))) {
+                return $mapped;
+            }
+        }
+
+        if (isset($payload['data']) && is_array($payload['data'])) {
+            foreach ($payload['data'] as $coreUser) {
+                if (is_array($coreUser) && ($mapped = $this->mapCoreLookupUser($coreUser))) {
+                    return $mapped;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function coreLookupUserDetailsByEmail(string $email): ?array
+    {
+        foreach ([
+            ['/api/users', ['search' => $email, 'limit' => 10]],
+            ['/api/wo-users', ['search' => $email, 'limit' => 10]],
+        ] as [$path, $query]) {
+            $response = $this->coreGet($path, $query);
+            if (!$response || !$response->successful()) {
+                continue;
+            }
+
+            $payload = $response->json();
+            if (!is_array($payload)) {
+                continue;
+            }
+
+            $syncData = $this->coreUserFromLookupPayload($payload);
+            if ($syncData && strcasecmp((string) ($syncData['email'] ?? ''), $email) === 0) {
+                return $syncData;
+            }
+        }
+
+        return null;
+    }
+
+    private function mapCoreLookupUser(array $coreUser): ?array
+    {
+        $profile = isset($coreUser['profile']) && is_array($coreUser['profile']) ? $coreUser['profile'] : [];
+        $coreUserId = (int) ($coreUser['core_user_id'] ?? $coreUser['network_id'] ?? $coreUser['id'] ?? $coreUser['user_id'] ?? 0);
+        $email = (string) ($coreUser['email'] ?? $coreUser['user_email'] ?? '');
+
+        if ($coreUserId < 1 && trim($email) === '') {
             return null;
         }
 
-        $coreUserId = (int) ($coreUser['core_user_id'] ?? $coreUser['id'] ?? $coreUser['user_id'] ?? 0);
-        if ($coreUserId < 1) {
-            return null;
-        }
+        $nameParts = $this->splitCoreName((string) ($coreUser['name'] ?? $coreUser['full_name'] ?? ''));
 
         return [
             'core_user_id' => $coreUserId,
             'connect_user_id' => (int) ($coreUser['connect_user_id'] ?? $coreUserId),
-            'email' => (string) ($coreUser['email'] ?? ''),
-            'username' => (string) ($coreUser['username'] ?? ''),
-            'first_name' => (string) ($coreUser['first_name'] ?? $coreUser['firstName'] ?? ''),
-            'last_name' => (string) ($coreUser['last_name'] ?? $coreUser['lastName'] ?? ''),
-            'phone' => (string) ($coreUser['phone'] ?? $coreUser['phone_number'] ?? ''),
+            'email' => $email,
+            'username' => (string) ($coreUser['username'] ?? $coreUser['user_name'] ?? ''),
+            'first_name' => (string) ($coreUser['first_name'] ?? $coreUser['firstName'] ?? $coreUser['fname'] ?? $profile['first_name'] ?? $nameParts['first_name'] ?? ''),
+            'last_name' => (string) ($coreUser['last_name'] ?? $coreUser['lastName'] ?? $coreUser['lname'] ?? $profile['last_name'] ?? $nameParts['last_name'] ?? ''),
+            'phone' => (string) ($coreUser['phone'] ?? $coreUser['phone_number'] ?? $coreUser['mobile'] ?? $profile['phone'] ?? $profile['phone_number'] ?? ''),
+            'country_code' => (string) ($coreUser['country_code'] ?? $coreUser['countryCode'] ?? $profile['country_code'] ?? ''),
+            'file_url' => (string) ($coreUser['avatar'] ?? $coreUser['profile_image'] ?? $coreUser['image'] ?? $profile['avatar'] ?? $profile['image'] ?? ''),
+        ];
+    }
+
+    private function splitCoreName(string $name): array
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return ['first_name' => '', 'last_name' => ''];
+        }
+
+        $parts = preg_split('/\s+/', $name, 2);
+
+        return [
+            'first_name' => $parts[0] ?? '',
+            'last_name' => $parts[1] ?? '',
         ];
     }
 
