@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -207,6 +207,7 @@ function LiveTvDetailPage({
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
   const isSubscriptionLocked = isPremiumMediaLocked(channel)
+  const showAuthorsVodButton = isAuthorsLiveTvChannel(channel)
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
@@ -235,17 +236,18 @@ function LiveTvDetailPage({
     staleTime: 10_000,
   })
   const detailSchedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
+  const scheduleEnabled = channel?.schedule_enabled !== false && channel?.schedule_enabled !== 0
   const scheduleQuery = useQuery({
     queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
     queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),
-    enabled: Boolean(channelId) && detailSchedule.length === 0,
+    enabled: Boolean(channelId) && scheduleEnabled && detailSchedule.length === 0,
     staleTime: 60_000,
   })
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
   const schedule = scheduleQuery.data ?? []
   const displayedSchedule = detailSchedule.length > 0 ? detailSchedule : schedule
-  const hasScheduleUi = Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
+  const hasScheduleUi = scheduleEnabled && Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
   const trackViewMutation = useMutation({
     mutationFn: (nextChannel: MediaItem) => trackLiveTvView(nextChannel),
     onSuccess: () => {
@@ -381,8 +383,19 @@ function LiveTvDetailPage({
                     Watch Live
                   </Button>
                 ) : null}
+                {showAuthorsVodButton ? (
+                  <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+                    <a href="/on-demand/the-authors-channel">
+                      <Film className="h-5 w-5" />
+                      VOD Author Channel
+                    </a>
+                  </Button>
+                ) : null}
                 <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-                  <a href="/livetv">All Channels</a>
+                  <a href="/livetv">
+                    <Radio className="h-5 w-5" />
+                    All Channels
+                  </a>
                 </Button>
                 <LiveTvShareMenu
                   title={title}
@@ -1084,6 +1097,7 @@ function LiveTvChat({
   chat: LiveTvChatState | null
 }) {
   const [message, setMessage] = useState('')
+  const canUseLiveChat = isAuthenticated()
   const queryClient = useQueryClient()
   const sendMessageMutation = useMutation({
     mutationFn: (nextMessage: string) => sendLiveTvChatMessage(channelId, nextMessage),
@@ -1104,7 +1118,7 @@ function LiveTvChat({
           <MessageCircle className="h-4 w-4 text-primary" />
           Live Chat
         </div>
-        {chat?.guest_name ? <span className="text-xs text-white/48">{chat.guest_name}</span> : null}
+        {canUseLiveChat && chat?.guest_name ? <span className="text-xs text-white/48">{chat.guest_name}</span> : null}
       </div>
 
       <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
@@ -1123,26 +1137,35 @@ function LiveTvChat({
         )}
       </div>
 
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const nextMessage = message.trim()
-          if (!nextMessage) return
+      {canUseLiveChat ? (
+        <form
+          className="mt-4 flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const nextMessage = message.trim()
+            if (!nextMessage) return
 
-          sendMessageMutation.mutate(nextMessage)
-        }}
-      >
-        <input
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder="Message live chat"
-          className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/38 px-3 text-sm text-white outline-none placeholder:text-white/40"
-        />
-        <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} aria-label="Send message">
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+            sendMessageMutation.mutate(nextMessage)
+          }}
+        >
+          <input
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Message live chat"
+            className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/38 px-3 text-sm text-white outline-none placeholder:text-white/40"
+          />
+          <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} aria-label="Send message">
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-white">You need to login for live chat.</p>
+          <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+            <a href="/login">Login</a>
+          </Button>
+        </div>
+      )}
     </section>
   )
 }
@@ -1324,6 +1347,34 @@ function requiredPlanLabel(item?: MediaItem | null) {
 
 function relatedChannels(channels: MediaItem[], current?: MediaItem) {
   return channels.filter((channel) => String(channel.id) !== String(current?.id)).slice(0, 12)
+}
+
+function isAuthorsLiveTvChannel(channel?: MediaItem | null) {
+  if (!channel) return false
+
+  const labels = [
+    channel.name,
+    channel.details?.name,
+    channel.slug,
+    channel.details?.slug,
+  ].map((value) => normalizeChannelLabel(value))
+
+  return labels.some((value) => (
+    value === 'author channel'
+    || value === 'authors channel'
+    || value === 'the author channel'
+    || value === 'the authors channel'
+    || value.includes('author channel')
+    || value.includes('authors channel')
+  ))
+}
+
+function normalizeChannelLabel(value?: string | number | null) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/&amp;/g, '&')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }
 
 function currentLiveTvShareUrl() {

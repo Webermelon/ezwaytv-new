@@ -30,7 +30,7 @@ class LiveTvChatController extends Controller
             ]);
         }
 
-        [$identity, $cookieValue] = $this->resolveIdentity($request, true);
+        [$identity, $cookieValue] = $this->resolveIdentity($request, false);
 
         $response = response()->json([
             'enabled' => true,
@@ -45,6 +45,12 @@ class LiveTvChatController extends Controller
 
     public function storeGuest(Request $request, int $channelId)
     {
+        if (! auth()->check()) {
+            return response()->json([
+                'message' => 'Please log in to use live chat.',
+            ], 401);
+        }
+
         $channel = $this->resolveChannel($channelId);
 
         if (! $this->isChatEnabled($channel)) {
@@ -76,6 +82,12 @@ class LiveTvChatController extends Controller
 
     public function storeMessage(Request $request, int $channelId)
     {
+        if (! auth()->check()) {
+            return response()->json([
+                'message' => 'Please log in to use live chat.',
+            ], 401);
+        }
+
         $channel = $this->resolveChannel($channelId);
 
         if (! $this->isChatEnabled($channel)) {
@@ -84,7 +96,7 @@ class LiveTvChatController extends Controller
             ], 403);
         }
 
-        [$identity] = $this->resolveIdentity($request, true);
+        [$identity] = $this->resolveIdentity($request, false);
         $displayName = $identity['display_name'] ?? null;
 
         if (! $displayName) {

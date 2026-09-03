@@ -665,7 +665,7 @@ async function loadHeaderNavData() {
   const [videos, liveTv, ondemand, dashboard, navigationMenu] = await Promise.allSettled([
     loadVideosPage('', 1, 14),
     api.get<ApiEnvelope<LiveTvDashboard>>('/api/v3/livetv-dashboard'),
-    api.get<ApiEnvelope<PaginatedData<MediaItem>>>('/api/v3/ondemand?per_page=14'),
+    api.get<ApiEnvelope<PaginatedData<MediaItem>>>('/api/v3/ondemand?per_page=50'),
     api.get<ApiEnvelope<DashboardData>>('/api/v3/dashboard-detail'),
     api.get<ApiEnvelope<NavigationMenuResponse>>('/api/v3/navigation-menu'),
   ])
@@ -681,9 +681,9 @@ async function loadHeaderNavData() {
   return {
     videos: videos.status === 'fulfilled' ? videos.value.items : [],
     liveTv: liveTv.status === 'fulfilled'
-      ? liveTvChannelsFromDashboard(liveTv.value.data ?? {}).slice(0, 14)
+      ? moveAuthorsChannelSecond(liveTvChannelsFromDashboard(liveTv.value.data ?? {})).slice(0, 14)
       : [],
-    ondemand: ondemand.status === 'fulfilled' ? ondemand.value.data?.data ?? [] : [],
+    ondemand: ondemand.status === 'fulfilled' ? moveAuthorsChannelSecond(ondemand.value.data?.data ?? []).slice(0, 14) : [],
     hasMovies: movieCount > 0,
     hasTvshows: tvshowCount > 0,
     visibleMenuKeys: navigationMenuData?.burger_menu?.map((item) => item.key) ?? null,
@@ -699,6 +699,46 @@ function liveTvChannelsFromDashboard(liveTv: LiveTvDashboard) {
 
     return aOrder - bOrder
   })
+}
+
+function moveAuthorsChannelSecond(items: MediaItem[]) {
+  if (items.length < 2) return items
+
+  const authorsIndex = items.findIndex(isAuthorsChannel)
+  if (authorsIndex <= 0) return items
+
+  const ordered = [...items]
+  const [authorsChannel] = ordered.splice(authorsIndex, 1)
+  ordered.splice(1, 0, authorsChannel)
+
+  return ordered
+}
+
+function isAuthorsChannel(item: MediaItem) {
+  const normalizedValues = [
+    item.name,
+    item.details?.name,
+    item.slug,
+    item.details?.slug,
+    item.username,
+  ].map((value) => normalizeChannelLabel(value))
+
+  return normalizedValues.some((value) => (
+    value === 'author channel'
+    || value === 'authors channel'
+    || value === 'the authors channel'
+    || value === 'the author channel'
+    || value.includes('authors channel')
+    || value.includes('author channel')
+  ))
+}
+
+function normalizeChannelLabel(value?: string | number | null) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/&amp;/g, '&')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }
 
 function isMenuVisible(visibleMenuKeys: string[] | null, key: string) {

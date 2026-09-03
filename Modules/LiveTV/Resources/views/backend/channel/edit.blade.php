@@ -142,106 +142,94 @@
                 <div id="enable_quality_section" class="col-md-12 enable_quality_section">
                     <div id="video-inputs-container-parent">
                         <div class="row gy-3 video-inputs-container mt-1">
-                            <div class="col-md-6 col-lg-4">
-                                {{ html()->label(__('movie.type'), 'type')->class('form-label') }}
-                                <div class="d-flex align-items-center gap-3">
-                                    <label class="form-check form-check-inline form-control cursor-pointer w-auto m-0">
-                                        <div>
-                                            <input class="form-check-input" type="radio" name="type" id="t_url"
-                                                value="t_url" onchange="showStreamtypeSelection('t_url')"
-                                                {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? 'checked' : '' }}>
-                                            <span class="form-check-label">{{ __('messages.lbl_url') }}</span>
+                            <div class="col-12">
+                                <div class="border rounded p-3 mt-2">
+                                    <h6 class="mb-1">Stream Settings</h6>
+                                    <small class="text-muted d-block mb-3">Choose how this Live TV channel is played.</small>
+
+                                    <div class="row gy-3 align-items-start">
+                                        <div class="col-md-6 col-xl-3">
+                                            {{ html()->label(__('movie.type'), 'type')->class('form-label') }}
+                                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                                <label class="form-check form-check-inline form-control cursor-pointer w-auto m-0">
+                                                    <div>
+                                                        <input class="form-check-input" type="radio" name="type" id="t_url"
+                                                            value="t_url" onchange="showStreamtypeSelection('t_url')"
+                                                            {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? 'checked' : '' }}>
+                                                        <span class="form-check-label">{{ __('messages.lbl_url') }}</span>
+                                                    </div>
+                                                </label>
+                                                <label class="form-check form-check-inline form-control cursor-pointer w-auto m-0">
+                                                    <div class="">
+                                                        <input class="form-check-input" type="radio" name="type" id="t_embedded"
+                                                            value="t_embedded" onchange="showStreamtypeSelection('t_embedded')"
+                                                            {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? 'checked' : '' }}>
+                                                        <span class="form-check-label">{{ __('messages.lbl_embedded') }}</span>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                            @error('type')
+                                                <span class="text-primary">{{ $message }}</span>
+                                            @enderror
                                         </div>
-                                    </label>
-                                    <label class="form-check form-check-inline form-control cursor-pointer w-auto m-0">
-                                        <div class="">
-                                            <input class="form-check-input" type="radio" name="type" id="t_embedded"
-                                                value="t_embedded" onchange="showStreamtypeSelection('t_embedded')"
-                                                {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? 'checked' : '' }}>
-                                            <span class="form-check-label">{{ __('messages.lbl_embedded') }}</span>
+                                        <div class="col-md-6 col-xl-3 {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? '' : 'd-none' }}"
+                                            id="type_url">
+                                            {{ html()->label(__('movie.lbl_stream_type') . '<span class="text-danger">*</span>', 'stream_type')->class('form-label') }}
+                                            {{ html()->select(
+                                                    'stream_type',
+                                                    $url->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''),
+                                                    optional($data->TvChannelStreamContentMappings)->stream_type,
+                                                )->class('form-control select2')->id('stream_type')->disabled(false) }}
+                                            @error('stream_type')
+                                                <span class="text-primary">{{ $message }}</span>
+                                            @enderror
+                                            <div class="invalid-feedback" id="name-error">{{ __('messages.stream_type_field_required') }}</div>
                                         </div>
-                                    </label>
-                                </div>
-                                @error('type')
-                                    <span class="text-primary">{{ $message }}</span>
-                                @enderror
-                            </div>
-                            <div class="col-md-6 col-lg-4 {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? '' : 'd-none' }}"
-                                id="type_url">
-                                {{ html()->label(__('movie.lbl_stream_type') . '<span class="text-danger">*</span>', 'stream_type')->class('form-label') }}
-                                {{ html()->select(
-                                        'stream_type',
-                                        $url->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''),
-                                        optional($data->TvChannelStreamContentMappings)->stream_type,
-                                    )->class('form-control select2')->id('stream_type')->disabled(false) }}
-                                @error('stream_type')
-                                    <span class="text-primary">{{ $message }}</span>
-                                @enderror
-                                <div class="invalid-feedback" id="name-error">{{ __('messages.stream_type_field_required') }}</div>
-                            </div>
-                            <div class="col-md-6 col-lg-4 {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? '' : 'd-none' }}"
-                                id="type_embedded">
-                                {{ html()->label(__('movie.lbl_stream_type') . '<span class="text-danger">*</span>', 'stream_type')->class('form-label') }}
-                                {{ html()->select(
-                                        'stream_type',
-                                        $embedded->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''),
-                                        optional($data->TvChannelStreamContentMappings)->stream_type,
-                                    )->class('form-control select2')->id('embedded_stream_type')->disabled(true) }}
-                                @error('stream_type')
-                                    <span class="text-primary">{{ $message }}</span>
-                                @enderror
-                                <div class="invalid-feedback" id="name-error">{{ __('messages.stream_type_field_required') }}</div>
-                            </div>
-                            <div class="col-md-6 col-lg-4 {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? '' : 'd-none' }}"
-                                id="server_url_section">
-                                {{ html()->label(__('movie.server_url') . '<span class="text-danger">*</span>', 'server_url')->class('form-label') }}
-                                {{ html()->text('server_url', optional($data->TvChannelStreamContentMappings)->server_url)->placeholder(__('movie.server_url'))->class('form-control')->id('server_url') }}
-                                <small class="text-muted d-block mt-2">Schedule API Key (optional)</small>
-                                {{ html()->text('api_key', optional($data->TvChannelStreamContentMappings)->api_key ?? '')->placeholder('API Key')->class('form-control mt-1')->id('api_key') }}
-                                @error('server_url')
-                                    <span class="text-primary">{{ $message }}</span>
-                                @enderror
-                                <div class="invalid-feedback" id="name-error">{{ __('messages.server_url_field_required') }}</div>
-                            </div>
-                            <div class="col-md-6 col-lg-4 {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? '' : 'd-none' }}"
-                                id="embedded_textarea">
-                                {{ html()->label(__('movie.embedded') . '<span class="text-danger">*</span>', 'embedded')->class('form-label') }}
-                                {{ html()->textarea('embedded', optional($data->TvChannelStreamContentMappings)->embedded)->class('form-control')->id('embedded')->placeholder(__('movie.embedded')) }}
-                                @error('embedded')
-                                    <span class="text-primary">{{ $message }}</span>
-                                @enderror
-                                <div class="invalid-feedback" id="name-error">{{ __('messages.embedded_field_required') }}</div>
-                            </div>
-                            <div class="col-md-6 col-lg-4">
-                                {{ html()->label(__('plan.lbl_status'), 'status')->class('form-label') }}
-                                <div class="d-flex justify-content-between align-items-center form-control">
-                                    {{ html()->label(__('messages.active'), 'status')->class('form-label mb-0 text-body') }}
-                                    <div class="form-check form-switch">
-                                        {{ html()->hidden('status', 0) }}
-                                        {{ html()->checkbox('status', $data->status)->class('form-check-input')->id('status') }}
+                                        <div class="col-md-6 col-xl-3 {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? '' : 'd-none' }}"
+                                            id="type_embedded">
+                                            {{ html()->label(__('movie.lbl_stream_type') . '<span class="text-danger">*</span>', 'stream_type')->class('form-label') }}
+                                            {{ html()->select(
+                                                    'stream_type',
+                                                    $embedded->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''),
+                                                    optional($data->TvChannelStreamContentMappings)->stream_type,
+                                                )->class('form-control select2')->id('embedded_stream_type')->disabled(true) }}
+                                            @error('stream_type')
+                                                <span class="text-primary">{{ $message }}</span>
+                                            @enderror
+                                            <div class="invalid-feedback" id="name-error">{{ __('messages.stream_type_field_required') }}</div>
+                                        </div>
+                                        <div class="col-md-12 col-xl-6 {{ optional($data->TvChannelStreamContentMappings)->type == 't_url' ? '' : 'd-none' }}"
+                                            id="server_url_section">
+                                            {{ html()->label(__('movie.server_url') . '<span class="text-danger">*</span>', 'server_url')->class('form-label') }}
+                                            {{ html()->text('server_url', optional($data->TvChannelStreamContentMappings)->server_url)->placeholder(__('movie.server_url'))->class('form-control')->id('server_url') }}
+                                            <div class="mt-3">
+                                                {{ html()->label('Schedule API Key', 'api_key')->class('form-label') }}
+                                                {{ html()->text('api_key', optional($data->TvChannelStreamContentMappings)->api_key ?? '')->placeholder('Optional schedule API key or URL')->class('form-control')->id('api_key') }}
+                                                <small class="text-muted d-block mt-1">Leave blank when this channel should not load external schedules.</small>
+                                            </div>
+                                            @error('server_url')
+                                                <span class="text-primary">{{ $message }}</span>
+                                            @enderror
+                                            <div class="invalid-feedback" id="name-error">{{ __('messages.server_url_field_required') }}</div>
+                                        </div>
+                                        <div class="col-md-12 col-xl-6 {{ optional($data->TvChannelStreamContentMappings)->type == 't_embedded' ? '' : 'd-none' }}"
+                                            id="embedded_textarea">
+                                            {{ html()->label(__('movie.embedded') . '<span class="text-danger">*</span>', 'embedded')->class('form-label') }}
+                                            {{ html()->textarea('embedded', optional($data->TvChannelStreamContentMappings)->embedded)->class('form-control')->id('embedded')->placeholder(__('movie.embedded'))->rows(5) }}
+                                            @error('embedded')
+                                                <span class="text-primary">{{ $message }}</span>
+                                            @enderror
+                                            <div class="invalid-feedback" id="name-error">{{ __('messages.embedded_field_required') }}</div>
+                                        </div>
                                     </div>
                                 </div>
-                                @error('status')
-                                    <span class="text-danger">{{ $message }}</span>
-                                @enderror
-                            </div>
-                            <div class="col-md-6 col-lg-4">
-                                {{ html()->label('Live Chat', 'enable_live_chat')->class('form-label') }}
-                                <div class="d-flex justify-content-between align-items-center form-control">
-                                    {{ html()->label('Enable live chat beside player', 'enable_live_chat')->class('form-label mb-0 text-body') }}
-                                    <div class="form-check form-switch">
-                                        {{ html()->hidden('enable_live_chat', 0) }}
-                                        {{ html()->checkbox('enable_live_chat', old('enable_live_chat', $data->enable_live_chat), 1)->class('form-check-input')->id('enable_live_chat') }}
-                                    </div>
-                                </div>
-                                <small class="text-muted d-block mt-1">Messages stay attached to this channel even if chat is later disabled.</small>
                             </div>
                             <div class="col-12">
                                 <div class="border rounded p-3 mt-2">
                                     <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
                                         <div>
-                                            <h6 class="mb-1">Player View Settings</h6>
-                                            <small class="text-muted">Controls only this Live TV channel player page.</small>
+                                            <h6 class="mb-1">Channel Controls</h6>
+                                            <small class="text-muted">Manage player page display, chat, and schedule visibility.</small>
                                         </div>
                                         <a href="{{ url('/livetv/' . ($data->slug ?? $data->id)) }}" target="_blank" class="btn btn-sm btn-secondary">
                                             Preview Player
@@ -249,7 +237,31 @@
                                     </div>
 
                                     <div class="row gy-3">
-                                        <div class="col-md-12">
+                                        <div class="col-md-6 col-xl-3">
+                                            {{ html()->label(__('plan.lbl_status'), 'status')->class('form-label') }}
+                                            <div class="d-flex justify-content-between align-items-center form-control">
+                                                {{ html()->label(__('messages.active'), 'status')->class('form-label mb-0 text-body') }}
+                                                <div class="form-check form-switch">
+                                                    {{ html()->hidden('status', 0) }}
+                                                    {{ html()->checkbox('status', $data->status)->class('form-check-input')->id('status') }}
+                                                </div>
+                                            </div>
+                                            @error('status')
+                                                <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6 col-xl-3">
+                                            {{ html()->label('Live Chat', 'enable_live_chat')->class('form-label') }}
+                                            <div class="d-flex justify-content-between align-items-center form-control">
+                                                {{ html()->label('Enable live chat', 'enable_live_chat')->class('form-label mb-0 text-body') }}
+                                                <div class="form-check form-switch">
+                                                    {{ html()->hidden('enable_live_chat', 0) }}
+                                                    {{ html()->checkbox('enable_live_chat', old('enable_live_chat', $data->enable_live_chat), 1)->class('form-check-input')->id('enable_live_chat') }}
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Messages stay attached if chat is later disabled.</small>
+                                        </div>
+                                        <div class="col-md-6 col-xl-3">
                                             {{ html()->label('Show Views on Player Page', 'show_player_views')->class('form-label') }}
                                             <div class="d-flex justify-content-between align-items-center form-control">
                                                 {{ html()->label('Show view count', 'show_player_views')->class('form-label mb-0 text-body') }}
@@ -259,6 +271,17 @@
                                                 </div>
                                             </div>
                                             <small class="text-muted d-block mt-1">Hides or shows views for this channel only.</small>
+                                        </div>
+                                        <div class="col-md-6 col-xl-3">
+                                            {{ html()->label('Schedule Display', 'schedule_enabled')->class('form-label') }}
+                                            <div class="d-flex justify-content-between align-items-center form-control">
+                                                {{ html()->label('Show schedule', 'schedule_enabled')->class('form-label mb-0 text-body') }}
+                                                <div class="form-check form-switch">
+                                                    {{ html()->hidden('schedule_enabled', 0) }}
+                                                    {{ html()->checkbox('schedule_enabled', old('schedule_enabled', ($playerViewSettings['schedule_enabled'] ?? '1') === '1'), 1)->class('form-check-input')->id('schedule_enabled') }}
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">Hides API and saved schedules for this channel.</small>
                                         </div>
                                     </div>
                                 </div>

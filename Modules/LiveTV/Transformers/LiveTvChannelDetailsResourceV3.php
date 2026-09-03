@@ -9,6 +9,7 @@ use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Transformers\LiveTvChannelResource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Modules\Statistics\Models\StatSetting;
 
 class LiveTvChannelDetailsResourceV3 extends JsonResource
 {
@@ -17,14 +18,17 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
      */
     public function toArray($request): array
     {
-        $schedulesUrl = $this->resolveSchedulesUrl(optional($this->TvChannelStreamContentMappings)->api_key ?? null);
+        $scheduleEnabled = StatSetting::get("schedule_enabled:livetv:{$this->id}", '1') === '1';
+        $schedulesUrl = $scheduleEnabled
+            ? $this->resolveSchedulesUrl(optional($this->TvChannelStreamContentMappings)->api_key ?? null)
+            : null;
         $nowPlaying   = null;
         $nextPlaying  = null;
         $fullSchedule = [];
 
-        if ($schedulesUrl) {
+        if ($scheduleEnabled && $schedulesUrl) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveScheduleData($schedulesUrl);
-        } elseif ($this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
+        } elseif ($scheduleEnabled && $this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveStoredScheduleData($this->schedules);
         }
 
@@ -61,6 +65,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             ],
             'video_qualities'  => $this->video_qualities,
             'schedules_url'    => $schedulesUrl,
+            'schedule_enabled'  => $scheduleEnabled,
             'now_playing'      => $nowPlaying,
             'next_playing'     => $nextPlaying,
             'full_schedule'    => $fullSchedule,

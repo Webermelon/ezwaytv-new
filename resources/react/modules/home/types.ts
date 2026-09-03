@@ -62,6 +62,7 @@ export type MediaItem = {
   now_playing?: ProgramInfo | null
   next_playing?: ProgramInfo | null
   schedules_url?: string | null
+  schedule_enabled?: boolean | number | null
   full_schedule?: ScheduleProgram[]
   suggested_content?: MediaItem[]
   video_qualities?: Array<{

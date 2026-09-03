@@ -274,6 +274,7 @@ class LiveTvChannelController extends Controller
         $mediaUrls = getMediaUrls();
         $playerViewSettings = [
             'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '0'),
+            'schedule_enabled' => StatSetting::get("schedule_enabled:livetv:{$data->id}", '1'),
         ];
 
         return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings'));
@@ -323,17 +324,23 @@ class LiveTvChannelController extends Controller
         $liveTvChannel->update($data);
 
 
-        $mappingstream = TvChannelStreamContentMapping::where('tv_channel_id', $id)->first();
-
-        if (!empty($mappingstream) && !empty($data['stream_type'])) {
-            $mappingstream->update([
+        if (!empty($data['stream_type'])) {
+            $streamMappingData = [
                 'type' => $data['type'],
                 'stream_type' => $data['stream_type'],
                 'embedded' => $data['embedded'],
                 'server_url' => $data['server_url'],
                 'server_url1' => $data['server_url1'] ?? null,
-                'api_key' => $data['api_key'] ?? null,
-            ]);
+                'api_key' => filled($request->input('api_key')) ? trim($request->input('api_key')) : null,
+            ];
+
+            $updatedMappings = TvChannelStreamContentMapping::where('tv_channel_id', $id)->update($streamMappingData);
+
+            if ($updatedMappings === 0) {
+                TvChannelStreamContentMapping::create(array_merge($streamMappingData, [
+                    'tv_channel_id' => $id,
+                ]));
+            }
         }
 
         $this->savePlayerViewSettings($request, (int) $id);
@@ -355,6 +362,7 @@ class LiveTvChannelController extends Controller
     private function savePlayerViewSettings(Request $request, int $channelId): void
     {
         StatSetting::set("show_player_views:livetv:{$channelId}", $request->boolean('show_player_views') ? '1' : '0');
+        StatSetting::set("schedule_enabled:livetv:{$channelId}", $request->boolean('schedule_enabled') ? '1' : '0');
     }
 
     /**
