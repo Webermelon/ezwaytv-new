@@ -60,6 +60,7 @@ export function LiveTvPage() {
     queryKey: ['livetv-detail', detailLookupId],
     queryFn: () => loadLiveTvDetail(detailLookupId),
     enabled: Boolean(channelKey),
+    retry: false,
     staleTime: 30_000,
   })
   const detail = detailQuery.data ?? null
@@ -81,6 +82,10 @@ export function LiveTvPage() {
   }, [activeCategory, allChannels, categories, query])
 
   if (channelKey) {
+    if (!dashboardQuery.isLoading && !detailQuery.isLoading && !detail && !matchedChannel) {
+      return <LiveTvNotFound fallbackKey={channelKey} />
+    }
+
     return (
       <LiveTvDetailPage
         channel={detail ?? matchedChannel}
@@ -460,6 +465,35 @@ function LiveTvDetailPage({
         </section>
       ) : null}
       <AdBannerSlider placement="livetv" />
+    </main>
+  )
+}
+
+function LiveTvNotFound({ fallbackKey }: { fallbackKey: string }) {
+  return (
+    <main className="min-h-screen bg-[#050505] text-white">
+      <AppHeader active="livetv" />
+      <section className="border-b border-white/10 bg-black">
+        <PlayerHeader fallbackHref="/livetv" />
+      </section>
+      <section className="flex min-h-[58vh] items-center justify-center px-4 py-16">
+        <div className="max-w-md text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-white/10 bg-white/[0.06] text-white/68">
+            <Radio className="h-6 w-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-black text-white">Live channel not found</h1>
+          <p className="mt-3 text-sm leading-6 text-white/56">
+            We could not load this live channel. It may be unavailable or the app opened an old link.
+          </p>
+          {fallbackKey ? <p className="mt-2 text-xs text-white/34">Channel key: {fallbackKey}</p> : null}
+          <Button asChild className="mt-6 bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+            <a href="/livetv">
+              <Radio className="h-5 w-5" />
+              All Channels
+            </a>
+          </Button>
+        </div>
+      </section>
     </main>
   )
 }
