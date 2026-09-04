@@ -387,7 +387,7 @@ function LiveTvDetailPage({
                   <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
                     <a href="/on-demand/the-authors-channel">
                       <Film className="h-5 w-5" />
-                      VOD Author Channel
+                      VOD Authors Channel
                     </a>
                   </Button>
                 ) : null}
