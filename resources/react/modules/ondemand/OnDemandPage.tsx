@@ -253,7 +253,7 @@ function ProfilePanel({
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
-      <div className="relative h-[38vw] max-h-48 min-h-36 overflow-hidden bg-black sm:h-[30vw] sm:max-h-52 lg:h-[24vw] lg:max-h-56">
+      <div className="relative h-[44vw] max-h-60 min-h-44 overflow-hidden bg-black sm:h-[34vw] sm:max-h-64 lg:h-[28vw] lg:max-h-72">
         {profile.cover_image_url ? (
           <img
             src={profile.cover_image_url}
@@ -319,9 +319,7 @@ function ProfilePanel({
           </div>
         </div>
 
-        {profile.description ? (
-          <p className="mt-5 line-clamp-3 max-w-4xl text-sm leading-6 text-white/64">{stripHtml(profile.description)}</p>
-        ) : null}
+        <ChannelAbout description={profile.description} />
 
         {channelLocked ? <OnDemandPremiumPanel item={profile} /> : null}
 
@@ -623,6 +621,38 @@ function PlaylistCardsRail({
         ))}
       </div>
     </section>
+  )
+}
+
+function ChannelAbout({ description }: { description?: string | null }) {
+  const [expanded, setExpanded] = useState(false)
+  const text = stripHtml(description ?? '')
+  const canToggle = text.length > 150
+
+  useEffect(() => {
+    setExpanded(false)
+  }, [text])
+
+  if (!text) {
+    return null
+  }
+
+  return (
+    <div className="mt-5 max-w-4xl">
+      <p className={['text-sm leading-6 text-white/64', expanded ? '' : 'line-clamp-3'].join(' ')}>
+        {text}
+      </p>
+      {canToggle ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-2 text-sm font-bold text-primary transition hover:text-[#f2d16f]"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      ) : null}
+    </div>
   )
 }
 
