@@ -30,6 +30,7 @@ type PlaylistSortOption = 'default' | 'name-asc' | 'name-desc' | 'videos-desc' |
 export function OnDemandPage() {
   const path = useSpaPath()
   const routeUsername = getUsernameFromPath(path)
+  const routePlaylistId = getPlaylistIdFromPath(path)
   const [query, setQuery] = useState('')
   const trackedProfileViewRef = useRef<string | number | null>(null)
   const isProfileRoute = Boolean(routeUsername)
@@ -103,7 +104,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} manualPlaylists={profileState.playlists} />
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} manualPlaylists={profileState.playlists} routePlaylistId={routePlaylistId} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -213,16 +214,38 @@ function ProfilePanel({
   profile,
   videos,
   manualPlaylists,
+  routePlaylistId,
 }: {
   loading: boolean
   profile: MediaItem | null
   videos: MediaItem[]
   manualPlaylists: NonNullable<MediaItem['playlists']>
+  routePlaylistId?: string | null
 }) {
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const [activePlaylistId, setActivePlaylistId] = useState('all')
+  const appliedRoutePlaylistRef = useRef<string | null>(null)
   const playlists = useMemo(() => buildChannelPlaylists(videos, manualPlaylists), [videos, manualPlaylists])
   const activePlaylist = playlists.find((playlist) => playlist.id === activePlaylistId) ?? playlists[0]
+
+  useEffect(() => {
+    const requestedPlaylistId = routePlaylistId ? `playlist:${routePlaylistId}` : null
+
+    if (!requestedPlaylistId) {
+      appliedRoutePlaylistRef.current = null
+      return
+    }
+
+    if (appliedRoutePlaylistRef.current === requestedPlaylistId) {
+      return
+    }
+
+    if (requestedPlaylistId && playlists.some((playlist) => playlist.id === requestedPlaylistId)) {
+      setActivePlaylistId(requestedPlaylistId)
+      appliedRoutePlaylistRef.current = requestedPlaylistId
+      return
+    }
+  }, [playlists, routePlaylistId])
 
   useEffect(() => {
     if (!playlists.some((playlist) => playlist.id === activePlaylistId)) {
@@ -1274,6 +1297,13 @@ function getUsernameFromPath(path: string) {
   const pathname = path.split(/[?#]/)[0] || '/'
   const match = pathname.match(/^\/(?:on-demand|react-ondemand|spa\/ondemand)\/([^/]+)/)
   return match?.[1] ? decodeURIComponent(match[1]) : ''
+}
+
+function getPlaylistIdFromPath(path: string) {
+  const params = new URLSearchParams(path.split('?')[1] ?? '')
+  const playlistId = params.get('playlist')
+
+  return playlistId ? playlistId.trim() : null
 }
 
 function stripHtml(value: string) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { ListVideo, Search, SlidersHorizontal } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
@@ -12,6 +12,7 @@ import { loadSearchResults, type SearchKind, type SearchResult } from './searchA
 const filters: Array<{ label: string; value: SearchKind | 'all' }> = [
   { label: 'All', value: 'all' },
   { label: 'Videos', value: 'video' },
+  { label: 'Playlists', value: 'playlist' },
   { label: 'Live TV', value: 'livetv' },
   { label: 'On Demand', value: 'ondemand' },
 ]
@@ -37,7 +38,11 @@ export function SearchPage() {
   const results = searchQuery.data ?? []
 
   const filteredResults = useMemo(
-    () => activeFilter === 'all' ? results : results.filter((item) => item.searchKind === activeFilter),
+    () => activeFilter === 'all'
+      ? results
+      : results.filter((item) => activeFilter === 'ondemand'
+        ? item.searchKind === 'ondemand' || item.searchKind === 'playlist'
+        : item.searchKind === activeFilter),
     [activeFilter, results],
   )
 
@@ -93,7 +98,7 @@ export function SearchPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search videos, live channels, and on demand"
+                placeholder="Search videos, playlists, live channels, and on demand"
                 className="h-12 min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/38"
                 autoFocus
               />
@@ -156,6 +161,10 @@ export function SearchPage() {
 }
 
 function SearchCard({ item }: { item: SearchResult }) {
+  if (item.searchKind === 'playlist') {
+    return <PlaylistSearchCard item={item} />
+  }
+
   const image = item.poster_tv_image ?? item.poster_image ?? item.cover_image_url ?? item.avatar_image_url ?? item.profile_image ?? item.details?.thumbnail_image
   const title = item.details?.name ?? item.name
 
@@ -175,6 +184,35 @@ function SearchCard({ item }: { item: SearchResult }) {
   )
 }
 
+function PlaylistSearchCard({ item }: { item: SearchResult }) {
+  const image = item.thumbnail_url ?? item.poster_image ?? item.cover_image_url ?? item.avatar_image_url ?? item.profile_image
+  const videoCount = item.video_count ?? 0
+
+  return (
+    <a href={item.href} className="group block min-w-0 text-left">
+      <div className="relative pt-2">
+        <div className="absolute left-3 right-3 top-0 h-full rounded-md bg-white/14" />
+        <div className="absolute left-1.5 right-1.5 top-1 h-full rounded-md bg-white/10" />
+        <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-xl transition group-hover:scale-[1.025] group-hover:border-primary/60">
+          <MediaThumbnail src={image} alt={item.name} className="aspect-video" imageClassName="object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-transparent to-transparent" />
+          <Badge className="absolute left-3 top-3 rounded-sm bg-black/70 text-white">
+            Playlist
+          </Badge>
+          <span className="absolute bottom-3 right-3 z-20 inline-flex h-7 items-center gap-1.5 rounded-sm bg-black/78 px-2.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+            <ListVideo className="h-3.5 w-3.5" />
+            {videoCount} {videoCount === 1 ? 'video' : 'videos'}
+          </span>
+        </div>
+      </div>
+      <h3 className="mt-3 line-clamp-2 text-sm font-black leading-snug text-white">{item.name}</h3>
+      {item.description ? <p className="mt-1 line-clamp-1 text-xs text-white/52">{stripHtml(item.description)}</p> : null}
+      <p className="mt-1 text-xs font-semibold text-white/50">{item.channel_name ?? 'On Demand Channel'}</p>
+      <span className="mt-1 inline-flex text-xs font-bold text-white/56 transition group-hover:text-primary">View full playlist</span>
+    </a>
+  )
+}
+
 function SearchSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
@@ -188,9 +226,14 @@ function SearchSkeleton() {
 function kindLabel(kind: SearchKind) {
   if (kind === 'livetv') return 'Live TV'
   if (kind === 'ondemand') return 'On Demand'
+  if (kind === 'playlist') return 'Playlist'
   return 'Video'
 }
 
 function normalizeFilter(value: string | null): SearchKind | 'all' {
-  return value === 'video' || value === 'livetv' || value === 'ondemand' ? value : 'all'
+  return value === 'video' || value === 'livetv' || value === 'ondemand' || value === 'playlist' ? value : 'all'
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }

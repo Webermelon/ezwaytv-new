@@ -27,6 +27,7 @@ use Modules\Episode\Models\Episode;
 use Modules\Video\Models\Video;
 use Modules\LiveTV\Models\LiveTvChannel;
 use App\Models\AuthorChannel;
+use App\Models\AuthorChannelPlaylist;
 use App\Models\UserMultiProfile;
 use Modules\User\Transformers\UserMultiProfileResource;
 use Modules\Banner\Transformers\Backend\SliderResourceV3;
@@ -671,7 +672,7 @@ class FrontendController extends Controller
 
 
         if ($types->isEmpty() && !empty($searchTerm)) {
-            $types = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'actor', 'director', 'livetv', 'ondemand']);
+            $types = collect(['movie', 'tvshow', 'video', 'season', 'episode', 'actor', 'director', 'livetv', 'ondemand', 'playlist']);
         }
 
         $movieData = collect([]);
@@ -902,6 +903,66 @@ class FrontendController extends Controller
             });
         }
 
+        $playlistData = collect([]);
+        if ($types->contains('playlist') || $types->contains('ondemand')) {
+            $playlistList = AuthorChannelPlaylist::query()
+                ->where('is_active', 1)
+                ->whereNull('deleted_at')
+                ->whereHas('channel', function ($query) {
+                    $query->where('is_active', 1)->whereNull('deleted_at');
+                })
+                ->whereHas('videos', function ($query) {
+                    $query->whereNull('videos.deleted_at')->where('videos.status', 1);
+                })
+                ->with([
+                    'channel:id,name,username,avatar,banner,is_active',
+                    'videos' => function ($query) {
+                        $query
+                            ->whereNull('videos.deleted_at')
+                            ->where('videos.status', 1)
+                            ->select('videos.id', 'videos.name', 'videos.slug', 'videos.thumbnail_url', 'videos.poster_url', 'videos.duration');
+                    },
+                ]);
+
+            if (!empty($searchTerm)) {
+                $normalizedTerm = str_replace(' ', '', $searchTerm);
+                $playlistList->where(function ($query) use ($normalizedTerm) {
+                    $query->whereRaw("REPLACE(name, ' ', '') LIKE ?", ["%{$normalizedTerm}%"])
+                        ->orWhereRaw("REPLACE(description, ' ', '') LIKE ?", ["%{$normalizedTerm}%"])
+                        ->orWhereHas('channel', function ($channelQuery) use ($normalizedTerm) {
+                            $channelQuery->whereRaw("REPLACE(name, ' ', '') LIKE ?", ["%{$normalizedTerm}%"])
+                                ->orWhereRaw("REPLACE(username, ' ', '') LIKE ?", ["%{$normalizedTerm}%"]);
+                        })
+                        ->orWhereHas('videos', function ($videoQuery) use ($normalizedTerm) {
+                            $videoQuery->whereRaw("REPLACE(name, ' ', '') LIKE ?", ["%{$normalizedTerm}%"])
+                                ->whereNull('videos.deleted_at')
+                                ->where('videos.status', 1);
+                        });
+                });
+            }
+
+            $playlistData = $playlistList->orderBy('updated_at', 'desc')->get()->map(function ($playlist) {
+                $firstVideo = $playlist->videos->first();
+                $thumbnail = $playlist->thumbnail ?: ($firstVideo?->thumbnail_url ?: $firstVideo?->poster_url);
+                $thumbnail = $thumbnail ?: ($playlist->channel?->banner ?: $playlist->channel?->avatar);
+                $channelUrl = $playlist->channel?->username ? url('/on-demand/' . $playlist->channel->username) : url('/on-demand');
+
+                return [
+                    'id' => $playlist->id,
+                    'name' => $playlist->name,
+                    'description' => $playlist->description,
+                    'type' => 'playlist',
+                    'thumbnail_url' => $thumbnail ? setBaseUrlWithFileNameV2($thumbnail) : null,
+                    'video_count' => $playlist->videos->count(),
+                    'channel_id' => $playlist->author_channel_id,
+                    'channel_name' => $playlist->channel?->name,
+                    'channel_username' => $playlist->channel?->username,
+                    'profile_url' => $channelUrl,
+                    'href' => $channelUrl . '?playlist=' . $playlist->id,
+                ];
+            });
+        }
+
 
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
@@ -1052,7 +1113,7 @@ class FrontendController extends Controller
                 $html .= '</div>';
             }
 
-            if (empty($movieData) && empty($tvshowData) && empty($videoData) && empty($seasonData) && empty($episodeData) && empty($actorData) && empty($directorData) && empty($liveTVData)) {
+            if (empty($movieData) && empty($tvshowData) && empty($videoData) && empty($seasonData) && empty($episodeData) && empty($actorData) && empty($directorData) && empty($liveTVData) && $playlistData->isEmpty()) {
                 $html .= '';
             }
 
@@ -1062,6 +1123,7 @@ class FrontendController extends Controller
                 'html' => $html,
                 'message' => __('movie.search_list'),
                 'ondemandList' => $ondemandData,
+                'playlistList' => $playlistData,
             ], 200);
         }
 
@@ -1072,6 +1134,7 @@ class FrontendController extends Controller
             'videoList' => $videoData,
             'seasonList' => $seasonData,
             'ondemandList' => $ondemandData,
+            'playlistList' => $playlistData,
             'message' => __('movie.search_list'),
         ], 200);
     }

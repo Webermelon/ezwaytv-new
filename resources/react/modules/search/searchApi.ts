@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
 import type { MediaItem } from '@/modules/home/types'
 
-export type SearchKind = 'video' | 'livetv' | 'ondemand'
+export type SearchKind = 'video' | 'livetv' | 'ondemand' | 'playlist'
 
 export type SearchResult = MediaItem & {
   searchKind: SearchKind
@@ -17,6 +17,17 @@ type SearchResponse = {
     username?: string
     avatar_url?: string | null
     profile_url?: string | null
+  }>
+  playlistList?: Array<{
+    id?: number | string
+    name?: string
+    description?: string | null
+    thumbnail_url?: string | null
+    video_count?: number | null
+    channel_name?: string | null
+    channel_username?: string | null
+    profile_url?: string | null
+    href?: string | null
   }>
 }
 
@@ -49,8 +60,22 @@ function normalizeSearchResponse(response: SearchResponse) {
     searchKind: 'ondemand',
     href: item.username ? `/on-demand/${item.username}` : '/on-demand',
   }))
+  const playlistResults = (response.playlistList ?? []).map((item): SearchResult => ({
+    id: item.id ?? `${item.channel_username ?? 'playlist'}-${item.name ?? 'result'}`,
+    name: item.name ?? 'Playlist',
+    description: item.description,
+    thumbnail_url: item.thumbnail_url ?? undefined,
+    poster_image: item.thumbnail_url ?? undefined,
+    video_count: item.video_count ?? undefined,
+    channel_name: item.channel_name,
+    channel_username: item.channel_username,
+    profile_url: item.profile_url ?? undefined,
+    type: 'playlist',
+    searchKind: 'playlist',
+    href: item.href ? relativeUrl(item.href) : playlistHref(item.channel_username, item.id),
+  }))
 
-  return uniqueResults([...htmlResults, ...ondemandResults])
+  return uniqueResults([...htmlResults, ...playlistResults, ...ondemandResults])
 }
 
 function parseHtmlResults(html: string) {
@@ -107,6 +132,29 @@ function decodeHtml(value: string) {
   const textarea = document.createElement('textarea')
   textarea.innerHTML = value
   return textarea.value
+}
+
+function playlistHref(username?: string | null, playlistId?: string | number) {
+  if (!username) return '/on-demand'
+
+  const params = new URLSearchParams()
+  if (playlistId) {
+    params.set('playlist', String(playlistId))
+  }
+
+  const query = params.toString()
+
+  return `/on-demand/${encodeURIComponent(username)}${query ? `?${query}` : ''}`
+}
+
+function relativeUrl(value: string) {
+  try {
+    const url = new URL(value, window.location.origin)
+
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return value
+  }
 }
 
 function uniqueResults(items: SearchResult[]) {
