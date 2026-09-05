@@ -561,7 +561,6 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
     <div ref={menuRef} className="relative z-[90] max-sm:static">
       <Button
         type="button"
-        size="lg"
         variant="secondary"
         aria-haspopup="menu"
         aria-expanded={open}
