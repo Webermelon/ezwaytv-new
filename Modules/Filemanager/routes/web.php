@@ -53,6 +53,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
         Route::get('browse', [FilemanagersController::class, 'browse'])->name('browse');
         Route::get('get-folder-contents', [FilemanagersController::class, 'getFolderContents'])->name('get-folder-contents');
         Route::get('get-media-url', [FilemanagersController::class, 'getMediaUrl'])->name('get-media-url');
+        Route::get('file-status', [FilemanagersController::class, 'getFileStatus'])->name('file-status');
         Route::get('preview', [FilemanagersController::class, 'preview'])->name('preview');
         Route::post('destroy', [FilemanagersController::class, 'destroy'])->name('destroy.post');
 
@@ -61,4 +62,3 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     });
     Route::resource("media-library", FilemanagersController::class)->except(['destroy']);
 });
-

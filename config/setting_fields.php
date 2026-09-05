@@ -1893,6 +1893,16 @@ return [
             'datatype' => 'storageconfig',
         ],
         [
+            'type' => 'checkbox',
+            'data' => 'storage_settings',
+            'name' => 'media_compressor_api_enabled',
+            'label' => 'Enable Media Compressor API',
+            'rules' => 'boolean',
+            'class' => '',
+            'value' => filter_var(env('MEDIA_COMPRESSOR_API_ENABLED', false), FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            'datatype' => 'storageconfig',
+        ],
+        [
             'type' => 'text', // input field type
             'data' => 'storage_settings', // data type, string
             'name' => 'do_spaces_key', // unique name for the field

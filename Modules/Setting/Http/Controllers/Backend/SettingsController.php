@@ -258,6 +258,7 @@ class SettingsController extends Controller
             'aws_region',
             'aws_bucket',
             'aws_path_style',
+            'media_compressor_api_enabled',
             'media_compress_enable',
             'media_compress_image_quality',
             'media_compress_video_crf',
@@ -529,6 +530,10 @@ class SettingsController extends Controller
             }
         }
         
+        if ($request->input('setting_tab') === 'storage' && ! $request->has('media_compressor_api_enabled')) {
+            $request->merge(['media_compressor_api_enabled' => '0']);
+        }
+
         $rules = Setting::getSelectedValidationRules(array_keys($request->all()));
      
         // Override validation rules for media fields that come from media modal (URLs, not file uploads)
@@ -727,6 +732,8 @@ class SettingsController extends Controller
 
         if ($tab === 'storage') {
             $this->syncStorageEnv($request);
+            Cache::forget('settings.all');
+            Cache::forget('settings:all_by_name');
         }
 
         $tabNames = [
@@ -842,6 +849,12 @@ class SettingsController extends Controller
         }
 
         $this->setEnvValue('ACTIVE_STORAGE', $activeStorage);
+        $compressorApiEnabled = (int) $request->input('media_compressor_api_enabled', 0) === 1;
+        $this->setEnvValue(
+            'MEDIA_COMPRESSOR_API_ENABLED',
+            $compressorApiEnabled ? 'true' : 'false'
+        );
+        $this->syncMediaCompressorApiSetting($compressorApiEnabled);
 
         if ((int) $request->input('s3', 0) === 1) {
             $this->setEnvValue('AWS_ACCESS_KEY_ID', (string) $request->input('aws_access_key', ''));
@@ -879,6 +892,27 @@ class SettingsController extends Controller
             $this->setEnvValue('DO_SPACES_ENDPOINT', $doEndpoint);
             $this->setEnvValue('DO_SPACES_URL', $doUrl);
             $this->setEnvValue('DO_SPACES_USE_PATH_STYLE_ENDPOINT', (string) $request->input('do_spaces_path_style', 'false'));
+        }
+    }
+
+    private function syncMediaCompressorApiSetting(bool $enabled): void
+    {
+        $payload = [
+            'val' => $enabled ? '1' : '0',
+            'type' => Setting::getDataType('media_compressor_api_enabled'),
+            'datatype' => Setting::getType('media_compressor_api_enabled'),
+            'updated_at' => now(),
+        ];
+
+        $updated = DB::table('settings')
+            ->where('name', 'media_compressor_api_enabled')
+            ->update($payload);
+
+        if ($updated === 0) {
+            DB::table('settings')->insert($payload + [
+                'name' => 'media_compressor_api_enabled',
+                'created_at' => now(),
+            ]);
         }
     }
 

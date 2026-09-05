@@ -8,6 +8,109 @@ const exampleModal = document.getElementById('exampleModal');
 const mediaContainer = document.getElementById('media-container');
 const mediaLibraryContent = document.getElementById('mediaLibraryContent');
 
+function formatUploadBytes(bytes) {
+  if (!bytes) return '0 Bytes';
+  const units = ['Bytes', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function setUploadTracker(fileState, percent, label, tone) {
+  if (!fileState) return;
+
+  const rounded = Math.max(0, Math.min(100, Math.round(percent || 0)));
+  if (fileState.progressWrap) {
+    fileState.progressWrap.style.visibility = 'visible';
+  }
+  if (fileState.progressBar) {
+    fileState.progressBar.style.width = `${rounded}%`;
+    fileState.progressBar.setAttribute('aria-valuenow', rounded);
+    fileState.progressBar.classList.remove('bg-success', 'bg-danger', 'progress-bar-striped', 'progress-bar-animated');
+
+    if (tone === 'success') {
+      fileState.progressBar.classList.add('bg-success');
+    } else if (tone === 'danger') {
+      fileState.progressBar.classList.add('bg-danger');
+    } else if (tone === 'processing') {
+      fileState.progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+    }
+  }
+  if (fileState.statusLabel) {
+    fileState.statusLabel.textContent = label || '';
+    fileState.statusLabel.classList.toggle('text-danger', tone === 'danger');
+    fileState.statusLabel.classList.toggle('text-success', tone === 'success');
+    fileState.statusLabel.classList.toggle('text-muted', tone !== 'danger' && tone !== 'success');
+  }
+}
+
+function startMediaProcessingTracker(files, destinationFolder) {
+  const trackedFiles = Array.isArray(files) ? files.filter(function (file) {
+    return file && file.file_name && ['queued', 'processing', 'pending'].includes(String(file.status || '').toLowerCase());
+  }) : [];
+
+  if (!trackedFiles.length) return;
+
+  const localFiles = window.uploadedFiles || [];
+  trackedFiles.forEach(function (file) {
+    const local = localFiles.find(function (item) {
+      return item.file && item.file.name === file.original_name;
+    });
+    if (local) {
+      local.remoteFileName = file.file_name;
+      setUploadTracker(local, 100, 'Video is compressing. Please wait before selecting it.', 'processing');
+    }
+  });
+
+  let attempts = 0;
+  const maxAttempts = 180;
+  const poll = function () {
+    attempts++;
+
+    Promise.all(trackedFiles.map(function (file) {
+      return fetch(`${baseUrl}/app/media-library/file-status?file_name=${encodeURIComponent(file.file_name)}`, {
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache' }
+      }).then(function (response) {
+        return response.json();
+      }).catch(function () {
+        return { status: 'processing', file_name: file.file_name };
+      });
+    })).then(function (statuses) {
+      let finished = true;
+
+      statuses.forEach(function (statusResponse) {
+        const status = String(statusResponse.status || 'processing').toLowerCase();
+        const matchedFile = trackedFiles.find(function (file) {
+          return file.file_name === statusResponse.file_name;
+        });
+        const local = matchedFile ? localFiles.find(function (item) {
+          return item.file && item.file.name === matchedFile.original_name;
+        }) : null;
+
+        if (status === 'ready') {
+          setUploadTracker(local, 100, 'Compression complete. You can select the video now.', 'success');
+        } else if (status === 'failed') {
+          const errorText = statusResponse.error_message ? `Compressor failed: ${statusResponse.error_message}` : 'Compressor failed.';
+          setUploadTracker(local, 100, errorText, 'danger');
+        } else {
+          finished = false;
+          setUploadTracker(local, 100, 'Video is still compressing. Please wait...', 'processing');
+        }
+      });
+
+      if (typeof FileManager !== 'undefined' && FileManager && typeof FileManager.loadFolderContents === 'function' && destinationFolder) {
+        FileManager.loadFolderContents(destinationFolder, { silent: true });
+      }
+
+      if (!finished && attempts < maxAttempts) {
+        setTimeout(poll, 5000);
+      }
+    });
+  };
+
+  setTimeout(poll, 5000);
+}
+
 document.addEventListener('DOMContentLoaded', function () {
   let selectedMediaUrl = '';
   let currentImageContainer = '';
@@ -396,11 +499,19 @@ document.addEventListener('DOMContentLoaded', function () {
         xhr.onloadstart = function () {
           submitButton.innerText = 'Loading...';
           submitButton.disabled = true;
+          remainingFiles.forEach(function (fileState) {
+            setUploadTracker(fileState, 100, 'Preparing video for compression...', 'processing');
+          });
         };
 
-        xhr.onload = function () {
-          if (xhr.status === 200) {
-            window.uploadedFiles = [];
+	            xhr.onload = function () {
+	          if (xhr.status === 200) {
+	            var response = {};
+	            try { response = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+	            var responseFiles = Array.isArray(response.files) ? response.files : [];
+	            var hasProcessingFiles = responseFiles.some(function (file) {
+	              return ['queued', 'processing', 'pending'].includes(String(file.status || '').toLowerCase());
+	            }) || Number(response.processing_count || 0) > 0;
             // Trigger the media library tab to refresh
             var libTab = document.getElementById('nav-media-library-tab');
             if (libTab && typeof libTab.click === 'function') {
@@ -410,10 +521,14 @@ document.addEventListener('DOMContentLoaded', function () {
             submitButton.disabled = false;
             submitButton.innerText = 'Save';
 
-            // Check if FileManager is available and if we're in a folder
-            if (typeof FileManager !== 'undefined' && FileManager && FileManager.state && FileManager.state.currentFolder) {
-              // We're in a folder, reload the folder contents
-              const currentFolder = FileManager.state.currentFolder;
+            const destinationFolder = response.redirect_folder || (typeof FileManager !== 'undefined' && FileManager && FileManager.state ? FileManager.state.currentFolder : '');
+
+            // Check if FileManager is available and open the folder where this upload was stored
+            if (typeof FileManager !== 'undefined' && FileManager && FileManager.state && destinationFolder) {
+              const currentFolder = destinationFolder;
+              if (response.redirect_folder && FileManager.state.currentFolder !== response.redirect_folder && FileManager.navigation && typeof FileManager.navigation.openFolder === 'function') {
+                FileManager.navigation.openFolder(response.redirect_folder);
+              }
               const mediaLibraryContent = document.getElementById('mediaLibraryContent');
               if (mediaLibraryContent) {
                 mediaLibraryContent.innerHTML = ''; // Clear the container
@@ -423,12 +538,25 @@ document.addEventListener('DOMContentLoaded', function () {
               FileManager.state.infiniteInitDone = false;
               // Reload folder contents with a delay to ensure file is processed
               // Files may be processed asynchronously, so we wait a bit longer
-              setTimeout(function() {
-                if (typeof FileManager.loadFolderContents === 'function') {
-                  FileManager.loadFolderContents(currentFolder);
-                }
-              }, 1000); // Increased delay to 1 second for async file processing
-            } else {
+		              setTimeout(function() {
+		                if (typeof FileManager.loadFolderContents === 'function') {
+		                  FileManager.loadFolderContents(currentFolder);
+	                }
+	              }, 1000); // Increased delay to 1 second for async file processing
+	              if (response.processing_count && typeof FileManager.loadFolderContents === 'function') {
+	                var refreshAttempts = 0;
+	                var refreshTimer = setInterval(function() {
+	                  refreshAttempts++;
+	                  FileManager.loadFolderContents(currentFolder);
+	                  if (refreshAttempts >= 24) {
+	                    clearInterval(refreshTimer);
+	                  }
+	                }, 5000);
+	              }
+	              if (hasProcessingFiles) {
+	                startMediaProcessingTracker(responseFiles, currentFolder);
+	              }
+	            } else {
               // We're at root level, use the old pagination method
               const mediaContainer = document.getElementById('media-container');
               page = 1; // Reset the page to 1
@@ -445,8 +573,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             var uploadedImagesCont = document.getElementById('uploadedImages');
-            if (uploadedImagesCont) {
+            if (uploadedImagesCont && !hasProcessingFiles) {
               uploadedImagesCont.innerHTML = '';
+              window.uploadedFiles = [];
             }
           }
         };
@@ -891,13 +1020,17 @@ if (document.getElementById('file_url_media')) {
             progressBar.innerHTML = `
                             <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                         `;
+            var statusLabel = document.createElement('div');
+            statusLabel.classList.add('small', 'text-muted', 'iq-upload-status');
+            statusLabel.textContent = 'Preparing upload...';
 
             // Create close icon
             var closeButton = document.createElement('div');
             closeButton.classList.add('iq-uploaded-image-close');
             closeButton.innerHTML = '&times;';
             closeButton.addEventListener('click', function () {
-              uploadedFiles[index].removed = true; // Mark file as removed
+              var item = uploadedFiles[itemIndex];
+              if (item) { item.removed = true; }
               this.parentNode.remove(); // Remove image on close icon click
               checkAndClearFileInput();
             });
@@ -907,16 +1040,18 @@ if (document.getElementById('file_url_media')) {
             imageContainer.classList.add('iq-uploaded-image-container');
             imageContainer.appendChild(img);
             imageContainer.appendChild(progressBar);
+            imageContainer.appendChild(statusLabel);
             imageContainer.appendChild(closeButton);
             uploadedImagesContainer.appendChild(imageContainer);
 
             // Track the uploaded file
             var itemIndex = uploadedFiles.length;
-            uploadedFiles.push({ file: file, removed: false, progressBar: progressBar.querySelector('.progress-bar'), done: false });
+            uploadedFiles.push({ file: file, removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
             updateUploadSubmitState();
 
             // Start upload and make progress bar visible immediately
             progressBar.style.visibility = 'visible';
+            setUploadTracker(uploadedFiles[itemIndex], 0, `Uploading 0% of ${formatUploadBytes(file.size)}`, 'processing');
             uploadChunk(file, itemIndex, start, end, chunkSize, uploadedFiles, progressBar); // Pass progressBar to uploadChunk
           });
         } else {
@@ -936,13 +1071,17 @@ if (document.getElementById('file_url_media')) {
               progressBar.innerHTML = `
                                 <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                             `;
+              var statusLabel = document.createElement('div');
+              statusLabel.classList.add('small', 'text-muted', 'iq-upload-status');
+              statusLabel.textContent = 'Preparing upload...';
 
               // Create close icon
               var closeButton = document.createElement('div');
               closeButton.classList.add('iq-uploaded-image-close');
               closeButton.innerHTML = '&times;';
               closeButton.addEventListener('click', function () {
-                uploadedFiles[index].removed = true; // Mark file as removed
+                var item = uploadedFiles[itemIndex];
+                if (item) { item.removed = true; }
                 this.parentNode.remove(); // Remove image on close icon click
                 checkAndClearFileInput();
               });
@@ -952,16 +1091,18 @@ if (document.getElementById('file_url_media')) {
               imageContainer.classList.add('iq-uploaded-image-container');
               imageContainer.appendChild(img);
               imageContainer.appendChild(progressBar);
+              imageContainer.appendChild(statusLabel);
               imageContainer.appendChild(closeButton);
               uploadedImagesContainer.appendChild(imageContainer);
 
               // Track the uploaded file
               var itemIndex = uploadedFiles.length;
-              uploadedFiles.push({ file: file, removed: false, progressBar: progressBar.querySelector('.progress-bar'), done: false });
+              uploadedFiles.push({ file: file, removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
               updateUploadSubmitState();
 
               // Start upload and make progress bar visible immediately
               progressBar.style.visibility = 'visible';
+              setUploadTracker(uploadedFiles[itemIndex], 0, `Uploading 0% of ${formatUploadBytes(file.size)}`, 'processing');
               uploadChunk(file, itemIndex, start, end, chunkSize, uploadedFiles, progressBar); // Pass progressBar to uploadChunk
             };
           })(file, i);
@@ -1004,8 +1145,12 @@ function uploadChunk(file, index, start, end, chunkSize, uploadedFiles, progress
       // cumulative percent across whole file, not just current chunk
       var uploadedSoFar = start + e.loaded;
       var percentComplete = Math.min(100, (uploadedSoFar / file.size) * 100);
-      uploadedFiles[index].progressBar.style.width = percentComplete + '%';
-      progressBar.style.visibility = 'visible'; // Ensure visible for all chunks
+      setUploadTracker(
+        uploadedFiles[index],
+        percentComplete,
+        `Uploading ${Math.round(percentComplete)}% of ${formatUploadBytes(file.size)}`,
+        'processing'
+      );
     }
   });
 
@@ -1021,15 +1166,24 @@ function uploadChunk(file, index, start, end, chunkSize, uploadedFiles, progress
           end = Math.min(start + chunkSize, file.size);
           uploadChunk(file, index, start, end, chunkSize, uploadedFiles, progressBar); // Pass progressBar to uploadChunk
         } else {
-          uploadedFiles[index].progressBar.style.width = '100%';
-          progressBar.style.visibility = 'hidden'; // Hide progress bar after completion
           // mark file as done and update submit state
           var found = uploadedFiles.find(function (f) { return f.file === file; });
-          if (found) { found.done = true; }
+          if (found) {
+            found.done = true;
+            setUploadTracker(found, 100, 'Upload complete. Click Save, then wait for compression.', 'success');
+          }
           updateUploadSubmitState();
         }
+      } else {
+        setUploadTracker(uploadedFiles[index], 100, response.message || 'Chunk upload failed.', 'danger');
       }
+    } else {
+      setUploadTracker(uploadedFiles[index], 100, 'Chunk upload failed. Please try again.', 'danger');
     }
+  };
+
+  xhr.onerror = function () {
+    setUploadTracker(uploadedFiles[index], 100, 'Network error while uploading chunk.', 'danger');
   };
 
   xhr.send(formData);

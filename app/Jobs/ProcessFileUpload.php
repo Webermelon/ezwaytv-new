@@ -2,6 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\MediaCompressorJob;
+use App\Services\MediaCompressor\FilemanagerCompressorApplier;
+use App\Services\MediaCompressor\MediaCompressorClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -168,17 +171,299 @@ class ProcessFileUpload implements ShouldQueue
         $uploader->upload();
     }
 
+    private function remoteJobId(array $response): string
+    {
+        return (string) data_get($response, 'job.id',
+            data_get($response, 'job_id',
+                data_get($response, 'id',
+                    data_get($response, 'data.job.id', '')
+                )
+            )
+        );
+    }
+
+    private function primaryUrl(array $response): string
+    {
+        foreach ([
+            'primary_url',
+            'url',
+            'job.primary_url',
+            'job.url',
+            'job.result.primary_url',
+            'job.result.url',
+            'result.primary_url',
+            'result.url',
+            'data.primary_url',
+            'data.url',
+        ] as $key) {
+            $url = (string) data_get($response, $key, '');
+            if ($url !== '') {
+                return $url;
+            }
+        }
+
+        foreach ([
+            'job.result.variants',
+            'job.result.renditions',
+            'job.result.results',
+            'job.result',
+            'job.variants',
+            'result.variants',
+            'result.renditions',
+            'result.results',
+            'result',
+            'variants',
+            'job.renditions',
+            'job.results',
+            'renditions',
+            'results',
+            'data.job.result.variants',
+            'data.job.result.renditions',
+            'data.job.result.results',
+            'data.job.result',
+        ] as $key) {
+            $url = $this->firstUrl(data_get($response, $key));
+            if ($url !== '') {
+                return $url;
+            }
+        }
+
+        return '';
+    }
+
+    private function firstUrl(mixed $value): string
+    {
+        if (! is_array($value)) {
+            return '';
+        }
+
+        if (isset($value['url']) && is_string($value['url']) && $value['url'] !== '') {
+            return $value['url'];
+        }
+
+        foreach ($value as $child) {
+            $url = $this->firstUrl($child);
+            if ($url !== '') {
+                return $url;
+            }
+        }
+
+        return '';
+    }
+
+    private function variants(array $response): array
+    {
+        $variants = data_get($response, 'variants',
+            data_get($response, 'job.variants',
+                data_get($response, 'job.result.variants',
+                    data_get($response, 'job.result.renditions',
+                        data_get($response, 'result.variants',
+                            data_get($response, 'result.renditions', [])
+                        )
+                    )
+                )
+            )
+        );
+
+        return is_array($variants) ? $variants : [];
+    }
+
+    private function responseStatus(array $response): string
+    {
+        return strtolower((string) data_get($response, 'status', data_get($response, 'job.status', 'processing')));
+    }
+
+    private function fallbackOnCompressorFailure(): bool
+    {
+        return filter_var(config('services.media_compressor.fallback_on_failure'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function markRemoteCompressorFailed(array $metadata, string $targetPath, string $message): void
+    {
+        $job = MediaCompressorJob::updateOrCreate(
+            ['remote_job_id' => 'failed-local-'.$this->filemanager->id],
+            [
+                'user_id' => $this->filemanager->created_by,
+                'owner_type' => Filemanager::class,
+                'owner_id' => $this->filemanager->id,
+                'media_type' => $this->fileType,
+                'status' => 'failed',
+                'primary_url' => null,
+                'variants' => [],
+                'payload' => array_replace_recursive($metadata, ['error' => $message]),
+                'error_message' => $message,
+                'completed_at' => now(),
+            ]
+        );
+
+        if (Schema::hasColumn('filemanagers', 'remote_job_id')) {
+            $this->filemanager->remote_job_id = $job->remote_job_id;
+        }
+
+        $this->filemanager->file_url = $targetPath;
+
+        if (Schema::hasColumn('filemanagers', 'status')) {
+            $this->filemanager->status = 'failed';
+        }
+
+        $this->filemanager->save();
+    }
+
+    private function cleanupTemporaryFiles(?string $processedPath = null, ?string $localSourcePath = null): void
+    {
+        if (Storage::exists($this->filePath)) {
+            Storage::disk('local')->delete($this->filePath);
+        }
+
+        if (!empty($processedPath) && file_exists($processedPath) && $processedPath !== $localSourcePath) {
+            @unlink($processedPath);
+        }
+
+        if ($this->originalName) {
+            $originalTempPath = 'temp/uploads/' . $this->originalName;
+            if (Storage::disk('local')->exists($originalTempPath)) {
+                Storage::disk('local')->delete($originalTempPath);
+            }
+        }
+    }
+
+    private function tryRemoteCompressor(string $localSourcePath, string $targetPath): bool
+    {
+        if (! in_array($this->fileType, ['image', 'video'], true)) {
+            return false;
+        }
+
+        /** @var MediaCompressorClient $client */
+        $client = app(MediaCompressorClient::class);
+        if (! $client->enabled()) {
+            return false;
+        }
+
+        $metadata = [
+            'source_app' => 'ezway_tv',
+            'owner_type' => Filemanager::class,
+            'owner_id' => $this->filemanager->id,
+            'filemanager_id' => $this->filemanager->id,
+            'file_name' => $this->filemanager->file_name,
+            'original_name' => $this->originalName,
+            'page_type' => $this->page_type,
+            'file_type' => $this->fileType,
+            'disk_type' => $this->diskType,
+            'target_path' => $targetPath,
+        ];
+
+        try {
+            $response = $this->fileType === 'image'
+                ? $client->submitImage($localSourcePath, $this->filemanager->file_name, $metadata)
+                : $client->submitVideo($localSourcePath, $this->filemanager->file_name, $metadata);
+        } catch (\Throwable $exception) {
+            $fallbackOnFailure = $this->fallbackOnCompressorFailure();
+
+            Log::warning($fallbackOnFailure
+                ? 'Remote media compressor upload failed, falling back to local upload'
+                : 'Remote media compressor upload failed; local fallback disabled', [
+                'file_name' => $this->filemanager->file_name,
+                'error' => $exception->getMessage(),
+                'fallback_on_failure' => $fallbackOnFailure,
+            ]);
+
+            if ($fallbackOnFailure) {
+                return false;
+            }
+
+            $this->markRemoteCompressorFailed($metadata, $targetPath, $exception->getMessage());
+            $this->cleanupTemporaryFiles(null, $localSourcePath);
+
+            return true;
+        }
+
+        $remoteJobId = $this->remoteJobId($response);
+        $status = $this->responseStatus($response);
+        $primaryUrl = $this->primaryUrl($response);
+
+        Log::info('Remote media compressor upload submitted', [
+            'file_name' => $this->filemanager->file_name,
+            'file_type' => $this->fileType,
+            'remote_job_id' => $remoteJobId,
+            'status' => $status,
+            'has_primary_url' => $primaryUrl !== '',
+        ]);
+
+        if ($remoteJobId === '' && $primaryUrl === '') {
+            Log::warning('Remote media compressor response did not include a job id or URL', [
+                'file_name' => $this->filemanager->file_name,
+                'response' => $response,
+            ]);
+
+            return false;
+        }
+
+        $job = MediaCompressorJob::updateOrCreate(
+            ['remote_job_id' => $remoteJobId ?: 'inline-'.sha1($primaryUrl)],
+            [
+                'user_id' => $this->filemanager->created_by,
+                'owner_type' => Filemanager::class,
+                'owner_id' => $this->filemanager->id,
+                'media_type' => $this->fileType,
+                'status' => $primaryUrl !== '' ? 'completed' : $status,
+                'primary_url' => $primaryUrl ?: null,
+                'variants' => $this->variants($response),
+                'payload' => array_replace_recursive($metadata, ['submit_response' => $response]),
+                'completed_at' => $primaryUrl !== '' ? now() : null,
+            ]
+        );
+
+        if (Schema::hasColumn('filemanagers', 'remote_job_id')) {
+            $this->filemanager->remote_job_id = $job->remote_job_id;
+        }
+        $this->filemanager->file_url = $targetPath;
+        if (Schema::hasColumn('filemanagers', 'status')) {
+            $this->filemanager->status = $primaryUrl !== '' ? 'processing' : 'processing';
+        }
+        $this->filemanager->save();
+
+        if ($this->fileType === 'image' && $primaryUrl === '' && $remoteJobId !== '') {
+            $deadline = microtime(true) + (int) config('services.media_compressor.image_wait_seconds');
+            while (microtime(true) < $deadline) {
+                sleep(1);
+                try {
+                    $jobResponse = $client->job($remoteJobId);
+                } catch (\Throwable $exception) {
+                    Log::warning('Unable to poll media compressor image job', [
+                        'remote_job_id' => $remoteJobId,
+                        'error' => $exception->getMessage(),
+                    ]);
+                    break;
+                }
+
+                $primaryUrl = $this->primaryUrl($jobResponse);
+                if ($primaryUrl !== '') {
+                    $job->status = 'completed';
+                    $job->primary_url = $primaryUrl;
+                    $job->variants = $this->variants($jobResponse);
+                    $job->payload = array_replace_recursive($job->payload ?? [], ['poll_response' => $jobResponse]);
+                    $job->completed_at = now();
+                    $job->save();
+                    break;
+                }
+            }
+        }
+
+        if ($primaryUrl !== '') {
+            app(FilemanagerCompressorApplier::class)->apply($job, $primaryUrl);
+        }
+
+        $this->cleanupTemporaryFiles(null, $localSourcePath);
+
+        return true;
+    }
+
     /**
      * Execute the job.
      */
     public function handle()
     {
         try {
-
-            Log::info($this->filePath );
-
-            Log::info($this->filePath );
-
 
             if (!Storage::exists($this->filePath)) {
                 Log::info("File does not exist at path: {$this->filePath}");
@@ -197,7 +482,18 @@ class ProcessFileUpload implements ShouldQueue
 
             $localSourcePath = storage_path('app/' . $this->filePath);
 
-            // Optionally compress images/videos when enabled via admin setting or env
+            if (empty($this->filemanager->file_name)) {
+                throw new \Exception('Filemanager file_name is empty, cannot determine upload path.');
+            }
+
+            $folderPath = $this->diskType === 'local'
+                ? 'public/' . $this->page_type . '/'. $this->fileType . '/' . $this->filemanager->file_name
+                : $this->page_type . '/' . $this->fileType . '/' . $this->filemanager->file_name;
+
+            if ($this->tryRemoteCompressor($localSourcePath, $folderPath)) {
+                return;
+            }
+
             $processedPath = null;
             $compressEnabled = setting('media_compress_enable', env('MEDIA_COMPRESS_ENABLE', false));
             if ($compressEnabled && in_array($this->fileType, ['image', 'video'])) {
@@ -216,16 +512,10 @@ class ProcessFileUpload implements ShouldQueue
                 }
             }
 
-            if (empty($this->filemanager->file_name)) {
-                throw new \Exception('Filemanager file_name is empty, cannot determine upload path.');
-            }
-
             $fileToStreamPath = $processedPath ?: $localSourcePath;
 
             if ($this->diskType === 'local') {
                 $file = fopen($fileToStreamPath, 'rb');
-
-                $folderPath = 'public/' . $this->page_type . '/'. $this->fileType . '/' . $this->filemanager->file_name;
 
                 $directoryPath = 'public/' . $this->page_type . '/' . $this->fileType;
 
@@ -250,7 +540,6 @@ class ProcessFileUpload implements ShouldQueue
                     }
                 }
             } else {
-                $folderPath =  $this->page_type . '/' . $this->fileType . '/' . $this->filemanager->file_name;
                 if (in_array($this->diskType, ['dg-ocean', 's3'], true) && file_exists($fileToStreamPath)) {
                     $this->uploadS3CompatibleFile($fileToStreamPath, $folderPath, $this->diskType);
                 } else {
@@ -268,23 +557,7 @@ class ProcessFileUpload implements ShouldQueue
             }
             $this->filemanager->save();
 
-            // Delete the unique file (with ID)
-            if (Storage::exists($this->filePath)){
-                $deleted = Storage::disk('local')->delete($this->filePath);
-            }
-
-            // remove processed temp file if exists
-            if (!empty($processedPath) && file_exists($processedPath) && $processedPath !== $localSourcePath) {
-                @unlink($processedPath);
-            }
-
-            // Also delete original filename if it exists in temp/uploads
-            if($this->originalName) {
-                $originalTempPath = 'temp/uploads/' . $this->originalName;
-                if (Storage::disk('local')->exists($originalTempPath)) {
-                    Storage::disk('local')->delete($originalTempPath);
-                }
-            }
+            $this->cleanupTemporaryFiles($processedPath, $localSourcePath);
 
             Artisan::call('config:clear');
             Artisan::call('cache:clear');

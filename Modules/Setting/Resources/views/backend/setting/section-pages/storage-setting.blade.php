@@ -227,7 +227,23 @@
         </div>
 
         <div class="form-group border-top pt-3">
-            <h5 class="mb-3">Media Compression</h5>
+            <h5 class="mb-3">Media Compressor API</h5>
+            <div class="row gy-3">
+                <div class="col-md-4">
+                    <label class="form-label">Enable Remote Compressor</label>
+                    <input type="hidden" value="0" name="media_compressor_api_enabled">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" value="1" name="media_compressor_api_enabled"
+                            id="media_compressor_api_enabled" type="checkbox"
+                            {{ old('media_compressor_api_enabled', $settings['media_compressor_api_enabled'] ?? (config('services.media_compressor.enabled') ? 1 : 0)) == 1 ? 'checked' : '' }} />
+                    </div>
+                    <small class="text-muted">When disabled, uploads use the normal storage upload flow.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group border-top pt-3">
+            <h5 class="mb-3">Local Media Compression</h5>
             <div class="row gy-3">
                 <div class="col-md-4">
                     <label class="form-label">Enable Compression</label>

@@ -27,6 +27,28 @@
             min-height: 1.875rem;
             padding-inline: .5rem;
         }
+
+        .ez-processing-track {
+            display: grid;
+            gap: .25rem;
+            margin-top: .45rem;
+        }
+
+        .ez-processing-track .progress {
+            height: .35rem;
+            background: rgba(255, 255, 255, .16);
+        }
+
+        .ez-processing-track .progress-bar {
+            width: 100%;
+        }
+
+        .ez-media-processing-notice {
+            border: 1px solid rgba(255, 193, 7, .45);
+            border-radius: .375rem;
+            margin-bottom: 1rem;
+            padding: .65rem .8rem;
+        }
     </style>
 @endonce
 
@@ -270,7 +292,8 @@
             originalContents: [],
             autoOpenFolder: new URLSearchParams(window.location.search).get('open_folder'),
             pendingSelectFile: new URLSearchParams(window.location.search).get('select_file'),
-            autoOpenedFromQuery: false
+            autoOpenedFromQuery: false,
+            processingRefreshTimer: null
         },
         // Track last applied search to avoid redundant renders
         lastSearchTerm: '',
@@ -654,27 +677,54 @@
                 const size = FileManager.utils.formatFileSize(Number(item.size || 0));
                 const date = FileManager.utils.formatUploadDate(item.uploaded_at || item.modified);
                 const ext = FileManager.utils.getFileExtension(item.name);
+                const status = item.status || 'ready';
+                const isReady = status === 'ready';
+                const isFailed = status === 'failed';
+                const isProcessing = !isReady && !isFailed;
                 const safeSize = FileManager.utils.escapeHtml(size);
                 const safeDate = FileManager.utils.escapeHtml(date);
                 const safeType = FileManager.utils.escapeHtml(type);
                 const safeExt = FileManager.utils.escapeHtml(ext);
                 const safeUrl = FileManager.utils.escapeHtml(url);
+                const statusText = isFailed ? 'Failed' : (status === 'queued' ? 'Queued' : 'Processing');
+                const safeStatus = FileManager.utils.escapeHtml(statusText);
                 const jsUrl = FileManager.utils.escapeJsString(url);
+                const statusLine = isReady ? '' : `<span title="${safeStatus}"><i class="ph ${isFailed ? 'ph-warning-circle' : 'ph-clock'} me-1"></i>${safeStatus}</span>`;
+                const processingTrack = isProcessing ? `
+                    <div class="ez-processing-track">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">Video is compressing. Please wait before selecting it.</small>
+                    </div>
+                ` : '';
+                const selectButton = isReady
+                    ? `<button type="button" class="btn btn-sm btn-outline-primary iq-media-action iq-media-select-button" onclick="event.stopPropagation(); FileManager.selectTile(this.closest('.iq-media-images'))">
+                            <i class="ph ph-check"></i> Select
+                        </button>`
+                    : `<button type="button" class="btn btn-sm btn-outline-secondary iq-media-action" disabled>
+                            <i class="ph ${isFailed ? 'ph-warning-circle' : 'ph-clock'}"></i> ${isFailed ? safeStatus : 'Please wait'}
+                        </button>`;
+                const copyButton = isReady
+                    ? `<button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); FileManager.copyUrl('${jsUrl}', this)">
+                            <i class="ph ph-copy"></i> URL
+                        </button>`
+                    : `<button type="button" class="btn btn-sm btn-outline-secondary iq-media-action" disabled>
+                            <i class="ph ph-link"></i> URL
+                        </button>`;
 
                 return `
                     <div class="ez-media-info text-muted">
                         <span title="${safeSize}"><i class="ph ph-hard-drives me-1"></i>${safeSize}</span>
                         <span title="${safeDate}"><i class="ph ph-calendar me-1"></i>${safeDate}</span>
                         <span title="${safeType} / ${safeExt}"><i class="ph ph-info me-1"></i>${safeType} / ${safeExt}</span>
+                        ${statusLine}
                         <span class="ez-media-url" title="${safeUrl}"><i class="ph ph-link me-1"></i>${safeUrl}</span>
                     </div>
+                    ${processingTrack}
                     <div class="ez-media-actions">
-                        <button type="button" class="btn btn-sm btn-outline-primary iq-media-action iq-media-select-button" onclick="event.stopPropagation(); FileManager.selectTile(this.closest('.iq-media-images'))">
-                            <i class="ph ph-check"></i> Select
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary iq-media-action" onclick="event.stopPropagation(); FileManager.copyUrl('${jsUrl}', this)">
-                            <i class="ph ph-copy"></i> URL
-                        </button>
+                        ${selectButton}
+                        ${copyButton}
                     </div>
                 `;
             },
@@ -690,6 +740,8 @@
                     size,
                     modified
                 } = item;
+                const status = item.status || 'ready';
+                const isReady = status === 'ready';
                 let displayName = (typeof name === 'string' && name.length > 0) ?
                     (name.charAt(0).toUpperCase() + name.slice(1)) :
                     name;
@@ -700,6 +752,9 @@
                 const safeMediaUrl = FileManager.utils.escapeHtml(media_url);
                 const jsFolder = FileManager.utils.escapeJsString(FileManager.utils.getFolderFromUrl(media_url || ''));
                 const jsPath = FileManager.utils.escapeJsString(path || '');
+                const isFailed = status === 'failed';
+                const statusText = isFailed ? 'Failed' : (status === 'queued' ? 'Queued' : 'Processing');
+                const safeStatus = FileManager.utils.escapeHtml(statusText);
 
                 if (is_dir) {
                     const transKey = 'folder_' + name.toLowerCase();
@@ -725,12 +780,17 @@
                         </div>
                     `;
                 } else if (is_video) {
+                    const videoPreview = isReady
+                        ? `<video class="img-fluid object-fit-cover" preload="none" controlsList="nodownload" controls>
+                                    <source src="${safeMediaUrl}" type="video/mp4">
+                                </video>`
+                        : `<div class="ratio ratio-16x9 bg-body-tertiary d-flex align-items-center justify-content-center text-muted">
+                                    <div class="text-center"><i class="ph ${isFailed ? 'ph-warning-circle' : 'ph-clock'} fs-2 d-block"></i><span>${safeStatus}</span></div>
+                                </div>`;
                     return `
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeMediaUrl}">
-                                <video class="img-fluid object-fit-cover" preload="none" controlsList="nodownload" controls>
-                                    <source src="${safeMediaUrl}" type="video/mp4">
-                                </video>
+                                ${videoPreview}
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', '${jsPath}', 'video', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
@@ -740,10 +800,15 @@
                         </div>
                     `;
                 } else if (is_image) {
+                    const imagePreview = isReady
+                        ? `<img class="img-fluid object-fit-cover" src="${safeMediaUrl}" loading="lazy" decoding="async" onload="this.style.opacity=1">`
+                        : `<div class="ratio ratio-16x9 bg-body-tertiary d-flex align-items-center justify-content-center text-muted">
+                                    <div class="text-center"><i class="ph ${isFailed ? 'ph-warning-circle' : 'ph-clock'} fs-2 d-block"></i><span>${safeStatus}</span></div>
+                                </div>`;
                     return `
                         <div class="col-md-2 col-sm-1">
                             <div class="iq-media-images position-relative" data-file-name="${safeName}" data-media-url="${safeMediaUrl}">
-                                <img class="img-fluid object-fit-cover" src="${safeMediaUrl}" loading="lazy" decoding="async" onload="this.style.opacity=1">
+                                ${imagePreview}
                                 <button type="button" class="btn btn-danger position-absolute top-0 end-0 m-2 py-1 px-2 iq-button-delete" onclick="FileManager.deleteFile('${jsName}', '${jsMediaUrl}', '${jsPath}', 'image', '${jsFolder}')">
                                     <i class="ph ph-trash"></i>
                                 </button>
@@ -789,6 +854,7 @@
                 let html = '';
                 let hasSelectable = false;
                 let hasMediaFiles = false;
+                let hasProcessing = false;
 
                 if (contents.length === 0) {
                     html =
@@ -796,11 +862,27 @@
                 } else {
                     contents.forEach(item => {
                         html += FileManager.render.generateItemHTML(item);
-                        if (item.is_video || item.is_image) {
+                        const status = String(item.status || 'ready').toLowerCase();
+                        if ((item.is_video || item.is_image) && ['queued', 'processing', 'pending'].includes(status)) {
+                            hasProcessing = true;
+                            hasMediaFiles = true;
+                        }
+                        if ((item.is_video || item.is_image) && (!item.status || item.status === 'ready')) {
                             hasSelectable = true;
                             hasMediaFiles = true;
                         }
                     });
+
+                    if (!append && hasProcessing) {
+                        html = `
+                            <div class="col-12">
+                                <div class="ez-media-processing-notice text-warning bg-warning bg-opacity-10">
+                                    <i class="ph ph-clock me-1"></i>
+                                    Video upload received. Compression is running; please wait here or refresh Media Library until the video becomes selectable.
+                                </div>
+                            </div>
+                        ` + html;
+                    }
                 }
 
                 // Update UI with smooth transition
@@ -845,6 +927,7 @@
                 // After rendering, ensure save button reflects current selection (likely none)
                 FileManager.dom.updateSaveButtonState();
                 FileManager.applyPendingUploadedSelection();
+                FileManager.scheduleProcessingRefresh();
             }
         },
 
@@ -880,9 +963,32 @@
             }
         },
 
+        scheduleProcessingRefresh: () => {
+            if (FileManager.state.processingRefreshTimer) {
+                clearTimeout(FileManager.state.processingRefreshTimer);
+                FileManager.state.processingRefreshTimer = null;
+            }
+
+            const hasProcessing = (FileManager.state.originalContents || []).some(function (item) {
+                const status = String(item.status || 'ready').toLowerCase();
+                return !item.is_dir && ['queued', 'processing', 'pending'].includes(status);
+            });
+
+            if (!hasProcessing || !FileManager.state.currentFolder) {
+                return;
+            }
+
+            FileManager.state.processingRefreshTimer = setTimeout(function () {
+                FileManager.state.processingRefreshTimer = null;
+                FileManager.loadFolderContents(FileManager.state.currentFolder, { silent: true });
+            }, 5000);
+        },
+
         // Core functions
-        loadFolderContents: async (folderName) => {
-            FileManager.dom.showLoading();
+        loadFolderContents: async (folderName, options = {}) => {
+            if (!options.silent) {
+                FileManager.dom.showLoading();
+            }
             // Ensure sort state is in sync with global folder sort (set by folder-browser)
             FileManager.state.sort = FileManager.state.sort || window.fbFolderSort || 'modified_desc';
 
@@ -921,7 +1027,9 @@
                     FileManager.dom.showError('{{ __('frontend.error_loading_folder_contents') }}');
                 }
             } finally {
-                FileManager.dom.hideLoading();
+                if (!options.silent) {
+                    FileManager.dom.hideLoading();
+                }
                 FileManager.state.isLoading = false;
             }
         },
@@ -1191,6 +1299,7 @@
     window.deleteImage = FileManager.deleteFile;
     window.filterMediaContent = FileManager.search.filterContent;
     window.clearSearch = FileManager.search.clear;
+    window.FileManager = FileManager;
 
     // Add event delegation for folder cards (in case they're rendered before script loads)
     document.addEventListener('DOMContentLoaded', function() {

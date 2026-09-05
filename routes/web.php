@@ -20,6 +20,7 @@ use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
 use App\Http\Controllers\CoreCheckoutBridgeController;
+use App\Http\Controllers\MediaCompressorWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +41,7 @@ Route::redirect('/docs/apis', '/docs/api');
 Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');
 Route::get('/core/payment-history', [CoreCheckoutBridgeController::class, 'paymentHistory'])->name('core.payment-history');
 Route::post('/core/checkouts', [CoreCheckoutBridgeController::class, 'checkout'])->name('core.checkouts');
+Route::post('/webhooks/media', MediaCompressorWebhookController::class)->name('webhooks.media');
 
 if (app()->environment('local')) {
     Route::view('/react-modernization', 'react-modernization')->name('react-modernization');
