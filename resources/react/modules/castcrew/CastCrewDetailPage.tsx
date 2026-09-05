@@ -55,7 +55,7 @@ export function CastCrewDetailPage() {
                   <Stat icon={<Film className="h-4 w-4" />} label="Movies" value={String(detail.total_movies ?? 0)} />
                   <Stat icon={<Tv className="h-4 w-4" />} label="TV Shows" value={String(detail.total_tv_show ?? 0)} />
                   <Stat icon={<Star className="h-4 w-4" />} label="Rating" value={String(detail.rating ?? 0)} />
-                  <Stat icon={<Calendar className="h-4 w-4" />} label="Birth Date" value={detail.birth_date ?? 'N/A'} />
+                  {hasDisplayValue(detail.birth_date) ? <Stat icon={<Calendar className="h-4 w-4" />} label="Birth Date" value={detail.birth_date} /> : null}
                 </div>
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-2">
@@ -106,4 +106,14 @@ function getIdFromPath() {
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function hasDisplayValue(value?: string | null): value is string {
+  if (!value) {
+    return false
+  }
+
+  const normalized = value.trim().toLowerCase()
+
+  return Boolean(normalized && !['0', 'n/a', 'na', '0000-00-00', '0000-00-00 00:00:00'].includes(normalized))
 }
