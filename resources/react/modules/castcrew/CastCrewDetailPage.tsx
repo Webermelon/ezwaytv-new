@@ -29,8 +29,8 @@ export function CastCrewDetailPage() {
       <AppHeader active="castcrew" />
 
       {detailQuery.isLoading ? (
-        <section className="grid min-h-[72vh] items-center gap-8 px-4 py-16 sm:px-8 lg:grid-cols-[320px_1fr] lg:px-12">
-          <div className="aspect-square animate-pulse rounded-full bg-white/[0.06]" />
+        <section className="grid min-h-[72vh] items-center gap-8 px-4 py-16 sm:px-8 lg:grid-cols-[300px_1fr] lg:px-12">
+          <div className="aspect-[4/5] animate-pulse rounded-md bg-white/[0.06]" />
           <div>
             <div className="h-14 max-w-xl animate-pulse rounded-md bg-white/[0.08]" />
             <div className="mt-5 h-32 max-w-3xl animate-pulse rounded-md bg-white/[0.05]" />
@@ -47,9 +47,9 @@ export function CastCrewDetailPage() {
               Personalities
             </a>
 
-            <div className="grid items-center gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
-              <div className="mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-full border border-white/10 bg-white/[0.06] shadow-2xl">
-                <MediaThumbnail src={detail.profile_image} alt={detail.name} className="aspect-square rounded-full" />
+            <div className="grid items-start gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+              <div className="mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-md border border-white/10 bg-white/[0.06] shadow-2xl">
+                <MediaThumbnail src={detail.profile_image} alt={detail.name} className="aspect-[4/5] rounded-md" />
               </div>
 
               <div className="min-w-0">

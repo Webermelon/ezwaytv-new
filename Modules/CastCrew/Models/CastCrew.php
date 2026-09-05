@@ -4,6 +4,7 @@ namespace Modules\CastCrew\Models;
 
 use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use  Modules\Entertainment\Models\EntertainmentTalentMapping;
 
 class CastCrew extends BaseModel
@@ -25,8 +26,14 @@ class CastCrew extends BaseModel
      {
          parent::boot();
 
+         static::created(function () {
+             self::refreshFrontendCacheVersion();
+         });
+
          // Clear dashboard cache when cast/crew status is updated
          static::updated(function ($castcrew) {
+             self::refreshFrontendCacheVersion();
+
              // Clear dashboard cache when status changes (affects Popular Personalities section)
              if ($castcrew->isDirty('status')) {
                  if (function_exists('clearDashboardCache')) {
@@ -39,6 +46,8 @@ class CastCrew extends BaseModel
          });
 
          static::deleting(function ($castcrew) {
+             self::refreshFrontendCacheVersion();
+
              // Clear dashboard cache when cast/crew is deleted
              if (function_exists('clearDashboardCache')) {
                  clearDashboardCache();
@@ -55,6 +64,8 @@ class CastCrew extends BaseModel
          });
 
          static::restoring(function ($castcrew) {
+             self::refreshFrontendCacheVersion();
+
              // Clear dashboard cache when cast/crew is restored
              if (function_exists('clearDashboardCache')) {
                  clearDashboardCache();
@@ -73,7 +84,7 @@ class CastCrew extends BaseModel
      */
     public static function getFrontendCardsByIds(array $castIds): array
     {
-        $casts = self::whereIn('id', $castIds)->where('deleted_at', null)->get(['id', 'name', 'type', 'file_url', 'designation']);
+        $casts = self::whereIn('id', $castIds)->where('status', 1)->where('deleted_at', null)->get(['id', 'name', 'type', 'file_url', 'designation']);
 
         return $casts->map(function (self $value): array {
             return [
@@ -139,6 +150,17 @@ class CastCrew extends BaseModel
                 ];
             })
             ->all();
+    }
+
+    private static function refreshFrontendCacheVersion(): void
+    {
+        $key = 'spa:castcrew:cache-version';
+
+        if (! Cache::has($key)) {
+            Cache::forever($key, 1);
+        }
+
+        Cache::increment($key);
     }
 
 
