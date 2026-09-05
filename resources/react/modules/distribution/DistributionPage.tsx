@@ -46,10 +46,6 @@ export function DistributionPage() {
         </div>
       </section>
 
-      <div className="bg-[#d4a843] px-6 py-3 text-center text-xs font-black uppercase tracking-[0.06em] text-[#0d0d0d]">
-        Potential reach: 100,000,000 - Organic viewers: tens of thousands
-      </div>
-
       <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
         <SectionHead title="Los Angeles Station" />
 
