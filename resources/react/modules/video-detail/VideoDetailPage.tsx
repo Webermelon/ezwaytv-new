@@ -63,6 +63,11 @@ type VideoDetail = MediaItem & {
     username?: string
     url?: string
   }
+  playlist_context?: {
+    id?: number | string
+    name?: string
+    author_channel_id?: number | string
+  } | null
 }
 
 export function VideoDetailPage() {
@@ -91,24 +96,39 @@ export function VideoDetailPage() {
   const videoId = video?.id
   const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
   const channelUsername = video?.ondemand_channel_context?.username
+  const detectedPlaylistId = video?.playlist_context?.id ? String(video.playlist_context.id) : null
+  const effectivePlaylistId = playlistId || detectedPlaylistId
+  const shouldLoadPlaylistContext = Boolean(channelUsername && (effectivePlaylistId || channelId))
   const statsContentType = 'video'
   const playlistQuery = useQuery({
-    queryKey: ['ondemand-playlist-context', channelUsername, playlistId],
+    queryKey: ['ondemand-playlist-context', channelUsername, effectivePlaylistId],
     queryFn: () => loadOnDemandProfile(channelUsername as string),
-    enabled: Boolean(channelUsername && playlistId),
+    enabled: shouldLoadPlaylistContext,
     staleTime: 60_000,
   })
   const playlistVideos = useMemo(() => {
     const playlists = playlistQuery.data?.playlists ?? []
-    const playlist = playlists.find((item) => String(item.id) === String(playlistId))
+    const playlist = effectivePlaylistId
+      ? playlists.find((item) => String(item.id) === String(effectivePlaylistId))
+      : null
 
-    return playlist?.videos ?? []
-  }, [playlistId, playlistQuery.data?.playlists])
+    return playlist?.videos ?? playlistQuery.data?.videos ?? []
+  }, [effectivePlaylistId, playlistQuery.data?.playlists, playlistQuery.data?.videos])
   const activePlaylist = useMemo(() => {
     const playlists = playlistQuery.data?.playlists ?? []
 
-    return playlists.find((item) => String(item.id) === String(playlistId)) ?? null
-  }, [playlistId, playlistQuery.data?.playlists])
+    if (effectivePlaylistId) {
+      return playlists.find((item) => String(item.id) === String(effectivePlaylistId)) ?? null
+    }
+
+    if (!playlistQuery.data?.videos.length) return null
+
+    return {
+      id: `channel:${channelId ?? channelUsername ?? 'ondemand'}`,
+      name: video?.ondemand_channel_context?.name ? `${video.ondemand_channel_context.name} Playlist` : 'On Demand Playlist',
+      videos: playlistQuery.data.videos,
+    }
+  }, [channelId, channelUsername, effectivePlaylistId, playlistQuery.data?.playlists, playlistQuery.data?.videos, video?.ondemand_channel_context?.name])
   const currentPlaylistIndex = useMemo(() => {
     if (!video?.id || playlistVideos.length === 0) return -1
 
@@ -219,8 +239,8 @@ export function VideoDetailPage() {
                 updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
               }
 
-              if (nextPlaylistVideo?.slug && playlistId) {
-                window.location.href = buildPlaylistWatchUrl(nextPlaylistVideo, channelId, playlistId)
+              if (nextPlaylistVideo?.slug && (effectivePlaylistId || channelId)) {
+                window.location.href = buildPlaylistWatchUrl(nextPlaylistVideo, channelId, effectivePlaylistId)
               }
             }}
           />
@@ -264,7 +284,7 @@ export function VideoDetailPage() {
                   currentVideo={video}
                   currentIndex={currentPlaylistIndex}
                   channelId={channelId}
-                  playlistId={playlistId}
+                  playlistId={effectivePlaylistId}
                   channelName={video.ondemand_channel_context?.name}
                 />
               </div>

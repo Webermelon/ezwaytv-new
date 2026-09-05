@@ -13,6 +13,7 @@ use Modules\Entertainment\Models\ContinueWatch;
 use Modules\Entertainment\Models\Like;
 use Modules\Entertainment\Models\EntertainmentDownload;
 use App\Models\AuthorChannel;
+use App\Models\AuthorChannelPlaylist;
 use Carbon\Carbon;
 use Modules\Video\Transformers\Backend\VideoResourceV3;
 use Modules\Frontend\Models\PayPerView;
@@ -205,6 +206,7 @@ class VideosController extends Controller
   public function videoDetails(Request $request){
       if (! $request->has('user_id') && ! auth()->check()) {
           $cacheKey = 'spa:video:details:' . md5(json_encode([
+              'version' => 2,
               'video' => $request->video_id ?? $request->id ?? $request->slug,
               'ondemand_channel' => $request->query('ondemand_channel', 0),
           ]));
@@ -277,14 +279,33 @@ class VideosController extends Controller
       $responseData = (new VideoDetailResource($video))->toArray($request);
 
       $ondemandChannelId = (int) $request->query('ondemand_channel', 0);
-      $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
-          ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id));
+      $playlistContext = AuthorChannelPlaylist::query()
+          ->where('is_active', 1)
+          ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id))
+          ->whereHas('channel', function ($query) use ($ondemandChannelId) {
+              $query->where('is_active', 1);
 
-      if ($ondemandChannelId > 0) {
-          $ondemandChannelQuery->where('id', $ondemandChannelId);
+              if ($ondemandChannelId > 0) {
+                  $query->where('id', $ondemandChannelId);
+              }
+          })
+          ->with('channel')
+          ->orderBy('sort_order')
+          ->orderBy('id')
+          ->first();
+
+      $ondemandChannel = $playlistContext?->channel;
+
+      if (! $ondemandChannel) {
+          $ondemandChannelQuery = AuthorChannel::where('is_active', 1)
+              ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id));
+
+          if ($ondemandChannelId > 0) {
+              $ondemandChannelQuery->where('id', $ondemandChannelId);
+          }
+
+          $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
       }
-
-      $ondemandChannel = $ondemandChannelQuery->orderBy('id')->first();
 
       if ($ondemandChannel) {
           $channelVideos = $ondemandChannel->videos()
@@ -306,6 +327,14 @@ class VideosController extends Controller
               'username' => $ondemandChannel->username,
               'url' => route('author_channels.show', $ondemandChannel->username),
           ];
+
+          if ($playlistContext) {
+              $responseData['playlist_context'] = [
+                  'id' => $playlistContext->id,
+                  'name' => $playlistContext->name,
+                  'author_channel_id' => $playlistContext->author_channel_id,
+              ];
+          }
       }
 
       return $responseData;
