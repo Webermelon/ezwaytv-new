@@ -67,8 +67,8 @@
             <div class="form-group">
                 <label for="aws_secret_key">{{ __('settings.lbl_aws_secret_key') }} <span
                         class="text-danger">*</span></label>
-                <input type="text" name="aws_secret_key" id="aws_secret_key" class="form-control"
-                    value="{{ old('aws_secret_key', $settings['aws_secret_key'] ?? '') }}">
+                <input type="password" name="aws_secret_key" id="aws_secret_key" class="form-control"
+                    value="{{ old('aws_secret_key', $settings['aws_secret_key'] ?? '') }}" autocomplete="new-password">
                 <div class="invalid-feedback" id="aws_secret_key_error">{{ __('messages.aws_secret_key_required') }}</div>
             </div>
             <div class="form-group">
@@ -111,9 +111,9 @@
             <div class="form-group">
                 <label for="bunny_api_key">{{ __('settings.lbl_bunny_api_key') }} <span
                         class="text-danger">*</span></label>
-                <input type="text" name="bunny_api_key" id="bunny_api_key" class="form-control"
+                <input type="password" name="bunny_api_key" id="bunny_api_key" class="form-control"
                     placeholder="{{ __('settings.placeholder_bunny_api_key') }}"
-                    value="{{ old('bunny_api_key', $settings['bunny_api_key'] ?? '') }}">
+                    value="{{ old('bunny_api_key', $settings['bunny_api_key'] ?? '') }}" autocomplete="new-password">
                 <div class="invalid-feedback" id="bunny_api_key_error">{{ __('messages.bunny_api_key_required') }}</div>
             </div>
             <div class="form-group">
@@ -140,18 +140,18 @@
             <div class="form-group">
                 <label for="bunny_stream_api_key">{{ __('settings.lbl_bunny_stream_api_key') }} <span
                         class="text-danger">*</span></label>
-                <input type="text" name="bunny_stream_api_key" id="bunny_stream_api_key" class="form-control"
+                <input type="password" name="bunny_stream_api_key" id="bunny_stream_api_key" class="form-control"
                     placeholder="{{ __('settings.placeholder_bunny_stream_api_key') }}"
-                    value="{{ old('bunny_stream_api_key', $settings['bunny_stream_api_key'] ?? '') }}">
+                    value="{{ old('bunny_stream_api_key', $settings['bunny_stream_api_key'] ?? '') }}" autocomplete="new-password">
                 <div class="invalid-feedback" id="bunny_stream_api_key_error">
                     {{ __('messages.bunny_stream_api_key_required') }}</div>
             </div>
             <div class="form-group">
                 <label for="bunny_video_key">{{ __('settings.lbl_bunny_video_key') }} <span
                         class="text-danger">*</span></label>
-                <input type="text" name="bunny_video_key" id="bunny_video_key" class="form-control"
+                <input type="password" name="bunny_video_key" id="bunny_video_key" class="form-control"
                     placeholder="{{ __('settings.placeholder_bunny_video_key') }}"
-                    value="{{ old('bunny_video_key', $settings['bunny_video_key'] ?? '') }}">
+                    value="{{ old('bunny_video_key', $settings['bunny_video_key'] ?? '') }}" autocomplete="new-password">
                 <div class="invalid-feedback" id="bunny_video_key_error">{{ __('messages.bunny_video_key_required') }}
                 </div>
             </div>
@@ -184,8 +184,8 @@
             </div>
             <div class="form-group">
                 <label for="do_spaces_secret">DO Spaces Secret Key <span class="text-danger">*</span></label>
-                <input type="text" name="do_spaces_secret" id="do_spaces_secret" class="form-control"
-                    value="{{ old('do_spaces_secret', $settings['do_spaces_secret'] ?? '') }}">
+                <input type="password" name="do_spaces_secret" id="do_spaces_secret" class="form-control"
+                    value="{{ old('do_spaces_secret', $settings['do_spaces_secret'] ?? '') }}" autocomplete="new-password">
                 <div class="invalid-feedback" id="do_spaces_secret_error">DO Spaces Secret Key is required.</div>
             </div>
             <div class="form-group">
@@ -238,44 +238,6 @@
                             {{ old('media_compressor_api_enabled', $settings['media_compressor_api_enabled'] ?? (config('services.media_compressor.enabled') ? 1 : 0)) == 1 ? 'checked' : '' }} />
                     </div>
                     <small class="text-muted">When disabled, uploads use the normal storage upload flow.</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-group border-top pt-3">
-            <h5 class="mb-3">Local Media Compression</h5>
-            <div class="row gy-3">
-                <div class="col-md-4">
-                    <label class="form-label">Enable Compression</label>
-                    <input type="hidden" value="0" name="media_compress_enable">
-                    <div class="form-check form-switch m-0">
-                        <input class="form-check-input" value="1" name="media_compress_enable" id="media_compress_enable"
-                            type="checkbox" {{ old('media_compress_enable', $settings['media_compress_enable'] ?? 0) == 1 ? 'checked' : '' }} />
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <label class="form-label">Image Quality (1-100)</label>
-                    <input type="number" name="media_compress_image_quality" class="form-control" min="1" max="100"
-                        value="{{ old('media_compress_image_quality', $settings['media_compress_image_quality'] ?? 75) }}">
-                </div>
-
-                <div class="col-md-4">
-                    <label class="form-label">Video CRF (18-35)</label>
-                    <input type="number" name="media_compress_video_crf" class="form-control" min="18" max="35"
-                        value="{{ old('media_compress_video_crf', $settings['media_compress_video_crf'] ?? 23) }}">
-                </div>
-
-                <div class="col-md-4">
-                    <label class="form-label">Video Preset</label>
-                    <input type="text" name="media_compress_video_preset" class="form-control"
-                        value="{{ old('media_compress_video_preset', $settings['media_compress_video_preset'] ?? 'slow') }}">
-                </div>
-
-                <div class="col-md-4">
-                    <label class="form-label">Audio Bitrate (e.g. 128k)</label>
-                    <input type="text" name="media_compress_audio_bitrate" class="form-control"
-                        value="{{ old('media_compress_audio_bitrate', $settings['media_compress_audio_bitrate'] ?? '128k') }}">
                 </div>
             </div>
         </div>

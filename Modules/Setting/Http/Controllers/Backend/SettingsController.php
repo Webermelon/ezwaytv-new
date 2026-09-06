@@ -259,11 +259,6 @@ class SettingsController extends Controller
             'aws_bucket',
             'aws_path_style',
             'media_compressor_api_enabled',
-            'media_compress_enable',
-            'media_compress_image_quality',
-            'media_compress_video_crf',
-            'media_compress_video_preset',
-            'media_compress_audio_bitrate',
             'do_spaces_key',
             'do_spaces_secret',
             'do_spaces_region',
@@ -532,6 +527,10 @@ class SettingsController extends Controller
         
         if ($request->input('setting_tab') === 'storage' && ! $request->has('media_compressor_api_enabled')) {
             $request->merge(['media_compressor_api_enabled' => '0']);
+        }
+
+        if ($request->input('setting_tab') === 'storage') {
+            $request->merge(['media_compress_enable' => '0']);
         }
 
         $rules = Setting::getSelectedValidationRules(array_keys($request->all()));
