@@ -406,6 +406,15 @@ class AuthorChannelController extends Controller
             $this->clearPublicChannelCache($channel);
         }
 
+        if (request()->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Playlist deleted.',
+                'playlist_id' => (int) $playlistId,
+                'playlist_count' => AuthorChannelPlaylist::where('author_channel_id', $id)->count(),
+            ]);
+        }
+
         return redirect()->route('backend.author_channels.edit', $id)
             ->with('success', 'Playlist deleted.');
     }

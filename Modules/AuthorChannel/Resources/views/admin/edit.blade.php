@@ -125,7 +125,7 @@
         </button>
         <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-playlists" type="button">
             <span><i class="ph ph-list-bullets me-2"></i>Playlists</span>
-            <span class="badge bg-dark">{{ $channel->playlists->count() }}</span>
+            <span class="badge bg-dark" data-playlist-count data-playlist-count-format="number">{{ $channel->playlists->count() }}</span>
         </button>
         <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-assign-videos" type="button">
             <span><i class="ph ph-video me-2"></i>Assign Videos</span>
@@ -271,7 +271,7 @@
                         <h4 class="card-title mb-1">Playlists</h4>
                         <p class="mb-0 text-muted small">Create playlists, assign videos, and drag videos into the order viewers should see.</p>
                     </div>
-                    <span class="badge bg-primary">{{ $channel->playlists->count() }} playlist(s)</span>
+                    <span class="badge bg-primary" data-playlist-count data-playlist-count-format="label">{{ $channel->playlists->count() }} playlist(s)</span>
                 </div>
                 <div class="card-body playlist-builder">
                     <div class="playlist-create-shell">
@@ -464,7 +464,7 @@
                                         </div>
 
                                         <div class="p-3 pt-0 d-flex justify-content-end">
-                                            <form action="{{ route('backend.author_channels.playlists.destroy', [$channel->id, $playlist->id]) }}" method="POST" onsubmit="return confirmPlaylistDelete('{{ addslashes($playlist->name) }}')">
+                                            <form action="{{ route('backend.author_channels.playlists.destroy', [$channel->id, $playlist->id]) }}" method="POST" data-playlist-delete-form data-playlist-id="{{ $playlist->id }}" data-playlist-name="{{ e($playlist->name) }}">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -756,6 +756,16 @@ syncPreview();
         return card;
     }
 
+    function createEmptyPlaylistMessage() {
+        const empty = document.createElement('div');
+        empty.className = 'ondemand-empty';
+        empty.innerHTML = `
+            <i class="ph ph-list-bullets d-block mb-2" style="font-size: 2rem;"></i>
+            No playlists yet. Create one from assigned videos.
+        `;
+        return empty;
+    }
+
     document.querySelectorAll('[data-sortable-playlist]').forEach((list) => {
         let dragging = null;
 
@@ -826,6 +836,19 @@ syncPreview();
         });
     }
 
+    function selectNextPlaylistAfterDelete(deletedId) {
+        const remainingTrigger = Array.from(document.querySelectorAll('[data-playlist-trigger]'))
+            .find((trigger) => trigger.dataset.playlistTrigger !== String(deletedId) && !trigger.classList.contains('is-hidden'));
+
+        if (remainingTrigger) {
+            activatePlaylist(remainingTrigger.dataset.playlistTrigger);
+            saveEditState('#tab-playlists', remainingTrigger.dataset.playlistTrigger);
+            return;
+        }
+
+        sessionStorage.setItem(stateKey, JSON.stringify({ tab: '#tab-playlists', playlist: null }));
+    }
+
     playlistTriggers.forEach((trigger) => {
         trigger.addEventListener('click', () => {
             activatePlaylist(trigger.dataset.playlistTrigger);
@@ -844,6 +867,64 @@ syncPreview();
             form.closest('#tab-playlists') ? '#tab-playlists' : (form.closest('#tab-assign-videos') ? '#tab-assign-videos' : null),
             form.closest('[data-playlist-panel]')?.dataset.playlistPanel || activePlaylistId()
         ));
+    });
+
+    document.querySelectorAll('[data-playlist-delete-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const playlistId = form.dataset.playlistId;
+            const playlistName = form.dataset.playlistName || 'this playlist';
+            if (!confirmPlaylistDelete(playlistName)) return;
+
+            const button = form.querySelector('button[type="submit"]');
+            if (button) {
+                button.disabled = true;
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="ph ph-circle-notch"></i> Deleting';
+            }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: new FormData(form),
+                });
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Unable to delete playlist.');
+                }
+
+                const trigger = document.querySelector(`[data-playlist-trigger="${playlistId}"]`);
+                const panel = document.querySelector(`[data-playlist-panel="${playlistId}"]`);
+                trigger?.remove();
+                panel?.remove();
+                selectNextPlaylistAfterDelete(playlistId);
+
+                document.querySelectorAll('[data-playlist-count]').forEach((badge) => {
+                    if (data.playlist_count === undefined) return;
+                    badge.textContent = badge.dataset.playlistCountFormat === 'number'
+                        ? String(data.playlist_count)
+                        : `${data.playlist_count} playlist(s)`;
+                });
+
+                if (data.playlist_count === 0) {
+                    const workspace = document.querySelector('.playlist-workspace');
+                    workspace?.replaceWith(createEmptyPlaylistMessage());
+                }
+            } catch (error) {
+                alert(error.message || 'Unable to delete playlist.');
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = button.dataset.originalText || '<i class="ph ph-trash"></i> Delete Playlist';
+                }
+            }
+        });
     });
 
     document.querySelectorAll('[data-playlist-add-form]').forEach((form) => {
