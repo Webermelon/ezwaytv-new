@@ -410,11 +410,17 @@
 @endpush
 
 @push('ezstats-meta')
+@php($distributionOgImage = asset('img/distribution/distribution-og.jpg'))
 <meta property="og:title" content="eZWay TV Distribution" />
 <meta property="og:description" content="Global TV distribution across major platforms — reach and organic viewership." />
-<meta property="og:image" content="/public/img/distribution/distribution-og.jpg" />
+<meta property="og:image" content="{{ $distributionOgImage }}" />
+<meta property="og:image:url" content="{{ $distributionOgImage }}" />
+<meta property="og:image:secure_url" content="{{ $distributionOgImage }}" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="/public/img/distribution/distribution-og.jpg" />
+<meta name="twitter:image" content="{{ $distributionOgImage }}" />
 @endpush
 
 @section('content')

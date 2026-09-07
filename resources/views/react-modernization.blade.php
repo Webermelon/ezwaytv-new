@@ -10,9 +10,9 @@
         $keywords = $meta->meta_keywords ?? optional($seo)->meta_keywords ?? null;
         $canonical = $meta->canonical_url ?? url()->current();
         $homeShareImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_(1)_6a16d2697b16e_6a21ca461f0e2.jpg';
-        $ogImage = $meta->seo_image ?? optional($seo)->seo_image ?? asset('img/logo/logo.png');
+        $ogImage = $meta->seo_image ?? optional($seo)->seo_image ?? $homeShareImage;
 
-        if (request()->is('/') && empty($meta->seo_image)) {
+        if (empty($ogImage) || (request()->is('/') && empty($meta->seo_image))) {
             $ogImage = $homeShareImage;
         }
 
@@ -22,6 +22,24 @@
                 ? asset($seoPath)
                 : asset(ltrim($ogImage, '/'));
         }
+
+        $ogImageHost = parse_url((string) $ogImage, PHP_URL_HOST);
+        $appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: request()->getHost();
+        $ogImagePath = parse_url((string) $ogImage, PHP_URL_PATH) ?: '';
+        if ($ogImageHost === $appHost && ! file_exists(public_path(ltrim($ogImagePath, '/')))) {
+            $ogImage = $homeShareImage;
+        }
+
+        $ogImagePath = parse_url((string) $ogImage, PHP_URL_PATH) ?: '';
+        $ogImageExtension = strtolower(pathinfo($ogImagePath, PATHINFO_EXTENSION));
+        $ogImageType = match ($ogImageExtension) {
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            default => 'image/jpeg',
+        };
+        $ogImageAlt = $title ?: $siteName;
+        $ogType = request()->is('video-details/*') ? 'video.other' : 'website';
     @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,22 +54,25 @@
         <meta name="keywords" content="{{ $keywords }}">
     @endif
     <link rel="canonical" href="{{ $canonical }}">
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ $ogType }}">
     <meta property="og:site_name" content="{{ $siteName }}">
     <meta property="og:title" content="{{ $title }}">
     <meta property="og:description" content="{{ $description }}">
     <meta property="og:url" content="{{ $canonical }}">
     <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:image:url" content="{{ $ogImage }}">
     <meta property="og:image:secure_url" content="{{ $ogImage }}">
-    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:type" content="{{ $ogImageType }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="{{ $siteName }}">
+    <meta property="og:image:alt" content="{{ $ogImageAlt }}">
+    <meta itemprop="image" content="{{ $ogImage }}">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ $canonical }}">
     <meta name="twitter:title" content="{{ $title }}">
     <meta name="twitter:description" content="{{ $description }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
-    <meta name="twitter:image:alt" content="{{ $siteName }}">
+    <meta name="twitter:image:alt" content="{{ $ogImageAlt }}">
     @php
         $authUser = auth()->user();
         $authProfile = null;
