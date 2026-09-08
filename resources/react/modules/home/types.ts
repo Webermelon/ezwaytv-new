@@ -85,6 +85,13 @@ export type MediaItem = {
     description?: string | null
     thumbnail_image?: string | null
     server_url?: string | null
+    vod_channel?: {
+      id?: number | string
+      name?: string | null
+      username?: string | null
+      url?: string | null
+      button_name?: string | null
+    } | null
     is_device_supported?: number | boolean | null
     has_content_access?: number | boolean | null
     required_plan_level?: number | string | null

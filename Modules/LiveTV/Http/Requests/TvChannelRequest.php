@@ -27,6 +27,8 @@ class TvChannelRequest extends FormRequest
             'plan_id' => 'required_if:access,paid',
             'description' => 'required|string',
             'enable_live_chat' => 'nullable|boolean',
+            'vod_channel_id' => ['nullable', 'exists:author_channels,id'],
+            'vod_channel_button_name' => ['nullable', 'string', 'max:80'],
         ];
 
         // Validate server_url when type is "t_url" and stream_type is selected (any stream type: URL, HLS, YouTube, Vimeo, x265, etc.)

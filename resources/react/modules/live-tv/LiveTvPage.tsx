@@ -212,7 +212,9 @@ function LiveTvDetailPage({
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
   const isSubscriptionLocked = isPremiumMediaLocked(channel)
-  const showAuthorsVodButton = isAuthorsLiveTvChannel(channel)
+  const vodChannel = channel?.details?.vod_channel
+  const vodChannelUrl = vodChannel?.url || (vodChannel?.username ? `/on-demand/${vodChannel.username}` : null)
+  const vodChannelButtonName = vodChannel?.button_name || vodChannel?.name || 'View On Demand'
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
@@ -388,11 +390,11 @@ function LiveTvDetailPage({
                     Watch Live
                   </Button>
                 ) : null}
-                {showAuthorsVodButton ? (
+                {vodChannelUrl ? (
                   <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
-                    <a href="/on-demand/the-authors-channel">
+                    <a href={vodChannelUrl}>
                       <Film className="h-5 w-5" />
-                      VOD Authors Channel
+                      {vodChannelButtonName}
                     </a>
                   </Button>
                 ) : null}
@@ -1380,34 +1382,6 @@ function requiredPlanLabel(item?: MediaItem | null) {
 
 function relatedChannels(channels: MediaItem[], current?: MediaItem) {
   return channels.filter((channel) => String(channel.id) !== String(current?.id)).slice(0, 12)
-}
-
-function isAuthorsLiveTvChannel(channel?: MediaItem | null) {
-  if (!channel) return false
-
-  const labels = [
-    channel.name,
-    channel.details?.name,
-    channel.slug,
-    channel.details?.slug,
-  ].map((value) => normalizeChannelLabel(value))
-
-  return labels.some((value) => (
-    value === 'author channel'
-    || value === 'authors channel'
-    || value === 'the author channel'
-    || value === 'the authors channel'
-    || value.includes('author channel')
-    || value.includes('authors channel')
-  ))
-}
-
-function normalizeChannelLabel(value?: string | number | null) {
-  return String(value ?? '')
-    .toLowerCase()
-    .replace(/&amp;/g, '&')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
 }
 
 function currentLiveTvShareUrl() {

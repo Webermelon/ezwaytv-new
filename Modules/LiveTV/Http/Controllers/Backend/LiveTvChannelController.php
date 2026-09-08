@@ -3,6 +3,7 @@
 namespace Modules\LiveTV\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuthorChannel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Traits\ModuleTrait;
@@ -214,7 +215,8 @@ class LiveTvChannelController extends Controller
         $module_title = __('livetv.add_tvchannel');
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
-        return view('livetv::backend.channel.create', compact('plan', 'assets','tvcategory', 'embedded', 'url', 'streamMapping', 'module_title', 'mediaUrls','page_type'));
+        $vodChannels = $this->vodChannelOptions();
+        return view('livetv::backend.channel.create', compact('plan', 'assets','tvcategory', 'embedded', 'url', 'streamMapping', 'module_title', 'mediaUrls','page_type', 'vodChannels'));
     }
 
     /**
@@ -229,6 +231,7 @@ class LiveTvChannelController extends Controller
         } else {
             unset($data['enable_live_chat']);
         }
+        $this->normalizeVodChannelButtonData($data);
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
@@ -272,12 +275,13 @@ class LiveTvChannelController extends Controller
         $module_title = __('livetv.edit_tvchannel');
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
+        $vodChannels = $this->vodChannelOptions();
         $playerViewSettings = [
             'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '0'),
             'schedule_enabled' => StatSetting::get("schedule_enabled:livetv:{$data->id}", '1'),
         ];
 
-        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings'));
+        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings', 'vodChannels'));
     }
 
     /**
@@ -302,6 +306,7 @@ class LiveTvChannelController extends Controller
         } else {
             unset($data['enable_live_chat']);
         }
+        $this->normalizeVodChannelButtonData($data);
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
@@ -363,6 +368,23 @@ class LiveTvChannelController extends Controller
     {
         StatSetting::set("show_player_views:livetv:{$channelId}", $request->boolean('show_player_views') ? '1' : '0');
         StatSetting::set("schedule_enabled:livetv:{$channelId}", $request->boolean('schedule_enabled') ? '1' : '0');
+    }
+
+    private function vodChannelOptions()
+    {
+        return AuthorChannel::query()
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+    }
+
+    private function normalizeVodChannelButtonData(array &$data): void
+    {
+        $vodChannelId = $data['vod_channel_id'] ?? null;
+        $data['vod_channel_id'] = filled($vodChannelId) ? (int) $vodChannelId : null;
+        $data['vod_channel_button_name'] = $data['vod_channel_id']
+            ? trim((string) ($data['vod_channel_button_name'] ?? '')) ?: 'View On Demand'
+            : null;
     }
 
     /**

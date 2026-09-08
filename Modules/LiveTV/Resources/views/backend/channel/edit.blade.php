@@ -283,6 +283,22 @@
                                             </div>
                                             <small class="text-muted d-block mt-1">Hides API and saved schedules for this channel.</small>
                                         </div>
+                                        <div class="col-md-6">
+                                            {{ html()->label('VOD Channel', 'vod_channel_id')->class('form-label') }}
+                                            {{ html()->select('vod_channel_id', $vodChannels->prepend('No linked VOD channel', ''), old('vod_channel_id', $data->vod_channel_id))->class('form-control select2')->id('vod_channel_id') }}
+                                            <small class="text-muted d-block mt-1">Optional. Select the On-Demand channel this Live TV page should link to.</small>
+                                            @error('vod_channel_id')
+                                                <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                        <div class="col-md-6">
+                                            {{ html()->label('Button Name', 'vod_channel_button_name')->class('form-label') }}
+                                            {{ html()->text('vod_channel_button_name', old('vod_channel_button_name', $data->vod_channel_button_name))->placeholder('View On Demand')->class('form-control')->id('vod_channel_button_name') }}
+                                            <small class="text-muted d-block mt-1">Shown on the Live TV channel page when a VOD channel is selected.</small>
+                                            @error('vod_channel_button_name')
+                                                <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
                                     </div>
                                 </div>
                             </div>

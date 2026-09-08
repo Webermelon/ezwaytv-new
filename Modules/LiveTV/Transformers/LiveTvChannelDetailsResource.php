@@ -21,6 +21,14 @@ class LiveTvChannelDetailsResource extends JsonResource
             $plans = Plan::where('level', '<=', $plan->level)->get();
         }
         $moreItems = LiveTvChannel::where('category_id', $this->category_id)->featuredFirst()->get()->except($this->id);
+        $vodChannel = $this->vodChannel;
+        $vodChannelData = $vodChannel && (bool) $vodChannel->is_active ? [
+            'id' => $vodChannel->id,
+            'name' => $vodChannel->name,
+            'username' => $vodChannel->username,
+            'url' => url('/on-demand/' . $vodChannel->username),
+            'button_name' => $this->vod_channel_button_name ?: 'View On Demand',
+        ] : null;
 
         return [
             'id' => $this->id,
@@ -36,6 +44,7 @@ class LiveTvChannelDetailsResource extends JsonResource
             'embedded' => optional($this->TvChannelStreamContentMappings)->embedded ?? null,
             'server_url' => optional($this->TvChannelStreamContentMappings)->server_url ?? null,
             'server_url1' => optional($this->TvChannelStreamContentMappings)->server_url1 ?? null,
+            'vod_channel' => $vodChannelData,
             'stats' => [
                 'real_views' => (int) ($this->real_views ?? 0),
                 'boost_views' => (int) ($this->boost_views ?? 0),

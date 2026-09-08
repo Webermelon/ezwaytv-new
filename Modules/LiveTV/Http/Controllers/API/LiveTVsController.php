@@ -87,7 +87,7 @@ class LiveTVsController extends Controller
 
         $cachedResult = cacheApiResponse($cacheKey, 300, function () use ($request, $channelId, $userId, $device_type) {
            $channelData = LiveTvChannel::query()
-               ->with('TvCategory','plan','TvChannelStreamContentMappings')
+               ->with('TvCategory','plan','TvChannelStreamContentMappings','vodChannel')
                ->where(function ($query) use ($channelId) {
                    if (is_numeric($channelId)) {
                        $query->where('id', (int) $channelId);

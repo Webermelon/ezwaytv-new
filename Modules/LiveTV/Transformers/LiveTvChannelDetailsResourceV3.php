@@ -31,6 +31,14 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
         } elseif ($scheduleEnabled && $this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveStoredScheduleData($this->schedules);
         }
+        $vodChannel = $this->vodChannel;
+        $vodChannelData = $vodChannel && (bool) $vodChannel->is_active ? [
+            'id' => $vodChannel->id,
+            'name' => $vodChannel->name,
+            'username' => $vodChannel->username,
+            'url' => url('/on-demand/' . $vodChannel->username),
+            'button_name' => $this->vod_channel_button_name ?: 'View On Demand',
+        ] : null;
 
         return [
             'id' => $this->id,
@@ -48,6 +56,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                 'description' => strip_tags($this->description),
                 "thumbnail_image" => setBaseUrlWithFileName($this->poster_url,'image','livetv'),
                 'category' => $this->TvCategory->name ?? null,
+                'vod_channel' => $vodChannelData,
                 'stats' => [
                     'real_views' => (int) ($this->real_views ?? 0),
                     'boost_views' => (int) ($this->boost_views ?? 0),
