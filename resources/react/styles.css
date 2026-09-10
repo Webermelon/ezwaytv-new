@@ -797,3 +797,76 @@ body {
     transform: translateX(100%);
   }
 }
+
+.livetv-hero-marquee-window {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.livetv-hero-marquee-window.is-moving {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+}
+
+.livetv-hero-marquee-track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  gap: 2rem;
+  white-space: nowrap;
+  animation: livetv-hero-marquee 14s linear infinite;
+  will-change: transform;
+}
+
+.livetv-hero-marquee-track > span {
+  flex: 0 0 auto;
+}
+
+@keyframes livetv-hero-marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+
+  88%,
+  100% {
+    transform: translateX(calc(-50% - 1rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .livetv-hero-marquee-track {
+    animation: none;
+    transform: none;
+  }
+}
+
+.livetv-hero-player .vjs-control-bar {
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding-inline: 0.8rem;
+}
+
+.livetv-hero-player .vjs-progress-control,
+.livetv-hero-player .vjs-current-time,
+.livetv-hero-player .vjs-time-divider,
+.livetv-hero-player .vjs-duration,
+.livetv-hero-player .vjs-remaining-time,
+.livetv-hero-player .vjs-live-control,
+.livetv-hero-player .vjs-picture-in-picture-control {
+  display: none !important;
+}
+
+.livetv-hero-player .vjs-volume-panel {
+  flex: 0 0 auto !important;
+  width: 3rem !important;
+}
+
+.livetv-hero-player .vjs-volume-control {
+  display: none !important;
+}
+
+.livetv-hero-player .vjs-fullscreen-control {
+  flex: 0 0 auto;
+}

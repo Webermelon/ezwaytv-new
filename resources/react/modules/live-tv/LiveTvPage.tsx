@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, UsersRound, Volume2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -41,6 +41,9 @@ export function LiveTvPage() {
   const channelKey = decodeURIComponent(pathname.replace(/^\/(?:spa\/live-tv|livetv)\/?/, '')).replace(/^\/+|\/+$/g, '')
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
+  const [guideSelection, setGuideSelection] = useState<{ channel: MediaItem; playTrigger: number } | null>(null)
+  const guideHeroPlayerRef = useRef<HTMLDivElement | null>(null)
+  const guidePlayedChannelRef = useRef<string | number | null>(null)
   const dashboardQuery = useQuery({
     queryKey: ['livetv-dashboard'],
     queryFn: loadLiveTvDashboard,
@@ -80,6 +83,15 @@ export function LiveTvPage() {
       return [name, category].filter(Boolean).some((value) => String(value).toLowerCase().includes(term))
     }))
   }, [activeCategory, allChannels, categories, query])
+  const featuredDashboardChannel = dashboard.slider?.[0] ?? channels[0]
+  const featuredGuideQuery = useQuery({
+    queryKey: ['livetv-guide-channel-detail-schedule-v3', featuredDashboardChannel?.id],
+    queryFn: () => loadLiveTvGuideChannel(featuredDashboardChannel as MediaItem),
+    enabled: !channelKey && Boolean(featuredDashboardChannel?.id),
+    staleTime: 10 * 60_000,
+    gcTime: 45 * 60_000,
+  })
+  const featured = featuredGuideQuery.data ? channelWithGuideSchedule(featuredGuideQuery.data) : featuredDashboardChannel
 
   if (channelKey) {
     if (!dashboardQuery.isLoading && !detailQuery.isLoading && !detail && !matchedChannel) {
@@ -97,7 +109,21 @@ export function LiveTvPage() {
     )
   }
 
-  const featured = dashboard.slider?.[0] ?? channels[0]
+  const selectedGuideChannel = guideSelection?.channel
+  const heroChannel = selectedGuideChannel ?? featured
+  const heroTitle = heroChannel ? channelName(heroChannel) : 'eZWay TV'
+  const heroDescription = liveTvHeroDescription(heroChannel)
+  const heroFeatures = liveTvHeroFeatures(heroChannel, allChannels)
+  const selectGuideChannel = (channel: MediaItem) => {
+    guidePlayedChannelRef.current = null
+    setGuideSelection((current) => ({
+      channel,
+      playTrigger: (current?.playTrigger ?? 0) + 1,
+    }))
+    window.requestAnimationFrame(() => {
+      guideHeroPlayerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }
   const scrollToChannels = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     document.getElementById('channels')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -108,38 +134,70 @@ export function LiveTvPage() {
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="livetv" />
 
-      <section className="relative min-h-[66vh] overflow-hidden">
-        <img src={liveTvHeroImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-78" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.86)_34%,rgba(5,5,5,0.38)_70%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
+      <section className="relative overflow-hidden border-b border-[#d4a843]/15 bg-[#050505]">
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,#050505_0%,#050505_36%,rgba(54,39,12,0.82)_58%,rgba(116,84,24,0.34)_72%,#050505_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.22)_48%,#050505_100%)]" />
 
-        <div className="relative z-10 flex min-h-[66vh] max-w-4xl flex-col justify-end px-4 pb-16 pt-20 sm:px-8 lg:px-12">
-          <Badge className="w-fit rounded-sm bg-primary text-white">
-            <Radio className="mr-1 h-3.5 w-3.5" />
-            Live TV
-          </Badge>
-          <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">
-            {featured?.details?.name ?? featured?.name ?? 'Live TV'}
-          </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-            Watch live channels, music, entertainment, and original programming from the eZWay TV network.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-              <a href={liveTvSpaHref(featured)}>
-                <Play className="h-5 w-5 fill-current" />
-                View Channel
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/livetv#channels" onClick={scrollToChannels}>All Live TV</a>
-            </Button>
+        <div
+          className="relative z-10 mx-auto grid max-w-[1840px] gap-6 px-4 pb-8 pt-20 sm:px-8 sm:pb-10 sm:pt-24 lg:min-h-[610px] lg:grid-cols-[minmax(350px,0.95fr)_minmax(480px,1fr)] lg:items-center lg:gap-8 lg:px-12"
+        >
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#f0c24d] sm:gap-3 sm:text-sm sm:tracking-[0.28em]">
+              <Radio className="h-4 w-4 sm:h-6 sm:w-6" />
+              {heroChannel?.details?.category ?? 'Live TV'}
+            </div>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none text-white sm:text-6xl xl:text-[4.5rem]">
+              {heroTitle}
+            </h1>
+            <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-6 text-white/72 sm:mt-5 sm:line-clamp-4 sm:text-base">
+              {heroDescription}
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7 sm:flex sm:flex-wrap">
+              <Button asChild size="lg" className="min-w-0 border border-[#f3cf70]/40 bg-[#d4a843] px-3 text-black shadow-lg shadow-[#d4a843]/15 hover:bg-[#e8c463] sm:px-6">
+                <a href={liveTvSpaHref(heroChannel)}>
+                  <Play className="h-5 w-5 fill-current" />
+                  View Channel
+                </a>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:px-6">
+                <a href="/livetv#channels" onClick={scrollToChannels}>
+                  <Grid2X2 className="h-5 w-5" />
+                  All Live TV
+                </a>
+              </Button>
+            </div>
+
+            <div className="mt-7 grid max-w-2xl gap-3 text-white/70 sm:mt-8">
+              {heroFeatures.map((feature) => (
+                <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} />
+              ))}
+            </div>
+          </div>
+
+          <div ref={guideHeroPlayerRef} className="w-full max-w-[940px] justify-self-end lg:mt-0 xl:max-w-[980px]">
+            <LiveTvGuideHeroPlayer
+              channel={heroChannel}
+              previewChannel={featured}
+              previewWhenMissingStream={!selectedGuideChannel}
+              playTrigger={guideSelection?.playTrigger ?? 0}
+              onPlay={(channel) => {
+                if (guidePlayedChannelRef.current === channel.id) return
+
+                guidePlayedChannelRef.current = channel.id
+                trackLiveTvPlay(channel).catch(() => undefined)
+              }}
+            />
           </div>
         </div>
       </section>
 
       <section className="px-3 pb-16 sm:px-6 lg:px-8">
-        <TvGuide channels={allChannels} loading={dashboardQuery.isLoading} />
+        <TvGuide
+          channels={allChannels}
+          loading={dashboardQuery.isLoading}
+          selectedChannelId={selectedGuideChannel?.id}
+          onSelectChannel={selectGuideChannel}
+        />
 
         <div id="channels" className="mb-6 scroll-mt-24 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
           <div className="flex min-h-11 items-center gap-2 rounded-md bg-black/38 px-3">
@@ -878,6 +936,249 @@ function LiveTvCard({ channel, channelNumber }: { channel: MediaItem; channelNum
   )
 }
 
+function HeroFeature({
+  icon: Icon,
+  title,
+  detail,
+}: {
+  icon: typeof Monitor
+  title: string
+  detail: string
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[#d4a843]/45 bg-black/24 text-[#f0c24d] sm:h-10 sm:w-10">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-bold leading-tight text-white">{title}</span>
+        <HeroFeatureDetail text={detail} />
+      </span>
+    </div>
+  )
+}
+
+function HeroFeatureDetail({ text }: { text: string }) {
+  const measureRef = useRef<HTMLSpanElement | null>(null)
+  const [shouldScroll, setShouldScroll] = useState(false)
+
+  useEffect(() => {
+    const element = measureRef.current
+    if (!element) return
+
+    const updateOverflow = () => {
+      setShouldScroll(element.scrollWidth > element.clientWidth + 4)
+    }
+
+    updateOverflow()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateOverflow)
+
+      return () => window.removeEventListener('resize', updateOverflow)
+    }
+
+    const observer = new ResizeObserver(updateOverflow)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [text])
+
+  return (
+    <span className={['livetv-hero-marquee-window mt-0.5 block text-xs font-medium text-white/52', shouldScroll ? 'is-moving' : ''].join(' ')}>
+      <span ref={measureRef} className="invisible absolute block w-full overflow-hidden whitespace-nowrap">
+        {text}
+      </span>
+      {shouldScroll ? (
+        <span className="livetv-hero-marquee-track">
+          <span>{text}</span>
+          <span aria-hidden="true">{text}</span>
+        </span>
+      ) : (
+        <span className="block truncate">{text}</span>
+      )}
+    </span>
+  )
+}
+
+function liveTvHeroDescription(channel?: MediaItem) {
+  const description = cleanLiveTvDescription(channel?.details?.description ?? channel?.description)
+  if (description) return description
+
+  const name = channel ? channelName(channel) : 'eZWay TV'
+  const category = channel?.details?.category
+
+  if (category) {
+    return `Watch ${name} live with ${category.toLowerCase()} programming from the eZWay TV network.`
+  }
+
+  return 'Watch live channels, music, entertainment, and original programming from the eZWay TV network. Inspiring content for entrepreneurs, creators, and change-makers worldwide.'
+}
+
+function liveTvHeroFeatures(channel: MediaItem | undefined, channels: MediaItem[]) {
+  const schedule = liveTvHeroSchedule(channel)
+  const nowPlayingTitle = schedule.now?.title ? cleanScheduleTitle(schedule.now.title) : null
+  const nextPlayingTitle = schedule.next?.title ? cleanScheduleTitle(schedule.next.title) : null
+
+  return [
+    {
+      icon: UsersRound,
+      title: 'Now Playing',
+      detail: nowPlayingTitle && nowPlayingTitle !== 'Untitled program' ? nowPlayingTitle : 'Live Programming',
+    },
+    {
+      icon: Gem,
+      title: 'Next Playing',
+      detail: nextPlayingTitle && nextPlayingTitle !== 'Untitled program' ? nextPlayingTitle : 'Schedule updating',
+    },
+  ]
+}
+
+function liveTvHeroSchedule(channel?: MediaItem) {
+  const currentTime = Date.now()
+  const schedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
+  let now = channel?.now_playing ?? null
+  let next = channel?.next_playing ?? null
+
+  if ((!now || !next) && schedule.length > 0) {
+    const sorted = [...schedule]
+      .filter((item) => item.title || scheduleStart(item))
+      .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
+
+    const onAirIndex = sorted.findIndex((item) => isScheduleOnAir(item, currentTime))
+    const upcomingIndex = sorted.findIndex((item) => {
+      const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+
+      return Boolean(start && start > currentTime)
+    })
+
+    if (!now && onAirIndex >= 0) {
+      now = liveTvScheduleProgramInfo(sorted[onAirIndex], currentTime)
+    }
+
+    if (!next) {
+      const nextIndex = onAirIndex >= 0 ? onAirIndex + 1 : upcomingIndex
+      if (nextIndex >= 0 && sorted[nextIndex]) {
+        next = liveTvScheduleProgramInfo(sorted[nextIndex], currentTime)
+      }
+    }
+  }
+
+  return { now, next }
+}
+
+function liveTvScheduleProgramInfo(item: LiveTvScheduleItem, currentTime: number): ProgramInfo {
+  const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item), item.timezone)?.getTime()
+  const durationSeconds = item.duration_seconds ?? (start && end ? Math.max(0, Math.round((end - start) / 1000)) : null)
+  const elapsedSeconds = start && currentTime >= start ? Math.max(0, Math.round((currentTime - start) / 1000)) : null
+
+  return {
+    title: item.title ?? null,
+    start_time: scheduleStart(item),
+    end_time: scheduleEnd(item),
+    timezone: item.timezone ?? null,
+    status: item.status ?? null,
+    duration_seconds: durationSeconds,
+    elapsed_seconds: elapsedSeconds,
+  }
+}
+
+function LiveTvGuideHeroPlayer({
+  channel,
+  previewChannel,
+  previewWhenMissingStream = false,
+  playTrigger,
+  onPlay,
+}: {
+  channel?: MediaItem
+  previewChannel?: MediaItem
+  previewWhenMissingStream?: boolean
+  playTrigger: number
+  onPlay: (channel: MediaItem) => void
+}) {
+  const displayChannel = channel ?? previewChannel
+  const title = displayChannel ? channelName(displayChannel) : 'eZWay TV'
+  const image = channelArtwork(displayChannel) ?? liveTvHeroImage
+  const stream = channel ? resolveLiveTvStream(channel) : null
+  const locked = isPremiumMediaLocked(channel)
+  const isPreview = !channel || (!stream && previewWhenMissingStream)
+
+  return (
+    <div
+      id="livetv-hero-player"
+      className="livetv-hero-player relative w-full overflow-hidden rounded-md border border-[#f0c24d]/70 bg-black shadow-2xl shadow-black/65 ring-1 ring-[#d4a843]/25"
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 hidden items-start justify-between gap-3 bg-gradient-to-b from-black/76 to-transparent p-5 sm:flex">
+        <div className="min-w-0">
+          <Badge className="w-fit rounded-sm bg-red-600 px-2.5 py-0.5 text-xs text-white">LIVE</Badge>
+          <h2 className="mt-2 line-clamp-1 text-2xl font-black leading-tight text-white">{title}</h2>
+          <p className="mt-0.5 line-clamp-1 text-xs font-bold uppercase tracking-normal text-white/80">Passport to a brighter tomorrow</p>
+        </div>
+      </div>
+
+      <div className="aspect-video sm:min-h-[250px]">
+        {locked ? (
+          <PremiumPlayerLock
+            image={image}
+            title={title}
+            label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
+          />
+        ) : stream ? (
+          <VideoJsPlayer
+            key={`${channel.id}-${stream.url}`}
+            source={stream.url}
+            poster={image}
+            autoplay
+            muted
+            playTrigger={playTrigger}
+            vastAds={[]}
+            isLive
+            onPlay={() => onPlay(channel)}
+          />
+        ) : isPreview ? (
+          <HeroVideoPreview image={image} title={title} href={liveTvSpaHref(previewChannel)} />
+        ) : (
+          <div className="relative flex h-full min-h-[240px] w-full items-center justify-center overflow-hidden bg-black p-8 text-center">
+            {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-24 blur-sm" /> : null}
+            <div className="absolute inset-0 bg-black/70" />
+            <div className="relative max-w-sm">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/10 text-white/72">
+                <Play className="h-6 w-6 fill-current" />
+              </span>
+              <h2 className="mt-4 text-xl font-black text-white">{title}</h2>
+              <p className="mt-2 text-sm leading-6 text-white/54">This channel is loading, but no playable stream is available yet.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HeroVideoPreview({ image, title, href }: { image: string; title: string; href: string }) {
+  return (
+    <a href={href} className="group relative block h-full w-full overflow-hidden bg-black" aria-label={`View ${title}`}>
+      <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-500 group-hover:scale-[1.02]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0.10)_50%,rgba(0,0,0,0.76)_100%)]" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-2xl shadow-black/40 transition group-hover:scale-105 group-hover:bg-[#f0c24d]">
+          <Play className="h-7 w-7 fill-current" />
+        </span>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-end gap-3 p-3 sm:gap-4 sm:p-5">
+        <Volume2 className="h-4 w-4 shrink-0 text-white sm:h-5 sm:w-5" />
+        <span className="flex shrink-0 items-center gap-1 text-[10px] font-black uppercase text-white sm:gap-1.5 sm:text-xs">
+          <span className="h-2 w-2 rounded-full bg-red-600 sm:h-2.5 sm:w-2.5" />
+          Live
+        </span>
+        <span className="hidden rounded-sm border border-white/45 px-1.5 py-0.5 text-xs font-black leading-none text-white sm:inline-flex">HD</span>
+        <Maximize className="hidden h-5 w-5 shrink-0 text-white sm:block" />
+      </div>
+    </a>
+  )
+}
+
 function LiveChannelBadge() {
   return (
     <span className="absolute right-2 top-2 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/72 px-2.5 py-1 text-[11px] font-extrabold uppercase leading-none tracking-normal text-white shadow-lg backdrop-blur-md">
@@ -909,7 +1210,17 @@ function ChannelGridSkeleton() {
   )
 }
 
-function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolean }) {
+function TvGuide({
+  channels,
+  loading,
+  selectedChannelId,
+  onSelectChannel,
+}: {
+  channels: MediaItem[]
+  loading: boolean
+  selectedChannelId?: string | number
+  onSelectChannel: (channel: MediaItem) => void
+}) {
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
@@ -963,7 +1274,7 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
           </div>
           <span className="hidden items-center gap-2 rounded-full bg-red-600/10 px-3 py-1 text-[11px] font-black uppercase text-red-400 sm:inline-flex">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            Live Now
+            LIVE
           </span>
         </div>
 
@@ -980,6 +1291,8 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
                 row={row}
                 currentTime={currentTime}
                 channelNumber={liveTvChannelNumber(row.channel, channels)}
+                selected={String(selectedChannelId ?? '') === String(row.channel.id)}
+                onSelectChannel={onSelectChannel}
               />
             ))}
             {pendingCount > 0 ? <TvGuidePendingRows count={Math.min(pendingCount, 3)} /> : null}
@@ -998,26 +1311,38 @@ function TvGuideRow({
   row,
   currentTime,
   channelNumber,
+  selected,
+  onSelectChannel,
 }: {
   row: LiveTvGuideChannel
   currentTime: number
   channelNumber?: number
+  selected: boolean
+  onSelectChannel: (channel: MediaItem) => void
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const name = row.channel.details?.name ?? row.channel.name
   const label = channelNumber ? channelLabel(channelNumber) : null
   const image = channelArtwork(row.channel)
   const programs = useMemo(() => tvGuidePrograms(row, currentTime), [currentTime, row])
+  const selectableChannel = useMemo(() => channelWithGuideSchedule(row), [row])
 
   function scrollByProgram(direction: -1 | 1) {
     scrollerRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
   }
 
   return (
-    <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
-      <a
-        href={liveTvSpaHref(row.channel)}
-        className="grid min-w-0 grid-cols-[82px_minmax(0,1fr)] items-center gap-3 rounded-md border border-white/8 bg-white/[0.035] p-2 text-left transition hover:border-[#d4a843]/34 hover:bg-[#d4a843]/8 sm:grid-cols-[92px_minmax(0,1fr)]"
+    <article className={['grid gap-2 px-3 py-2.5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center', selected ? 'bg-[#d4a843]/6' : ''].join(' ')}>
+      <button
+        type="button"
+        onClick={() => onSelectChannel(selectableChannel)}
+        aria-pressed={selected}
+        className={[
+          'grid min-w-0 grid-cols-[82px_minmax(0,1fr)] items-center gap-3 rounded-md border p-2 text-left transition sm:grid-cols-[92px_minmax(0,1fr)]',
+          selected
+            ? 'border-[#d4a843]/70 bg-[#d4a843]/14 shadow-[0_0_18px_rgba(212,168,67,0.12)]'
+            : 'border-white/8 bg-white/[0.035] hover:border-[#d4a843]/34 hover:bg-[#d4a843]/8',
+        ].join(' ')}
       >
         <span className="block aspect-video overflow-hidden rounded border border-white/10 bg-black">
           <MediaThumbnail src={image} alt={name} />
@@ -1027,7 +1352,7 @@ function TvGuideRow({
           <span className="line-clamp-2 text-sm font-black leading-tight text-[#d4a843]">{name}</span>
           {row.channel.details?.category ? <span className="mt-1 block truncate text-xs font-semibold text-white/38">{row.channel.details.category}</span> : null}
         </span>
-      </a>
+      </button>
 
       <div className="grid min-w-0 grid-cols-1 items-center sm:grid-cols-[32px_minmax(0,1fr)_32px] sm:gap-2">
           <button
@@ -1047,14 +1372,17 @@ function TvGuideRow({
             const onAir = isScheduleOnAir(program, currentTime)
 
             return (
-              <a
-                href={liveTvSpaHref(row.channel)}
+              <button
+                type="button"
+                onClick={() => onSelectChannel(selectableChannel)}
+                aria-pressed={selected}
                 key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
                 className={[
-                  'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
+                  'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
                   onAir
                     ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
                     : 'border-[#d4a843] bg-[#d4a843]/10',
+                  selected ? 'outline outline-1 outline-[#f2d16f]/70' : '',
                 ].join(' ')}
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -1069,7 +1397,7 @@ function TvGuideRow({
                   ) : null}
                 </div>
                 <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
-              </a>
+              </button>
             )
           })}
         </div>
@@ -1301,6 +1629,17 @@ function tvGuidePrograms(row: LiveTvGuideChannel, currentTime: number) {
     .slice(0, 100)
 }
 
+function channelWithGuideSchedule(row: LiveTvGuideChannel): MediaItem {
+  const fullSchedule = Array.isArray(row.channel.full_schedule) && row.channel.full_schedule.length > 0
+    ? row.channel.full_schedule
+    : row.schedule
+
+  return {
+    ...row.channel,
+    full_schedule: fullSchedule,
+  }
+}
+
 function AdStrip({ ads }: { ads: VideoAd[] }) {
   if (ads.length === 0) return null
 
@@ -1524,9 +1863,24 @@ function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: Me
 }
 
 function liveTvChannelsFromDashboard(dashboard: LiveTvDashboard) {
-  const channels = dashboard.channel_data ?? dashboard.category_data?.flatMap((category) => category.channel_data ?? []) ?? []
+  const channels = [
+    ...(dashboard.channel_data ?? []),
+    ...((dashboard.category_data ?? []).flatMap((category) => category.channel_data ?? [])),
+  ]
 
-  return sortByDashboardOrder(channels)
+  return sortByDashboardOrder(uniqueMediaItems(channels))
+}
+
+function uniqueMediaItems(channels: MediaItem[]) {
+  const seen = new Set<string>()
+
+  return channels.filter((channel) => {
+    const key = channel.id ? `id:${channel.id}` : `channel:${channel.slug ?? channel.details?.slug ?? channelName(channel)}`
+    if (seen.has(key)) return false
+
+    seen.add(key)
+    return true
+  })
 }
 
 function sortByDashboardOrder(channels: MediaItem[]) {
