@@ -257,8 +257,9 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
 
     [$client, $baseUrl] = $core;
     $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
-    $successUrl = url('/subscription-plan?checkout_status=success');
-    $cancelUrl = url('/subscription-plan?checkout_status=cancelled');
+    $checkoutReturnUrl = rtrim((string) config('services.core_api.checkout_return_url', config('app.url')), '/');
+    $checkoutReturnPath = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
+    $checkoutStatusUrl = fn (string $status) => $checkoutReturnUrl.$checkoutReturnPath.'?'.http_build_query(['checkout_status' => $status]);
     $coreUser = (int) ($user->network_user_id ?: $user->id);
 
     try {
@@ -273,9 +274,9 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
             'platform' => ['slug' => 'ezway-tv'],
             'subject_type' => 'tv_subscription',
             'subject_id' => (string) $coreUser,
-            'success_url' => $successUrl,
-            'cancel_url' => $cancelUrl,
-            'failed_url' => url('/subscription-plan?checkout_status=failed'),
+            'success_url' => $checkoutStatusUrl('success'),
+            'cancel_url' => $checkoutStatusUrl('cancelled'),
+            'failed_url' => $checkoutStatusUrl('failed'),
             'checkout_mode' => 'auto',
             'payment_method_id' => trim((string) ($data['payment_method_id'] ?? '')) ?: null,
             'metadata' => [

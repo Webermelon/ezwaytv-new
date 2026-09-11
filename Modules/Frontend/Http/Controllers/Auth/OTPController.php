@@ -343,44 +343,15 @@ class OTPController extends Controller
             return $response;
         }
 
-        $user = User::withTrashed()->where('email', $email)->first();
-
-        if ($user && $user->trashed()) {
-            $user->restore();
-            $user->forceFill([
-                'status' => 1,
-                'user_type' => $user->user_type ?: 'user',
-                'login_type' => $user->login_type ?: 'otp',
-                'email_verified_at' => $user->email_verified_at ?: now(),
-            ])->save();
-            $user = $user->refresh();
-        }
-
-        if ($user) {
-            if ($user->user_type !== 'user') {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'We could not find an active eZWay TV account with that email.',
-                ], 404);
-            }
-
-            if (empty($user->network_user_id) && ($coreLogin = $this->coreLoginPayloadForEmail($email))) {
-                return $this->sendPendingCoreLoginOtp($request, $email, $coreLogin);
-            }
-
-            return $this->sendLoginOtpForUser($request, $user, 'We sent a 4-digit login code to your email.');
-        }
-
         $coreLogin = $this->coreLoginPayloadForEmail($email);
-
-        if (!$coreLogin) {
-            return response()->json([
-                'status' => false,
-                'message' => 'We could not find an active eZWay TV account with that email.',
-            ], 404);
+        if ($coreLogin) {
+            return $this->sendPendingCoreLoginOtp($request, $email, $coreLogin);
         }
 
-        return $this->sendPendingCoreLoginOtp($request, $email, $coreLogin);
+        return response()->json([
+            'status' => false,
+            'message' => 'We could not find an active eZWay TV account with that email.',
+        ], 404);
     }
 
     public function verifySpaOtp(Request $request)
@@ -503,46 +474,7 @@ class OTPController extends Controller
             ]);
         }
 
-        $user = User::where('email', $email)->where('otp', $otp)->first();
-
-        if (!$user || $user->user_type !== 'user') {
-            return $this->recordOtpFailure($request, $email);
-        }
-
-        $request->session()->forget(['tv_login_otp_email', 'tv_login_otp_expires_at']);
-        $request->session()->regenerate();
-        $this->clearOtpAttempts($request, $email);
-        $user->forceFill(['otp' => null])->save();
-
-        Auth::login($user);
-        $this->setDevice($user, $request);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'You are signed in.',
-            'data' => [
-                'redirect_url' => route('user.login'),
-            ],
-        ]);
-    }
-
-    private function sendLoginOtpForUser(Request $request, User $user, string $message)
-    {
-        $otp = $this->makeLoginOtp();
-
-        if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
-        }
-
-        $this->storeLoginOtp($request, $user, $otp);
-
-        return response()->json([
-            'status' => true,
-            'message' => $message,
-        ]);
+        return $this->recordOtpFailure($request, $email);
     }
 
     private function sendPendingCoreLoginOtp(Request $request, string $email, array $coreLogin)
@@ -562,6 +494,7 @@ class OTPController extends Controller
             'email' => $email,
             'otp' => $otp,
             'expires_at' => now()->addMinutes(10)->timestamp,
+            'otp_provider' => 'core',
             'sync_data' => $syncData,
             'access_data' => $coreLogin['access_data'] ?? null,
         ]);
@@ -577,13 +510,6 @@ class OTPController extends Controller
     private function makeLoginOtp(): string
     {
         return (string) random_int(1000, 9999);
-    }
-
-    private function storeLoginOtp(Request $request, User $user, string $otp): void
-    {
-        $user->forceFill(['otp' => $otp])->save();
-        $request->session()->put('tv_login_otp_email', $user->email);
-        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
     }
 
     private function recordOtpFailure(Request $request, string $email)

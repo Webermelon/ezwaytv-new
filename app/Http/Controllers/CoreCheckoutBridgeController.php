@@ -94,8 +94,6 @@ class CoreCheckoutBridgeController extends Controller
 
         [$client, $baseUrl] = $core;
         $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
-        $successUrl = url('/subscription-plan?checkout_status=success');
-        $cancelUrl = url('/subscription-plan?checkout_status=cancelled');
         $coreUser = (int) ($user->network_user_id ?: $user->id);
 
         try {
@@ -110,9 +108,9 @@ class CoreCheckoutBridgeController extends Controller
                 'platform' => ['slug' => 'ezway-tv'],
                 'subject_type' => 'tv_subscription',
                 'subject_id' => (string) $coreUser,
-                'success_url' => $successUrl,
-                'cancel_url' => $cancelUrl,
-                'failed_url' => url('/subscription-plan?checkout_status=failed'),
+                'success_url' => $this->checkoutReturnUrl('success'),
+                'cancel_url' => $this->checkoutReturnUrl('cancelled'),
+                'failed_url' => $this->checkoutReturnUrl('failed'),
                 'checkout_mode' => 'auto',
                 'payment_method_id' => trim((string) ($data['payment_method_id'] ?? '')) ?: null,
                 'metadata' => [
@@ -150,5 +148,13 @@ class CoreCheckoutBridgeController extends Controller
         }
 
         return [$client, $baseUrl];
+    }
+
+    private function checkoutReturnUrl(string $status): string
+    {
+        $baseUrl = rtrim((string) config('services.core_api.checkout_return_url', config('app.url')), '/');
+        $path = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
+
+        return $baseUrl.$path.'?'.http_build_query(['checkout_status' => $status]);
     }
 }

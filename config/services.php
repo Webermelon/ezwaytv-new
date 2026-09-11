@@ -79,6 +79,8 @@ return [
         'token' => env('CORE_API_TOKEN'),
         'host' => env('CORE_API_HOST'),
         'tv_package_slug' => env('CORE_TV_PACKAGE_SLUG', 'tv-subscription-monthly'),
+        'checkout_return_url' => env('CORE_CHECKOUT_RETURN_URL', env('APP_URL')),
+        'checkout_return_path' => env('CORE_CHECKOUT_RETURN_PATH', '/subscription-plan'),
     ],
 
     'media_compressor' => [
