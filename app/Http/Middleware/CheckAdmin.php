@@ -17,9 +17,15 @@ class CheckAdmin
     public function handle($request, Closure $next)
     {
 
-       if(Auth::check() && Auth::user()->hasrole('user')) {
+       if (Auth::check()) {
+            $user = Auth::user();
+            $hasBackendRole = $user->roles()
+                ->where('name', '!=', 'user')
+                ->exists();
 
-            return redirect()->route('user.login');
+            if ($user->hasRole('user') && !$hasBackendRole) {
+                return redirect()->route('user.login');
+            }
         }
 
         return $next($request);

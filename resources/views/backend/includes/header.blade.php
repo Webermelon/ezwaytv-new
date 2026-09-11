@@ -11,6 +11,15 @@ if (!empty($headerNavbarShow)) {
     }
 }
 $navbarClass = $navbarHide ? 'd-none' : (!empty(getCustomizationSetting('navbar_show')) ? getCustomizationSetting('navbar_show') : '');
+$backendUser = auth()->user();
+$backendUserName = trim((string) ($backendUser?->full_name ?? '')) ?: default_user_name();
+$backendUserEmail = (string) ($backendUser?->email ?? 'abc@email.com');
+$backendAvatarFallback = '/img/avatar/avatar.webp';
+$backendAvatarUrl = $backendAvatarFallback;
+
+if (!empty($backendUser?->file_url)) {
+    $backendAvatarUrl = setBaseUrlWithFileName($backendUser->file_url, 'image', 'users');
+}
 ?>
 <nav
     class="nav navbar navbar-expand-xl navbar-light iq-navbar header-hover-menu left-border {{ $navbarClass }} {{ getCustomizationSetting('header_navbar') }}">
@@ -182,19 +191,21 @@ $navbarClass = $navbarHide ? 'd-none' : (!empty(getCustomizationSetting('navbar_
                         aria-haspopup="true" aria-expanded="false">
                         <div class="avatar avatar-md">
                             <img class="avatar avatar-40 img-fluid rounded-pill"
-                                src="{{ setBaseUrlWithFileName(auth()->user()->file_url, 'image', 'users') }}"
-                                alt="{{ auth()->user()->name ?? default_user_name() }}" loading="lazy">
+                                src="{{ $backendAvatarUrl }}"
+                                alt="{{ $backendUserName }}" loading="lazy"
+                                onerror="this.onerror=null; this.src='{{ $backendAvatarFallback }}';">
                         </div>
                     </a>
                     <ul class="dropdown-menu sub-drop dropdown-menu-end">
                         <div class="dropdown-header bg-primary-subtle py-3 rounded">
                             <div class="d-flex gap-2">
                                 <img class="avatar avatar-40 img-fluid rounded-pill"
-                                    src="{{ setBaseUrlWithFileName(auth()->user()->file_url, 'image', 'users') }}" />
+                                    src="{{ $backendAvatarUrl }}"
+                                    alt="{{ $backendUserName }}"
+                                    onerror="this.onerror=null; this.src='{{ $backendAvatarFallback }}';" />
                                 <div class="d-flex flex-column align-items-start">
-                                    <h5 class="m-0 text-primary">{{ Auth::user()->full_name ?? default_user_name() }}
-                                    </h5>
-                                    <span class="text-muted">{{ Auth::user()->email ?? 'abc@email.com' }}</span>
+                                    <h5 class="m-0 text-primary">{{ $backendUserName }}</h5>
+                                    <span class="text-muted">{{ $backendUserEmail }}</span>
                                 </div>
                             </div>
                         </div>

@@ -9,6 +9,7 @@ use App\Models\User;
 use Hash;
 use Auth;
 use Str;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -451,11 +452,11 @@ class OTPController extends Controller
                 ], 500);
             }
 
-            if (!$user || $user->user_type !== 'user') {
+            if (!$user) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'We could not find an active eZWay TV account with that email.',
-                ], 404);
+                    'message' => 'TV could not prepare your local account right now.',
+                ], 500);
             }
 
             $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
@@ -785,10 +786,12 @@ class OTPController extends Controller
         if (is_array($accessData) && !empty($accessData['core_user_id'])) {
             app(CoreTvAccessService::class)->activate($accessData);
 
-            return User::query()
+            $user = User::withTrashed()
                 ->where('network_user_id', (int) $accessData['core_user_id'])
                 ->orWhere('email', $this->normalizeEmail((string) ($accessData['email'] ?? $pendingCoreLogin['email'] ?? '')))
                 ->first();
+
+            return $user ? $this->prepareCoreVerifiedTvUser($user, true) : null;
         }
 
         $syncData = $pendingCoreLogin['sync_data'] ?? null;
@@ -800,13 +803,7 @@ class OTPController extends Controller
             $user = app(CoreTvAccessService::class)->syncUser($syncData);
             $user->forceFill(['is_subscribe' => 0])->save();
 
-            if (!$user->hasRole('user')) {
-                $user->assignRole('user');
-            }
-
-            $user->createOrUpdateProfileWithAvatar();
-
-            return $user->refresh();
+            return $this->prepareCoreVerifiedTvUser($user);
         }
 
         return $this->createFreeCoreShellUser($syncData);
@@ -827,13 +824,13 @@ class OTPController extends Controller
 
             $user->forceFill([
                 'status' => 1,
-                'user_type' => $user->user_type ?: 'user',
+                'user_type' => 'user',
                 'login_type' => $user->login_type ?: 'otp',
                 'email_verified_at' => $user->email_verified_at ?: now(),
                 'is_subscribe' => 0,
             ])->save();
 
-            return $user->refresh();
+            return $this->prepareCoreVerifiedTvUser($user);
         }
 
         $name = (string) Str::of($localPart)->replace(['.', '_', '-'], ' ')->title();
@@ -852,8 +849,38 @@ class OTPController extends Controller
             'is_subscribe' => 0,
         ]);
 
+        return $this->prepareCoreVerifiedTvUser($user);
+    }
+
+    private function prepareCoreVerifiedTvUser(User $user, bool $keepSubscription = false): User
+    {
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        $values = [
+            'status' => 1,
+            'user_type' => 'user',
+            'login_type' => $user->login_type ?: 'otp',
+            'email_verified_at' => $user->email_verified_at ?: now(),
+        ];
+
+        if (!$keepSubscription) {
+            $values['is_subscribe'] = 0;
+        }
+
+        $user->forceFill($values)->save();
+
+        $user->unsetRelation('roles');
+
         if (!$user->hasRole('user')) {
-            $user->assignRole('user');
+            try {
+                $user->assignRole('user');
+            } catch (UniqueConstraintViolationException $exception) {
+                Log::info('TV Core login role already attached while preparing local account.', [
+                    'user_id' => $user->id,
+                ]);
+            }
         }
 
         $user->createOrUpdateProfileWithAvatar();

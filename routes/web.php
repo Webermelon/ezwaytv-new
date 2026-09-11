@@ -71,6 +71,8 @@ Route::get('/web-qr-status/{id}', [WebQrLoginController::class, 'checkStatus'])-
 
 
 Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function () {
+    Route::redirect('/', '/app/dashboard')->name('backend.app');
+
     // Language Switch
     Route::get('language/{language}', [LanguageController::class, 'switch'])->name('language.switch');
     Route::post('set-user-setting', [BackendController::class, 'setUserSetting'])->name('backend.setUserSetting');

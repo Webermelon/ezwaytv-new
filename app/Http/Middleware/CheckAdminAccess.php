@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class CheckAdminAccess
 {
     private const ALWAYS_ALLOWED_ROUTE_NAMES = [
+        'backend.app',
         'backend.home',
         'backend.daterange',
         'backend.setUserSetting',
