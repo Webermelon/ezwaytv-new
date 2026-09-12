@@ -179,11 +179,13 @@ export function LiveTvPage() {
               />
             </div>
 
-            <div className="mt-7 grid max-w-2xl gap-3 text-white/70 sm:mt-8">
-              {heroFeatures.map((feature) => (
-                <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} loading={feature.loading} />
-              ))}
-            </div>
+            {heroFeatures.length > 0 ? (
+              <div className="mt-7 grid max-w-2xl gap-3 text-white/70 sm:mt-8">
+                {heroFeatures.map((feature) => (
+                  <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} loading={feature.loading} />
+                ))}
+              </div>
+            ) : null}
           </div>
 
           <div ref={guideHeroPlayerRef} className="w-full max-w-[940px] justify-self-end lg:mt-0 xl:max-w-[980px]">
@@ -1048,6 +1050,10 @@ function liveTvHeroFeatures(channel: MediaItem | undefined, loading: boolean) {
   const nextPlayingTitle = schedule.next?.title ? cleanScheduleTitle(schedule.next.title) : null
   const nowDetail = nowPlayingTitle && nowPlayingTitle !== 'Untitled program' ? nowPlayingTitle : null
   const nextDetail = nextPlayingTitle && nextPlayingTitle !== 'Untitled program' ? nextPlayingTitle : null
+
+  if (!loading && !nowDetail && !nextDetail) {
+    return []
+  }
 
   return [
     {
