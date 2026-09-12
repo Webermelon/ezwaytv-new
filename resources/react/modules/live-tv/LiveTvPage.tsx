@@ -42,6 +42,7 @@ export function LiveTvPage() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
   const [guideSelection, setGuideSelection] = useState<{ channel: MediaItem; playTrigger: number } | null>(null)
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const guideHeroPlayerRef = useRef<HTMLDivElement | null>(null)
   const guidePlayedChannelRef = useRef<string | number | null>(null)
   const dashboardQuery = useQuery({
@@ -166,11 +167,21 @@ export function LiveTvPage() {
                   All Live TV
                 </a>
               </Button>
+              <LiveTvShareMenu
+                title="eZWay TV"
+                copied={copiedShareUrl}
+                onCopy={() => {
+                  copyLiveTvShareUrl().then(() => {
+                    setCopiedShareUrl(true)
+                    window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                  }).catch(() => undefined)
+                }}
+              />
             </div>
 
             <div className="mt-7 grid max-w-2xl gap-3 text-white/70 sm:mt-8">
               {heroFeatures.map((feature) => (
-                <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} />
+                <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} loading={feature.loading} />
               ))}
             </div>
           </div>
