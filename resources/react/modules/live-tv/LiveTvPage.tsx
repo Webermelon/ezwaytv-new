@@ -113,7 +113,8 @@ export function LiveTvPage() {
   const heroChannel = selectedGuideChannel ?? featured
   const heroTitle = heroChannel ? channelName(heroChannel) : 'eZWay TV'
   const heroDescription = liveTvHeroDescription(heroChannel)
-  const heroFeatures = liveTvHeroFeatures(heroChannel, allChannels)
+  const heroScheduleLoading = dashboardQuery.isLoading || (!selectedGuideChannel && featuredGuideQuery.isLoading)
+  const heroFeatures = liveTvHeroFeatures(heroChannel, heroScheduleLoading)
   const selectGuideChannel = (channel: MediaItem) => {
     guidePlayedChannelRef.current = null
     setGuideSelection((current) => ({
@@ -940,10 +941,12 @@ function HeroFeature({
   icon: Icon,
   title,
   detail,
+  loading,
 }: {
   icon: typeof Monitor
   title: string
-  detail: string
+  detail?: string | null
+  loading?: boolean
 }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -952,9 +955,22 @@ function HeroFeature({
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold leading-tight text-white">{title}</span>
-        <HeroFeatureDetail text={detail} />
+        {loading || !detail ? <HeroFeatureLoadingDetail /> : <HeroFeatureDetail text={detail} />}
       </span>
     </div>
+  )
+}
+
+function HeroFeatureLoadingDetail() {
+  return (
+    <span className="mt-0.5 flex items-center gap-2 text-xs font-medium text-white/46">
+      <span>Loading schedule</span>
+      <span className="flex items-center gap-1" aria-hidden="true">
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843]" />
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843] [animation-delay:150ms]" />
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843] [animation-delay:300ms]" />
+      </span>
+    </span>
   )
 }
 
@@ -1015,21 +1031,25 @@ function liveTvHeroDescription(channel?: MediaItem) {
   return 'Watch live channels, music, entertainment, and original programming from the eZWay TV network. Inspiring content for entrepreneurs, creators, and change-makers worldwide.'
 }
 
-function liveTvHeroFeatures(channel: MediaItem | undefined, channels: MediaItem[]) {
+function liveTvHeroFeatures(channel: MediaItem | undefined, loading: boolean) {
   const schedule = liveTvHeroSchedule(channel)
   const nowPlayingTitle = schedule.now?.title ? cleanScheduleTitle(schedule.now.title) : null
   const nextPlayingTitle = schedule.next?.title ? cleanScheduleTitle(schedule.next.title) : null
+  const nowDetail = nowPlayingTitle && nowPlayingTitle !== 'Untitled program' ? nowPlayingTitle : null
+  const nextDetail = nextPlayingTitle && nextPlayingTitle !== 'Untitled program' ? nextPlayingTitle : null
 
   return [
     {
       icon: UsersRound,
       title: 'Now Playing',
-      detail: nowPlayingTitle && nowPlayingTitle !== 'Untitled program' ? nowPlayingTitle : 'Live Programming',
+      detail: nowDetail,
+      loading: loading || !nowDetail,
     },
     {
       icon: Gem,
       title: 'Next Playing',
-      detail: nextPlayingTitle && nextPlayingTitle !== 'Untitled program' ? nextPlayingTitle : 'Schedule updating',
+      detail: nextDetail,
+      loading: loading || !nextDetail,
     },
   ]
 }
