@@ -170,6 +170,7 @@ export function LiveTvPage() {
               <LiveTvShareMenu
                 title="eZWay TV"
                 copied={copiedShareUrl}
+                buttonClassName="min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:px-6"
                 onCopy={() => {
                   copyLiveTvShareUrl().then(() => {
                     setCopiedShareUrl(true)
@@ -572,7 +573,17 @@ function LiveTvNotFound({ fallbackKey }: { fallbackKey: string }) {
   )
 }
 
-function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+function LiveTvShareMenu({
+  title,
+  copied,
+  onCopy,
+  buttonClassName = 'bg-white/14 text-white hover:bg-white/24',
+}: {
+  title: string
+  copied: boolean
+  onCopy: () => void
+  buttonClassName?: string
+}) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentLiveTvShareUrl()
@@ -635,11 +646,12 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
     <div ref={menuRef} className="relative z-[90] max-sm:static">
       <Button
         type="button"
+        size="lg"
         variant="secondary"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="bg-white/14 text-white hover:bg-white/24"
+        className={buttonClassName}
       >
         <Share2 className="h-5 w-5" />
         Share
