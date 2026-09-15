@@ -170,7 +170,8 @@ export function LiveTvPage() {
               <LiveTvShareMenu
                 title="eZWay TV"
                 copied={copiedShareUrl}
-                buttonClassName="min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:px-6"
+                wrapperClassName="col-span-2 w-full sm:col-span-auto sm:w-auto"
+                buttonClassName="w-full min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:w-auto sm:px-6"
                 onCopy={() => {
                   copyLiveTvShareUrl().then(() => {
                     setCopiedShareUrl(true)
@@ -578,11 +579,13 @@ function LiveTvShareMenu({
   copied,
   onCopy,
   buttonClassName = 'bg-white/14 text-white hover:bg-white/24',
+  wrapperClassName,
 }: {
   title: string
   copied: boolean
   onCopy: () => void
   buttonClassName?: string
+  wrapperClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -643,7 +646,7 @@ function LiveTvShareMenu({
   }, [open])
 
   return (
-    <div ref={menuRef} className="relative z-[90] max-sm:static">
+    <div ref={menuRef} className={['relative z-[90] max-sm:static', wrapperClassName].filter(Boolean).join(' ')}>
       <Button
         type="button"
         size="lg"
