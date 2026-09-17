@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Radio } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,7 @@ const emptyState: HomeState = {
   ondemandChannels: [],
 }
 
-const homeHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
+const homeHeroBackground = '/img/home/ezway-studio-hero.png'
 const homeHeroPromoEmbedUrl = '/video-embed/ezwaytv-ai-promo?ondemand_channel=32&autoplay=1&muted=1'
 export function HomePage() {
   const homeQuery = useQuery({
@@ -300,7 +300,6 @@ function Hero({
   const hasActiveChannel = Boolean(activeChannel)
   const title = activeChannel?.details?.name ?? activeChannel?.name ?? 'eZWay TV Live'
   const category = activeChannel?.details?.category ?? 'Live TV'
-  const heroImage = cardImage(activeChannel ?? featured, 'square') ?? homeHeroImage
   const channelDescription = activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
 
   function goToPrevious() {
@@ -318,71 +317,62 @@ function Hero({
   }
 
   return (
-    <section className="relative min-h-[520px] overflow-hidden bg-[#050505] sm:min-h-[72vh]">
-      {heroImage ? (
-        <>
-          <img src={heroImage} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover object-center opacity-38" />
-          <img src={heroImage} alt="" className="absolute inset-0 h-full w-full scale-[1.02] object-cover object-center opacity-12 blur-2xl" />
-        </>
-      ) : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_58%_20%,rgba(212,168,67,0.25)_0%,rgba(5,5,5,0)_36%),linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.84)_34%,rgba(5,5,5,0.7)_66%,rgba(5,5,5,0.58)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(0deg,#050505_0%,rgba(5,5,5,0.56)_22%,rgba(5,5,5,0.16)_58%,rgba(5,5,5,0.3)_100%)]" />
-      <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#050505]/72 to-transparent" />
+    <section className="ez-home-hero relative overflow-hidden bg-[#050505]">
+      <img src={homeHeroBackground} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover" />
+      <div className="ez-home-hero-shade absolute inset-0" />
 
-      <div className="relative z-10 mx-auto grid min-h-[520px] max-w-[1800px] items-end gap-8 px-4 pb-10 pt-20 sm:min-h-[72vh] sm:px-8 sm:pb-14 lg:grid-cols-[minmax(0,0.82fr)_minmax(520px,1fr)] lg:px-12">
-        <div>
-          <div className="ez-home-hero-copy max-w-2xl bg-black/58 p-0 shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-[2px] sm:bg-transparent sm:shadow-none sm:backdrop-blur-0">
+      <div className="relative z-10 mx-auto grid min-h-[560px] max-w-[1800px] items-center gap-8 px-4 pb-8 pt-16 sm:px-8 lg:grid-cols-[minmax(360px,0.9fr)_minmax(500px,1.1fr)] lg:gap-12 lg:px-12 xl:px-16">
+        <div className="relative self-end pb-1 lg:self-center">
+          <div className="ez-home-hero-copy max-w-[590px]">
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <Badge className="ez-home-badge inline-flex w-fit items-center gap-2 rounded-full bg-red-600 px-3 py-1.5 text-xs font-black uppercase text-white">
-                <span className="h-2 w-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.95)]" aria-hidden="true" />
-                Live Now
+              <Badge className="ez-home-badge inline-flex w-fit items-center gap-2 rounded-full bg-[#f20d20] px-4 py-2 text-xs font-black uppercase text-white">
+                <Radio className="h-4 w-4" aria-hidden="true" />
+                Live TV
               </Badge>
-              <Badge className="w-fit rounded-full border border-[#d4a843]/35 bg-[#d4a843]/14 px-3 py-1.5 text-xs font-bold uppercase text-[#f4d36a]">
+              <Badge className="w-fit rounded-full border border-[#e5bd39]/60 bg-black/35 px-4 py-2 text-xs font-bold uppercase text-[#f4d36a]">
                 {loading ? 'Loading' : category}
               </Badge>
             </div>
-            <h1 className="max-w-2xl text-4xl font-black leading-none text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.95)] sm:text-6xl lg:text-7xl">{title}</h1>
-            <p className="mt-4 max-w-xl text-base font-medium leading-7 text-white/90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] sm:text-lg">
+            <HeroTitle title={title} />
+            <p className="ez-home-hero-description mt-4 max-w-lg text-base font-medium leading-6 text-white/90 sm:text-lg">
               {channelDescription || 'Stream eZWay related live channels, featured programming, and network broadcasts.'}
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button asChild size="lg" className="ez-home-cta-primary rounded-sm bg-white text-black hover:bg-white/90">
+              <Button asChild size="lg" className="ez-home-cta-primary min-h-12 min-w-[174px] rounded-md font-black text-black">
                 <a href={contentHref(activeChannel)}>
                   <Play className="h-5 w-5 fill-current" />
                   Watch Live
                 </a>
               </Button>
-              <Button asChild size="lg" variant="secondary" className="ez-home-cta-secondary rounded-sm bg-white/18 text-white hover:bg-white/28">
+              <Button asChild size="lg" variant="secondary" className="ez-home-cta-secondary min-h-12 min-w-[158px] rounded-md border border-white/35 bg-black/60 font-bold text-white hover:border-white/60 hover:bg-white/10">
                 <a href="/livetv">
                   All Channels
                   <ChevronRight className="h-5 w-5" />
                 </a>
               </Button>
             </div>
+            <div className="ez-home-hero-topics mt-5 hidden items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65 sm:flex">
+              <span>Business</span><span aria-hidden="true">•</span><span>People</span><span aria-hidden="true">•</span><span>Culture</span><span aria-hidden="true">•</span><span>Opportunity</span>
+            </div>
+          </div>
+
+          <div className="ez-home-hero-script pointer-events-none absolute -right-7 top-[54%] hidden rotate-[-8deg] text-[#f4c238] xl:block" aria-hidden="true">
+            <span>More</span>
+            <span>Than TV</span>
           </div>
 
           {channelSlides.length > 1 ? (
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={goToPrevious}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-black/44 text-white backdrop-blur transition hover:border-white/50 hover:bg-white/16"
-                  aria-label="Previous live channel"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goToNext}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-black/44 text-white backdrop-blur transition hover:border-white/50 hover:bg-white/16"
-                  aria-label="Next live channel"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
+            <div className="ez-home-slider-nav mt-7 flex w-full max-w-[370px] items-center justify-between gap-5">
+              <button
+                type="button"
+                onClick={goToPrevious}
+                className="ez-home-slider-arrow inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-black/45 text-white backdrop-blur transition hover:border-[#f4c238] hover:bg-[#f4c238] hover:text-black"
+                aria-label="Previous live channel"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
 
-              <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-2.5">
                 {channelSlides.map((channel, index) => {
                   const channelTitle = channel.details?.name ?? channel.name
 
@@ -392,28 +382,64 @@ function Hero({
                       type="button"
                       onClick={() => setActiveIndex(index)}
                       className={[
-                        'h-1.5 rounded-full transition-all',
-                        index === activeIndex ? 'w-12 bg-white' : 'w-5 bg-white/36 hover:bg-white/70',
+                        'h-2 rounded-full transition-all duration-300',
+                        index === activeIndex
+                          ? 'w-8 bg-[#f4c238] shadow-[0_0_12px_rgba(244,194,56,0.5)]'
+                          : 'w-4 bg-white/25 hover:bg-white/60',
                       ].join(' ')}
                       aria-label={`Show ${channelTitle}`}
+                      aria-current={index === activeIndex ? 'true' : undefined}
                     />
                   )
                 })}
               </div>
 
+              <button
+                type="button"
+                onClick={goToNext}
+                className="ez-home-slider-arrow inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-black/45 text-white backdrop-blur transition hover:border-[#f4c238] hover:bg-[#f4c238] hover:text-black"
+                aria-label="Next live channel"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
             </div>
           ) : null}
         </div>
 
-        <HomeHeroPromoEmbed />
+        <div className="w-full self-center lg:max-w-[760px] lg:justify-self-end lg:pt-4">
+          <HomeHeroPromoEmbed />
+        </div>
       </div>
     </section>
   )
 }
 
+function HeroTitle({ title }: { title: string }) {
+  const [firstWord, ...remainingWords] = title.trim().split(/\s+/)
+  const isEzWayWord = /^ezway$/i.test(firstWord)
+
+  return (
+    <h1 className="ez-home-hero-title max-w-xl text-white">
+      <span className={isEzWayWord ? undefined : 'block'}>
+        {isEzWayWord ? (
+        <>
+            <span className="ez-home-hero-title-accent">{firstWord.slice(0, 2)}</span>
+            {firstWord.slice(2)}
+        </>
+        ) : firstWord}
+      </span>
+      {remainingWords.length > 0 ? (
+        <span className={isEzWayWord ? 'ez-home-hero-title-accent' : 'ez-home-hero-title-accent block'}>
+          {isEzWayWord ? ' ' : ''}{remainingWords.join(' ')}
+        </span>
+      ) : null}
+    </h1>
+  )
+}
+
 function HomeHeroPromoEmbed() {
   return (
-    <div className="relative w-full max-w-[820px] justify-self-end overflow-hidden rounded-md border border-[#f0c24d]/70 bg-black shadow-2xl shadow-black/65 ring-1 ring-[#d4a843]/25">
+    <div className="ez-home-hero-player relative w-full overflow-hidden rounded-lg border-2 border-[#f3c74d] bg-black">
       <div className="aspect-video">
         <iframe
           src={homeHeroPromoEmbedUrl}
