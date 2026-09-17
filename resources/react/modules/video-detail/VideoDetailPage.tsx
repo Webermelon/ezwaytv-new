@@ -406,6 +406,8 @@ export function VideoDetailPage() {
 export function VideoEmbedPage() {
   const slug = getEmbedSlugFromPath()
   const ondemandChannel = getQueryValue('ondemand_channel')
+  const autoplay = getQueryValue('autoplay') === '1'
+  const muted = autoplay || getQueryValue('muted') === '1'
   const [isPlaying, setIsPlaying] = useState(false)
   const videoQuery = useQuery({
     queryKey: ['video-embed', slug, ondemandChannel],
@@ -443,7 +445,8 @@ export function VideoEmbedPage() {
             <VideoJsPlayer
               source={playerUrl}
               poster={playerPoster}
-              autoplay={false}
+              autoplay={autoplay}
+              muted={muted}
               vastAds={adsQuery.data?.vast ?? []}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
