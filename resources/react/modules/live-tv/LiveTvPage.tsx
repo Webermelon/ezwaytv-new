@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, UsersRound, Volume2 } from 'lucide-react'
 
@@ -321,13 +321,13 @@ function LiveTvDetailPage({
   const scheduleQuery = useQuery({
     queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
     queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),
-    enabled: Boolean(channelId) && scheduleEnabled && detailSchedule.length === 0,
+    enabled: Boolean(channelId) && scheduleEnabled && (Boolean(channel?.schedules_url) || detailSchedule.length === 0),
     staleTime: 60_000,
   })
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
   const schedule = scheduleQuery.data ?? []
-  const displayedSchedule = detailSchedule.length > 0 ? detailSchedule : schedule
+  const displayedSchedule = schedule.length > 0 ? schedule : detailSchedule
   const hasScheduleUi = scheduleEnabled && Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
   const trackViewMutation = useMutation({
     mutationFn: (nextChannel: MediaItem) => trackLiveTvView(nextChannel),
@@ -828,7 +828,7 @@ function SchedulePanel({
           >
             <span>
               <span className="block text-base font-bold text-white">Full Schedule</span>
-              <span className="mt-1 block text-xs text-white/44">{rows.length} current and upcoming programs</span>
+              <span className="mt-1 block text-xs text-white/44">{rows.length} programs through tomorrow</span>
             </span>
             <ChevronDown className={['h-5 w-5 shrink-0 text-white/58 transition', showFullSchedule ? 'rotate-180' : ''].join(' ')} />
           </button>
@@ -837,21 +837,25 @@ function SchedulePanel({
             <div className="mt-3 max-h-[460px] overflow-y-auto pr-1">
               {rows.map((item, index) => {
                 const active = Boolean(now?.title && item.title && item.title === now.title && item.start === now.start_time)
+                const previousItem = rows[index - 1]
+                const startsNewDay = index === 0 || scheduleDayKey(item.start, item.timezone) !== scheduleDayKey(previousItem?.start, previousItem?.timezone)
 
                 return (
-                  <article
-                    key={`${item.id ?? index}`}
-                    className={[
-                      'grid gap-3 border-b border-white/8 px-1 py-4 last:border-b-0 sm:grid-cols-[150px_1fr_auto]',
-                      active ? 'text-white' : 'text-white/72',
-                    ].join(' ')}
-                  >
-                    <div className="text-xs font-semibold text-white/46">
-                      {[formatScheduleTime(item.start, item.timezone), formatScheduleTime(item.end, item.timezone)].filter(Boolean).join(' - ')}
-                    </div>
-                    <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
-                    {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
-                  </article>
+                  <Fragment key={`${item.id ?? index}`}>
+                    {startsNewDay ? <ScheduleDayDivider value={item.start} timezone={item.timezone} /> : null}
+                    <article
+                      className={[
+                        'grid gap-3 border-b border-white/8 px-1 py-4 last:border-b-0 sm:grid-cols-[150px_1fr_auto]',
+                        active ? 'text-white' : 'text-white/72',
+                      ].join(' ')}
+                    >
+                      <div className="text-xs font-semibold text-white/46">
+                        {[formatScheduleTime(item.start, item.timezone), formatScheduleTime(item.end, item.timezone)].filter(Boolean).join(' - ')}
+                      </div>
+                      <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
+                      {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
+                    </article>
+                  </Fragment>
                 )
               })}
             </div>
@@ -899,6 +903,14 @@ function ProgramSummary({
         )
       )}
     </article>
+  )
+}
+
+function ScheduleDayDivider({ value, timezone }: { value?: string | null; timezone?: string | null }) {
+  return (
+    <div className="sticky top-0 z-10 border-l-2 border-[#d4a843] bg-[#d4a843]/10 px-3 py-2 backdrop-blur">
+      <span className="text-xs font-black uppercase text-[#f2d16f]">{scheduleDayLabel(value, timezone)}</span>
+    </div>
   )
 }
 
@@ -1422,34 +1434,42 @@ function TvGuideRow({
         >
           {programs.map((program, index) => {
             const onAir = isScheduleOnAir(program, currentTime)
+            const previousProgram = programs[index - 1]
+            const startsNewDay = index > 0 && scheduleDayKey(scheduleStart(program), program.timezone) !== scheduleDayKey(scheduleStart(previousProgram), previousProgram?.timezone)
 
             return (
-              <button
-                type="button"
-                onClick={() => onSelectChannel(selectableChannel)}
-                aria-pressed={selected}
-                key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
-                className={[
-                  'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
-                  onAir
-                    ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
-                    : 'border-[#d4a843] bg-[#d4a843]/10',
-                  selected ? 'outline outline-1 outline-[#f2d16f]/70' : '',
-                ].join(' ')}
-              >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
-                    {[formatTime(scheduleStart(program), program.timezone), formatTime(scheduleEnd(program), program.timezone)].filter(Boolean).join(' - ')}
-                  </span>
-                  {onAir ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      On Air
+              <Fragment key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}>
+                {startsNewDay ? (
+                  <div className="flex w-20 shrink-0 items-center justify-center border-x border-[#d4a843]/30 bg-[#d4a843]/8 px-2 text-center text-[11px] font-black uppercase text-[#f2d16f]">
+                    {scheduleDayLabel(scheduleStart(program), program.timezone)}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onSelectChannel(selectableChannel)}
+                  aria-pressed={selected}
+                  className={[
+                    'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
+                    onAir
+                      ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
+                      : 'border-[#d4a843] bg-[#d4a843]/10',
+                    selected ? 'outline outline-1 outline-[#f2d16f]/70' : '',
+                  ].join(' ')}
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
+                      {[formatTime(scheduleStart(program), program.timezone), formatTime(scheduleEnd(program), program.timezone)].filter(Boolean).join(' - ')}
                     </span>
-                  ) : null}
-                </div>
-                <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
-              </button>
+                    {onAir ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        On Air
+                      </span>
+                    ) : null}
+                  </div>
+                  <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
+                </button>
+              </Fragment>
             )
           })}
         </div>
@@ -1649,6 +1669,7 @@ function PremiumPlayerLock({ image, title, label }: { image?: string | null; tit
 
 function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo | null) {
   const threshold = parseScheduleDate(now?.start_time, now?.timezone)?.getTime() ?? Date.now()
+  const endOfTomorrow = scheduleEndOfTomorrow().getTime()
 
   return items
     .map((item) => ({
@@ -1661,8 +1682,9 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
       const endTime = parseScheduleDate(item.end, item.timezone)?.getTime()
       const startTime = parseScheduleDate(item.start, item.timezone)?.getTime()
 
-      if (endTime) return endTime >= threshold
-      if (startTime) return startTime >= threshold
+      if (endTime && endTime < threshold) return false
+      if (!endTime && startTime && startTime < threshold) return false
+      if (startTime && startTime > endOfTomorrow) return false
 
       return true
     })
@@ -1672,13 +1694,16 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
 function tvGuidePrograms(row: LiveTvGuideChannel, currentTime: number) {
   const normalized = normalizeScheduleItems(row.schedule, row.channel.now_playing)
 
-  if (normalized.length > 0) return normalized.slice(0, 100)
+  if (normalized.length > 0) return normalized
 
   return row.schedule
     .filter((item) => item.title || scheduleStart(item))
     .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
+    .filter((item) => {
+      const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+      return !start || start <= scheduleEndOfTomorrow().getTime()
+    })
     .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
-    .slice(0, 100)
 }
 
 function channelWithGuideSchedule(row: LiveTvGuideChannel): MediaItem {
@@ -2012,6 +2037,38 @@ function parseScheduleDate(value?: string | null, timezone?: string | null) {
   if (Number.isNaN(date.getTime())) return null
 
   return date
+}
+
+function scheduleEndOfTomorrow() {
+  const end = new Date()
+  end.setDate(end.getDate() + 1)
+  end.setHours(23, 59, 59, 999)
+
+  return end
+}
+
+function scheduleDayKey(value?: string | null, timezone?: string | null) {
+  const date = parseScheduleDate(value, timezone)
+  if (!date) return 'unknown'
+
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function scheduleDayLabel(value?: string | null, timezone?: string | null) {
+  const date = parseScheduleDate(value, timezone)
+  if (!date) return 'Scheduled'
+
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const key = scheduleDayKey(value, timezone)
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+  const tomorrowKey = `${tomorrow.getFullYear()}-${tomorrow.getMonth()}-${tomorrow.getDate()}`
+
+  if (key === todayKey) return 'Today'
+  if (key === tomorrowKey) return 'Tomorrow'
+
+  return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 function formatScheduleTime(value?: string | null, timezone?: string | null) {
