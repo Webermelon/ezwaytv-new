@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Clock3, ExternalLink, Pause, Play, Settings, Volume2, VolumeX } from 'lucide-react'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
@@ -19,6 +19,7 @@ type VideoJsPlayerProps = {
   vastAds: VideoAd[]
   customAds?: VideoAd[]
   isLive?: boolean
+  pausedOverlay?: ReactNode
   onPlay?: () => void
   onTimeUpdate?: (seconds: number) => void
   onPause?: (seconds: number) => void
@@ -78,6 +79,7 @@ export function VideoJsPlayer({
   vastAds,
   customAds = [],
   isLive = false,
+  pausedOverlay,
   onPlay,
   onTimeUpdate,
   onPause,
@@ -104,6 +106,7 @@ export function VideoJsPlayer({
   const onEndedRef = useRef(onEnded)
   const [adUi, setAdUi] = useState<AdUiState>({ visible: false, skippable: false, canSkip: false })
   const [customAdUi, setCustomAdUi] = useState<CustomAdUiState>({ visible: false, canSkip: false })
+  const [isPaused, setIsPaused] = useState(true)
   const hasVastAds = vastAds.length > 0
   const selectedCustomAd = resolveCustomPlayerAd(customAds)
   const hasCustomPlayerAd = Boolean(selectedCustomAd)
@@ -335,6 +338,7 @@ export function VideoJsPlayer({
 
       const customAd = customAdRef.current
       if (customAd && !customAdPlayedRef.current && !customAdShowingRef.current) {
+        setIsPaused(false)
         player.pause()
         startCustomAd(player, customAd)
         return
@@ -348,6 +352,7 @@ export function VideoJsPlayer({
         }
       }
 
+      setIsPaused(false)
       onPlayRef.current?.()
     }
 
@@ -360,12 +365,14 @@ export function VideoJsPlayer({
     const handlePause = () => {
       if (isAdPlayingRef.current) return
 
+      setIsPaused(true)
       onPauseRef.current?.(player.currentTime() ?? 0)
     }
 
     const handleEnded = () => {
       if (isAdPlayingRef.current) return
 
+      setIsPaused(true)
       onEndedRef.current?.(player.currentTime() ?? player.duration() ?? 0)
     }
 
@@ -410,6 +417,10 @@ export function VideoJsPlayer({
       }
     }
   }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd])
+
+  useEffect(() => {
+    setIsPaused(true)
+  }, [source])
 
   useEffect(() => {
     const player = playerRef.current
@@ -530,6 +541,9 @@ export function VideoJsPlayer({
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_42%),#050505]" />
       )}
       <video id="react-video-player" ref={videoNodeRef} className="video-js vjs-big-play-centered vjs-theme-ezway relative z-10 h-full w-full" playsInline />
+      {pausedOverlay && isPaused && !adUi.visible && !customAdUi.visible ? (
+        <div className="pointer-events-none absolute inset-0 z-20">{pausedOverlay}</div>
+      ) : null}
       {adUi.visible ? (
         <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-[inherit] bg-gradient-to-t from-black/80 via-transparent to-transparent">
           <div className="absolute inset-x-0 top-0 flex min-h-12 items-center justify-between gap-2 border-b border-white/12 bg-[#05080a] px-2.5 py-2 shadow-[0_12px_28px_rgba(0,0,0,0.34)] sm:min-h-16 sm:px-5 sm:py-4">
