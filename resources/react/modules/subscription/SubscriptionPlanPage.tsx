@@ -7,6 +7,7 @@ import { ApiError, api } from '@/lib/api'
 import { loadAccountSettings } from '@/modules/account/accountApi'
 
 type CheckoutAuthMode = 'email' | 'otp' | 'register'
+type CheckState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 
 type CheckoutAuthResponse = {
   status?: boolean
@@ -609,12 +610,14 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
   const [lastName, setLastName] = useState('')
   const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
-  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const [password, setPassword] = useState('')
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
+  const [signupOtpPending, setSignupOtpPending] = useState(false)
 
   const cleanEmail = email.trim().toLowerCase()
-  const cleanOtp = otp.replace(/\D/g, '').slice(0, 4)
-  const canCreate = firstName.trim() && lastName.trim() && username.trim().length >= 3 && cleanEmail
-  const blockedSeconds = useCountdown(blockedUntil)
+  const cleanOtp = otp.replace(/\D/g, '').slice(0, signupOtpPending ? 6 : 4)
+  const inviteCheck = useCheckoutInviteAvailability(inviteCode)
+  const canCreate = inviteCheck.state === 'available' && firstName.trim() && lastName.trim() && username.trim().length >= 3 && cleanEmail && password.length >= 8 && password === passwordConfirmation
 
   async function sendOtp() {
     setBusy(true)
@@ -624,6 +627,7 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       formData.set('email', cleanEmail)
       const response = await api.post<CheckoutAuthResponse>('/auth/spa-otp/send', formData)
       ensureCheckoutAuthSuccess(response, 'We sent a login code to your email.')
+      setSignupOtpPending(false)
       setMode('otp')
       setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'We sent a login code to your email.') })
     } catch (error) {
@@ -648,6 +652,10 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       const formData = new FormData()
       formData.set('email', cleanEmail)
       formData.set('otp', cleanOtp)
+      if (signupOtpPending) {
+        formData.set('password', password)
+        formData.set('password_confirmation', passwordConfirmation)
+      }
       const response = await api.post<CheckoutAuthResponse>('/auth/spa-otp/verify', formData)
       ensureCheckoutAuthSuccess(response, 'You are signed in.')
       setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'You are signed in. Loading checkout...') })
@@ -672,10 +680,14 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       formData.set('username', username.trim())
       formData.set('email', cleanEmail)
       formData.set('phone_number', phone.trim())
+      formData.set('password', password)
+      formData.set('password_confirmation', passwordConfirmation)
       const response = await api.post<CheckoutAuthResponse>('/auth/spa-register', formData)
-      ensureCheckoutAuthSuccess(response, 'Your account is ready. We sent a login code to your email.')
+      ensureCheckoutAuthSuccess(response, 'We sent a 6-digit email verification code to your email.')
+      setSignupOtpPending(true)
+      setOtp('')
       setMode('otp')
-      setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'Your account is ready. We sent a login code to your email.') })
+      setMessage({ tone: 'success', text: checkoutAuthMessage(response, 'We sent a 6-digit email verification code to your email.') })
     } catch (error) {
       setMessage({ tone: 'error', text: checkoutErrorMessage(error) })
     } finally {
@@ -719,12 +731,13 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       {mode === 'otp' ? (
         <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void verifyOtp() }}>
           <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} disabled />
-          <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label="Login code" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          <button type="submit" disabled={busy || blockedSeconds > 0 || cleanOtp.length !== 4} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+
+          <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label={signupOtpPending ? 'Email verification code' : 'Login code'} value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, signupOtpPending ? 6 : 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={signupOtpPending ? 6 : 4} required />
+          <button type="submit" disabled={busy || cleanOtp.length !== (signupOtpPending ? 6 : 4)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
             {busy ? 'Verifying...' : 'Verify and Continue'}
           </button>
-          <button type="button" disabled={busy} onClick={() => { setOtp(''); setMode('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={() => { setOtp(''); setSignupOtpPending(false); setMode('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
             <RefreshCw className="h-4 w-4" /> Use a different email
           </button>
         </form>
@@ -733,7 +746,8 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
       {mode === 'register' ? (
         <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); void createAccount() }}>
           <CheckoutInput icon={<Mail className="h-4 w-4" />} label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
-          <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Invite code" value={inviteCode} onChange={setInviteCode} autoComplete="off" />
+          <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Invite code" value={inviteCode} onChange={(value) => setInviteCode(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="off" required />
+          <CheckoutAvailabilityText check={inviteCheck} idleText="Enter the username of the member who invited you." />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             <CheckoutInput icon={<UserRound className="h-4 w-4" />} label="First name" value={firstName} onChange={setFirstName} autoComplete="given-name" required />
             <CheckoutInput icon={<UserRound className="h-4 w-4" />} label="Last name" value={lastName} onChange={setLastName} autoComplete="family-name" required />
@@ -741,11 +755,15 @@ function CheckoutAuthPanel({ onSignedIn }: { onSignedIn: () => Promise<void> }) 
           <CheckoutInput icon={<AtSign className="h-4 w-4" />} label="Username" value={username} onChange={(value) => setUsername(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="username" required />
           <CheckoutInput icon={<Phone className="h-4 w-4" />} label="Phone" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
           <p className="-mt-2 text-xs font-semibold text-white/48">Enter your phone number with country code, for example +1 555 123 4567.</p>
+
+          <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label="Password" type="password" value={password} onChange={setPassword} autoComplete="new-password" required />
+          <CheckoutInput icon={<KeyRound className="h-4 w-4" />} label="Confirm password" type="password" value={passwordConfirmation} onChange={setPasswordConfirmation} autoComplete="new-password" required />
+          {password && passwordConfirmation && password !== passwordConfirmation ? <p className="-mt-2 text-xs font-semibold text-red-200">Passwords do not match.</p> : null}
           <button type="submit" disabled={busy || !canCreate} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] disabled:cursor-not-allowed disabled:opacity-60">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
             {busy ? 'Creating...' : 'Create Account and Continue'}
           </button>
-          <button type="button" disabled={busy} onClick={() => { setMode('email'); setMessage(null) }} className="text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+          <button type="button" disabled={busy} onClick={() => { setSignupOtpPending(false); setMode('email'); setMessage(null) }} className="text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
             Already have an account? Send login code
           </button>
         </form>
@@ -980,6 +998,66 @@ function purchaseUrlForPlan(plan: Plan) {
   if (price === '1.99') return 'https://ezwaynetwork.com/ezway-tv-checkout/?item=38475'
 
   return ''
+}
+
+function CheckoutAvailabilityText({ check, idleText }: { check: { state: CheckState; message: string }; idleText: string }) {
+  const text = check.message || idleText
+  const tone = check.state === 'available'
+    ? 'text-emerald-200'
+    : check.state === 'checking' || check.state === 'idle'
+      ? 'text-white/45'
+      : 'text-red-200'
+
+  return (
+    <p className={['-mt-2 flex items-center gap-2 text-xs font-semibold', tone].join(' ')}>
+      {check.state === 'checking' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : check.state === 'available' ? <Check className="h-3.5 w-3.5" /> : null}
+      {text}
+    </p>
+  )
+}
+
+function useCheckoutInviteAvailability(value: string) {
+  const [state, setState] = useState<CheckState>('idle')
+  const [message, setMessage] = useState('')
+  const normalized = useMemo(() => value.trim(), [value])
+
+  useEffect(() => {
+    if (!normalized) {
+      setState('idle')
+      setMessage('')
+      return
+    }
+
+    if (!/^[A-Za-z0-9_.-]{3,32}$/.test(normalized)) {
+      setState('invalid')
+      setMessage('Use 3-32 letters, numbers, dot, dash, or underscore.')
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(async () => {
+      setState('checking')
+      setMessage('Checking...')
+
+      try {
+        const payload = await api.get<CheckoutAuthResponse>(`/auth/check-invite-code?${new URLSearchParams({ invite_code: normalized })}`, { signal: controller.signal })
+        const available = payload.available === true
+        setState(available ? 'available' : 'taken')
+        setMessage(available ? 'Invite code is valid' : checkoutAuthMessage(payload, 'Invite code was not found.'))
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setState('invalid')
+        setMessage(checkoutErrorMessage(error))
+      }
+    }, 450)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timeout)
+    }
+  }, [normalized])
+
+  return { state, message }
 }
 
 function isPremiumContentPlan(plan: Plan) {
