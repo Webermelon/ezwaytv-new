@@ -47,9 +47,20 @@ Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivat
     Route::post('on-demand/channels', [CoreOnDemandPublishingController::class, 'storeChannel']);
     Route::put('on-demand/channels/{channel}', [CoreOnDemandPublishingController::class, 'updateChannel'])->whereNumber('channel');
     Route::get('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'videos'])->whereNumber('channel');
+    Route::get('on-demand/channels/{channel}/videos/available', [CoreOnDemandPublishingController::class, 'availableVideos'])->whereNumber('channel');
     Route::post('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'storeVideo'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/videos/assign', [CoreOnDemandPublishingController::class, 'assignVideo'])->whereNumber('channel');
     Route::put('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'updateVideo'])->whereNumber('channel')->whereNumber('video');
     Route::delete('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'deleteVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::delete('on-demand/channels/{channel}/videos/{video}/unassign', [CoreOnDemandPublishingController::class, 'unassignVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::get('on-demand/channels/{channel}/playlists', [CoreOnDemandPublishingController::class, 'playlists'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/playlists', [CoreOnDemandPublishingController::class, 'storePlaylist'])->whereNumber('channel');
+    Route::put('on-demand/channels/{channel}/playlists/{playlist}', [CoreOnDemandPublishingController::class, 'updatePlaylist'])->whereNumber('channel')->whereNumber('playlist');
+    Route::delete('on-demand/channels/{channel}/playlists/{playlist}', [CoreOnDemandPublishingController::class, 'deletePlaylist'])->whereNumber('channel')->whereNumber('playlist');
+    Route::post('on-demand/channels/{channel}/playlists/{playlist}/videos', [CoreOnDemandPublishingController::class, 'addPlaylistVideo'])->whereNumber('channel')->whereNumber('playlist');
+    Route::delete('on-demand/channels/{channel}/playlists/{playlist}/videos/{video}', [CoreOnDemandPublishingController::class, 'removePlaylistVideo'])->whereNumber('channel')->whereNumber('playlist')->whereNumber('video');
+    Route::post('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
+    Route::patch('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
 });
 
 Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');

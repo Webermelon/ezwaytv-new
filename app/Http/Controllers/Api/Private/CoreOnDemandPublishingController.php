@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api\Private;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuthorChannel;
+use App\Models\AuthorChannelPlaylist;
 use App\Services\CoreTvAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Modules\Video\Models\Video;
+use Illuminate\Support\Facades\Log;
 
 class CoreOnDemandPublishingController extends Controller
 {
@@ -37,8 +40,8 @@ class CoreOnDemandPublishingController extends Controller
     {
         $data = $request->validate($this->channelRules(true));
         $user = $this->access->syncUser($data);
-
-        $channel = AuthorChannel::query()->create([
+        Log::info('Creating On Demand Channel for user_id: '. $user->id . ' with data: '. print_r($data, true));
+        $channel_data = [
             'user_id' => $user->id,
             'name' => $data['name'],
             'username' => $data['channel_username'] ?? AuthorChannel::generateUsername($data['name']),
@@ -48,7 +51,13 @@ class CoreOnDemandPublishingController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? true),
             'access' => 'free',
             'plan_id' => null,
-        ]);
+        ];
+
+        Log::info('Creating On Demand Channel: '. print_r($channel_data, true));
+
+        $channel = AuthorChannel::query()->create($channel_data);
+
+        error_log('Created On Demand Channel: '. print_r($channel->toArray(), true));
 
         return response()->json(['success' => true, 'data' => $this->formatChannel($channel), 'message' => 'Channel created.'], 201);
     }
@@ -133,6 +142,215 @@ class CoreOnDemandPublishingController extends Controller
         return response()->json(['success' => true, 'message' => 'Video deleted.']);
     }
 
+    public function playlists(Request $request, int $channel): JsonResponse
+    {
+        $data = $request->validate($this->coreUserRules());
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+
+        $playlists = $channelModel->playlists()
+            ->with(['videos' => fn ($query) => $query->whereNull('videos.deleted_at')])
+            ->get()
+            ->map(fn (AuthorChannelPlaylist $playlist) => $this->formatPlaylist($playlist));
+
+        return response()->json(['success' => true, 'data' => $playlists]);
+    }
+
+    public function storePlaylist(Request $request, int $channel): JsonResponse
+    {
+        $data = $request->validate($this->playlistRules(true));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+
+        $playlist = $channelModel->playlists()->create([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'thumbnail' => $data['thumbnail'] ?? null,
+            'sort_order' => (int) $channelModel->playlists()->max('sort_order') + 1,
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Playlist created.',
+            'data' => $this->formatPlaylist($playlist->load('videos')),
+        ], 201);
+    }
+
+    public function updatePlaylist(Request $request, int $channel, int $playlist): JsonResponse
+    {
+        $data = $request->validate($this->playlistRules(false));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $playlistModel = $this->channelPlaylist($channelModel, $playlist);
+
+        $playlistModel->fill(collect($data)->only(['name', 'description', 'thumbnail', 'is_active'])->all())->save();
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Playlist updated.',
+            'data' => $this->formatPlaylist($playlistModel->refresh()->load('videos')),
+        ]);
+    }
+
+    public function deletePlaylist(Request $request, int $channel, int $playlist): JsonResponse
+    {
+        $data = $request->validate($this->coreUserRules());
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $playlistModel = $this->channelPlaylist($channelModel, $playlist);
+
+        $playlistModel->videos()->detach();
+        $playlistModel->delete();
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json(['success' => true, 'message' => 'Playlist deleted.']);
+    }
+
+    public function addPlaylistVideo(Request $request, int $channel, int $playlist): JsonResponse
+    {
+        $data = $request->validate(array_merge($this->coreUserRules(), [
+            'video_id' => ['required', 'integer'],
+        ]));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $playlistModel = $this->channelPlaylist($channelModel, $playlist);
+        $videoId = (int) $data['video_id'];
+
+        $channelVideo = $channelModel->videos()->where('videos.id', $videoId)->whereNull('videos.deleted_at')->firstOrFail();
+        $wasAdded = false;
+        if (! $playlistModel->videos()->where('videos.id', $videoId)->exists()) {
+            $playlistModel->videos()->attach($videoId, ['sort_order' => $playlistModel->videos()->count() + 1]);
+            $wasAdded = true;
+        }
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json([
+            'success' => true,
+            'message' => $wasAdded ? 'Video added to playlist.' : 'Video is already in this playlist.',
+            'data' => [
+                'added' => $wasAdded,
+                'playlist_id' => (int) $playlistModel->id,
+                'playlist_count' => $playlistModel->videos()->count(),
+                'video' => $this->formatVideo($channelVideo),
+            ],
+        ], $wasAdded ? 201 : 200);
+    }
+
+    public function removePlaylistVideo(Request $request, int $channel, int $playlist, int $video): JsonResponse
+    {
+        $data = $request->validate($this->coreUserRules());
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $playlistModel = $this->channelPlaylist($channelModel, $playlist);
+
+        $playlistModel->videos()->detach($video);
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json(['success' => true, 'message' => 'Video removed from playlist.']);
+    }
+
+    public function reorderPlaylistVideos(Request $request, int $channel, int $playlist): JsonResponse
+    {
+        $data = $request->validate(array_merge($this->coreUserRules(), [
+            'video_ids' => ['required', 'array'],
+            'video_ids.*' => ['integer'],
+        ]));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $playlistModel = $this->channelPlaylist($channelModel, $playlist);
+
+        $attachedIds = $playlistModel->videos()->pluck('videos.id')->map(fn ($videoId) => (int) $videoId)->all();
+        $orderedIds = collect($data['video_ids'])
+            ->map(fn ($videoId) => (int) $videoId)
+            ->filter(fn ($videoId) => in_array($videoId, $attachedIds, true))
+            ->unique()
+            ->values();
+
+        foreach ($orderedIds as $index => $videoId) {
+            $playlistModel->videos()->updateExistingPivot($videoId, ['sort_order' => $index + 1]);
+        }
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Playlist order updated.',
+            'data' => ['video_ids' => $orderedIds],
+        ]);
+    }
+
+    public function availableVideos(Request $request, int $channel): JsonResponse
+    {
+        $data = $request->validate(array_merge($this->coreUserRules(), [
+            'q' => ['nullable', 'string', 'max:255'],
+        ]));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+
+        $videos = $channelModel->videos()
+            ->whereNull('videos.deleted_at')
+            ->when($data['q'] ?? null, fn ($query, $search) => $query->where('videos.name', 'like', '%'.$search.'%'))
+            ->orderByDesc('videos.updated_at')
+            ->orderByDesc('videos.created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (Video $video) => collect($this->formatVideo($video))
+                ->only(['id', 'title', 'name', 'thumbnail_url', 'poster_url', 'duration', 'status'])
+                ->all());
+
+        return response()->json(['success' => true, 'data' => $videos]);
+    }
+
+    public function assignVideo(Request $request, int $channel): JsonResponse
+    {
+        $data = $request->validate(array_merge($this->coreUserRules(), [
+            'video_id' => ['required', 'integer', 'exists:videos,id'],
+        ]));
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+        $videoModel = Video::query()
+            ->where('id', (int) $data['video_id'])
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($user, $channelModel) {
+                $query->where('created_by', $user->id)->orWhere('creator_channel_id', $channelModel->id);
+            })
+            ->firstOrFail();
+
+        $wasAdded = false;
+        if (! $channelModel->videos()->where('video_id', $videoModel->id)->exists()) {
+            $channelModel->videos()->attach($videoModel->id);
+            $wasAdded = true;
+        }
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json([
+            'success' => true,
+            'message' => $wasAdded ? 'Video assigned to On Demand Channel.' : 'Video is already assigned.',
+            'data' => [
+                'added' => $wasAdded,
+                'assigned_count' => $channelModel->videos()->count(),
+                'video' => $this->formatVideo($videoModel),
+            ],
+        ], $wasAdded ? 201 : 200);
+    }
+
+    public function unassignVideo(Request $request, int $channel, int $video): JsonResponse
+    {
+        $data = $request->validate($this->coreUserRules());
+        $user = $this->access->syncUser($data);
+        $channelModel = $this->ownedChannel($channel, $user->id);
+
+        $channelModel->videos()->detach($video);
+        AuthorChannelPlaylist::query()
+            ->where('author_channel_id', $channelModel->id)
+            ->each(fn (AuthorChannelPlaylist $playlist) => $playlist->videos()->detach($video));
+        $this->clearPublicChannelCache($channelModel);
+
+        return response()->json(['success' => true, 'message' => 'Video removed from On Demand Channel.']);
+    }
+
     private function channelRules(bool $creating, ?int $channel = null): array
     {
         $unique = 'unique:author_channels,username'.($channel ? ','.$channel : '');
@@ -175,6 +393,30 @@ class CoreOnDemandPublishingController extends Controller
             'processing_message' => ['nullable', 'string', 'max:5000'],
             'release_date' => ['nullable', 'date'],
         ];
+    }
+
+    private function coreUserRules(): array
+    {
+        return [
+            'core_user_id' => ['required', 'integer', 'min:1'],
+            'connect_user_id' => ['nullable', 'integer', 'min:1'],
+            'email' => ['nullable', 'email'],
+            'username' => ['nullable', 'string', 'max:190'],
+            'first_name' => ['nullable', 'string', 'max:190'],
+            'last_name' => ['nullable', 'string', 'max:190'],
+            'avatar' => ['nullable', 'string', 'max:1000'],
+            'phone' => ['nullable', 'string', 'max:60'],
+        ];
+    }
+
+    private function playlistRules(bool $creating): array
+    {
+        return array_merge($this->coreUserRules(), [
+            'name' => [$creating ? 'required' : 'sometimes', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'thumbnail' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
     }
 
     private function videoPayload(array $data, int $channelId, int $userId, bool $creating = true): array
@@ -239,6 +481,24 @@ class CoreOnDemandPublishingController extends Controller
         return AuthorChannel::query()->where('id', $channel)->where('user_id', $tvUserId)->firstOrFail();
     }
 
+    private function channelPlaylist(AuthorChannel $channel, int $playlist): AuthorChannelPlaylist
+    {
+        return AuthorChannelPlaylist::query()
+            ->where('author_channel_id', $channel->id)
+            ->where('id', $playlist)
+            ->firstOrFail();
+    }
+
+    private function clearPublicChannelCache(AuthorChannel $channel): void
+    {
+        Cache::forget("spa:ondemand:show:{$channel->username}");
+        Cache::forget('spa:ondemand:index:' . md5(json_encode([
+            'page' => 1,
+            'per_page' => 50,
+            'search' => null,
+        ])));
+    }
+
     private function reconcileProcessingVideos(AuthorChannel $channel): void
     {
         $videoIds = $channel->videos()->pluck('videos.id');
@@ -290,6 +550,7 @@ class CoreOnDemandPublishingController extends Controller
         return [
             'id' => (int) $video->id,
             'title' => (string) $video->name,
+            'name' => (string) $video->name,
             'slug' => (string) $video->slug,
             'description' => (string) ($video->description ?? ''),
             'thumbnail_url' => $video->thumbnail_url ? setBaseUrlWithFileNameV2($video->thumbnail_url) : null,
@@ -300,6 +561,25 @@ class CoreOnDemandPublishingController extends Controller
             'processing_message' => $video->processing_message,
             'release_date' => $video->release_date,
             'public_url' => $video->slug ? url('/video-details/'.$video->slug) : null,
+        ];
+    }
+
+    private function formatPlaylist(AuthorChannelPlaylist $playlist): array
+    {
+        $videos = $playlist->relationLoaded('videos') ? $playlist->videos : $playlist->videos()->get();
+
+        return [
+            'id' => (int) $playlist->id,
+            'name' => (string) $playlist->name,
+            'description' => (string) ($playlist->description ?? ''),
+            'thumbnail' => $playlist->thumbnail,
+            'thumbnail_url' => $playlist->thumbnail ? setBaseUrlWithFileNameV2($playlist->thumbnail) : null,
+            'is_active' => (bool) $playlist->is_active,
+            'sort_order' => (int) $playlist->sort_order,
+            'video_count' => $videos->count(),
+            'videos' => $videos->map(fn (Video $video) => collect($this->formatVideo($video))
+                ->only(['id', 'title', 'name', 'thumbnail_url', 'poster_url', 'duration', 'status', 'public_url'])
+                ->all())->values(),
         ];
     }
 

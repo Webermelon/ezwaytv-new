@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\Subscription;
+use Illuminate\Support\Facades\Log;
 
 class CoreTvAccessService
 {
@@ -22,7 +23,9 @@ class CoreTvAccessService
         $user = User::query()->where('network_user_id', $coreUserId)->first();
 
         if (! $user && $email !== '') {
-            $user = User::query()->where('email', $email)->first();
+            $user = User::query()
+                        ->where('users_email_unique', $email)
+                        ->first();
         }
 
         $values = [
@@ -30,7 +33,6 @@ class CoreTvAccessService
             'is_network_user' => $coreUserId > 0 ? 1 : 0,
             'first_name' => (string) ($data['first_name'] ?? $user?->first_name ?? ''),
             'last_name' => (string) ($data['last_name'] ?? $user?->last_name ?? ''),
-            'email' => $email !== '' ? $email : ($user?->email ?? ('network-'.$coreUserId.'@ezway.local')),
             'username' => $username !== '' ? $username : ($user?->username ?? ('network_'.$coreUserId)),
             'mobile' => (string) ($data['phone'] ?? $user?->mobile ?? ''),
             'status' => 1,
@@ -39,10 +41,17 @@ class CoreTvAccessService
             'email_verified_at' => $user?->email_verified_at ?? now(),
         ];
 
+        Log::info('Syncing user with core_user_id: '. $coreUserId . ' and connect_user_id: '. $connectUserId . ' with values: '. print_r($values, true));
+
+        Log::info('Existing user found: '. print_r($user?->toArray(), true));
+
         if ($user) {
             $user->forceFill($values)->save();
             return $user->refresh();
         }
+
+
+        Log::info("ayyyy hayyyyyy");
 
         $values['password'] = Hash::make(Str::password(32));
 
