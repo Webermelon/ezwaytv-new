@@ -159,6 +159,15 @@ export function AppHeader({ active }: AppHeaderProps) {
 
           <div className="flex shrink-0 items-center gap-2">
             <a
+              href="https://ezwayconnect.com"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden h-10 items-center gap-2 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-sm font-black text-[#f0c24d] transition hover:border-[#d4a843] hover:bg-[#d4a843]/20 lg:inline-flex"
+            >
+              <UsersRound className="h-4 w-4" />
+              Connect
+            </a>
+            <a
               href="/search"
               aria-label="Search"
               className="ez-header-search-desktop hidden h-10 min-w-[112px] items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-bold text-white transition hover:bg-white/[0.14] md:inline-flex"
@@ -378,6 +387,20 @@ function MobileMenu({
               )
             })}
           </div>
+
+          <a
+            href="https://ezwayconnect.com"
+            target="_blank"
+            rel="noreferrer"
+            onClick={onNavigate}
+            className="mt-4 flex min-h-14 w-full items-center justify-between rounded-xl border border-[#d4a843]/40 bg-[#d4a843]/10 px-4 text-sm font-black text-[#edc342] shadow-lg shadow-[#d4a843]/10 transition hover:border-[#d4a843]/70 hover:bg-[#d4a843]/16"
+          >
+            <span className="flex items-center gap-3">
+              <UsersRound className="h-5 w-5" />
+              Connect on eZWay Connect
+            </span>
+            <ChevronRight className="h-5 w-5" />
+          </a>
 
           {!nativeIos && (!authUser || !authUser.is_subscribe) ? (
             <a
