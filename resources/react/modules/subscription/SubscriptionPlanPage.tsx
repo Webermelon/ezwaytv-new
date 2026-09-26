@@ -427,7 +427,6 @@ function PlanCard({
     <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
       <div className="flex min-h-12 items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d4a843]">Level {plan.level ?? '-'}</p>
           <h2 className="mt-2 text-2xl font-black">{plan.name}</h2>
         </div>
         {featured ? (

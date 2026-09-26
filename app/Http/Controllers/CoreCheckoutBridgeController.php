@@ -47,10 +47,11 @@ class CoreCheckoutBridgeController extends Controller
 
         [$client, $baseUrl] = $core;
         $coreUser = (int) ($user->network_user_id ?: $user->id);
+        $platformSlug = (string) config('services.core_api.platform_slug', 'tv');
 
         try {
             $response = $client->get($baseUrl.'/api/payments/status', [
-                'platform_slug' => 'ezway-tv',
+                'platform_slug' => $platformSlug,
                 'subject_type' => 'tv_subscription',
                 'subject_id' => (string) $coreUser,
             ]);
@@ -95,6 +96,7 @@ class CoreCheckoutBridgeController extends Controller
         [$client, $baseUrl] = $core;
         $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
         $coreUser = (int) ($user->network_user_id ?: $user->id);
+        $platformSlug = (string) config('services.core_api.platform_slug', 'tv');
 
         try {
             $response = $client->post($baseUrl.'/api/checkouts', [
@@ -105,7 +107,7 @@ class CoreCheckoutBridgeController extends Controller
                     'email' => $user->email,
                     'phone' => $user->mobile ?? null,
                 ],
-                'platform' => ['slug' => 'ezway-tv'],
+                'platform' => ['slug' => $platformSlug],
                 'subject_type' => 'tv_subscription',
                 'subject_id' => (string) $coreUser,
                 'success_url' => $this->checkoutReturnUrl('success'),

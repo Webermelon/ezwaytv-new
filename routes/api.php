@@ -280,6 +280,7 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
     $checkoutReturnPath = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
     $checkoutStatusUrl = fn (string $status) => $checkoutReturnUrl.$checkoutReturnPath.'?'.http_build_query(['checkout_status' => $status]);
     $coreUser = (int) ($user->network_user_id ?: $user->id);
+    $platformSlug = (string) config('services.core_api.platform_slug', 'tv');
 
     try {
         $response = $client->post($baseUrl.'/api/checkouts', [
@@ -290,7 +291,7 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
                 'email' => $user->email,
                 'phone' => $user->mobile ?? null,
             ],
-            'platform' => ['slug' => 'ezway-tv'],
+            'platform' => ['slug' => $platformSlug],
             'subject_type' => 'tv_subscription',
             'subject_id' => (string) $coreUser,
             'success_url' => $checkoutStatusUrl('success'),
