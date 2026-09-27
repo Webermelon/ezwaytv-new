@@ -420,6 +420,7 @@ export function VideoEmbedPage() {
   const playlistId = getQueryValue('playlist')
   const autoplay = getQueryValue('autoplay') === '1'
   const muted = autoplay || getQueryValue('muted') === '1'
+  const isHeroPromo = getQueryValue('hero') === '1'
   const [isPlaying, setIsPlaying] = useState(false)
   const videoQuery = useQuery({
     queryKey: ['video-embed', slug, ondemandChannel],
@@ -449,7 +450,7 @@ export function VideoEmbedPage() {
   const adsQuery = useQuery({
     queryKey: ['video-embed-ads', videoId],
     queryFn: () => loadVideoAds(videoId as string | number),
-    enabled: Boolean(videoId),
+    enabled: Boolean(videoId && !isHeroPromo),
     staleTime: 30_000,
   })
   const playerUrl = video ? resolvePlayerUrl(video) : null
@@ -476,7 +477,7 @@ export function VideoEmbedPage() {
         ) : isPayPerViewLocked ? (
           <EmbedState icon={<Lock className="h-8 w-8 text-primary" />} title="Purchase required" message="Open eZWay TV to unlock this video." />
         ) : playerUrl ? (
-          adsQuery.isLoading ? (
+          adsQuery.isLoading && !isHeroPromo ? (
             <PlayerPreparing poster={playerPoster} />
           ) : (
             <VideoJsPlayer
@@ -485,7 +486,7 @@ export function VideoEmbedPage() {
               autoplay={autoplay}
               muted={muted}
               pausedOverlay={<EmbedPausedIdentity video={video} />}
-              vastAds={adsQuery.data?.vast ?? []}
+              vastAds={isHeroPromo ? [] : (adsQuery.data?.vast ?? [])}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onEnded={() => {
@@ -1271,14 +1272,29 @@ function getQueryValue(key: string) {
 }
 
 function resolvePlayerUrl(video: VideoDetail) {
-  const qualitySource = Array.isArray(video.video_links)
-    ? video.video_links.find((item) => {
-      const url = item.url ?? item.server_url
-      return Boolean(url && item.url_type !== 'Embedded')
-    })
-    : null
+  const mappedSources = Array.isArray(video.video_links)
+    ? video.video_links
+      .filter((item) => item.url_type !== 'Embedded')
+      .map((item) => item.url ?? item.server_url)
+    : []
+  const sources = [video.video_url_input, ...mappedSources, video.trailer_url]
+    .filter((source): source is string => Boolean(source))
 
-  return video.video_url_input ?? qualitySource?.url ?? qualitySource?.server_url ?? video.trailer_url ?? null
+  return sources
+    .map((source, index) => ({ source, index, score: mobilePlaybackScore(source) }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.source ?? null
+}
+
+function mobilePlaybackScore(source: string) {
+  const path = source.split(/[?#]/)[0].toLowerCase()
+
+  if (path.endsWith('.mp4') || path.endsWith('.m4v')) return 5
+  if (path.endsWith('.m3u8')) return 4
+  if (!/\.[a-z0-9]{2,5}$/.test(path)) return 3
+  if (path.endsWith('.webm')) return 2
+  if (path.endsWith('.mov')) return 1
+
+  return 0
 }
 
 function hasVideoAccess(video: VideoDetail) {

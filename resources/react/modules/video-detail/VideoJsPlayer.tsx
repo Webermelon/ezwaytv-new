@@ -100,6 +100,8 @@ export function VideoJsPlayer({
   const customAdTimerRef = useRef<number | null>(null)
   const customAdRef = useRef<VideoAd | null>(null)
   const finishCustomAdRef = useRef<(() => void) | null>(null)
+  const mediaRetryCountRef = useRef(0)
+  const mediaRetryTimerRef = useRef<number | null>(null)
   const onPlayRef = useRef(onPlay)
   const onTimeUpdateRef = useRef(onTimeUpdate)
   const onPauseRef = useRef(onPause)
@@ -385,6 +387,34 @@ export function VideoJsPlayer({
       }
     }
 
+    const retryMediaOnce = () => {
+      if (isAdPlayingRef.current || mediaRetryCountRef.current >= 1) return
+
+      mediaRetryCountRef.current += 1
+      const resumeAt = player.currentTime() ?? 0
+      const shouldResume = autoplay || pendingPlayRef.current || !player.paused()
+
+      mediaRetryTimerRef.current = window.setTimeout(() => {
+        if (player.isDisposed()) return
+
+        player.error(null)
+        player.src({ src: source, type: guessMimeType(source) })
+        player.one('loadedmetadata', () => {
+          if (resumeAt > 0 && Number.isFinite(player.duration())) {
+            player.currentTime(Math.min(resumeAt, Math.max(0, (player.duration() ?? 0) - 0.25)))
+          }
+
+          if (shouldResume) {
+            const result = player.play()
+            if (result && typeof result.catch === 'function') {
+              result.catch(() => undefined)
+            }
+          }
+        })
+        player.load()
+      }, 900)
+    }
+
     player.on('play', handlePlay)
     player.on('timeupdate', handleTimeUpdate)
     player.on('pause', handlePause)
@@ -392,6 +422,7 @@ export function VideoJsPlayer({
     player.on('adserror', resumeContent)
     player.on('adtimeout', resumeContent)
     player.on('nopreroll', resumeContent)
+    player.on('error', retryMediaOnce)
 
     return () => {
       player.off('play', handlePlay)
@@ -401,6 +432,11 @@ export function VideoJsPlayer({
       player.off('adserror', resumeContent)
       player.off('adtimeout', resumeContent)
       player.off('nopreroll', resumeContent)
+      player.off('error', retryMediaOnce)
+      if (mediaRetryTimerRef.current) {
+        window.clearTimeout(mediaRetryTimerRef.current)
+        mediaRetryTimerRef.current = null
+      }
       player.dispose()
       playerRef.current = null
       adTagUrlRef.current = null
@@ -411,6 +447,7 @@ export function VideoJsPlayer({
       prerollCreativeRef.current = null
       finishPrerollRef.current = null
       finishCustomAdRef.current = null
+      mediaRetryCountRef.current = 0
       if (customAdTimerRef.current) {
         window.clearInterval(customAdTimerRef.current)
         customAdTimerRef.current = null

@@ -36,7 +36,6 @@ class CoreTvAccessService
             'username' => $username !== '' ? $username : ($user?->username ?? ('network_'.$coreUserId)),
             'mobile' => (string) ($data['phone'] ?? $user?->mobile ?? ''),
             'status' => 1,
-            'users_email_unique' => $email,
             'email' => $email,
             'user_type' => $user?->user_type ?? 'user',
             'login_type' => $user?->login_type ?? 'otp',

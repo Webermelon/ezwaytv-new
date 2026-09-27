@@ -28,7 +28,16 @@ const emptyState: HomeState = {
 }
 
 const homeHeroBackground = '/img/home/ezway-studio-hero.png'
-const homeHeroPromoEmbedUrl = '/video-embed/ezwaytv-ai-promo?ondemand_channel=32&autoplay=1&muted=1'
+const homeHeroPromos = [
+  {
+    title: 'eZWay TV AI promo',
+    embedUrl: 'https://www.youtube.com/embed/-mecbx_PwY0?autoplay=1&mute=1&playsinline=1&rel=0',
+  },
+  {
+    title: 'EZ Talk Live AI promo with Eric Zuley',
+    embedUrl: 'https://www.youtube.com/embed/8GbQHtytQAE?autoplay=1&mute=1&playsinline=1&rel=0',
+  },
+]
 export function HomePage() {
   const homeQuery = useQuery({
     queryKey: ['home-module'],
@@ -302,16 +311,6 @@ function Hero({
   const category = activeChannel?.details?.category ?? 'Live TV'
   const channelDescription = activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
 
-  function goToPrevious() {
-    if (channelSlides.length < 2) return
-    setActiveIndex((current) => (current - 1 + channelSlides.length) % channelSlides.length)
-  }
-
-  function goToNext() {
-    if (channelSlides.length < 2) return
-    setActiveIndex((current) => (current + 1) % channelSlides.length)
-  }
-
   if (!hasActiveChannel) {
     return null
   }
@@ -362,17 +361,8 @@ function Hero({
           </div>
 
           {channelSlides.length > 1 ? (
-            <div className="ez-home-slider-nav mt-7 flex w-full max-w-[370px] items-center justify-between gap-5">
-              <button
-                type="button"
-                onClick={goToPrevious}
-                className="ez-home-slider-arrow inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-black/45 text-white backdrop-blur transition hover:border-[#f4c238] hover:bg-[#f4c238] hover:text-black"
-                aria-label="Previous live channel"
-              >
-                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
-
-              <div className="flex min-w-0 flex-1 items-center justify-center gap-2.5">
+            <div className="ez-home-slider-nav mt-7 flex w-full max-w-[370px] items-center justify-start">
+              <div className="flex min-w-0 items-center justify-start gap-2.5">
                 {channelSlides.map((channel, index) => {
                   const channelTitle = channel.details?.name ?? channel.name
 
@@ -393,15 +383,6 @@ function Hero({
                   )
                 })}
               </div>
-
-              <button
-                type="button"
-                onClick={goToNext}
-                className="ez-home-slider-arrow inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/35 bg-black/45 text-white backdrop-blur transition hover:border-[#f4c238] hover:bg-[#f4c238] hover:text-black"
-                aria-label="Next live channel"
-              >
-                <ChevronRight className="h-5 w-5" aria-hidden="true" />
-              </button>
             </div>
           ) : null}
         </div>
@@ -438,18 +419,39 @@ function HeroTitle({ title }: { title: string }) {
 }
 
 function HomeHeroPromoEmbed() {
+  const [activePromoIndex, setActivePromoIndex] = useState(0)
+  const activePromo = homeHeroPromos[activePromoIndex]
+
   return (
     <div className="ez-home-hero-player relative w-full overflow-hidden rounded-lg border-2 border-[#f3c74d] bg-black">
       <div className="aspect-video">
         <iframe
-          src={homeHeroPromoEmbedUrl}
-          title="eZWay TV video player"
+          src={activePromo.embedUrl}
+          title={activePromo.title}
           className="h-full w-full border-0"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
-          loading="lazy"
+          loading="eager"
         />
       </div>
+
+      {homeHeroPromos.length > 1 ? (
+        <div className="flex h-8 items-center justify-center gap-2 border-t border-white/10 bg-[#080808]">
+          {homeHeroPromos.map((promo, index) => (
+            <button
+              key={promo.embedUrl}
+              type="button"
+              onClick={() => setActivePromoIndex(index)}
+              className={[
+                'h-2 rounded-full transition-all duration-300',
+                index === activePromoIndex ? 'w-7 bg-[#f3c74d]' : 'w-2 bg-white/45 hover:bg-white',
+              ].join(' ')}
+              aria-label={`Show ${promo.title}`}
+              aria-current={index === activePromoIndex ? 'true' : undefined}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }
