@@ -17,14 +17,14 @@ class CoreTvAccessService
     {
         $coreUserId = (int) ($data['core_user_id'] ?? 0);
         $connectUserId = (int) ($data['connect_user_id'] ?? 0);
-        $email = trim((string) ($data['email'] ?? ''));
+        $email = trim((string) ($data['users_email_unique'] ?? ''));
         $username = trim((string) ($data['username'] ?? ''));
 
         $user = User::query()->where('network_user_id', $coreUserId)->first();
 
         if (! $user && $email !== '') {
             $user = User::query()
-                        ->where('users_email_unique', $email)
+                        ->where('email', $email)
                         ->first();
         }
 
@@ -36,14 +36,12 @@ class CoreTvAccessService
             'username' => $username !== '' ? $username : ($user?->username ?? ('network_'.$coreUserId)),
             'mobile' => (string) ($data['phone'] ?? $user?->mobile ?? ''),
             'status' => 1,
+            'users_email_unique' => $email,
+            'email' => $email,
             'user_type' => $user?->user_type ?? 'user',
             'login_type' => $user?->login_type ?? 'otp',
             'email_verified_at' => $user?->email_verified_at ?? now(),
         ];
-
-        Log::info('Syncing user with core_user_id: '. $coreUserId . ' and connect_user_id: '. $connectUserId . ' with values: '. print_r($values, true));
-
-        Log::info('Existing user found: '. print_r($user?->toArray(), true));
 
         if ($user) {
             $user->forceFill($values)->save();
@@ -51,10 +49,7 @@ class CoreTvAccessService
         }
 
 
-        Log::info("ayyyy hayyyyyy");
-
         $values['password'] = Hash::make(Str::password(32));
-
         return User::query()->create($values);
     }
 

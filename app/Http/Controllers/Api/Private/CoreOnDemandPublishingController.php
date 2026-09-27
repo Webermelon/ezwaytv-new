@@ -24,7 +24,7 @@ class CoreOnDemandPublishingController extends Controller
         $data = $request->validate([
             'core_user_id' => ['required', 'integer', 'min:1'],
         ]);
-
+        $data['users_email_unique'] = $request->input('email') ?? null;
         $user = $this->access->syncUser($data);
         $channels = AuthorChannel::query()
             ->where('user_id', $user->id)
