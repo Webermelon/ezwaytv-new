@@ -159,6 +159,14 @@ export function AppHeader({ active }: AppHeaderProps) {
 
           <div className="flex shrink-0 items-center gap-2">
             <a
+              href="/search"
+              aria-label="Search"
+              className="ez-header-search-desktop hidden h-10 min-w-[112px] items-center justify-start gap-2 rounded-md border border-white/10 bg-white/[0.08] px-4 text-sm font-bold text-white transition hover:bg-white/[0.14] md:inline-flex lg:min-w-[144px] xl:min-w-[168px]"
+            >
+              <Search className="ez-header-search-icon h-5 w-5 shrink-0" />
+              <span className="ez-header-search-label">Search</span>
+            </a>
+            <a
               href="https://ezwayconnect.com"
               target="_blank"
               rel="noreferrer"
@@ -166,14 +174,6 @@ export function AppHeader({ active }: AppHeaderProps) {
             >
               <UsersRound className="h-4 w-4" />
               Connect
-            </a>
-            <a
-              href="/search"
-              aria-label="Search"
-              className="ez-header-search-desktop hidden h-10 min-w-[112px] items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-bold text-white transition hover:bg-white/[0.14] md:inline-flex"
-            >
-              <Search className="ez-header-search-icon h-5 w-5 shrink-0" />
-              <span className="ez-header-search-label">Search</span>
             </a>
 
             {!nativeIos && (!authUser || !authUser.is_subscribe) ? (
@@ -563,6 +563,7 @@ function MobileProfileMenu({ user, nativeIos, onNavigate }: { user: AuthUser; na
 }
 
 function UserAvatar({ user, sizeClassName }: { user: AuthUser; sizeClassName: string }) {
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const initials = displayUserName(user)
     .split(/\s+/)
     .map((part) => part[0])
@@ -570,10 +571,20 @@ function UserAvatar({ user, sizeClassName }: { user: AuthUser; sizeClassName: st
     .slice(0, 2)
     .toUpperCase()
 
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [user.avatar])
+
   return (
-    <span className={`${sizeClassName} flex shrink-0 overflow-hidden rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342]`}>
-      {user.avatar ? (
-        <img src={user.avatar} alt="" className="h-full w-full object-cover" loading="lazy" />
+    <span className={`${sizeClassName} flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#d4a843]/35 bg-[#d4a843]/15 text-[#edc342]`}>
+      {user.avatar && !avatarFailed ? (
+        <img
+          src={user.avatar}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setAvatarFailed(true)}
+        />
       ) : (
         <span className="flex h-full w-full items-center justify-center text-xs font-black">{initials || 'EZ'}</span>
       )}
