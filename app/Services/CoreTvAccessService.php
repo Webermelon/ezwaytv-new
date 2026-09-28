@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Subscriptions\Models\Plan;
@@ -13,14 +14,16 @@ use Illuminate\Support\Facades\Log;
 
 class CoreTvAccessService
 {
-    public function syncUser(array $data): User
+    public function syncUser(array $data, Request $request = null): User
     {
         $coreUserId = (int) ($data['core_user_id'] ?? 0);
         $connectUserId = (int) ($data['connect_user_id'] ?? 0);
-        $email = trim((string) ($data['users_email_unique'] ?? ''));
+        
         $username = trim((string) ($data['username'] ?? ''));
-
+        
         $user = User::query()->where('network_user_id', $coreUserId)->first();
+        
+        $email = $user?->email ?? ($request?->input('email') ?? '');
 
         if (! $user && $email !== '') {
             $user = User::query()

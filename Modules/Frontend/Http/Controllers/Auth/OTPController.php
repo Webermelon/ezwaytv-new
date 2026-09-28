@@ -676,8 +676,8 @@ class OTPController extends Controller
         if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
             return response()->json([
                 'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
+                'message' => 'Core could not deliver the login code right now. Please wait a moment and try again.',
+            ], 503);
         }
 
         $this->storeLoginOtp($request, $user, $otp);
@@ -697,8 +697,8 @@ class OTPController extends Controller
         if (! $this->sendOtpViaCore($email, $otp, $name)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
+                'message' => 'Core could not deliver the login code right now. Please wait a moment and try again.',
+            ], 503);
         }
 
         $request->session()->put('tv_pending_core_login', [
@@ -763,7 +763,7 @@ class OTPController extends Controller
     private function otpBlockedResponse(int $remainingSeconds)
     {
         $remainingSeconds = max(1, $remainingSeconds);
-        $minutes = max(1, (int) ceil($remainingSeconds / 60));
+        $minutes = max(5, (int) ceil($remainingSeconds / 60));
 
         return response()->json([
             'status' => false,
@@ -884,40 +884,53 @@ class OTPController extends Controller
             .'<p style="font-size:28px;font-weight:800;letter-spacing:8px;margin:18px 0;">'.e($otp).'</p>'
             .'<p>This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>';
 
-        try {
-            $response = $this->coreApiRequest(15)
-                ->post($baseUrl.'/api/emails/send', [
+        $payload = [
                     'mode' => 'direct',
                     'to' => $email,
-                    'to_name' => $name !== '' ? $name : null,
                     'subject' => 'Your eZWay TV login code',
                     'body_html' => $bodyHtml,
                     'body_text' => $bodyText,
                     'from_name' => 'eZWay TV',
-                    'variables' => [
-                        'platform' => [
-                            'name' => 'eZWay TV',
-                            'network_name' => 'eZWay TV',
-                            'url' => config('app.url'),
-                            'network_url' => config('app.url'),
-                        ],
-                    ],
-                ]);
-        } catch (\Throwable $exception) {
-            report($exception);
-            return false;
+                ];
+
+        $response = null;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $response = $this->coreApiRequest(20)
+                    ->post($baseUrl.'/api/emails/send', $payload);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                if ($attempt < 2) {
+                    usleep(400000);
+                    continue;
+                }
+
+                return false;
+            }
+
+            if ($response->successful()) {
+                return true;
+            }
+
+            if ($attempt < 2 && ($response->serverError() || $response->status() === 429)) {
+                usleep(400000);
+                continue;
+            }
+
+            break;
         }
 
-        if (! $response->successful()) {
+        if ($response) {
             Log::warning('Core email API failed to send TV OTP.', [
                 'email' => $email,
                 'status' => $response->status(),
                 'body' => $response->json() ?? $response->body(),
             ]);
-            return false;
         }
 
-        return true;
+        return false;
     }
     private function coreLoginPayloadForEmail(string $email): ?array
     {
