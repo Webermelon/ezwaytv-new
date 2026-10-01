@@ -6,6 +6,22 @@ import { AppHeader } from '@/components/AppHeader'
 import { loadDistribution, type DistributionNetwork } from './distributionApi'
 
 const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
+const broadcastPartners: DistributionNetwork[] = [
+  {
+    name: 'eZWay Channel 27.3',
+    slug: 'ezway-channel-27-3',
+    image: '/img/distribution/ezway_27.3.jpg',
+    description: 'Entertainment, inspiring interviews, live events, sports, music videos, movies, faith and family, education, and original programming for Greater Los Angeles. With a reported reach of 1.5 million potential viewers, eZWay connects audiences with entrepreneurs, celebrities, creators, and community leaders through purpose-driven television. eZWay is a KTTV subchannel; KTTV is the Fox-owned station identified with Channel 11.',
+    tag: 'Los Angeles - OTA',
+  },
+  {
+    name: 'FLM TV Channel 26.5',
+    slug: 'flm-tv-channel-26-5',
+    image: '/img/distribution/flm_26.5.jpg',
+    description: 'An independent television network broadcasting on Channel 26.5 in Las Vegas and streaming worldwide, with film, live entertainment, music, family viewing, multicultural stories, classic cinema, original productions, and artist-led programming. Available through FLMTV.com, Roku, Amazon Fire TV, and supported mobile platforms.',
+    tag: 'Las Vegas - OTA and Streaming',
+  },
+]
 
 export function DistributionPage() {
   const distributionQuery = useQuery({
@@ -14,8 +30,25 @@ export function DistributionPage() {
     staleTime: 5 * 60_000,
   })
   const networks = distributionQuery.data?.networks ?? []
+  const partnerNetworks = useMemo(() => {
+    const promotedSlugs = ['be-spire-tv', 'las-vegas-television-network']
+    const newBroadcastPartners = broadcastPartners.filter(
+      (partner) => !networks.some((network) => network.slug === partner.slug || network.name === partner.name),
+    )
+    const promotedNetworks = promotedSlugs
+      .map((slug) => networks.find((network) => network.slug === slug))
+      .filter((network): network is DistributionNetwork => Boolean(network))
+    const remainingNetworks = networks.filter((network) => !promotedSlugs.includes(network.slug ?? ''))
 
-  const platformNames = useMemo(() => networks.slice(0, 13).map((item) => item.name), [networks])
+    return [
+      ...remainingNetworks.slice(0, 3),
+      ...newBroadcastPartners,
+      ...promotedNetworks,
+      ...remainingNetworks.slice(3),
+    ]
+  }, [networks])
+
+  const platformNames = useMemo(() => partnerNetworks.slice(0, 13).map((item) => item.name), [partnerNetworks])
 
   return (
     <main className="min-h-screen bg-[#0d0d0d] text-[#e8e2d9]">
@@ -89,13 +122,13 @@ export function DistributionPage() {
       </section>
 
       <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
-        <SectionHead title="Network Partners" />
+        <SectionHead title="Network Distribution" />
 
         {distributionQuery.isLoading ? (
           <NetworkSkeleton />
-        ) : networks.length > 0 ? (
+        ) : partnerNetworks.length > 0 ? (
           <div className="mb-20 grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
-            {networks.map((network) => (
+            {partnerNetworks.map((network) => (
               <NetworkCard key={network.slug ?? network.name} network={network} />
             ))}
           </div>
@@ -132,8 +165,8 @@ function NetworkCard({ network }: { network: DistributionNetwork }) {
     <article className="group relative flex min-h-[300px] flex-col gap-4 overflow-hidden rounded-md border border-[#d4a843]/14 bg-[#161616] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-[#d4a843]/50 hover:bg-[#1b1b1b] sm:p-7">
       <div className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-[#d4a843] transition duration-300 group-hover:scale-x-100" />
       <div className="flex items-center gap-4">
-        <div className="flex h-[58px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded border border-white/8 bg-[#242424]">
-          {network.image ? <img src={network.image} alt={network.name} className="max-h-10 max-w-16 object-contain" loading="lazy" /> : null}
+        <div className="flex h-[72px] w-[112px] shrink-0 items-center justify-center overflow-hidden rounded border border-white/8 bg-[#242424] p-1.5 sm:h-[80px] sm:w-[128px]">
+          {network.image ? <img src={network.image} alt={network.name} className="h-full w-full object-contain" loading="lazy" /> : null}
         </div>
         <h3 className="min-w-0 break-words text-lg font-black uppercase leading-tight tracking-normal text-white sm:text-2xl sm:leading-none sm:tracking-[0.05em]">{network.name}</h3>
       </div>

@@ -494,10 +494,10 @@
   </div>
 </div>
  
-{{-- ── NETWORK PARTNERS ────────────────────────────── --}}
+{{-- ── NETWORK DISTRIBUTION ────────────────────────── --}}
 <div class="dist-section">
   <div class="section-head" data-reveal>
-    <h2>Network Partners</h2>
+    <h2>Network Distribution</h2>
     <div class="rule"></div>
   </div>
  
