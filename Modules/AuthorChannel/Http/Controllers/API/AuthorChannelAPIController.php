@@ -319,7 +319,8 @@ class AuthorChannelAPIController extends Controller
         $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
 
         $videosCount = (int) ($channel->videos_count ?? $channel->videos()->count());
-        $moviesCount = (int) ($channel->movies_count ?? $channel->movies()->count());
+        $moviesEnabled = (bool) $channel->movies_enabled;
+        $moviesCount = $moviesEnabled ? (int) ($channel->movies_count ?? $channel->movies()->count()) : 0;
 
         $data = [
             'id'           => $channel->id,
@@ -332,6 +333,7 @@ class AuthorChannelAPIController extends Controller
             'total_videos' => $videosCount,
             'movies_count' => $moviesCount,
             'content_count' => $videosCount + $moviesCount,
+            'movies_enabled' => $moviesEnabled,
             'is_active'    => (bool) $channel->is_active,
             'profile_url'  => url('/on-demand/' . $channel->username),
             'access'       => $access,
@@ -348,7 +350,7 @@ class AuthorChannelAPIController extends Controller
 
         if ($includeDescription) {
             $data['description'] = $channel->description;
-            $data['movies'] = $channel->relationLoaded('movies')
+            $data['movies'] = $moviesEnabled && $channel->relationLoaded('movies')
                 ? CommonContentResourceV3::collection($channel->movies)->toArray(request())
                 : [];
             $data['playlists'] = $channel->relationLoaded('playlists')

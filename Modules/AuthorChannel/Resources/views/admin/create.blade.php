@@ -106,6 +106,17 @@
                                 @error('access')<span class="text-danger">{{ $message }}</span>@enderror
                             </div>
 
+                            <div class="col-12">
+                                <input type="hidden" name="movies_enabled" value="0">
+                                <label class="ondemand-choice mb-0 d-flex align-items-center gap-2">
+                                    <input class="form-check-input mt-0" type="checkbox" name="movies_enabled" value="1" {{ old('movies_enabled', false) ? 'checked' : '' }}>
+                                    <span>
+                                        <span class="d-block fw-semibold">Enable assigned movies</span>
+                                        <small class="d-block text-muted mt-1">Allow movies to be assigned to this channel.</small>
+                                    </span>
+                                </label>
+                            </div>
+
                             <div class="col-12 {{ $selectedAccess === 'paid' ? '' : 'd-none' }}" id="planSelection" data-plan-selection>
                                 <label class="form-label">Subscription Plan <span class="text-danger">*</span></label>
                                 <select name="plan_id" id="plan_id" class="form-control select2" data-plan-select>

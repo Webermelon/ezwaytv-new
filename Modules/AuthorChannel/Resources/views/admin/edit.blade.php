@@ -154,10 +154,12 @@
             <span><i class="ph ph-video me-2"></i>Assign Videos</span>
             <span class="badge bg-dark">{{ $channel->videos->count() }}</span>
         </button>
-        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-assign-movies" type="button">
-            <span><i class="ph ph-film-strip me-2"></i>Assign Movies</span>
-            <span class="badge bg-dark">{{ $channel->movies->count() }}</span>
-        </button>
+        @if($channel->movies_enabled)
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-assign-movies" type="button">
+                <span><i class="ph ph-film-strip me-2"></i>Assign Movies</span>
+                <span class="badge bg-dark">{{ $channel->movies->count() }}</span>
+            </button>
+        @endif
     </div>
 
     <div class="tab-content">
@@ -230,6 +232,17 @@
                                             </label>
                                         </div>
                                         @error('access')<span class="text-danger">{{ $message }}</span>@enderror
+                                    </div>
+
+                                    <div class="col-12">
+                                        <input type="hidden" name="movies_enabled" value="0">
+                                        <label class="ondemand-choice mb-0 d-flex align-items-center gap-2">
+                                            <input class="form-check-input mt-0" type="checkbox" name="movies_enabled" value="1" {{ old('movies_enabled', $channel->movies_enabled) ? 'checked' : '' }}>
+                                            <span>
+                                                <span class="d-block fw-semibold">Enable assigned movies</span>
+                                                <small class="d-block text-muted mt-1">Show the Assign Movies tab and movies on this channel.</small>
+                                            </span>
+                                        </label>
                                     </div>
 
                                     <div class="col-12 {{ $selectedAccess === 'paid' ? '' : 'd-none' }}" id="planSelection" data-plan-selection>
@@ -595,6 +608,7 @@
             </div>
         </div>
 
+        @if($channel->movies_enabled)
         <div class="tab-pane fade" id="tab-assign-movies">
             <div class="card ondemand-card">
                 <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -657,6 +671,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 </div>
 

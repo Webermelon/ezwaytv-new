@@ -42,6 +42,7 @@ export type MediaItem = {
   total_videos?: number
   movies_count?: number
   content_count?: number
+  movies_enabled?: boolean
   playlists?: Array<{
     id: number | string
     name: string

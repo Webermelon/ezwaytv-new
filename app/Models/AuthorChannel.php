@@ -21,10 +21,12 @@ class AuthorChannel extends Model
         'is_active',
         'access',
         'plan_id',
+        'movies_enabled',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'movies_enabled' => 'boolean',
     ];
 
     /**

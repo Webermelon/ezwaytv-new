@@ -131,10 +131,12 @@ class AuthorChannelController extends Controller
             'is_active'   => 'nullable|boolean',
             'access'      => ['required', Rule::in(['free', 'paid'])],
             'plan_id'     => 'nullable|required_if:access,paid|integer|exists:plan,id',
+            'movies_enabled' => 'nullable|boolean',
         ]);
         if (($data['access'] ?? 'free') === 'free') {
             $data['plan_id'] = null;
         }
+        $data['movies_enabled'] = $request->boolean('movies_enabled');
         if (empty($data['username'])) {
             $data['username'] = AuthorChannel::generateUsername($data['name']);
         }
@@ -186,14 +188,18 @@ class AuthorChannelController extends Controller
             'is_active'   => 'nullable|boolean',
             'access'      => ['required', Rule::in(['free', 'paid'])],
             'plan_id'     => 'nullable|required_if:access,paid|integer|exists:plan,id',
+            'movies_enabled' => 'nullable|boolean',
         ]);
         if (($data['access'] ?? 'free') === 'free') {
             $data['plan_id'] = null;
         }
+        $data['movies_enabled'] = $request->boolean('movies_enabled');
         if (empty($data['username'])) {
             $data['username'] = AuthorChannel::generateUsername($data['name'], $id);
         }
+        $this->clearPublicChannelCache($channel);
         $channel->update($data);
+        $this->clearPublicChannelCache($channel);
         return redirect()->route('backend.author_channels.index')->with('success','On Demand Channel updated');
     }
 

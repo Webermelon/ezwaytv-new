@@ -47,7 +47,7 @@ export function OnDemandPage() {
     enabled: Boolean(routeUsername),
     staleTime: 60_000,
   })
-  const profileState = profileQuery.data ?? { profile: null, videos: [], playlists: [] }
+  const profileState = profileQuery.data ?? { profile: null, videos: [], movies: [], playlists: [] }
 
   useEffect(() => {
     const profile = profileState.profile
@@ -104,7 +104,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} manualPlaylists={profileState.playlists} routePlaylistId={routePlaylistId} />
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} movies={profileState.movies} manualPlaylists={profileState.playlists} routePlaylistId={routePlaylistId} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -213,12 +213,14 @@ function ProfilePanel({
   loading,
   profile,
   videos,
+  movies,
   manualPlaylists,
   routePlaylistId,
 }: {
   loading: boolean
   profile: MediaItem | null
   videos: MediaItem[]
+  movies: MediaItem[]
   manualPlaylists: NonNullable<MediaItem['playlists']>
   routePlaylistId?: string | null
 }) {
@@ -350,6 +352,7 @@ function ProfilePanel({
           channelId={profile.id}
           channelLocked={channelLocked}
           profile={profile}
+          movies={movies}
           playlists={playlists}
           activePlaylist={activePlaylist}
           activePlaylistId={activePlaylistId}
@@ -364,6 +367,7 @@ function PlaylistSection({
   channelId,
   channelLocked,
   profile,
+  movies,
   playlists,
   activePlaylist,
   activePlaylistId,
@@ -372,6 +376,7 @@ function PlaylistSection({
   channelId: string | number
   channelLocked: boolean
   profile: MediaItem
+  movies: MediaItem[]
   playlists: PlaylistGroup[]
   activePlaylist?: PlaylistGroup
   activePlaylistId: string
@@ -396,6 +401,10 @@ function PlaylistSection({
 
   return (
     <div className="mt-8 space-y-8">
+      {movies.length ? (
+        <MovieRail movies={movies} />
+      ) : null}
+
       {allVideosPlaylist?.videos.length ? (
         <VideoRail
           title="All Videos"
@@ -444,6 +453,60 @@ function PlaylistSection({
         />
       ) : null}
     </div>
+  )
+}
+
+function MovieRail({ movies }: { movies: MediaItem[] }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+  function scrollRail(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * 640, behavior: 'smooth' })
+  }
+
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-white/10 pb-3">
+        <h4 className="text-xl font-black text-white">Movies</h4>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => scrollRail(-1)} className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex" aria-label="Scroll movies left">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => scrollRail(1)} className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex" aria-label="Scroll movies right">
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <Badge variant="outline" className="border-white/16 text-white/70">{movies.length} {movies.length === 1 ? 'movie' : 'movies'}</Badge>
+        </div>
+      </div>
+
+      <div ref={scrollerRef} className="grid grid-flow-col auto-cols-[42%] gap-3 overflow-x-auto pb-5 [scrollbar-width:none] [-ms-overflow-style:none] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-8rem)/9)] [&::-webkit-scrollbar]:hidden">
+        {movies.map((movie) => <OnDemandMovieCard key={movie.id} movie={movie} />)}
+      </div>
+    </section>
+  )
+}
+
+function OnDemandMovieCard({ movie }: { movie: MediaItem }) {
+  const locked = isPremiumVideoCard(movie)
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(movie.access ?? movie.movie_access)
+
+  return (
+    <a href={`/movie-details/${movie.slug ?? movie.id}`} className="group block min-w-0">
+      <div className="relative aspect-[9/16] overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/60">
+        <MediaThumbnail src={movie.poster_image ?? movie.poster_url ?? movie.thumbnail_url} alt={movie.name} className="h-full w-full" imageClassName="object-cover" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
+        {locked ? <div className="absolute inset-0 bg-black/38" /> : null}
+        {accessLabel ? (
+          <Badge className="absolute left-2 top-2 z-20 inline-flex h-6 items-center gap-1 rounded-sm bg-primary px-2 text-[10px] font-black uppercase text-black">
+            {locked ? <Lock className="h-3 w-3" /> : null}
+            {accessLabel}
+          </Badge>
+        ) : null}
+        <div className="absolute right-2 top-2 z-20">
+          <WatchlistToggleButton entertainmentId={movie.id} type="movie" initialInWatchlist={movie.is_watch_list ?? movie.is_in_watchlist} />
+        </div>
+      </div>
+      <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{movie.name}</h4>
+    </a>
   )
 }
 
