@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Modules\Statistics\Models\ContentBoost;
 use Modules\Statistics\Models\StatSetting;
+use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 
 class AuthorChannelAPIController extends Controller
 {
@@ -103,6 +104,11 @@ class AuthorChannelAPIController extends Controller
                 ->where('is_active', 1)
                 ->with([
                     'plan:id,name,level',
+                    'movies' => fn ($query) => $query
+                        ->with('plan:id,name,level')
+                        ->released()
+                        ->where('entertainments.status', 1)
+                        ->whereNull('entertainments.deleted_at'),
                     'playlists' => fn ($query) => $query->where('is_active', 1),
                     'playlists.videos' => fn ($query) => $query
                         ->with('plan:id,name,level')
@@ -339,6 +345,9 @@ class AuthorChannelAPIController extends Controller
 
         if ($includeDescription) {
             $data['description'] = $channel->description;
+            $data['movies'] = $channel->relationLoaded('movies')
+                ? CommonContentResourceV3::collection($channel->movies)->toArray(request())
+                : [];
             $data['playlists'] = $channel->relationLoaded('playlists')
                 ? $channel->playlists->map(fn ($playlist) => $this->formatPlaylist($playlist))->values()->all()
                 : [];

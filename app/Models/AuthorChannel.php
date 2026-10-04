@@ -61,6 +61,11 @@ class AuthorChannel extends Model
         return $this->belongsToMany(\Modules\Video\Models\Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
     }
 
+    public function movies()
+    {
+        return $this->belongsToMany(\Modules\Entertainment\Models\Entertainment::class, 'author_channel_entertainment', 'author_channel_id', 'entertainment_id')->withTimestamps();
+    }
+
     public function playlists()
     {
         return $this->hasMany(AuthorChannelPlaylist::class, 'author_channel_id')

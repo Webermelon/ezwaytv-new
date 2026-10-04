@@ -10,6 +10,7 @@ use App\Models\AuthorChannelPlaylist;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Modules\Subscriptions\Models\Plan;
+use Modules\Entertainment\Models\Entertainment;
 use Modules\Video\Models\Video;
 use Yajra\DataTables\DataTables;
 
@@ -145,6 +146,7 @@ class AuthorChannelController extends Controller
     {
         $channel = AuthorChannel::with([
             'videos',
+            'movies',
             'playlists.videos:id,name,thumbnail_url,poster_url,duration',
             'plan',
         ])->findOrFail($id);
@@ -158,7 +160,17 @@ class AuthorChannelController extends Controller
             ->select('id', 'name')
             ->get();
 
-        return view('authorchannel::admin.edit', compact('channel', 'availableVideos', 'plans'));
+        $assignedMovieIds = $channel->movies->pluck('id')->toArray();
+        $availableMovies = Entertainment::where('type', 'movie')
+            ->whereNotIn('id', $assignedMovieIds)
+            ->released()
+            ->where('status', 1)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->select('id', 'name')
+            ->get();
+
+        return view('authorchannel::admin.edit', compact('channel', 'availableVideos', 'availableMovies', 'plans'));
     }
 
     public function update(Request $request, $id)
@@ -258,6 +270,30 @@ class AuthorChannelController extends Controller
 
         return redirect()->route('backend.author_channels.edit', $id)
             ->with('success', 'Video removed from On Demand Channel.');
+    }
+
+    public function assignMovie(Request $request, $id)
+    {
+        $channel = AuthorChannel::findOrFail($id);
+        $data = $request->validate([
+            'movie_id' => ['required', 'integer', Rule::exists('entertainments', 'id')->where('type', 'movie')],
+        ]);
+
+        $channel->movies()->syncWithoutDetaching([(int) $data['movie_id']]);
+        $this->clearPublicChannelCache($channel);
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Movie assigned to On Demand Channel.');
+    }
+
+    public function unassignMovie($id, $movieId)
+    {
+        $channel = AuthorChannel::findOrFail($id);
+        $channel->movies()->detach((int) $movieId);
+        $this->clearPublicChannelCache($channel);
+
+        return redirect()->route('backend.author_channels.edit', $id)
+            ->with('success', 'Movie removed from On Demand Channel.');
     }
 
     public function storePlaylist(Request $request, $id)
