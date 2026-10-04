@@ -18,9 +18,17 @@
     .ondemand-card { border: 1px solid rgba(255,255,255,.08); border-radius: .75rem; overflow: hidden; }
     .ondemand-card .card-header { padding: 1.1rem 1.25rem; }
     .ondemand-card .card-body { padding: 1.25rem; }
-    .ondemand-sidebar { position: sticky; top: 1rem; display: grid; gap: .6rem; padding: .75rem; border: 1px solid rgba(255,255,255,.08); border-radius: .75rem; background: rgba(255,255,255,.025); }
-    .ondemand-sidebar .nav-link { display: flex; align-items: center; justify-content: space-between; gap: .75rem; border-radius: .55rem; color: rgba(255,255,255,.72); text-align: left; }
-    .ondemand-sidebar .nav-link.active { color: #050b0f; background: var(--bs-primary); }
+    .ondemand-shell { display: grid; width: 100%; max-width: 100%; min-width: 0; gap: 1rem; }
+    .ondemand-shell > .tab-content, .ondemand-shell > .tab-content > .tab-pane, .ondemand-card, .ondemand-card .card-body { width: 100%; max-width: 100%; min-width: 0; }
+    .ondemand-sidebar { display: flex; gap: .35rem; padding: .4rem; overflow-x: auto; border: 1px solid rgba(255,255,255,.09); border-radius: .7rem; background: rgba(0,0,0,.16); scrollbar-width: thin; }
+    .ondemand-sidebar .nav-link { display: flex; flex: 1 1 0; min-width: 0; min-height: 50px; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem 1rem; border: 1px solid transparent; border-radius: .5rem; color: rgba(255,255,255,.68); text-align: left; white-space: nowrap; transition: color .16s ease, border-color .16s ease, background .16s ease; }
+    .ondemand-sidebar .nav-link > span:first-child { display: inline-flex; min-width: 0; align-items: center; font-weight: 700; }
+    .ondemand-sidebar .nav-link > span:first-child i { color: var(--bs-primary); font-size: 1.05rem; }
+    .ondemand-sidebar .nav-link:hover { color: #fff; border-color: rgba(255,255,255,.09); background: rgba(255,255,255,.045); }
+    .ondemand-sidebar .nav-link.active { color: #fff; border-color: rgba(var(--bs-primary-rgb), .42); background: rgba(var(--bs-primary-rgb), .12); box-shadow: inset 0 -2px 0 var(--bs-primary); }
+    .ondemand-sidebar .nav-link .badge { min-width: 1.65rem; padding: .3rem .45rem; border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.3) !important; color: rgba(255,255,255,.72); }
+    .ondemand-sidebar .nav-link.active .badge { border-color: rgba(var(--bs-primary-rgb), .4); color: var(--bs-primary); }
+    .ondemand-sidebar .tab-caret { display: none; }
     .ondemand-preview { position: sticky; top: 1rem; }
     .ondemand-cover { position: relative; min-height: 190px; border-radius: .7rem; overflow: hidden; background: linear-gradient(135deg, rgba(255,193,7,.18), rgba(13,110,253,.12)), #071016; border: 1px solid rgba(255,255,255,.08); }
     .ondemand-cover img { width: 100%; height: 100%; min-height: 190px; object-fit: cover; display: block; }
@@ -90,14 +98,29 @@
         .playlist-list-panel { position: static; }
     }
     @media (max-width: 991.98px) {
-        .ondemand-shell { grid-template-columns: 1fr; }
-        .ondemand-sidebar, .ondemand-preview { position: static; }
-        .ondemand-sidebar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .ondemand-preview { position: static; }
+        .ondemand-sidebar .nav-link { flex: 0 0 auto; min-width: 155px; }
         .playlist-create-shell { justify-content: stretch; }
         .playlist-create { min-width: 0; width: 100%; }
     }
     @media (max-width: 575.98px) {
-        .ondemand-sidebar, .playlist-toolbar, .playlist-create, .playlist-form-grid, .playlist-add-bar, .playlist-panel-header, .playlist-inline-fields { grid-template-columns: 1fr; }
+        .playlist-toolbar, .playlist-create, .playlist-form-grid, .playlist-add-bar, .playlist-panel-header, .playlist-inline-fields { grid-template-columns: 1fr; }
+        .ondemand-shell { min-width: 0; max-width: 100%; overflow: hidden; }
+        .ondemand-sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: 100%; overflow: hidden; border-radius: .55rem; }
+        .ondemand-sidebar .nav-link { width: 100%; min-width: 0; min-height: 46px; gap: .35rem; padding: .55rem .6rem; font-size: .78rem; }
+        .ondemand-sidebar .nav-link > span:first-child { overflow: hidden; gap: .35rem; white-space: nowrap; }
+        .ondemand-sidebar .nav-link > span:first-child i { flex: 0 0 auto; margin-right: 0 !important; font-size: .95rem; }
+        .ondemand-sidebar .nav-link .badge { flex: 0 0 auto; min-width: 1.4rem; padding: .25rem .35rem; font-size: .68rem; }
+        .ondemand-shell > .tab-content { min-width: 0; max-width: 100%; }
+        .ondemand-card { overflow: hidden; }
+        .ondemand-card .card-header, .ondemand-card .card-body { width: 100%; max-width: 100%; padding: 1rem; overflow: hidden; }
+        .ondemand-card .card-body > .row { width: 100%; margin-right: 0; margin-left: 0; }
+        .ondemand-card .card-body > .row > [class*="col-"] { min-width: 0; padding-right: 0; padding-left: 0; }
+        .ondemand-card .form-control, .ondemand-card .form-select, .ondemand-card .select2-container { width: 100% !important; max-width: 100%; min-width: 0; }
+        .ondemand-card .input-group { width: 100%; max-width: 100%; min-width: 0; flex-wrap: nowrap; }
+        .ondemand-card .input-group > .input-group-text { flex: 0 0 auto; padding-inline: .75rem; }
+        .ondemand-card .input-group > .form-control { flex: 1 1 auto; width: 1%; min-width: 0; }
+        .ondemand-video-grid { grid-template-columns: minmax(0, 1fr); }
         .playlist-thumb { width: 100%; }
         .playlist-editor-title { display: grid; }
         .playlist-status-field { position: static; justify-content: start; }
@@ -118,10 +141,10 @@
 @endif
 
 <div class="ondemand-shell">
-    <div class="ondemand-sidebar nav nav-pills" id="ondemandEditTabs" role="tablist" aria-orientation="vertical">
+    <div class="ondemand-sidebar nav nav-pills" id="ondemandEditTabs" role="tablist" aria-orientation="horizontal">
         <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-channel-details" type="button">
             <span><i class="ph ph-television me-2"></i>Details</span>
-            <i class="ph ph-caret-right"></i>
+            <i class="ph ph-caret-right tab-caret"></i>
         </button>
         <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-playlists" type="button">
             <span><i class="ph ph-list-bullets me-2"></i>Playlists</span>
