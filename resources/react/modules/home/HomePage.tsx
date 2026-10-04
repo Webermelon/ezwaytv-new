@@ -636,11 +636,11 @@ function Rail({
         onDragStart={(event) => event.preventDefault()}
         onClickCapture={handleClickCapture}
         className={[
-          'ez-home-rail-scroller grid grid-flow-col gap-4 overflow-x-auto pb-5 [scrollbar-width:none]',
+          `ez-home-rail-scroller grid grid-flow-col overflow-x-auto pb-5 [scrollbar-width:none] ${shape === 'vertical-poster' ? 'gap-3 sm:gap-4' : 'gap-4'}`,
           shape === 'personality'
             ? 'auto-cols-[minmax(150px,48vw)] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
             : shape === 'vertical-poster'
-              ? 'auto-cols-[minmax(132px,42vw)] sm:auto-cols-[calc((100%-5rem)/6)] lg:auto-cols-[calc((100%-7rem)/8)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
+              ? 'auto-cols-[minmax(96px,29vw)] sm:auto-cols-[calc((100%-5rem)/6)] lg:auto-cols-[calc((100%-7rem)/8)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
             : 'auto-cols-[minmax(220px,72vw)] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)]',
         ].join(' ')}
       >
@@ -707,7 +707,7 @@ function PosterCard({
           </Badge>
         ) : null}
       </div>
-      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{title}</h3>
+      <h3 className={`mt-2 line-clamp-2 font-bold leading-snug text-white ${shape === 'vertical-poster' ? 'text-xs sm:text-sm' : 'text-sm'}`}>{title}</h3>
       {item.videos_count ? <p className="mt-1 text-xs text-white/58">{item.videos_count} videos</p> : null}
       {!item.videos_count && item.duration ? <p className="mt-1 text-xs text-white/58">{item.duration}</p> : null}
     </a>

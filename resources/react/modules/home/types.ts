@@ -78,6 +78,13 @@ export type MediaItem = {
     url_type?: string | null
     url?: string | null
   }>
+  subtitle_info?: Array<{
+    id?: number | string
+    language?: string | null
+    language_code?: string | null
+    subtitle_file?: string | null
+    is_default?: boolean | number | string | null
+  }> | null
   stats?: {
     real_views?: number | null
     boost_views?: number | null

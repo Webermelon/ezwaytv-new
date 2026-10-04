@@ -1,5 +1,6 @@
 import { Calendar, Clock, Film, Star } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -42,6 +43,17 @@ export function MoviePlayerPage() {
 function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean }) {
   const source = resolveMovieSource(movie)
   const poster = movie.thumbnail_url ?? movie.poster_tv_image ?? movie.poster_image ?? movie.poster_url
+  const subtitles = useMemo(() => {
+    const available = (movie.subtitle_info ?? []).filter((subtitle) => Boolean(subtitle.subtitle_file))
+    const hasExplicitDefault = available.some((subtitle) => subtitle.is_default === true || subtitle.is_default === 1 || subtitle.is_default === '1')
+
+    return available.map((subtitle, index) => ({
+      src: subtitle.subtitle_file as string,
+      label: subtitle.language?.trim() || subtitle.language_code?.trim() || 'Subtitles',
+      language: subtitle.language_code?.trim() || undefined,
+      default: subtitle.is_default === true || subtitle.is_default === 1 || subtitle.is_default === '1' || (!hasExplicitDefault && index === 0),
+    }))
+  }, [movie.subtitle_info])
   const castNames = names(movie.casts)
   const directorNames = names(movie.directors)
   const descriptionHasCredits = /\b(?:starring|cast|director):/i.test(movie.description ?? '')
@@ -56,7 +68,7 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
     <>
       <div className="relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
         {source ? (
-          <VideoJsPlayer source={source} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} />
+          <VideoJsPlayer source={source} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} subtitles={subtitles} />
         ) : (
           <div className="flex h-full items-center justify-center text-white/55">No playable movie source was returned.</div>
         )}

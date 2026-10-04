@@ -20,11 +20,21 @@ type VideoJsPlayerProps = {
   customAds?: VideoAd[]
   isLive?: boolean
   pausedOverlay?: ReactNode
+  subtitles?: VideoSubtitle[] | null
   onPlay?: () => void
   onTimeUpdate?: (seconds: number) => void
   onPause?: (seconds: number) => void
   onEnded?: (seconds: number) => void
 }
+
+export type VideoSubtitle = {
+  src: string
+  label: string
+  language?: string | null
+  default?: boolean
+}
+
+const EMPTY_SUBTITLES: VideoSubtitle[] = []
 
 type VideoJsImaPlayer = videojs.Player & {
   ima?: ((options?: Record<string, unknown>) => void) & {
@@ -80,6 +90,7 @@ export function VideoJsPlayer({
   customAds = [],
   isLive = false,
   pausedOverlay,
+  subtitles = EMPTY_SUBTITLES,
   onPlay,
   onTimeUpdate,
   onPause,
@@ -323,6 +334,15 @@ export function VideoJsPlayer({
           type: guessMimeType(source),
         },
       ],
+      tracks: subtitles
+        .filter((subtitle) => subtitle.src)
+        .map((subtitle) => ({
+          kind: 'subtitles' as const,
+          src: subtitle.src,
+          label: subtitle.label,
+          srclang: subtitle.language || undefined,
+          default: Boolean(subtitle.default),
+        })),
       controlBar: {
         pictureInPictureToggle: true,
       },
@@ -453,7 +473,7 @@ export function VideoJsPlayer({
         customAdTimerRef.current = null
       }
     }
-  }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd])
+  }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd, subtitles])
 
   useEffect(() => {
     setIsPaused(true)
