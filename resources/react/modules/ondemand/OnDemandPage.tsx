@@ -490,8 +490,8 @@ function OnDemandMovieCard({ movie }: { movie: MediaItem }) {
   const accessLabel = locked ? 'Premium' : formatAccessLabel(movie.access ?? movie.movie_access)
 
   return (
-    <a href={`/movie-details/${movie.slug ?? movie.id}`} className="group block min-w-0">
-      <div className="relative aspect-[9/16] overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/60">
+    <a href={`/watch-movie/${movie.id}?autoplay=1`} className="group block min-w-0">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/60">
         <MediaThumbnail src={movie.poster_image ?? movie.poster_url ?? movie.thumbnail_url} alt={movie.name} className="h-full w-full" imageClassName="object-cover" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
         {locked ? <div className="absolute inset-0 bg-black/38" /> : null}

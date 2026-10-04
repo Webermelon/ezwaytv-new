@@ -67,8 +67,9 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
         Route::post('/generate-description', [MovieController::class, 'GenerateDescription'])->name('generate-description');
         Route::post('/import', [MovieController::class, 'import'])->name('import');
         Route::get('/download-sample', [MovieController::class, 'downloadSample'])->name('download_sample');
+        Route::get('/{id}/edit', [EntertainmentsController::class, 'edit'])->name('edit');
     });
-    Route::resource("movies", MovieController::class);
+    Route::resource("movies", MovieController::class)->except(['edit']);
 
     Route::group(['prefix' => 'tvshows', 'as' => 'tvshows.'],function () {
       Route::get("index_list", [TVshowController::class, 'index_list'])->name("index_list");
@@ -99,6 +100,5 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
     });
 
 });
-
 
 

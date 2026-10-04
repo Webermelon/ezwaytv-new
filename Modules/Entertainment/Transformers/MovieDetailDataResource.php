@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Modules\Entertainment\Transformers\ContinueWatchResource;
 use Modules\Entertainment\Transformers\CommanResource;
 use Modules\Entertainment\Models\EntertainmentDownload;
+use Mews\Purifier\Facades\Purifier;
 
 
 
@@ -27,6 +28,11 @@ class MovieDetailDataResource  extends JsonResource
      */
     public function toArray($request)
     {
+        $description = Purifier::clean(html_entity_decode(
+            (string) $this->description,
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        ));
 
         $header = request()->headers->all();
         $device_type = !empty($header['device-type'])? $header['device-type'][0] : []; //for tv
@@ -72,6 +78,25 @@ class MovieDetailDataResource  extends JsonResource
         $deviceTypeResponse = json_decode($getDeviceTypeData->getContent(), true); // Decode to associative array
         return [
             'id' => $this->id,
+            'name' => $this->name,
+            'slug' => $this->slug,
+            'type' => 'movie',
+            'description' => $description,
+            'movie_access' => $this->movie_access,
+            'access' => $this->movie_access,
+            'plan_id' => $this->plan_id,
+            'plan_level' => optional($this->plan)->level ?? 0,
+            'release_date' => $this->release_date,
+            'language' => $this->language,
+            'imdb_rating' => $this->IMDb_rating,
+            'duration' => $this->duration,
+            'video_upload_type' => $this->video_upload_type,
+            'video_url_input' => $this->video_upload_type === 'Local'
+                ? setBaseUrlWithFileName($this->video_url_input, 'video', 'movie')
+                : $this->video_url_input,
+            'poster_image' => setBaseUrlWithFileName($this->poster_url, 'image', 'movie'),
+            'poster_tv_image' => setBaseUrlWithFileName($this->poster_tv_url, 'image', 'movie'),
+            'thumbnail_url' => setBaseUrlWithFileName($this->thumbnail_url, 'image', 'movie'),
             'enable_quality' => $this->enable_quality,
             'is_download' => $this->is_download ?? false,
             'download_status' => $this->download_status,

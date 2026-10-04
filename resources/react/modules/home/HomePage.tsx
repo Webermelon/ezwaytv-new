@@ -104,14 +104,7 @@ export function HomePage() {
             <Rail title="Live TV Now" items={liveChannels} href="/livetv" shape="square" index={1} showLiveBadge />
             <Rail title="On Demand Channels" items={ondemandChannels} href="/on-demand" shape="channel" index={2} />
             <Rail title="Latest Videos" items={latestVideos} href="/videos" shape="video" index={3} />
-            <Rail
-              title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
-              items={personalities}
-              href="/castcrew-list"
-              shape="personality"
-              index={4}
-            />
-            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={5} />
+            <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={4} />
             {configuredMovieRails.map((rail, railIndex) => (
               <Rail
                 key={rail.slug}
@@ -119,9 +112,16 @@ export function HomePage() {
                 items={rail.data}
                 href="/movies"
                 shape="vertical-poster"
-                index={6 + railIndex}
+                index={5 + railIndex}
               />
             ))}
+            <Rail
+              title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
+              items={personalities}
+              href="/castcrew-list"
+              shape="personality"
+              index={5 + configuredMovieRails.length}
+            />
             <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
           </>
         )}
@@ -683,13 +683,16 @@ function PosterCard({
   return (
     <a href={contentHref(item)} draggable={false} className="ez-home-card group block min-w-0" style={cardStyle}>
       <div
-        className="relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]"
+        className={[
+          'relative overflow-hidden rounded-md border border-white/8 bg-white/[0.06] shadow-lg transition duration-300 group-hover:z-10 group-hover:-translate-y-1 group-hover:scale-[1.035] group-hover:border-primary/60 group-hover:shadow-[0_22px_52px_rgba(0,0,0,0.55)]',
+          shape === 'vertical-poster' ? 'aspect-[2/3]' : '',
+        ].join(' ')}
       >
         <MediaThumbnail
           src={image}
           alt={title}
           previewSrc={shape === 'video' ? previewHref(item) : null}
-          className={shape === 'video' ? 'aspect-video' : shape === 'vertical-poster' ? 'aspect-[9/16]' : ''}
+          className={shape === 'video' ? 'aspect-video' : shape === 'vertical-poster' ? 'h-full w-full !aspect-auto' : ''}
           imageClassName={shape === 'video' || shape === 'vertical-poster' ? 'object-cover' : undefined}
         />
         <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">

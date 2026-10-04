@@ -164,6 +164,7 @@ Route::post('/disable-security', function(Request $request) {
 Route::view('movies/genre/{genre_id}', 'react-modernization')->middleware('checkModule')->name('movies.genre');
 Route::view('movies/{language}', 'react-modernization')->middleware('checkModule')->name('movies.language');
 Route::view('/movies', 'react-modernization')->middleware('checkModule')->name('movies');
+Route::get('/watch-movie/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-watch');
 Route::get('/movie-details/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
 Route::view('/tv-shows', 'react-modernization')->middleware('checkModule')->name('tv-shows');
 Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tvshow-details');

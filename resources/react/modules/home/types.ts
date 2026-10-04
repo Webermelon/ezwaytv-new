@@ -62,6 +62,9 @@ export type MediaItem = {
   trailer_url_type?: string | null
   release_date?: string | null
   imdb_rating?: string | number | null
+  language?: string | null
+  casts?: Array<{ id?: number | string; name?: string | null }>
+  directors?: Array<{ id?: number | string; name?: string | null }>
   genres?: Array<{ id?: number | string; name?: string | null }>
   description?: string | null
   short_desc?: string | null

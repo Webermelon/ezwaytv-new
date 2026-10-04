@@ -18,6 +18,7 @@ import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
 import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDetailPage'
+import { MoviePlayerPage } from '@/modules/movies/MoviePlayerPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { MoviesPage } from '@/modules/movies/MoviesPage'
 import { useSpaPath } from '@/lib/spa-router'
@@ -77,6 +78,8 @@ export default function App() {
     page = <VideoEmbedPage />
   } else if (pathname.startsWith('/video-details')) {
     page = <VideoDetailPage />
+  } else if (pathname.startsWith('/watch-movie')) {
+    page = <MoviePlayerPage />
   } else if (pathname.startsWith('/castcrew-detail')) {
     page = <CastCrewDetailPage />
   } else if (pathname === '/castcrew-list' || pathname.startsWith('/castcrew-list/')) {

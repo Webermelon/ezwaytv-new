@@ -48,6 +48,13 @@ export async function loadVideoDetail(slug: string, ondemandChannel?: string | n
   return response.data
 }
 
+export async function loadMovieDetail(movieId: string) {
+  const params = new URLSearchParams({ movie_id: movieId })
+  const response = await api.get<ApiEnvelope<MediaItem>>(`/api/movie-details?${params.toString()}`)
+
+  return response.data
+}
+
 export async function loadContentStats(contentType: string, contentId: string | number) {
   const params = new URLSearchParams({
     content_type: contentType,
