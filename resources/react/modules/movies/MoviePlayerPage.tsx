@@ -23,13 +23,14 @@ export function MoviePlayerPage() {
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="movies" />
-      <section className="mx-auto max-w-[1800px] px-3 pb-16 pt-5 sm:px-6 lg:px-8">
-        <PlayerBackButton fallbackHref="/on-demand/ezway-movie-channel" />
-
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+        <div className="flex min-h-12 items-center border-b border-white/10 bg-[#050505] px-3 py-2 sm:min-h-14 sm:px-5">
+          <PlayerBackButton fallbackHref="/on-demand/ezway-movie-channel" />
+        </div>
         {movieQuery.isLoading ? (
-          <div className="mt-4 aspect-video animate-pulse rounded-md bg-white/[0.05]" />
+          <div className="aspect-video w-full animate-pulse bg-white/[0.05] sm:aspect-auto sm:h-[76svh]" />
         ) : movieQuery.isError || !movie ? (
-          <div className="mt-4 rounded-md border border-red-500/25 bg-red-500/10 p-8 text-center text-red-100">Movie could not be loaded.</div>
+          <div className="flex min-h-[55svh] items-center justify-center bg-red-500/10 p-8 text-center text-red-100">Movie could not be loaded.</div>
         ) : (
           <MovieContent movie={movie} autoplay={autoplay} />
         )}
@@ -52,22 +53,28 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
 
   return (
     <>
-      <div className="mt-4 w-full overflow-hidden rounded-md border border-white/10 bg-[#151515] shadow-2xl shadow-black/50">
-        <div className="mx-auto aspect-video w-full bg-black sm:max-w-[calc((100svh-11rem)*16/9)]">
-          {source ? (
-            <VideoJsPlayer source={source} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} />
-          ) : (
-            <div className="flex h-full items-center justify-center text-white/55">No playable movie source was returned.</div>
-          )}
+      <div className="relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
+        {source ? (
+          <VideoJsPlayer source={source} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} />
+        ) : (
+          <div className="flex h-full items-center justify-center text-white/55">No playable movie source was returned.</div>
+        )}
+      </div>
+
+      <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <MediaThumbnail src={movie.poster_image ?? movie.poster_url} alt={movie.name} className="h-14 w-10 shrink-0 !aspect-auto rounded-sm border border-white/10" imageClassName="object-cover" />
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Badge className="rounded-sm bg-primary text-black">Movie</Badge>
+              {movie.genres?.map((genre) => genre.name).filter(Boolean).map((genre) => <Badge key={genre} className="rounded-sm bg-white/14 text-white">{genre}</Badge>)}
+            </div>
+            <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.65rem]">{movie.name}</h1>
+          </div>
         </div>
       </div>
 
-      <div className="mt-6 border-b border-white/10 pb-7">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className="rounded-sm bg-primary text-black">Movie</Badge>
-          {movie.genres?.map((genre) => genre.name).filter(Boolean).map((genre) => <Badge key={genre} variant="outline" className="border-white/15 text-white/70">{genre}</Badge>)}
-        </div>
-        <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">{movie.name}</h1>
+      <div className="mx-auto w-full max-w-[1800px] px-3 pb-8 pt-6 sm:px-6 lg:px-8">
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/58">
           {movie.release_date ? <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4 text-primary" />{String(movie.release_date).slice(0, 4)}</span> : null}
           {movie.duration ? <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" />{movie.duration}</span> : null}
@@ -87,9 +94,8 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
             {directorNames ? <div className="flex gap-2"><dt className="font-bold text-white">Director:</dt><dd className="text-white/65">{directorNames}</dd></div> : null}
           </dl>
         ) : null}
+        {otherMovies.length ? <OtherMovies movies={otherMovies} /> : null}
       </div>
-
-      {otherMovies.length ? <OtherMovies movies={otherMovies} /> : null}
     </>
   )
 }

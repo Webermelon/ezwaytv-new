@@ -769,8 +769,8 @@ function contentHref(item?: MediaItem) {
     return `/video-details/${item.slug}?${params.toString()}`
   }
 
-  if (type === 'movie' && item.slug) {
-    return `/movie-details/${item.slug}`
+  if (type === 'movie' && item.id) {
+    return `/watch-movie/${item.id}?autoplay=1`
   }
 
   if (type === 'tvshow' && item.slug) {
