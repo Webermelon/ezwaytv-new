@@ -412,7 +412,7 @@
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', old('duration'))->placeholder(__('movie.lbl_duration'))->class('form-control  min-datetimepicker-time')->attribute('required', 'required')->id('duration') }}
+                            {{ html()->time('duration')->attribute('value', old('duration'))->attribute('step', '1')->placeholder(__('movie.lbl_duration'))->class('form-control  min-datetimepicker-time')->attribute('required', 'required')->id('duration') }}
                             @error('duration')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -1225,6 +1225,8 @@
         };
     </script>
 @endpush
+
+@include('entertainment::backend.entertainment.partials.detect-video-duration')
 @push('after-scripts')
     <!-- <script src="{{ mix('js/media/media.min.js') }}"></script> -->
     <script>

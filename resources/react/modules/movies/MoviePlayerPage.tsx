@@ -44,6 +44,7 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
   const poster = movie.thumbnail_url ?? movie.poster_tv_image ?? movie.poster_image ?? movie.poster_url
   const castNames = names(movie.casts)
   const directorNames = names(movie.directors)
+  const descriptionHasCredits = /\b(?:starring|cast|director):/i.test(movie.description ?? '')
   const otherMoviesQuery = useQuery({
     queryKey: ['other-movies', 'ezway-movie-channel'],
     queryFn: () => loadOnDemandProfile('ezway-movie-channel'),
@@ -62,38 +63,41 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
       </div>
 
       <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
-          <MediaThumbnail src={movie.poster_image ?? movie.poster_url} alt={movie.name} className="h-14 w-10 shrink-0 !aspect-auto rounded-sm border border-white/10" imageClassName="object-cover" />
-          <div className="min-w-0">
+        <div className="mx-auto flex w-full max-w-[1800px] min-w-0 items-center gap-4">
+          <MediaThumbnail src={movie.poster_image ?? movie.poster_url} alt={movie.name} className="h-20 w-14 shrink-0 !aspect-auto rounded-sm border border-white/10" imageClassName="object-cover" />
+          <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge className="rounded-sm bg-primary text-black">Movie</Badge>
               {movie.genres?.map((genre) => genre.name).filter(Boolean).map((genre) => <Badge key={genre} className="rounded-sm bg-white/14 text-white">{genre}</Badge>)}
             </div>
             <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.65rem]">{movie.name}</h1>
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-white/58">
+              {movie.release_date ? <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4 text-primary" />{String(movie.release_date).slice(0, 4)}</span> : null}
+              {movie.duration ? <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" />{movie.duration}</span> : null}
+              {movie.language ? <span className="inline-flex items-center gap-1.5"><Film className="h-4 w-4 text-primary" />{movie.language}</span> : null}
+              {movie.imdb_rating ? <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-primary text-primary" />{movie.imdb_rating}</span> : null}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-[1800px] px-3 pb-8 pt-6 sm:px-6 lg:px-8">
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/58">
-          {movie.release_date ? <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4 text-primary" />{String(movie.release_date).slice(0, 4)}</span> : null}
-          {movie.duration ? <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-primary" />{movie.duration}</span> : null}
-          {movie.language ? <span className="inline-flex items-center gap-1.5"><Film className="h-4 w-4 text-primary" />{movie.language}</span> : null}
-          {movie.imdb_rating ? <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-primary text-primary" />{movie.imdb_rating}</span> : null}
-        </div>
-        {movie.description ? (
-          <div
-            className="mt-5 max-w-5xl text-sm leading-7 text-white/70 [&_h1]:mb-4 [&_h1]:text-xl [&_h1]:font-black [&_h2]:mb-4 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_p]:mb-4 [&_strong]:font-black [&_strong]:text-white [&_em]:italic"
-            dangerouslySetInnerHTML={{ __html: movie.description }}
-          />
-        ) : null}
+        <section className="rounded-md border border-white/10 bg-white/[0.035] p-4 sm:p-6">
+          <h2 className="border-b border-white/10 pb-3 text-lg font-black text-white">About this movie</h2>
+          {movie.description ? (
+            <div
+              className="mt-4 max-w-5xl text-sm leading-7 text-white/70 [&_h1]:mb-4 [&_h1]:text-xl [&_h1]:font-black [&_h2]:mb-4 [&_h2]:text-xl [&_h2]:font-black [&_h3]:mb-3 [&_h3]:text-lg [&_h3]:font-bold [&_p]:mb-4 [&_p:last-child]:mb-0 [&_strong]:font-black [&_strong]:text-white [&_em]:italic"
+              dangerouslySetInnerHTML={{ __html: movie.description }}
+            />
+          ) : null}
 
-        {(castNames || directorNames) ? (
-          <dl className="mt-5 grid gap-2 text-sm">
-            {castNames ? <div className="flex gap-2"><dt className="font-bold text-white">Cast:</dt><dd className="text-white/65">{castNames}</dd></div> : null}
-            {directorNames ? <div className="flex gap-2"><dt className="font-bold text-white">Director:</dt><dd className="text-white/65">{directorNames}</dd></div> : null}
-          </dl>
-        ) : null}
+          {!descriptionHasCredits && (castNames || directorNames) ? (
+            <dl className="mt-5 grid gap-2 border-t border-white/10 pt-4 text-sm">
+              {castNames ? <div className="flex gap-2"><dt className="font-bold text-white">Cast:</dt><dd className="text-white/65">{castNames}</dd></div> : null}
+              {directorNames ? <div className="flex gap-2"><dt className="font-bold text-white">Director:</dt><dd className="text-white/65">{directorNames}</dd></div> : null}
+            </dl>
+          ) : null}
+        </section>
         {otherMovies.length ? <OtherMovies movies={otherMovies} /> : null}
       </div>
     </>

@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
 import type { MediaItem } from '@/modules/home/types'
 
-export type SearchKind = 'video' | 'livetv' | 'ondemand' | 'playlist'
+export type SearchKind = 'movie' | 'video' | 'livetv' | 'ondemand' | 'playlist'
 
 export type SearchResult = MediaItem & {
   searchKind: SearchKind
@@ -32,6 +32,8 @@ type SearchResponse = {
 }
 
 export async function loadSearchResults(query: string, types: string[] = []) {
+  const movieOnly = types.length === 1 && types[0] === 'movie'
+  const includeMovies = types.length === 0 || types.includes('movie')
   const params = new URLSearchParams({
     search: query,
     is_ajax: '1',
@@ -40,11 +42,37 @@ export async function loadSearchResults(query: string, types: string[] = []) {
 
   if (types.length > 0) {
     params.set('type', types.join(','))
+    params.set('search_type', types.join(','))
   }
 
-  const response = await api.get<SearchResponse>(`/api/v3/get-search-data?${params.toString()}`)
+  const movieParams = new URLSearchParams({
+    search: query,
+    is_ajax: '1',
+    per_page: '48',
+  })
 
-  return normalizeSearchResponse(response)
+  const [response, movieResponse] = await Promise.all([
+    movieOnly
+      ? Promise.resolve({} as SearchResponse)
+      : api.get<SearchResponse>(`/api/v3/get-search-data?${params.toString()}`),
+    includeMovies
+      ? api.get<{ data?: MediaItem[] }>(`/api/v3/movie-list?${movieParams.toString()}`)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  return uniqueResults([
+    ...normalizeSearchResponse(response),
+    ...(movieResponse.data ?? []).map(normalizeMovieResult),
+  ])
+}
+
+function normalizeMovieResult(item: MediaItem): SearchResult {
+  return {
+    ...item,
+    name: item.name ?? item.details?.name ?? 'Movie',
+    searchKind: 'movie',
+    href: `/watch-movie/${item.id}?autoplay=1`,
+  }
 }
 
 function normalizeSearchResponse(response: SearchResponse) {
