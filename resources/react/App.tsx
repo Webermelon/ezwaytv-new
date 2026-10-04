@@ -19,6 +19,7 @@ import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
 import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDetailPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
+import { MoviesPage } from '@/modules/movies/MoviesPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
 import { OpenInAppPrompt } from '@/components/OpenInAppPrompt'
@@ -42,6 +43,8 @@ export default function App() {
     page = <LiveTvPage />
   } else if (pathname === '/videos' || pathname.startsWith('/videos/category') || pathname.startsWith('/spa/videos') || pathname.startsWith('/react-videos')) {
     page = <VideosPage />
+  } else if (pathname === '/movies' || pathname.startsWith('/movies/')) {
+    page = <MoviesPage />
   } else if (pathname === '/search') {
     page = <SearchPage />
   } else if (pathname === '/login' || pathname === '/register' || pathname === '/forget-password') {

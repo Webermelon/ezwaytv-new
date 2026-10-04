@@ -19,6 +19,8 @@ type HomeState = {
   ondemandChannels: MediaItem[]
 }
 
+type RailShape = 'poster' | 'vertical-poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
+
 const emptyState: HomeState = {
   dashboard: {},
   genres: [],
@@ -67,6 +69,12 @@ export function HomePage() {
     [railLimit, state.dashboard.personality?.data, state.dashboard.popular_personality?.data],
   )
   const latestMovies = useMemo(() => (state.dashboard.latest_movie?.data ?? []).slice(0, railLimit), [railLimit, state.dashboard.latest_movie?.data])
+  const configuredMovieRails = useMemo(
+    () => Object.entries(state.dashboard.dynamic_data ?? {})
+      .filter(([, rail]) => rail.type === 'movie' && (rail.data?.length ?? 0) > 0)
+      .map(([slug, rail]) => ({ slug, ...rail, data: (rail.data ?? []).slice(0, railLimit) })),
+    [railLimit, state.dashboard.dynamic_data],
+  )
   const featured = heroLiveChannels[0] ?? state.liveTv.slider?.[0] ?? liveChannels[0] ?? state.videos[0]
 
   return (
@@ -104,6 +112,16 @@ export function HomePage() {
               index={4}
             />
             <Rail title={state.dashboard.latest_movie?.name ?? 'New Released Movies'} items={latestMovies} href="/movies" shape="poster" index={5} />
+            {configuredMovieRails.map((rail, railIndex) => (
+              <Rail
+                key={rail.slug}
+                title={rail.name ?? 'Movies'}
+                items={rail.data}
+                href="/movies"
+                shape="vertical-poster"
+                index={6 + railIndex}
+              />
+            ))}
             <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
           </>
         )}
@@ -523,7 +541,7 @@ function Rail({
   title: string
   items: MediaItem[]
   href?: string
-  shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
+  shape: RailShape
   index?: number
   showLiveBadge?: boolean
 }) {
@@ -621,6 +639,8 @@ function Rail({
           'ez-home-rail-scroller grid grid-flow-col gap-4 overflow-x-auto pb-5 [scrollbar-width:none]',
           shape === 'personality'
             ? 'auto-cols-[minmax(150px,48vw)] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
+            : shape === 'vertical-poster'
+              ? 'auto-cols-[minmax(132px,42vw)] sm:auto-cols-[calc((100%-5rem)/6)] lg:auto-cols-[calc((100%-7rem)/8)] 2xl:auto-cols-[calc((100%-9rem)/10)]'
             : 'auto-cols-[minmax(220px,72vw)] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)]',
         ].join(' ')}
       >
@@ -639,7 +659,7 @@ function PosterCard({
   showLiveBadge = false,
 }: {
   item: MediaItem
-  shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality'
+  shape: RailShape
   index?: number
   showLiveBadge?: boolean
 }) {
@@ -669,8 +689,8 @@ function PosterCard({
           src={image}
           alt={title}
           previewSrc={shape === 'video' ? previewHref(item) : null}
-          className={shape === 'video' ? 'aspect-video' : ''}
-          imageClassName={shape === 'video' ? 'object-cover' : undefined}
+          className={shape === 'video' ? 'aspect-video' : shape === 'vertical-poster' ? 'aspect-[9/16]' : ''}
+          imageClassName={shape === 'video' || shape === 'vertical-poster' ? 'object-cover' : undefined}
         />
         <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-300 group-hover:opacity-100">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4a843]/75 to-transparent" />
@@ -700,7 +720,7 @@ function LiveChannelBadge() {
   )
 }
 
-function cardImage(item: MediaItem | undefined, shape: 'poster' | 'video' | 'square' | 'genre' | 'channel' | 'personality') {
+function cardImage(item: MediaItem | undefined, shape: RailShape) {
   if (!item) return undefined
 
   if (shape === 'video') {
@@ -710,6 +730,14 @@ function cardImage(item: MediaItem | undefined, shape: 'poster' | 'video' | 'squ
       ?? item.poster_tv_image
       ?? item.cover_image_url
       ?? item.poster_url
+  }
+
+  if (shape === 'vertical-poster') {
+    return item.poster_image
+      ?? item.poster_url
+      ?? item.thumbnail_url
+      ?? item.poster_tv_image
+      ?? item.cover_image_url
   }
 
   return item.poster_tv_image

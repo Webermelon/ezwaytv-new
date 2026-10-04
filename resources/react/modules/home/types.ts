@@ -23,6 +23,7 @@ export type MediaItem = {
   channel_number?: number | string | null
   dashboard_order?: number | null
   access?: string
+  movie_access?: string
   has_content_access?: number | boolean | null
   is_premium?: number | boolean | null
   show_premium_badge?: number | boolean | null
@@ -39,6 +40,8 @@ export type MediaItem = {
   videos_count?: number
   video_count?: number
   total_videos?: number
+  movies_count?: number
+  content_count?: number
   playlists?: Array<{
     id: number | string
     name: string
@@ -46,6 +49,7 @@ export type MediaItem = {
     video_count?: number
     videos?: MediaItem[]
   }>
+  movies?: MediaItem[]
   is_active?: boolean
   is_watch_list?: number | boolean | string | null
   is_in_watchlist?: number | boolean | string | null
@@ -57,6 +61,7 @@ export type MediaItem = {
   trailer_url_type?: string | null
   release_date?: string | null
   imdb_rating?: string | number | null
+  genres?: Array<{ id?: number | string; name?: string | null }>
   description?: string | null
   short_desc?: string | null
   now_playing?: ProgramInfo | null

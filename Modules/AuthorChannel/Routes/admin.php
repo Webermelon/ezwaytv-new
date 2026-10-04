@@ -21,6 +21,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['web', 'au
     Route::post('on-demand-channels/{id}/videos/assign',               [AuthorChannelController::class, 'assignVideo'])->name('author_channels.videos.assign');
     Route::post('on-demand-channels/{id}/videos/{videoId}/unassign',   [AuthorChannelController::class, 'unassignVideo'])->name('author_channels.videos.unassign');
     Route::get('on-demand-channels/{id}/videos/available',             [AuthorChannelController::class, 'availableVideos'])->name('author_channels.videos.available');
+    Route::post('on-demand-channels/{id}/movies/assign',               [AuthorChannelController::class, 'assignMovie'])->name('author_channels.movies.assign');
+    Route::post('on-demand-channels/{id}/movies/{movieId}/unassign',   [AuthorChannelController::class, 'unassignMovie'])->name('author_channels.movies.unassign');
     Route::post('on-demand-channels/{id}/playlists',                   [AuthorChannelController::class, 'storePlaylist'])->name('author_channels.playlists.store');
     Route::post('on-demand-channels/{id}/playlists/{playlistId}/update', [AuthorChannelController::class, 'updatePlaylist'])->name('author_channels.playlists.update');
     Route::post('on-demand-channels/{id}/playlists/{playlistId}/reorder', [AuthorChannelController::class, 'reorderPlaylistVideos'])->name('author_channels.playlists.videos.reorder');
@@ -42,6 +44,8 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['web', 'au
     Route::post('author-channels/{id}/videos/assign', [AuthorChannelController::class, 'assignVideo']);
     Route::post('author-channels/{id}/videos/{videoId}/unassign', [AuthorChannelController::class, 'unassignVideo']);
     Route::get('author-channels/{id}/videos/available', [AuthorChannelController::class, 'availableVideos']);
+    Route::post('author-channels/{id}/movies/assign', [AuthorChannelController::class, 'assignMovie']);
+    Route::post('author-channels/{id}/movies/{movieId}/unassign', [AuthorChannelController::class, 'unassignMovie']);
     Route::post('author-channels/{id}/playlists', [AuthorChannelController::class, 'storePlaylist']);
     Route::post('author-channels/{id}/playlists/{playlistId}/update', [AuthorChannelController::class, 'updatePlaylist']);
     Route::post('author-channels/{id}/playlists/{playlistId}/reorder', [AuthorChannelController::class, 'reorderPlaylistVideos']);

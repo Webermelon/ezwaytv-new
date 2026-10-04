@@ -131,6 +131,10 @@
             <span><i class="ph ph-video me-2"></i>Assign Videos</span>
             <span class="badge bg-dark">{{ $channel->videos->count() }}</span>
         </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-assign-movies" type="button">
+            <span><i class="ph ph-film-strip me-2"></i>Assign Movies</span>
+            <span class="badge bg-dark">{{ $channel->movies->count() }}</span>
+        </button>
     </div>
 
     <div class="tab-content">
@@ -561,6 +565,69 @@
                             <div class="ondemand-empty">
                                 <i class="ph ph-video-camera d-block mb-2" style="font-size: 2rem;"></i>
                                 No videos assigned yet. Assign an existing video or upload a new one.
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-assign-movies">
+            <div class="card ondemand-card">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        <h4 class="card-title mb-1">Assign Movies</h4>
+                        <p class="mb-0 text-muted small">Attach published movies to this On Demand channel.</p>
+                    </div>
+                    <span class="badge bg-primary">{{ $channel->movies->count() }} movie(s)</span>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('backend.author_channels.movies.assign', $channel->id) }}" method="POST" class="row g-2 align-items-end">
+                        @csrf
+                        <div class="col-md-9">
+                            <label class="form-label fw-semibold">Assign Existing Movie</label>
+                            <select name="movie_id" class="form-control select2" style="width:100%" required>
+                                <option value="">-- Select a movie --</option>
+                                @foreach($availableMovies as $movie)
+                                    <option value="{{ $movie->id }}">{{ $movie->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="ph ph-plus-circle"></i> Assign
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="ondemand-video-grid mt-4">
+                        @forelse($channel->movies as $movie)
+                            @php
+                                $thumb = $movie->poster_url
+                                    ? setBaseUrlWithFileName($movie->poster_url, 'image', 'movie')
+                                    : asset('default-image/Default-Image.jpg');
+                            @endphp
+                            <div class="ondemand-video-card">
+                                <img src="{{ $thumb }}" class="ondemand-video-thumb" alt="" onerror="this.onerror=null;this.src='{{ asset('default-image/Default-Image.jpg') }}';">
+                                <div class="ondemand-video-body">
+                                    <div class="ondemand-video-title fw-semibold">{{ Str::limit($movie->name, 70) }}</div>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <a href="{{ route('backend.movies.edit', $movie->id) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="ph ph-pencil-simple"></i> Edit
+                                        </a>
+                                        <form action="{{ route('backend.author_channels.movies.unassign', [$channel->id, $movie->id]) }}" method="POST" onsubmit="return confirm('Remove this movie from the channel?')">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="ph ph-x"></i> Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="ondemand-empty">
+                                <i class="ph ph-film-strip d-block mb-2" style="font-size: 2rem;"></i>
+                                No movies assigned yet.
                             </div>
                         @endforelse
                     </div>

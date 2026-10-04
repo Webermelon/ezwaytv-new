@@ -1787,6 +1787,42 @@ public function getTrandingData(Request $request){
                 $sectionNamesAdditional[$slug] = $settingsAdditional[$slug] ?? $default;
             }
 
+            $dynamicData = [];
+            $dynamicMovieSettings = MobileSetting::where('type', 'movie')
+                ->whereNotNull('value')
+                ->orderBy('position')
+                ->get(['name', 'slug', 'value']);
+
+            foreach ($dynamicMovieSettings as $dynamicSetting) {
+                $dynamicMovieIds = json_decode($dynamicSetting->value, true);
+                if (!is_array($dynamicMovieIds) || empty($dynamicMovieIds)) {
+                    continue;
+                }
+
+                $dynamicMovieIds = array_slice(array_values(array_filter(array_map('intval', $dynamicMovieIds))), 0, 100);
+                $dynamicMovieOrder = array_flip($dynamicMovieIds);
+                $dynamicMovies = Entertainment::get_latest_movieV3($dynamicMovieIds)
+                    ->sortBy(fn ($movie) => $dynamicMovieOrder[(int) $movie->id] ?? PHP_INT_MAX)
+                    ->values();
+
+                $dynamicMovies->each(function ($movie) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                    $movie->user_id = $user_id;
+                    $movie->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                    $posterPath = $device_type == 'tv' && $movie->poster_tv_url
+                        ? $movie->poster_tv_url
+                        : $movie->poster_url;
+                    $movie->poster_image = setBaseUrlWithFileName($posterPath, 'image', $movie->type);
+                    $movie->access = $movie->movie_access;
+                    setContentAccess($movie, $user_id, $userPlanId, $purchasedIds ?? []);
+                });
+
+                $dynamicData[$dynamicSetting->slug] = [
+                    'name' => $dynamicSetting->name,
+                    'type' => 'movie',
+                    'data' => CommonContentResourceV3::collection($dynamicMovies)->toArray($request),
+                ];
+            }
+
                         $slugsWithDefaults = [
                             'latest-movies' => 'Latest Movies',
                             'top-10' => 'Top 10',
@@ -1830,6 +1866,7 @@ public function getTrandingData(Request $request){
                             'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
                             'data' => $personality,
                         ],
+                        'dynamic_data' => $dynamicData,
                         'pay_per_view' => $payPerViewContent,
                     ];
         });

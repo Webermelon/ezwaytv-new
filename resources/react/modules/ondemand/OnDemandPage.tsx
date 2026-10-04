@@ -1109,7 +1109,7 @@ function VideoCard({ video, channelId, playlistId }: { video: MediaItem; channel
         <div className="absolute right-3 top-3 z-10">
           <WatchlistToggleButton
             entertainmentId={video.id}
-            type="video"
+            type={video.type === 'movie' ? 'movie' : 'video'}
             initialInWatchlist={inWatchlist}
           />
         </div>
@@ -1122,6 +1122,10 @@ function VideoCard({ video, channelId, playlistId }: { video: MediaItem; channel
 
 function buildPlaylistVideoHref(video: MediaItem, channelId: string | number, playlistId?: string) {
   if (!video.slug) return '/videos'
+
+  if (video.type === 'movie') {
+    return `/movie-details/${video.slug}`
+  }
 
   const params = new URLSearchParams({
     autoplay: '1',
@@ -1315,7 +1319,7 @@ function previewHref(video: MediaItem) {
 }
 
 function channelVideoCount(channel: MediaItem) {
-  const value = channel.videos_count ?? channel.video_count ?? channel.total_videos ?? 0
+  const value = channel.content_count ?? channel.videos_count ?? channel.video_count ?? channel.total_videos ?? 0
   const count = Number(value)
 
   return Number.isFinite(count) ? Math.max(0, count) : 0

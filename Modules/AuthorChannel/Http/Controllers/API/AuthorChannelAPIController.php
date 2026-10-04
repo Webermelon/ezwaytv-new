@@ -53,7 +53,7 @@ class AuthorChannelAPIController extends Controller
     {
             $query = AuthorChannel::where('is_active', 1)
                 ->with('plan:id,name,level')
-                ->withCount('videos');
+                ->withCount(['videos', 'movies']);
 
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
@@ -115,7 +115,7 @@ class AuthorChannelAPIController extends Controller
                         ->whereNull('videos.deleted_at')
                         ->where('videos.status', 1),
                 ])
-                ->withCount('videos')
+                ->withCount(['videos', 'movies'])
                 ->first();
 
             return $channel ? $this->formatChannel($channel, true) : null;
@@ -200,7 +200,7 @@ class AuthorChannelAPIController extends Controller
         $userId   = Auth::id();
         $channels = AuthorChannel::where('user_id', $userId)
             ->with('plan:id,name,level')
-            ->withCount('videos')
+            ->withCount(['videos', 'movies'])
             ->get()
             ->map(fn ($ch) => $this->formatChannel($ch, true));
 
@@ -319,6 +319,7 @@ class AuthorChannelAPIController extends Controller
         $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
 
         $videosCount = (int) ($channel->videos_count ?? $channel->videos()->count());
+        $moviesCount = (int) ($channel->movies_count ?? $channel->movies()->count());
 
         $data = [
             'id'           => $channel->id,
@@ -329,6 +330,8 @@ class AuthorChannelAPIController extends Controller
             'videos_count' => $videosCount,
             'video_count'  => $videosCount,
             'total_videos' => $videosCount,
+            'movies_count' => $moviesCount,
+            'content_count' => $videosCount + $moviesCount,
             'is_active'    => (bool) $channel->is_active,
             'profile_url'  => url('/on-demand/' . $channel->username),
             'access'       => $access,
