@@ -498,53 +498,58 @@ class OTPController extends Controller
         }
 
         $pendingCoreLogin = $request->session()->get('tv_pending_core_login');
-        // if (is_array($pendingCoreLogin) && strcasecmp((string) ($pendingCoreLogin['email'] ?? ''), $email) === 0) {
-        //     if ((int) ($pendingCoreLogin['expires_at'] ?? 0) < now()->timestamp) {
-        //         $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+        if (is_array($pendingCoreLogin) && strcasecmp((string) ($pendingCoreLogin['email'] ?? ''), $email) === 0) {
+            if ((int) ($pendingCoreLogin['expires_at'] ?? 0) < now()->timestamp) {
+                $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
 
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => 'Your login code has expired. Please request a new one.',
-        //         ], 422);
-        //     }
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your login code has expired. Please request a new one.',
+                ], 422);
+            }
 
-        //     if (!hash_equals((string) ($pendingCoreLogin['otp'] ?? ''), $otp)) {
-        //         return $this->recordOtpFailure($request, $email);
-        //     }
+            if (!hash_equals((string) ($pendingCoreLogin['otp'] ?? ''), $otp)) {
+                return $this->recordOtpFailure($request, $email);
+            }
 
-        //     try {
-        //         $user = $this->createUserFromVerifiedCoreLogin($pendingCoreLogin);
-        //     } catch (\Throwable $exception) {
-        //         report($exception);
+            try {
+                $user = $this->createUserFromVerifiedCoreLogin($pendingCoreLogin);
+            } catch (\Throwable $exception) {
+                report($exception);
 
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => 'TV could not prepare your local account right now.',
-        //         ], 500);
-        //     }
+                return response()->json([
+                    'status' => false,
+                    'message' => 'TV could not prepare your local account right now.',
+                ], 500);
+            }
 
-        //     if (!$user || $user->user_type !== 'user') {
-        //         return response()->json([
-        //             'status' => false,
-        //             'message' => 'We could not find an active eZWay TV account with that email.',
-        //         ], 404);
-        //     }
+            if (!$user || $user->user_type !== 'user') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'We could not find an active eZWay TV account with that email.',
+                ], 404);
+            }
 
-        //     $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
-        //     $request->session()->regenerate();
-        //     $this->clearOtpAttempts($request, $email);
+            $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+            $request->session()->regenerate();
+            $this->clearOtpAttempts($request, $email);
 
-        //     Auth::login($user);
-        //     $this->setDevice($user, $request);
+            Auth::login($user);
+            $this->setDevice($user, $request);
 
-        //     return response()->json([
-        //         'status' => true,
-        //         'message' => 'You are signed in.',
-        //         'data' => [
-        //             'redirect_url' => route('user.login'),
-        //         ],
-        //     ]);
-        // }
+            return response()->json([
+                'status' => true,
+                'message' => 'You are signed in.',
+                'data' => [
+                    'redirect_url' => route('user.login'),
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'Your login code has expired. Please request a new one.',
+        ], 422);
 
         // $user = User::where('email', $email)->where('otp', $otp)->first();
 

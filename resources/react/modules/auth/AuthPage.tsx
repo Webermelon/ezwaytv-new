@@ -127,8 +127,6 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
       }
 
       formData.set('otp', otp.replace(/\D/g, '').slice(0, 6))
-      formData.set('password', password)
-      formData.set('password_confirmation', passwordConfirmation)
       const response = await postAuth('/auth/spa-otp/verify', formData)
       ensureApiSuccess(response, 'You are signed in.')
       setMessage({ tone: 'success', text: getApiMessage(response, 'You are signed in.') })

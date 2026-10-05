@@ -21,12 +21,12 @@ class CoreTvAccessService
         
         $username = trim((string) ($data['username'] ?? ''));
         
-        $user = User::query()->where('network_user_id', $coreUserId)->first();
+        $user = User::withTrashed()->where('network_user_id', $coreUserId)->first();
         
-        $email = $user?->email ?? ($request?->input('email') ?? '');
+        $email = strtolower(trim((string) ($user?->email ?? $data['email'] ?? $request?->input('email') ?? '')));
 
         if (! $user && $email !== '') {
-            $user = User::query()
+            $user = User::withTrashed()
                         ->where('email', $email)
                         ->first();
         }
@@ -46,6 +46,10 @@ class CoreTvAccessService
         ];
 
         if ($user) {
+            if ($user->trashed()) {
+                $user->restore();
+            }
+
             $user->forceFill($values)->save();
             return $user->refresh();
         }
