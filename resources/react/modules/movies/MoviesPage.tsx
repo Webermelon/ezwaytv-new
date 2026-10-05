@@ -136,7 +136,7 @@ function MovieCard({ movie }: { movie: MediaItem }) {
   const rating = movie.imdb_rating ? String(movie.imdb_rating) : ''
 
   return (
-    <a href={`/movie-details/${movie.slug ?? movie.id}`} className="group min-w-0">
+    <a href={`/watch-movie/${movie.id}?autoplay=1`} className="group min-w-0">
       <div className="relative aspect-[9/16] overflow-hidden rounded-md border border-white/10 bg-[#111] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/65 group-hover:shadow-[0_20px_42px_rgba(0,0,0,0.6)]">
         <MediaThumbnail src={movie.poster_image ?? movie.poster_url} alt={movie.name} className="aspect-[9/16]" imageClassName="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-black/5" />

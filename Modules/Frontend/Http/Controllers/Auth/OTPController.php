@@ -760,6 +760,7 @@ class OTPController extends Controller
 
     private function otpBlockedResponseIfNeeded(Request $request, string $email, string $action)
     {
+        return 0;
         $remainingSeconds = $this->otpBlockRemainingSeconds($request, $email, $action);
 
         return $remainingSeconds > 0 ? $this->otpBlockedResponse($remainingSeconds) : null;

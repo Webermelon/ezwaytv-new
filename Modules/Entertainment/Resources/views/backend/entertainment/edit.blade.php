@@ -458,8 +458,8 @@
                 <div class="card-body">
                     <div class="row gy-3">
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_actors') . '<span class="text-danger">*</span>', 'actors')->class('form-label') }}
-                            {{ html()->select('actors[]', $actors->pluck('name', 'id'), $data->actors)->class('form-control select2')->id('actors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_actors'), 'actors')->class('form-label') }}
+                            {{ html()->select('actors[]', $actors->pluck('name', 'id'), $data->actors)->class('form-control select2')->id('actors')->multiple() }}
                             @error('actors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -467,8 +467,8 @@
                         </div>
 
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_directors') . '<span class="text-danger">*</span>', 'directors')->class('form-label') }}
-                            {{ html()->select('directors[]', $directors->pluck('name', 'id'), $data->directors)->class('form-control select2')->id('directors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_directors'), 'directors')->class('form-label') }}
+                            {{ html()->select('directors[]', $directors->pluck('name', 'id'), $data->directors)->class('form-control select2')->id('directors')->multiple() }}
                             @error('directors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
