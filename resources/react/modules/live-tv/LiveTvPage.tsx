@@ -179,6 +179,12 @@ export function LiveTvPage() {
                   }).catch(() => undefined)
                 }}
               />
+              <Button asChild size="lg" variant="secondary" className="col-span-2 w-full min-w-0 border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:col-span-auto sm:w-auto sm:px-6">
+                <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                  <UsersRound className="h-5 w-5" />
+                  Connect
+                </a>
+              </Button>
             </div>
 
             {heroFeatures.length > 0 ? (
@@ -447,13 +453,14 @@ function LiveTvDetailPage({
                 </div>
               </div>
 
-              <div className="relative z-[80] flex flex-wrap gap-2 lg:justify-end">
+              <div className="relative z-[80] grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
                 {isSubscriptionLocked ? (
                   <PremiumActionButton />
                 ) : !playerStarted ? (
                   <Button
                     type="button"
-                    className="bg-white text-black hover:bg-white/85"
+                    size="lg"
+                    className="h-11 w-full px-3 bg-white text-black hover:bg-white/85 sm:w-[140px] sm:px-4"
                     disabled={!stream && !loading}
                     onClick={() => {
                       setPlayerStarted(true)
@@ -465,14 +472,14 @@ function LiveTvDetailPage({
                   </Button>
                 ) : null}
                 {vodChannelUrl ? (
-                  <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+                  <Button asChild size="lg" className="h-11 w-full px-3 bg-[#d4a843] text-black hover:bg-[#e5bd58] sm:w-[140px] sm:px-4">
                     <a href={vodChannelUrl}>
                       <Film className="h-5 w-5" />
                       {vodChannelButtonName}
                     </a>
                   </Button>
                 ) : null}
-                <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+                <Button asChild size="lg" variant="secondary" className="h-11 w-full border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[140px] sm:px-4">
                   <a href="/livetv">
                     <Radio className="h-5 w-5" />
                     All Channels
@@ -481,6 +488,8 @@ function LiveTvDetailPage({
                 <LiveTvShareMenu
                   title={title}
                   copied={copiedShareUrl}
+                  wrapperClassName="w-full sm:w-auto"
+                  buttonClassName="h-11 w-full border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[140px] sm:px-4"
                   onCopy={() => {
                     copyLiveTvShareUrl().then(() => {
                       setCopiedShareUrl(true)
@@ -488,6 +497,12 @@ function LiveTvDetailPage({
                     }).catch(() => undefined)
                   }}
                 />
+                <Button asChild size="lg" variant="secondary" className="h-11 w-full border border-[#d4a843]/45 px-3 bg-[#d4a843]/12 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:w-[140px] sm:px-4">
+                  <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                    <UsersRound className="h-5 w-5" />
+                    Connect
+                  </a>
+                </Button>
               </div>
             </div>
           </div>

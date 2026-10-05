@@ -1,9 +1,10 @@
-import { Calendar, Clock, Film, Star } from 'lucide-react'
+import { Calendar, Clock, Film, Star, UsersRound } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { PlayerBackButton } from '@/components/PlayerBackButton'
 import type { MediaItem } from '@/modules/home/types'
@@ -75,7 +76,7 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
       </div>
 
       <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-[1800px] min-w-0 items-center gap-4">
+        <div className="mx-auto flex w-full max-w-[1800px] min-w-0 flex-wrap items-center gap-4">
           <MediaThumbnail src={movie.poster_image ?? movie.poster_url} alt={movie.name} className="h-20 w-14 shrink-0 !aspect-auto rounded-sm border border-white/10" imageClassName="object-cover" />
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -90,6 +91,12 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
               {movie.imdb_rating ? <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-primary text-primary" />{movie.imdb_rating}</span> : null}
             </div>
           </div>
+          <Button asChild variant="secondary" className="ml-auto border border-[#d4a843]/45 bg-[#d4a843]/12 text-[#f0c24d] hover:bg-[#d4a843]/20">
+            <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+              <UsersRound className="h-5 w-5" />
+              Connect
+            </a>
+          </Button>
         </div>
       </div>
 

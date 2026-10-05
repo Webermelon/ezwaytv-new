@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Code2, Copy, Eye, ListVideo, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Code2, Copy, Eye, ListVideo, Lock, MessageCircle, Play, Share2, Star, Tv, UsersRound } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -381,6 +381,12 @@ export function VideoDetailPage() {
                       }).catch(() => undefined)
                     }}
                   />
+                  <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+                    <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                      <UsersRound className="h-5 w-5" />
+                      Connect
+                    </a>
+                  </Button>
                   </div>
                 </div>
               </div>
