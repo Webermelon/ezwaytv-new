@@ -438,7 +438,7 @@ function MobileMenu({
 
           <div className="mt-5 flex items-center gap-3">
             {[
-              { label: 'Facebook', icon: Share2, href: 'https://www.facebook.com/ezwaybroadcasting' },
+              { label: 'Facebook', icon: FacebookIcon, href: 'https://www.facebook.com/ezwaybroadcasting' },
               { label: 'Instagram', icon: Camera, href: 'https://www.instagram.com/ezwaytv' },
               { label: 'X', icon: Send, href: 'https://twitter.com/ezwaytv' },
               { label: 'YouTube', icon: Play, href: 'https://www.youtube.com/@ezwaytv' },
@@ -459,6 +459,14 @@ function MobileMenu({
         </div>
       </nav>
     </div>
+  )
+}
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M14.2 8.1V6.6c0-.7.5-.9.9-.9h2.2V2.2L14.2 2c-3.4 0-4.2 2.1-4.2 4.1v2H7.3v3.9H10V22h4.2v-10h3.1l.5-3.9h-3.6Z" />
+    </svg>
   )
 }
 
