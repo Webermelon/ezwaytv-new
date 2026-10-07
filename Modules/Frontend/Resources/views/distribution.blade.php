@@ -466,10 +466,10 @@
         eZWay Network is now broadcasting over-the-air in the Los Angeles metro area on <strong style="color:var(--text)">Channel 27.3</strong>. The station reaches millions of households across Greater LA, delivering purpose-driven content, live events, interviews, and original series — completely free over the air.
       </p>
       <p style="margin-top:14px;">
-        View the full FCC contour map for signal coverage, propagation details, and licensing information for K21AC-D, the station powering this broadcast.
+        View the full FCC contour map for signal coverage, propagation details, and licensing information for K27AE, the station powering this broadcast.
       </p>
       <a
-        href="https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
+        href="https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
         target="_blank"
         rel="noopener"
         class="signal-link"
@@ -485,8 +485,8 @@
     </div>
     <div class="la-station-map">
       <iframe
-        src="https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
-        title="eZWay LA Station Signal Coverage — Channel 27.3 K21AC-D"
+        src="https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
+        title="eZWay LA Station Signal Coverage — Channel 27.3 K27AE"
         loading="lazy"
       ></iframe>
       <div class="map-overlay"></div>

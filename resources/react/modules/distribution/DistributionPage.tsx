@@ -5,7 +5,7 @@ import { ArrowRight, RadioTower } from 'lucide-react'
 import { AppHeader } from '@/components/AppHeader'
 import { loadDistribution, type DistributionNetwork } from './distributionApi'
 
-const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
+const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
 const broadcastPartners: DistributionNetwork[] = [
   {
     name: 'eZWay Channel 27.3',
@@ -97,7 +97,7 @@ export function DistributionPage() {
               eZWay Network is now broadcasting over-the-air in the Los Angeles metro area on <strong className="text-[#e8e2d9]">Channel 27.3</strong>. The station reaches millions of households across Greater LA, delivering purpose-driven content, live events, interviews, and original series.
             </p>
             <p className="mt-4 max-w-md text-sm leading-7 text-[#7a7468]">
-              View the full FCC contour map for signal coverage, propagation details, and licensing information for K21AC-D.
+              View the full FCC contour map for signal coverage, propagation details, and licensing information for K27AE.
             </p>
             <a
               href={signalUrl}
@@ -112,7 +112,7 @@ export function DistributionPage() {
           <div className="relative min-h-[360px] bg-[#1e1e1e]">
             <iframe
               src={signalUrl}
-              title="eZWay LA Station Signal Coverage - Channel 27.3 K21AC-D"
+              title="eZWay LA Station Signal Coverage - Channel 27.3 K27AE"
               loading="lazy"
               className="h-full min-h-[360px] w-full border-0 opacity-85 saturate-[0.6] contrast-110"
             />
