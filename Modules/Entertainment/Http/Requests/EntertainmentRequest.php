@@ -19,6 +19,12 @@ class EntertainmentRequest extends FormRequest
     {
         $merge = [];
 
+        // Movies collect only a release year; retain the date column contract internally.
+        $releaseDate = trim((string) $this->input('release_date', ''));
+        if ($this->input('type') === 'movie' && preg_match('/^\d{4}$/', $releaseDate)) {
+            $merge['release_date'] = $releaseDate . '-01-01';
+        }
+
         // Decode trailer_embedded
         $trailerEmbedded = $this->input('trailer_embedded');
         if ($trailerEmbedded && !str_contains($trailerEmbedded, '<iframe')) {
@@ -76,15 +82,18 @@ class EntertainmentRequest extends FormRequest
     public function rules()
     {
         $id = request()->id;
+        $talentRules = $this->input('type') === 'movie'
+            ? ['nullable', 'string', 'max:2000']
+            : ['nullable', 'array'];
         $rules = [
             'name' => ['required',Rule::unique('entertainments', 'name')->ignore($id)],
-            'trailer_url_type' => ['required'],
+            'trailer_url_type' => ['nullable'],
             'movie_access' => 'required',
             'language' => ['required'],
             'genres' => ['required'],
             'content_rating' => 'required|string',
-            'actors' => ['nullable', 'array'],
-            'directors' => ['nullable', 'array'],
+            'actors' => $talentRules,
+            'directors' => $talentRules,
             'IMDb_rating' => 'nullable|numeric|min:1|max:10',
             'description' => ['required', 'string'],
         ];
@@ -93,7 +102,7 @@ class EntertainmentRequest extends FormRequest
         
         // Release date is only required when NOT pay-per-view
         if ($movieAccess !== 'pay-per-view') {
-            $rules['release_date'] = ['required'];
+            $rules['release_date'] = ['required', 'date_format:Y-m-d'];
         }
         $trailerUrlType = $this->input('trailer_url_type');
 

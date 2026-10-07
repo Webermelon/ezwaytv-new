@@ -414,8 +414,8 @@
                             @enderror
                         </div>
                         <div class="col-md-6 col-lg-4 {{ $data->movie_access == 'pay-per-view' ? 'd-none' : '' }}" id="releaseDateWrapper">
-                            {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required')->id('release_date') }}
+                            {{ html()->label('Release Year <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
+                            {{ html()->number('release_date')->attribute('value', old('release_date') ? substr((string) old('release_date'), 0, 4) : ($data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y') : ''))->placeholder('Release Year')->class('form-control')->attribute('min', '1888')->attribute('max', date('Y') + 10)->attribute('step', '1')->attribute('required', 'required')->id('release_date') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -459,7 +459,7 @@
                     <div class="row gy-3">
                         <div class="col-md-6">
                             {{ html()->label(__('movie.lbl_actors'), 'actors')->class('form-label') }}
-                            {{ html()->select('actors[]', $actors->pluck('name', 'id'), $data->actors)->class('form-control select2')->id('actors')->multiple() }}
+                            {{ html()->text('actors', old('actors', $actors->whereIn('id', $data->actors ?? [])->pluck('name')->implode(', ')))->class('form-control')->id('actors')->placeholder('Enter actor names separated by commas') }}
                             @error('actors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -468,7 +468,7 @@
 
                         <div class="col-md-6">
                             {{ html()->label(__('movie.lbl_directors'), 'directors')->class('form-label') }}
-                            {{ html()->select('directors[]', $directors->pluck('name', 'id'), $data->directors)->class('form-control select2')->id('directors')->multiple() }}
+                            {{ html()->text('directors', old('directors', $directors->whereIn('id', $data->directors ?? [])->pluck('name')->implode(', ')))->class('form-control')->id('directors')->placeholder('Enter director names separated by commas') }}
                             @error('directors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror

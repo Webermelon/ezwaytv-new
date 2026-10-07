@@ -3,11 +3,18 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const durationInput = document.getElementById('duration');
-                const previewContainer = document.getElementById('selectedImageContainer4');
+                const previewContainers = [
+                    document.getElementById('selectedImageContainerVideourl'),
+                    document.getElementById('selectedImageContainer4')
+                ].filter(Boolean);
                 const urlInput = document.getElementById('video_url_input');
-                const fileInput = document.getElementById('file_url4');
+                const fileInputs = [
+                    document.getElementById('file_url_video'),
+                    document.getElementById('file_url4')
+                ].filter(Boolean);
                 let probe = null;
                 let probeTimer = null;
+                let lastProbedUrl = '';
 
                 if (!durationInput) return;
 
@@ -35,7 +42,17 @@
                 }
 
                 function detectFromUrl(url) {
-                    if (!url || !/^https?:\/\//i.test(url)) return;
+                    if (!url) return;
+
+                    let sourceUrl;
+                    try {
+                        sourceUrl = new URL(url, window.location.origin).href;
+                    } catch (error) {
+                        return;
+                    }
+
+                    if (sourceUrl === lastProbedUrl) return;
+                    lastProbedUrl = sourceUrl;
 
                     if (probe) {
                         probe.removeAttribute('src');
@@ -49,23 +66,32 @@
                         probe.removeAttribute('src');
                         probe.load();
                     }, { once: true });
-                    probe.src = url;
+                    probe.addEventListener('error', function () {
+                        lastProbedUrl = '';
+                    }, { once: true });
+                    probe.src = sourceUrl;
                 }
 
                 function scanPreview() {
-                    previewContainer?.querySelectorAll('video').forEach(bindVideo);
-                    const selectedUrl = fileInput?.value || urlInput?.value;
+                    previewContainers.forEach(function (container) {
+                        container.querySelectorAll('video').forEach(bindVideo);
+                    });
+                    const selectedFileInput = fileInputs.find(function (input) { return input.value; });
+                    const selectedUrl = selectedFileInput?.value || urlInput?.value;
                     if (selectedUrl) detectFromUrl(selectedUrl);
                 }
 
-                if (previewContainer) {
-                    new MutationObserver(scanPreview).observe(previewContainer, { childList: true, subtree: true });
-                }
+                previewContainers.forEach(function (container) {
+                    new MutationObserver(scanPreview).observe(container, { childList: true, subtree: true });
+                });
 
-                [urlInput, fileInput].forEach(function (input) {
-                    input?.addEventListener('change', function () {
-                        window.clearTimeout(probeTimer);
-                        probeTimer = window.setTimeout(scanPreview, 150);
+                [urlInput].concat(fileInputs).forEach(function (input) {
+                    ['input', 'change'].forEach(function (eventName) {
+                        input?.addEventListener(eventName, function () {
+                            lastProbedUrl = '';
+                            window.clearTimeout(probeTimer);
+                            probeTimer = window.setTimeout(scanPreview, 250);
+                        });
                     });
                 });
 

@@ -160,12 +160,12 @@
                             <div class="invalid-feedback" id="name-error">Name field is required</div>
                         </div>
                         <div class="col-md-4 col-lg-4 mb-3">
-                            {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
+                            {{ html()->label(__('movie.lbl_trailer_url_type'), 'type')->class('form-label') }}
                             {{ html()->select(
                                     'trailer_url_type',
                                     $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_type'), ''),
                                     old('trailer_url_type', ''), // Set '' as the default value
-                                )->class('form-control select2')->id('trailer_url_type')->required() }}
+                                )->class('form-control select2')->id('trailer_url_type') }}
                             @error('trailer_url_type')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -241,7 +241,7 @@
                                         <input class="form-check-input" type="radio" name="movie_access"
                                             id="paid" value="paid"
                                             onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ old('movie_access') == 'paid' ? 'checked' : '' }} checked>
+                                            {{ old('movie_access', 'free') == 'paid' ? 'checked' : '' }}>
                                         <span class="form-check-label">{{ __('movie.lbl_paid') }}</span>
                                     </div>
                                 </label>
@@ -250,7 +250,7 @@
                                         <input class="form-check-input" type="radio" name="movie_access"
                                             id="free" value="free"
                                             onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ old('movie_access') == 'free' ? 'checked' : '' }}>
+                                            {{ old('movie_access', 'free') == 'free' ? 'checked' : '' }}>
                                         <span class="form-check-label">{{ __('movie.lbl_free') }}</span>
                                     </div>
                                 </label>
@@ -329,7 +329,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6 col-lg-4 {{ old('movie_access', 'paid') == 'free' ? 'd-none' : '' }}"
+                        <div class="col-md-6 col-lg-4 {{ old('movie_access', 'free') == 'free' ? 'd-none' : '' }}"
                             id="planSelection">
                             {{ html()->label(__('movie.lbl_select_plan') . '<span class="text-danger"> *</span>', 'type')->class('form-label') }}
                             {{ html()->select('plan_id', $plan->pluck('name', 'id')->prepend(__('placeholder.lbl_select_plan'), ''), old('plan_id'))->class('form-control select2')->id('plan_id') }}
@@ -433,8 +433,8 @@
                             @enderror
                         </div>
                         <div class="col-md-6 col-lg-4 {{ old('movie_access') == 'pay-per-view' ? 'd-none' : '' }}" id="releaseDateWrapper">
-                            {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->text('release_date')->attribute('value', old('release_date'))->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', old('movie_access') == 'pay-per-view' ? '' : 'required')->id('release_date') }}
+                            {{ html()->label('Release Year <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
+                            {{ html()->number('release_date')->attribute('value', old('release_date') ? substr((string) old('release_date'), 0, 4) : '')->placeholder('Release Year')->class('form-control')->attribute('min', '1888')->attribute('max', date('Y') + 10)->attribute('step', '1')->attribute('required', old('movie_access') == 'pay-per-view' ? '' : 'required')->id('release_date') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -459,7 +459,7 @@
                                 {{ html()->label(__('messages.on'), 'download_status')->class('form-label mb-0 text-body') }}
                                 <div class="form-check form-switch">
                                     {{ html()->hidden('download_status', 0) }}
-                                    {{ html()->checkbox('download_status', old('download_status', 1))->class('form-check-input')->id('download_status')->value(1) }}
+                                    {{ html()->checkbox('download_status', old('download_status', 0))->class('form-check-input')->id('download_status')->value(1) }}
                                 </div>
                             </div>
                             @error('download_status')
@@ -481,8 +481,7 @@
                     <div class="col-md-6">
                         {{ html()->label(__('movie.lbl_actors'),
                         'actors')->class('form-label') }}
-                        {{ html()->select('actors[]', $actors->pluck('name', 'id'), old('actors'))->class('form-control
-                        select2')->id('actors')->multiple() }}
+                        {{ html()->text('actors', old('actors'))->class('form-control')->id('actors')->placeholder('Enter actor names separated by commas') }}
                         @error('actors')
                         <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -491,9 +490,7 @@
                     <div class="col-md-6">
                         {{ html()->label(__('movie.lbl_directors'),
                         'directors')->class('form-label') }}
-                        {{ html()->select('directors[]', $directors->pluck('name', 'id'),
-                        old('directors'))->class('form-control
-                        select2')->id('directors')->multiple() }}
+                        {{ html()->text('directors', old('directors'))->class('form-control')->id('directors')->placeholder('Enter director names separated by commas') }}
                         @error('directors')
                         <span class="text-danger">{{ $message }}</span>
                         @enderror
@@ -518,7 +515,7 @@
                         {{ html()->select(
                         'video_upload_type',
                         $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), ''),
-                        old('video_upload_type', ''),
+                        old('video_upload_type', 'Local'),
                         )->class('form-control select2')->id('video_upload_type')->required() }}
                         @error('video_upload_type')
                         <span class="text-danger">{{ $message }}</span>
@@ -1388,18 +1385,6 @@
             $('#countries').select2({
                 width: '100%',
                 placeholder: "{{ __('movie.lbl_countries') }}",
-                allowClear: true
-            });
-
-            $('#actors').select2({
-                width: '100%',
-                placeholder: "{{ __('movie.lbl_actors') }}",
-                allowClear: true
-            });
-
-            $('#directors').select2({
-                width: '100%',
-                placeholder: "{{ __('movie.lbl_directors') }}",
                 allowClear: true
             });
 
@@ -2551,7 +2536,7 @@
                                 handleTrailerUrlTypeChange(data.trailer_url_type);
                             }, 200);
 
-                            $('#release_date').val(data.release_date);
+                            $('#release_date').val(String(data.release_date || '').slice(0, 4));
                             $('#duration').val(data.duration);
                             $('#thumbnail_url').val(data.thumbnail_url);
                             $('#poster_url').val(data.poster_url);
@@ -2586,24 +2571,17 @@
                             $('#language').val(data.language.toLowerCase()).trigger('change');
 
 
-                            var all_actors = data.all_actors;
-                            $('#actors').empty().append(
-                                '<option value="">Select Actors</option>');
-                            $.each(all_actors, function(index, actor) {
-                                $('#actors').append('<option value="' + actor.id +
-                                    '">' + actor.name + '</option>');
-                            });
-                            $('#actors').val(data.actors).trigger('change');
+                            var actorIds = (data.actors || []).map(String);
+                            var actorNames = (data.all_actors || [])
+                                .filter(function(actor) { return actorIds.includes(String(actor.id)); })
+                                .map(function(actor) { return actor.name; });
+                            $('#actors').val(actorNames.join(', '));
 
-
-                            var all_directors = data.all_directors;
-                            $('#directors').empty().append(
-                                '<option value="">Select Directors</option>');
-                            $.each(all_directors, function(index, director) {
-                                $('#directors').append('<option value="' + director.id +
-                                    '">' + director.name + '</option>');
-                            });
-                            $('#directors').val(data.directors).trigger('change');
+                            var directorIds = (data.directors || []).map(String);
+                            var directorNames = (data.all_directors || [])
+                                .filter(function(director) { return directorIds.includes(String(director.id)); })
+                                .map(function(director) { return director.name; });
+                            $('#directors').val(directorNames.join(', '));
 
 
                             if (data.is_restricted) {
