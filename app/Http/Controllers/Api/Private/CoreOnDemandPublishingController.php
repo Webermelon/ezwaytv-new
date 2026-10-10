@@ -6,18 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\AuthorChannel;
 use App\Models\AuthorChannelPlaylist;
 use App\Services\CoreTvAccessService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Video\Models\Video;
-use Illuminate\Support\Facades\Log;
 
 class CoreOnDemandPublishingController extends Controller
 {
-    public function __construct(private CoreTvAccessService $access)
-    {
-    }
+    private const CHANNEL_NOT_FOUND_RESPONSE = [
+        'code' => 'TV_CHANNEL_NOT_FOUND',
+        'message' => "We couldn't find that TV channel. It may have been removed, or you may no longer have access to it.",
+    ];
+
+    public function __construct(private CoreTvAccessService $access) {}
 
     public function channels(Request $request): JsonResponse
     {
@@ -40,7 +45,7 @@ class CoreOnDemandPublishingController extends Controller
     {
         $data = $request->validate($this->channelRules(true));
         $user = $this->access->syncUser($data);
-        Log::info('Creating On Demand Channel for user_id: '. $user->id . ' with data: '. print_r($data, true));
+        Log::info('Creating On Demand Channel for user_id: '.$user->id.' with data: '.print_r($data, true));
         $channel_data = [
             'user_id' => $user->id,
             'name' => $data['name'],
@@ -53,11 +58,11 @@ class CoreOnDemandPublishingController extends Controller
             'plan_id' => null,
         ];
 
-        Log::info('Creating On Demand Channel: '. print_r($channel_data, true));
+        Log::info('Creating On Demand Channel: '.print_r($channel_data, true));
 
         $channel = AuthorChannel::query()->create($channel_data);
 
-        error_log('Created On Demand Channel: '. print_r($channel->toArray(), true));
+        error_log('Created On Demand Channel: '.print_r($channel->toArray(), true));
 
         return response()->json(['success' => true, 'data' => $this->formatChannel($channel), 'message' => 'Channel created.'], 201);
     }
@@ -113,7 +118,7 @@ class CoreOnDemandPublishingController extends Controller
         $data = $request->validate($this->videoRules(false));
         $user = $this->access->syncUser($data);
         $channelModel = $this->ownedChannel($channel, $user->id);
-        $videoModel = $channelModel->videos()->where('videos.id', $video)->firstOrFail();
+        $videoModel = $this->channelVideo($channelModel, $video);
 
         $videoModel->fill($this->videoPayload($data, $channelModel->id, $user->id, false))->save();
         $channelModel->videos()->syncWithoutDetaching([$videoModel->id]);
@@ -135,7 +140,7 @@ class CoreOnDemandPublishingController extends Controller
         ]);
         $user = $this->access->syncUser($data);
         $channelModel = $this->ownedChannel($channel, $user->id);
-        $videoModel = $channelModel->videos()->where('videos.id', $video)->firstOrFail();
+        $videoModel = $this->channelVideo($channelModel, $video);
 
         $videoModel->delete();
 
@@ -246,7 +251,12 @@ class CoreOnDemandPublishingController extends Controller
         $channelModel = $this->ownedChannel($channel, $user->id);
         $playlistModel = $this->channelPlaylist($channelModel, $playlist);
 
-        $playlistModel->videos()->detach($video);
+        $videoModel = $this->channelVideo($channelModel, $video);
+        if (! $playlistModel->videos()->where('videos.id', $videoModel->id)->exists()) {
+            $this->throwChannelNotFound();
+        }
+
+        $playlistModel->videos()->detach($videoModel->id);
         $this->clearPublicChannelCache($channelModel);
 
         return response()->json(['success' => true, 'message' => 'Video removed from playlist.']);
@@ -262,7 +272,12 @@ class CoreOnDemandPublishingController extends Controller
         $channelModel = $this->ownedChannel($channel, $user->id);
         $playlistModel = $this->channelPlaylist($channelModel, $playlist);
 
-        $attachedIds = $playlistModel->videos()->pluck('videos.id')->map(fn ($videoId) => (int) $videoId)->all();
+        $channelVideoIds = $channelModel->videos()->pluck('videos.id')->map(fn ($videoId) => (int) $videoId)->all();
+        $attachedIds = $playlistModel->videos()
+            ->whereIn('videos.id', $channelVideoIds)
+            ->pluck('videos.id')
+            ->map(fn ($videoId) => (int) $videoId)
+            ->all();
         $orderedIds = collect($data['video_ids'])
             ->map(fn ($videoId) => (int) $videoId)
             ->filter(fn ($videoId) => in_array($videoId, $attachedIds, true))
@@ -341,11 +356,12 @@ class CoreOnDemandPublishingController extends Controller
         $data = $request->validate($this->coreUserRules());
         $user = $this->access->syncUser($data);
         $channelModel = $this->ownedChannel($channel, $user->id);
+        $videoModel = $this->channelVideo($channelModel, $video);
 
-        $channelModel->videos()->detach($video);
+        $channelModel->videos()->detach($videoModel->id);
         AuthorChannelPlaylist::query()
             ->where('author_channel_id', $channelModel->id)
-            ->each(fn (AuthorChannelPlaylist $playlist) => $playlist->videos()->detach($video));
+            ->each(fn (AuthorChannelPlaylist $playlist) => $playlist->videos()->detach($videoModel->id));
         $this->clearPublicChannelCache($channelModel);
 
         return response()->json(['success' => true, 'message' => 'Video removed from On Demand Channel.']);
@@ -478,21 +494,49 @@ class CoreOnDemandPublishingController extends Controller
 
     private function ownedChannel(int $channel, int $tvUserId): AuthorChannel
     {
-        return AuthorChannel::query()->where('id', $channel)->where('user_id', $tvUserId)->firstOrFail();
+        try {
+            return AuthorChannel::query()
+                ->whereKey($channel)
+                ->where('user_id', $tvUserId)
+                ->firstOrFail();
+        } catch (ModelNotFoundException) {
+            $this->throwChannelNotFound();
+        }
     }
 
     private function channelPlaylist(AuthorChannel $channel, int $playlist): AuthorChannelPlaylist
     {
-        return AuthorChannelPlaylist::query()
-            ->where('author_channel_id', $channel->id)
-            ->where('id', $playlist)
-            ->firstOrFail();
+        try {
+            return AuthorChannelPlaylist::query()
+                ->where('author_channel_id', $channel->id)
+                ->where('id', $playlist)
+                ->firstOrFail();
+        } catch (ModelNotFoundException) {
+            $this->throwChannelNotFound();
+        }
+    }
+
+    private function channelVideo(AuthorChannel $channel, int $video): Video
+    {
+        try {
+            return $channel->videos()
+                ->where('videos.id', $video)
+                ->whereNull('videos.deleted_at')
+                ->firstOrFail();
+        } catch (ModelNotFoundException) {
+            $this->throwChannelNotFound();
+        }
+    }
+
+    private function throwChannelNotFound(): never
+    {
+        throw new HttpResponseException(response()->json(self::CHANNEL_NOT_FOUND_RESPONSE, 404));
     }
 
     private function clearPublicChannelCache(AuthorChannel $channel): void
     {
         Cache::forget("spa:ondemand:show:{$channel->username}");
-        Cache::forget('spa:ondemand:index:' . md5(json_encode([
+        Cache::forget('spa:ondemand:index:'.md5(json_encode([
             'page' => 1,
             'per_page' => 50,
             'search' => null,

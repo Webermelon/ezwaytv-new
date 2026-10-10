@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Session\TokenMismatchException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -50,6 +51,15 @@ class Handler extends ExceptionHandler
                 return $this->sessionExpiredResponse($request);
             }
         });
+
+        $this->renderable(function (ModelNotFoundException $e, $request) {
+            if ($request->is('api/private/core/on-demand/channels/*')) {
+                return response()->json([
+                    'code' => 'TV_CHANNEL_NOT_FOUND',
+                    'message' => "We couldn't find that TV channel. It may have been removed, or you may no longer have access to it.",
+                ], 404);
+            }
+        });
     }
 
     /**
@@ -72,7 +82,6 @@ class Handler extends ExceptionHandler
     /**
      * Report or log an exception.
      *
-     * @param  \Throwable  $e
      * @return void
      */
     public function report(Throwable $e)
@@ -81,15 +90,16 @@ class Handler extends ExceptionHandler
         if ($e instanceof \Symfony\Component\Mailer\Exception\UnexpectedResponseException) {
             $message = $e->getMessage();
             // Check for mail-related errors (Mailtrap rate limits, 550 errors, etc.)
-            if (strpos($message, '550') !== false || 
+            if (strpos($message, '550') !== false ||
                 strpos($message, 'Mailtrap') !== false ||
                 strpos($message, 'Too many emails') !== false ||
                 strpos($message, '5.7.0') !== false) {
                 // Log a clean, user-friendly message instead of full stack trace
                 \Log::warning('Mail notification failed: Email sending rate limit reached. Subscription created successfully.', [
                     'error' => 'Mail service rate limit exceeded',
-                    'message' => 'Email notification could not be sent due to rate limiting. This does not affect subscription creation.'
+                    'message' => 'Email notification could not be sent due to rate limiting. This does not affect subscription creation.',
                 ]);
+
                 return; // Don't log the full exception
             }
         }
