@@ -7,6 +7,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Validator as LaravelValidator;
 use Illuminate\Validation\ValidationException;
+use Modules\Entertainment\Models\Entertainment;
 
 class EntertainmentRequest extends FormRequest
 {
@@ -21,7 +22,7 @@ class EntertainmentRequest extends FormRequest
 
         // Movies collect only a release year; retain the date column contract internally.
         $releaseDate = trim((string) $this->input('release_date', ''));
-        if ($this->input('type') === 'movie' && preg_match('/^\d{4}$/', $releaseDate)) {
+        if ($this->isMovieRequest() && preg_match('/^\d{4}$/', $releaseDate)) {
             $merge['release_date'] = $releaseDate . '-01-01';
         }
 
@@ -81,8 +82,11 @@ class EntertainmentRequest extends FormRequest
 
     public function rules()
     {
-        $id = request()->id;
-        $talentRules = $this->input('type') === 'movie'
+        $routeEntertainment = $this->route('entertainment');
+        $id = $routeEntertainment instanceof Entertainment
+            ? $routeEntertainment->id
+            : ($routeEntertainment ?? request()->id);
+        $talentRules = $this->isMovieRequest()
             ? ['nullable', 'string', 'max:2000']
             : ['nullable', 'array'];
         $rules = [
@@ -252,6 +256,21 @@ class EntertainmentRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    private function isMovieRequest(): bool
+    {
+        if ($this->input('type')) {
+            return $this->input('type') === 'movie';
+        }
+
+        $routeEntertainment = $this->route('entertainment');
+        if ($routeEntertainment instanceof Entertainment) {
+            return $routeEntertainment->type === 'movie';
+        }
+
+        return is_numeric($routeEntertainment)
+            && Entertainment::whereKey($routeEntertainment)->value('type') === 'movie';
     }
 
     public function messages()

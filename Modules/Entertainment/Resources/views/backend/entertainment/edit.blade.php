@@ -10,6 +10,7 @@
     {{ html()->form('PUT', route('backend.entertainments.update', $data->id))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->class('requires-validation')->attribute('novalidate', 'novalidate')->open() }}
 
     @csrf
+    {{ html()->hidden('type', 'movie')->id('type') }}
 
 
     <ul class="nav nav-pills mb-3 movie-tab" id="pills-tab" role="tablist">
