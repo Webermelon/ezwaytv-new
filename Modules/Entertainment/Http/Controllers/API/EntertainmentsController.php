@@ -410,14 +410,19 @@ class EntertainmentsController extends Controller
         $tvshow_id = $request->tvshow_id;
 
 
-            $tvshow = Entertainment::where('id', $tvshow_id)->with('entertainmentGenerMappings', 'plan', 'entertainmentReviews', 'entertainmentTalentMappings', 'season', 'episode')->first();
+            $tvshow = Entertainment::where('type', 'tvshow')
+                ->where(function ($query) use ($tvshow_id) {
+                    $query->where('id', $tvshow_id)->orWhere('slug', $tvshow_id);
+                })
+                ->with('entertainmentGenerMappings', 'plan', 'entertainmentReviews', 'entertainmentTalentMappings', 'season', 'episode')
+                ->firstOrFail();
             $tvshow['reviews'] = $tvshow->entertainmentReviews ?? null;
 
             if ($request->has('user_id')) {
                 $user_id = $request->user_id;
                 $tvshow['user_id'] = $user_id;
-                $tvshow['is_watch_list'] = (int) WatchList::where('entertainment_id', $request->tvshow_id)->where('user_id', $user_id)->where('profile_id', $request->profile_id)->exists();
-                $tvshow['is_likes'] = Like::where('entertainment_id', $request->tvshow_id)->where('user_id', $user_id)->where('profile_id', $request->profile_id)->where('is_like', 1)->exists();
+                $tvshow['is_watch_list'] = (int) WatchList::where('entertainment_id', $tvshow->id)->where('user_id', $user_id)->where('profile_id', $request->profile_id)->exists();
+                $tvshow['is_likes'] = Like::where('entertainment_id', $tvshow->id)->where('user_id', $user_id)->where('profile_id', $request->profile_id)->where('is_like', 1)->exists();
                 $tvshow['your_review'] =  $tvshow->entertainmentReviews ? $tvshow->entertainmentReviews->where('user_id', $user_id)->first() :null;
 
                 if ($tvshow['your_review']) {
@@ -754,7 +759,11 @@ class EntertainmentsController extends Controller
         $episode_id = $request->episode_id;
 
 
-            $episode = Episode::where('id', $episode_id)->with('entertainmentdata', 'plan', 'EpisodeStreamContentMapping', 'episodeDownloadMappings','subtitles')->first();
+            $episode = Episode::where(function ($query) use ($episode_id) {
+                    $query->where('id', $episode_id)->orWhere('slug', $episode_id);
+                })
+                ->with('entertainmentdata', 'plan', 'EpisodeStreamContentMapping', 'episodeDownloadMappings','subtitles')
+                ->firstOrFail();
 
             if ($request->has('user_id')) {
                 $continueWatch = ContinueWatch::where('entertainment_id', $episode->id)->where('user_id', $user_id)->where('profile_id', $request->profile_id)->where('entertainment_type', 'episode')->first();

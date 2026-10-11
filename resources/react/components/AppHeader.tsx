@@ -55,7 +55,6 @@ declare global {
 const navItems = [
   { key: 'home', label: 'Home', href: '/' },
   // { key: 'movies', label: 'Movies', href: '/movies' },
-  // { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
   { key: 'videos', label: 'Videos', href: '/videos' },
   { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
@@ -69,7 +68,6 @@ type DropdownKey = 'videos' | 'livetv' | 'ondemand'
 const mobileNavItems = [
   { key: 'home', label: 'Home', href: '/', icon: HomeIcon },
   { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
-  { key: 'tvshows', label: 'TV Shows', href: '/tv-shows', icon: Tv },
   { key: 'videos', label: 'Videos', href: '/videos', icon: Video },
   { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
@@ -253,7 +251,7 @@ function MobileMenu({
     if (nativeIos && ['pricing', 'stream-music'].includes(item.key)) return false
     if (!isMenuVisible(visibleMenuKeys, item.key)) return false
     if (item.key === 'movies') return hasMovies
-    if (item.key === 'tvshows') return hasTvshows
+    if (item.key === 'tvshows') return true
 
     return true
   })
@@ -830,7 +828,7 @@ function inferActiveKey(): AppHeaderProps['active'] {
   if (path.startsWith('/livetv')) return 'livetv'
   if (path.startsWith('/videos')) return 'videos'
   if (path.startsWith('/movies') || path.startsWith('/movie-details')) return 'movies'
-  if (path.startsWith('/tv-shows') || path.startsWith('/tvshow-details')) return 'tvshows'
+  if (path.startsWith('/tv-shows') || path.startsWith('/tvshow-details') || path.startsWith('/episode-details')) return 'tvshows'
   if (path.startsWith('/pay-per-view')) return 'ppv'
   if (path.startsWith('/castcrew')) return 'castcrew'
   if (path.startsWith('/search')) return 'search'

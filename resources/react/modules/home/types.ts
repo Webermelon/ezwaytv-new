@@ -60,6 +60,8 @@ export type MediaItem = {
   video_upload_type?: string | null
   trailer_url?: string | null
   trailer_url_type?: string | null
+  bunny_video_url?: string | null
+  episode_number?: number | string | null
   release_date?: string | null
   imdb_rating?: string | number | null
   language?: string | null

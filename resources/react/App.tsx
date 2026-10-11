@@ -21,6 +21,9 @@ import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDet
 import { MoviePlayerPage } from '@/modules/movies/MoviePlayerPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
 import { MoviesPage } from '@/modules/movies/MoviesPage'
+import { EpisodePlayerPage } from '@/modules/tvshows/EpisodePlayerPage'
+import { TvShowDetailPage } from '@/modules/tvshows/TvShowDetailPage'
+import { TvShowsPage } from '@/modules/tvshows/TvShowsPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
 import { OpenInAppPrompt } from '@/components/OpenInAppPrompt'
@@ -46,6 +49,12 @@ export default function App() {
     page = <VideosPage />
   } else if (pathname === '/movies' || pathname.startsWith('/movies/')) {
     page = <MoviesPage />
+  } else if (pathname === '/tv-shows') {
+    page = <TvShowsPage />
+  } else if (pathname.startsWith('/tvshow-details/')) {
+    page = <TvShowDetailPage />
+  } else if (pathname.startsWith('/episode-details/')) {
+    page = <EpisodePlayerPage />
   } else if (pathname === '/search') {
     page = <SearchPage />
   } else if (pathname === '/login' || pathname === '/register' || pathname === '/forget-password') {
