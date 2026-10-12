@@ -41,10 +41,10 @@ export function DistributionPage() {
     const remainingNetworks = networks.filter((network) => !promotedSlugs.includes(network.slug ?? ''))
 
     return [
-      ...remainingNetworks.slice(0, 3),
+      ...remainingNetworks.slice(0, 4),
       ...newBroadcastPartners,
       ...promotedNetworks,
-      ...remainingNetworks.slice(3),
+      ...remainingNetworks.slice(4),
     ]
   }, [networks])
 

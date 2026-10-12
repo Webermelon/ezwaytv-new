@@ -24,6 +24,13 @@
       "tag": "Broadcast · Digital TV"
     },
     {
+      "name": "CIE TV",
+      "slug": "cie-tv",
+      "image": "/img/distribution/cie-tv.png",
+      "description": "CIE TV brings fashion, entertainment, AI-driven video, red carpet coverage, celebrity interviews, movies, and emerging talent to audiences through eZWay.TV—connecting viewers with the people and stories shaping entertainment.",
+      "tag": "Fashion · Entertainment · Culture"
+    },
+    {
       "name": "National Biz TV",
       "slug": "national-biz-tv",
       "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/1000154509_69defe5ac06b2.jpg",
