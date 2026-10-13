@@ -15,13 +15,18 @@ const broadcastPartners: DistributionNetwork[] = [
     tag: 'Los Angeles - OTA',
   },
   {
-    name: 'FLM TV Channel 26.5',
-    slug: 'flm-tv-channel-26-5',
-    image: '/img/distribution/flm_26.5.jpg',
-    description: 'An independent television network broadcasting on Channel 26.5 in Las Vegas and streaming worldwide, with film, live entertainment, music, family viewing, multicultural stories, classic cinema, original productions, and artist-led programming. Available through FLMTV.com, Roku, Amazon Fire TV, and supported mobile platforms.',
-    tag: 'Las Vegas - OTA and Streaming',
+    name: 'RAG TV',
+    slug: 'rag-tv',
+    image: '/img/distribution/ragttv.jpg',
+    description: 'RAG TV, the official Recording Artist Guild Channel, celebrates music, creativity, and the artists behind the sound. Available on eZWay.TV, the channel provides a platform to spotlight talent, share artists’ stories, and connect music lovers with the independent recording artist community.',
+    tag: 'Recording Artist Guild Channel',
   },
 ]
+
+function isRemovedNetwork(network: DistributionNetwork) {
+  const value = `${network.name} ${network.slug ?? ''}`.toLowerCase()
+  return value.includes('flm tv') || value.includes('flm-tv') || value.includes('las vegas television') || value.includes('las-vegas-television')
+}
 
 export function DistributionPage() {
   const distributionQuery = useQuery({
@@ -29,7 +34,7 @@ export function DistributionPage() {
     queryFn: loadDistribution,
     staleTime: 5 * 60_000,
   })
-  const networks = distributionQuery.data?.networks ?? []
+  const networks = (distributionQuery.data?.networks ?? []).filter((network) => !isRemovedNetwork(network))
   const partnerNetworks = useMemo(() => {
     const promotedSlugs = ['be-spire-tv', 'las-vegas-television-network']
     const newBroadcastPartners = broadcastPartners.filter(
