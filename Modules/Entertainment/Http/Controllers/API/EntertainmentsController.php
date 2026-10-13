@@ -226,12 +226,9 @@ class EntertainmentsController extends Controller
         $userId    = $request->input('user_id') ?? auth()->id();
         $profileId = $request->input('profile_id') ?? getCurrentProfile($userId, $request);
     
-        /**
-         * IMPORTANT:
-         * - Genre mapping MUST exist (same as original)
-         * - At least 1 episode MUST exist (same as whereHas('episodeV2'))
-         * - Do NOT filter episode status / deleted_at (same behavior)
-         */
+        // A series can be announced before its first episode is published.
+        // Keep it visible in the catalog while the detail page handles its
+        // empty-season state until episodes are available.
         $tvshowList = Entertainment::query()
             ->select([
                 'entertainments.id',
@@ -254,12 +251,6 @@ class EntertainmentsController extends Controller
                 'entertainments.movie_access',
             ])
     
-            // SAME as whereHas('episodeV2') but much faster
-            ->join('episodes', 'episodes.entertainment_id', '=', 'entertainments.id')
-    
-            // SAME as original (genre mapping must exist)
-            ->join('entertainment_gener_mapping as egm', 'egm.entertainment_id', '=', 'entertainments.id')
-    
             ->leftJoin('plan', 'plan.id', '=', 'entertainments.plan_id')
     
             // Eager loading to remove N+1
@@ -277,8 +268,6 @@ class EntertainmentsController extends Controller
             ->where('entertainments.status', 1)
             ->whereNull('entertainments.deleted_at')
     
-            // Avoid duplicates due to joins
-            ->groupBy('entertainments.id')
             ->orderByDesc('entertainments.id');
     
         /* ---------------- SEARCH ---------------- */

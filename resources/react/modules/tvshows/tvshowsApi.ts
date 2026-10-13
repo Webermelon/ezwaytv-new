@@ -8,6 +8,7 @@ export type EpisodeItem = MediaItem & {
   thumbnail_image?: string | null
   video_links?: Array<{ url?: string | null; type?: string | null; quality?: string | null }>
   tvshow_name?: string | null
+  more_items?: MediaItem[]
 }
 
 export type SeasonItem = {
