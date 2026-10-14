@@ -144,7 +144,7 @@
                                 <div class="invalid-feedback" id="name-error">{{ __('messages.tv_show_field_required') }}</div>
                             </div>
                             <div class="mb-3">
-                                {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
+                                {{ html()->label(__('movie.lbl_trailer_url_type'), 'type')->class('form-label') }}
                                 {{ html()->select(
                                         'trailer_url_type',
                                         $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_type'), ''),
@@ -153,7 +153,6 @@
                                 @error('trailer_url_type')
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
-                                <div class="invalid-feedback" id="name-error">Trailer Type field is required</div>
 
                             </div>
                             <div class="d-none" id="url_input">
@@ -306,22 +305,7 @@
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>
-                        <div class="col-lg-6">
-
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                {{ html()->label(__('movie.lbl_short_desc'), 'short_desc')->class('form-label') }}
-                                <span class="text-primary cursor-pointer" id="GenrateshortDescription"><i
-                                        class="ph ph-info" data-bs-toggle="tooltip"
-                                        title="{{ __('messages.chatgpt_info') }}"></i>
-                                    {{ __('messages.lbl_chatgpt') }}</span>
-                            </div>
-
-                            {{ html()->textarea('short_desc', old('short_desc'))->class('form-control')->id('short_desc')->placeholder(__('placeholder.lbl_season_short_desc'))->rows('8') }}
-                            @error('short_desc')
-                                <span class="text-danger">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div class="col-lg-6">
+                        <div class="col-lg-12">
                             <div class="d-flex align-items-center justify-content-between mb-2">
                                 {{ html()->label(__('movie.lbl_description') . '<span class="text-danger"> *</span>', 'description')->class('form-label mb-0') }}
                                 <span class="text-primary cursor-pointer" id="GenrateDescription"><i class="ph ph-info"
@@ -1057,69 +1041,6 @@
 
         $(document).ready(function() {
 
-            $('#GenrateshortDescription').on('click', function(e) {
-
-                e.preventDefault();
-
-                var description = $('#short_desc').val();
-                var name = $('#name').val();
-                var tvshow = $('#entertainment_id').val();
-                var type = 'short_desc';
-
-                var generate_discription = "{{ route('backend.seasons.generate-description') }}";
-                generate_discription = generate_discription.replace('amp;', '');
-
-                if (!description && !name) {
-                    // $('#error_msg').text('Name field is required');
-                    return;
-                }
-
-                $('#short_desc').text('Loading...')
-
-
-                $.ajax({
-
-                    url: generate_discription,
-                    type: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    data: {
-                        description: description,
-                        name: name,
-                        tvshow: tvshow,
-                        type: type
-                    },
-                    success: function(response) {
-
-                        $('#short_desc').text('')
-
-                        if (response.success) {
-
-                            var data = response.data;
-                            $('#short_desc').html(data)
-
-                        } else {
-                            $('#error_message').text(response.message ||
-                                'Failed to get Description.');
-                        }
-                    },
-                    error: function(xhr) {
-                        $('#error_message').text('Failed to get Description.');
-                        $('#short_desc').text('');
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            $('#error_message').text(xhr.responseJSON.message);
-                        } else {
-                            $('#error_message').text(
-                                'An error occurred while fetching the movie details.');
-                        }
-                    }
-                });
-            });
-        });
-
-        $(document).ready(function() {
-
             $('#GenrateDescription').on('click', function(e) {
 
                 e.preventDefault();
@@ -1127,7 +1048,7 @@
                 var description = $('#description').val();
                 var name = $('#name').val();
                 var tvshow = $('#entertainment_id').val();
-                var type = 'short_desc';
+                var type = 'description';
 
 
                 var generate_discription = "{{ route('backend.seasons.generate-description') }}";
@@ -1299,7 +1220,6 @@
             'name': '{{ __('movie.lbl_name') }}',
             'season_number': '{{ __('season.lbl_season_number') }}',
             'description': '{{ __('movie.lbl_description') }}',
-            'short_desc': '{{ __('movie.lbl_short_desc') }}',
             'entertainment_id': '{{ __('season.lbl_tv_shows') }}',
             'trailer_url_type': '{{ __('movie.lbl_trailer_url_type') }}',
             'trailer_url': '{{ __('movie.lbl_trailer_url') }}',
@@ -1322,7 +1242,7 @@
         };
 
         const seasonTabFields = {
-            'pills-movie': ['name', 'season_number', 'description', 'short_desc', 'entertainment_id', 'trailer_url_type', 'trailer_url',
+            'pills-movie': ['name', 'season_number', 'description', 'entertainment_id', 'trailer_url_type', 'trailer_url',
                 'trailer_embedded', 'trailer_video', 'access', 'plan_id', 'price', 'purchase_type',
                 'access_duration', 'discount', 'available_for', 'status'
             ],

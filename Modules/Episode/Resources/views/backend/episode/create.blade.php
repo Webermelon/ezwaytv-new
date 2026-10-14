@@ -226,7 +226,7 @@
                                     <div>
                                         <input class="form-check-input" type="radio" name="access" id="paid"
                                             value="paid" onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ old('access') == 'paid' ? 'checked' : '' }} checked>
+                                            {{ old('access', 'free') == 'paid' ? 'checked' : '' }}>
                                         <span class="form-check-label">{{ __('movie.lbl_paid') }}</span>
                                     </div>
                                 </label>
@@ -234,7 +234,7 @@
                                     <div>
                                         <input class="form-check-input" type="radio" name="access" id="free"
                                             value="free" onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ old('access') == 'free' ? 'checked' : '' }}>
+                                            {{ old('access', 'free') == 'free' ? 'checked' : '' }}>
                                         <span class="form-check-label">{{ __('movie.lbl_free') }}</span>
                                     </div>
                                 </label>
@@ -243,7 +243,7 @@
                                         <input class="form-check-input" type="radio" name="access" id="pay-per-view"
                                             value="pay-per-view"
                                             onchange="showPlanSelection(this.value === 'pay-per-view')"
-                                            {{ old('access') == 'pay-per-view' ? 'checked' : '' }}>
+                                            {{ old('access', 'free') == 'pay-per-view' ? 'checked' : '' }}>
                                         <span class="form-check-label"
                                             for="pay-per-view">{{ __('messages.lbl_pay_per_view') }}</span>
                                     </div>
@@ -314,7 +314,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4 {{ old('access', 'paid') == 'free' ? 'd-none' : '' }}" id="planSelection">
+                        <div class="col-md-4 {{ old('access', 'free') == 'free' ? 'd-none' : '' }}" id="planSelection">
                             {{ html()->label(__('movie.lbl_select_plan') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
                             {{ html()->select('plan_id', $plan->pluck('name', 'id')->prepend(__('placeholder.lbl_select_plan'), ''), old('plan_id'))->class('form-control select2')->id('plan_id')->attribute('data-plan-levels', json_encode($plan->pluck('level','id'))) }}
                             @error('plan_id')
@@ -324,20 +324,19 @@
                         </div>
 
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
+                            {{ html()->label(__('movie.lbl_trailer_url_type'), 'type')->class('form-label') }}
                             {{ html()->select(
                                     'trailer_url_type',
                                     $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_type'), '')->merge(['Embedded' => 'Embedded']), // Add Embedded option
                                     old('trailer_url_type', ''), // Set '' as the default value
-                                )->class('form-control select2')->id('trailer_url_type')->required() }}
+                                )->class('form-control select2')->id('trailer_url_type') }}
                             @error('trailer_url_type')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.trailer_type_field_required') }}</div>
 
                         </div>
                         <div class="col-md-6 col-lg-4 d-none" id="url_input">
-                            {{ html()->label(__('movie.lbl_trailer_url') . ' <span class="text-danger">*</span>', 'trailer_url')->class('form-label') }}
+                            {{ html()->label(__('movie.lbl_trailer_url'), 'trailer_url')->class('form-label') }}
                             {{ html()->text('trailer_url')->attribute('value', old('trailer_url'))->placeholder(__('placeholder.lbl_trailer_url'))->class('form-control') }}
                             @error('trailer_url')
                                 <span class="text-danger">{{ $message }}</span>
@@ -397,12 +396,11 @@
                 <div class="card-body">
                     <div class="row gy-3">
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', old('duration'))->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_duration'), 'duration')->class('form-label') }}
+                            {{ html()->time('duration')->attribute('value', old('duration'))->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->id('duration') }}
                             @error('duration')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="duration-error">{{ __('messages.duration_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('messages.lbl_skip_intro_start_time'), 'start_time')->class('form-label') }}
@@ -428,21 +426,19 @@
                             <div class="invalid-feedback" id="imdb-error">{{ __('messages.imdb_rating_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_release_date') . '<span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', old('release_date'))->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_release_date'), 'release_date')->class('form-label') }}
+                            {{ html()->date('release_date')->attribute('value', old('release_date'))->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="release_date-error">{{ __('messages.release_date_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_content_rating') . '<span class="text-danger">*</span>', 'content_rating')->class('form-label') }}
-                            {{ html()->text('content_rating')->attribute('value', old('content_rating'))->placeholder(__('placeholder.lbl_content_rating'))->class('form-control')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_content_rating'), 'content_rating')->class('form-label') }}
+                            {{ html()->text('content_rating')->attribute('value', old('content_rating'))->placeholder(__('placeholder.lbl_content_rating'))->class('form-control') }}
 
                             @error('content_rating')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.content_rating_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_download_status'), 'download_status')->class('form-label') }}
@@ -450,7 +446,7 @@
                                 {{ html()->label(__('messages.on'), 'download_status')->class('form-label mb-0 text-body') }}
                                 <div class="form-check form-switch">
                                     {{ html()->hidden('download_status', 0) }}
-                                    {{ html()->checkbox('download_status', old('download_status', 1))->class('form-check-input')->id('download_status')->value(1) }}
+                                    {{ html()->checkbox('download_status', old('download_status', 0))->class('form-check-input')->id('download_status')->value(1) }}
                                 </div>
                             </div>
                             @error('download_status')
@@ -473,7 +469,7 @@
                             {{ html()->select(
                                     'video_upload_type',
                                     $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_video_type'), '')->merge(['Embedded' => 'Embedded']), // Add Embedded option
-                                    old('video_upload_type', ''),
+                                    old('video_upload_type', 'Local'),
                                 )->class('form-control select2')->id('video_upload_type') }}
                             @error('video_upload_type')
                                 <span class="text-danger">{{ $message }}</span>
@@ -1220,14 +1216,14 @@
                     if (EmbedInput) EmbedInput.classList.remove('d-none');
                     if (FileInput) FileInput.classList.add('d-none');
                     if (URLInput) URLInput.classList.add('d-none');
-                    if (trailerEmbedField) trailerEmbedField.setAttribute('required', 'required');
+                    if (trailerEmbedField) trailerEmbedField.removeAttribute('required');
                     if (trailerfile) trailerfile.removeAttribute('required');
                     if (URLInputField) URLInputField.removeAttribute('required');
                 } else if (selectedValue === 'Local') {
                     if (FileInput) FileInput.classList.remove('d-none');
                     if (URLInput) URLInput.classList.add('d-none');
                     if (EmbedInput) EmbedInput.classList.add('d-none');
-                    if (trailerfile) trailerfile.setAttribute('required', 'required');
+                    if (trailerfile) trailerfile.removeAttribute('required');
                     var trailerfileError = document.getElementById('trailer-file-error');
                     if (trailerfileError) trailerfileError.style.display = 'block';
                     if (URLInputField) URLInputField.removeAttribute('required');
@@ -1236,7 +1232,7 @@
                     if (URLInput) URLInput.classList.remove('d-none');
                     if (FileInput) FileInput.classList.add('d-none');
                     if (EmbedInput) EmbedInput.classList.add('d-none');
-                    if (URLInputField) URLInputField.setAttribute('required', 'required');
+                    if (URLInputField) URLInputField.removeAttribute('required');
                     if (trailerfile) trailerfile.removeAttribute('required');
                 } else {
                     if (FileInput) FileInput.classList.add('d-none');
@@ -1424,7 +1420,7 @@
                 accessDurationInput.required = false;
                 availableForInput.required = false;
                 releaseDateField.classList.remove('d-none');
-                releaseDateInput.setAttribute('required', 'required');
+                releaseDateInput.removeAttribute('required');
                 downlaodstatusDataFeild.classList.remove('d-none');
             } else if (value === 'pay-per-view') {
                 planSelection.classList.add('d-none');
@@ -1446,7 +1442,7 @@
                 accessDurationInput.required = false;
                 availableForInput.required = false;
                 releaseDateField.classList.remove('d-none');
-                releaseDateInput.setAttribute('required', 'required');
+                releaseDateInput.removeAttribute('required');
                 downlaodstatusDataFeild.classList.remove('d-none');
             }
         }
@@ -2484,6 +2480,36 @@
                 console.log(this.checked);
                 applyVisibilityFromCheckbox();
             });
+        });
+
+        $(function() {
+            let lastVideoSource = '';
+
+            function populateDurationFromLocalVideo() {
+                const durationInput = document.getElementById('duration');
+                const source = document.getElementById('file_url_video')?.value;
+
+                if (!durationInput || !source || source === lastVideoSource || durationInput.value) {
+                    return;
+                }
+
+                lastVideoSource = source;
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.src = source;
+                video.onloadedmetadata = function() {
+                    if (!Number.isFinite(video.duration)) return;
+
+                    const totalSeconds = Math.round(video.duration);
+                    const hours = Math.floor(totalSeconds / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    durationInput.value = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+                    $(durationInput).trigger('change');
+                };
+            }
+
+            $(document).on('change input', '#file_url_video, input[name="video_file_input"]', populateDurationFromLocalVideo);
+            setInterval(populateDurationFromLocalVideo, 750);
         });
 
         const episodeFieldLabels = {

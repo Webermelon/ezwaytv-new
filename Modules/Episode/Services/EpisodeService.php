@@ -31,7 +31,9 @@ class EpisodeService
         $cacheKey = 'episode_';
         clearRelatedCache($cacheKey, 'episode');
 
-        $data['trailer_url'] = ($data['trailer_url_type'] == 'Local') ? $data['trailer_video'] : $data['trailer_url'];
+        $data['trailer_url'] = ($data['trailer_url_type'] ?? null) === 'Local'
+            ? ($data['trailer_video'] ?? null)
+            : ($data['trailer_url'] ?? null);
         $data['video_url_input'] = ($data['video_upload_type'] == 'Local') ? $data['video_file_input'] : $data['video_url_input'];
        $episode = $this->episodeRepository->create($data);
 
@@ -73,7 +75,9 @@ class EpisodeService
         $cacheKey = 'episode_'.$id;
         clearRelatedCache($cacheKey, 'episode');
 
-        $data['trailer_url'] = ($data['trailer_url_type'] == 'Local') ? $data['trailer_video'] : $data['trailer_url'];
+        $data['trailer_url'] = ($data['trailer_url_type'] ?? null) === 'Local'
+            ? ($data['trailer_video'] ?? null)
+            : ($data['trailer_url'] ?? null);
 
         $data['video_url_input'] = ($data['video_upload_type'] == 'Local') ? $data['video_file_input'] : $data['video_url_input'];
         $updated =  $this->episodeRepository->update($id, $data);

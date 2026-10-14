@@ -20,9 +20,9 @@ class EntertainmentRequest extends FormRequest
     {
         $merge = [];
 
-        // Movies collect only a release year; retain the date column contract internally.
+        // Movies and TV shows collect only a release year; retain the date column contract internally.
         $releaseDate = trim((string) $this->input('release_date', ''));
-        if ($this->isMovieRequest() && preg_match('/^\d{4}$/', $releaseDate)) {
+        if (preg_match('/^\d{4}$/', $releaseDate)) {
             $merge['release_date'] = $releaseDate . '-01-01';
         }
 
@@ -86,9 +86,7 @@ class EntertainmentRequest extends FormRequest
         $id = $routeEntertainment instanceof Entertainment
             ? $routeEntertainment->id
             : ($routeEntertainment ?? request()->id);
-        $talentRules = $this->isMovieRequest()
-            ? ['nullable', 'string', 'max:2000']
-            : ['nullable', 'array'];
+        $talentRules = ['nullable', 'string', 'max:2000'];
         $rules = [
             'name' => ['required',Rule::unique('entertainments', 'name')->ignore($id)],
             'trailer_url_type' => ['nullable'],

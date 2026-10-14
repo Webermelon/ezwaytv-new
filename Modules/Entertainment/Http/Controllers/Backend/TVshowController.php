@@ -186,15 +186,21 @@ class TVshowController extends Controller
      */
     public function edit(int $id)
     {
-        $data = Entertainment::where('id',$id)->with('entertainmentGenerMappings','entertainmentTalentMappings')->first();
+        $data = Entertainment::where('id',$id)->with('entertainmentGenerMappings','entertainmentTalentMappings.talentprofile')->first();
         $tmdb_id = $data->tmdb_id;
         $data->thumbnail_url = setBaseUrlWithFileName($data->thumbnail_url,'image',$data->type);
         $data->poster_url =  setBaseUrlWithFileName($data->poster_url,'image',$data->type);
         $data->poster_tv_url =  setBaseUrlWithFileName($data->poster_tv_url,'image',$data->type);
         $data['genres_data'] = $data->entertainmentGenerMappings->isEmpty() ? [] : $data->entertainmentGenerMappings->pluck('genre_id')->toArray();
         $data['countries'] = $data->entertainmentCountryMappings->isEmpty() ? [] : $data->entertainmentCountryMappings->pluck('country_id')->toArray();
-        $data['actors'] = $data->entertainmentTalentMappings->isEmpty() ? [] : $data->entertainmentTalentMappings->pluck('talent_id')->toArray();
-        $data['directors'] = $data->entertainmentTalentMappings->isEmpty() ? [] : $data->entertainmentTalentMappings->pluck('talent_id')->toArray();
+        $data['actors'] = $data->entertainmentTalentMappings
+            ->filter(fn ($mapping) => $mapping->talentprofile?->type === 'actor')
+            ->pluck('talentprofile.name')
+            ->implode(', ');
+        $data['directors'] = $data->entertainmentTalentMappings
+            ->filter(fn ($mapping) => $mapping->talentprofile?->type === 'director')
+            ->pluck('talentprofile.name')
+            ->implode(', ');
 
         $upload_url_type=collect(Constant::where('type','upload_type')->where('status', 1)->orderBy('name', 'asc')->get());
 
