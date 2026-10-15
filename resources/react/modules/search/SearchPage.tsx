@@ -12,6 +12,7 @@ import { loadSearchResults, type SearchKind, type SearchResult } from './searchA
 const filters: Array<{ label: string; value: SearchKind | 'all' }> = [
   { label: 'All', value: 'all' },
   { label: 'Movies', value: 'movie' },
+  { label: 'TV Shows', value: 'tvshow' },
   { label: 'Videos', value: 'video' },
   { label: 'Playlists', value: 'playlist' },
   { label: 'Live TV', value: 'livetv' },
@@ -99,7 +100,7 @@ export function SearchPage() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search movies, videos, playlists, live channels, and on demand"
+                placeholder="Search movies, TV shows, videos, playlists, live channels, and on demand"
                 className="h-12 min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-white/38"
                 autoFocus
               />
@@ -168,17 +169,17 @@ function SearchCard({ item }: { item: SearchResult }) {
 
   const image = item.poster_tv_image ?? item.poster_image ?? item.cover_image_url ?? item.avatar_image_url ?? item.profile_image ?? item.details?.thumbnail_image
   const title = item.details?.name ?? item.name
-  const isMovie = item.searchKind === 'movie'
+  const isPosterContent = item.searchKind === 'movie' || item.searchKind === 'tvshow'
 
   return (
     <a href={item.href} className="group block min-w-0">
-      <div className={`relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60 ${isMovie ? 'aspect-[2/3]' : ''}`}>
+      <div className={`relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60 ${isPosterContent ? 'aspect-[2/3]' : ''}`}>
         <MediaThumbnail
           src={image}
           alt={title}
           previewSrc={item.searchKind === 'video' ? item.video_url_input ?? item.video_url ?? item.trailer_url ?? null : null}
-          className={isMovie ? 'h-full w-full' : undefined}
-          imageClassName={isMovie ? 'object-cover' : undefined}
+          className={isPosterContent ? 'h-full w-full' : undefined}
+          imageClassName={isPosterContent ? 'object-cover' : undefined}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
         <Badge className="absolute left-3 top-3 rounded-sm bg-black/70 text-white">
@@ -233,6 +234,7 @@ function SearchSkeleton() {
 
 function kindLabel(kind: SearchKind) {
   if (kind === 'movie') return 'Movie'
+  if (kind === 'tvshow') return 'TV Show'
   if (kind === 'livetv') return 'Live TV'
   if (kind === 'ondemand') return 'On Demand'
   if (kind === 'playlist') return 'Playlist'
@@ -240,7 +242,7 @@ function kindLabel(kind: SearchKind) {
 }
 
 function normalizeFilter(value: string | null): SearchKind | 'all' {
-  return value === 'movie' || value === 'video' || value === 'livetv' || value === 'ondemand' || value === 'playlist' ? value : 'all'
+  return value === 'movie' || value === 'tvshow' || value === 'video' || value === 'livetv' || value === 'ondemand' || value === 'playlist' ? value : 'all'
 }
 
 function stripHtml(value: string) {

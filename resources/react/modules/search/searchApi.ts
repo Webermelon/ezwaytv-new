@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
 import type { MediaItem } from '@/modules/home/types'
 
-export type SearchKind = 'movie' | 'video' | 'livetv' | 'ondemand' | 'playlist'
+export type SearchKind = 'movie' | 'tvshow' | 'video' | 'livetv' | 'ondemand' | 'playlist'
 
 export type SearchResult = MediaItem & {
   searchKind: SearchKind
@@ -120,10 +120,20 @@ function parseHtmlResults(html: string) {
       const item = JSON.parse(decodeHtml(raw)) as MediaItem
       if (!item?.id) return
 
+      // Series search is intentionally show-level; individual seasons and
+      // episodes are discovered from the TV show detail page.
+      if (item.type === 'episode' || item.type === 'season' || item.episode_number != null) return
+
+      const searchKind: SearchKind = item.type === 'tvshow' ? 'tvshow' : item.type === 'movie' ? 'movie' : 'video'
+
       results.push({
         ...item,
-        searchKind: 'video',
-        href: item.slug ? `/video-details/${item.slug}?autoplay=1&is_search=1` : '/videos',
+        searchKind,
+        href: searchKind === 'tvshow'
+          ? `/tv-shows/${item.slug ?? item.id}`
+          : searchKind === 'movie'
+            ? `/watch-movie/${item.id}?autoplay=1`
+            : item.slug ? `/video-details/${item.slug}?autoplay=1&is_search=1` : '/videos',
       })
     } catch {
       // Ignore malformed legacy card data.
