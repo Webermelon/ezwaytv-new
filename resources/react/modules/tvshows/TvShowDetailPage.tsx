@@ -41,7 +41,7 @@ function ShowDetail({ show }: { show: NonNullable<Awaited<ReturnType<typeof load
     </section>
 
     <div className="mx-auto max-w-[1800px] px-4 py-5 sm:px-8 lg:px-12">
-      <nav className="flex gap-7 border-b border-white/12 text-sm font-bold"><span className="border-b-2 border-primary px-2 pb-3 text-white">Episodes</span><span className="px-2 pb-3 text-white/52">About</span></nav>
+      <nav className="border-b border-white/12 text-sm font-bold"><span className="inline-block border-b-2 border-primary px-2 pb-3 text-white">Episodes</span></nav>
       <div className="grid gap-7 pt-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0"><div className="mb-3 flex flex-wrap items-center gap-3">{seasons.length ? <SeasonSelect seasons={seasons} seasonId={String(season?.season_id ?? '')} onChange={setSeasonId} /> : null}<span className="text-sm text-white/54">{seasonEpisodeCount} {seasonEpisodeCount === 1 ? 'Episode' : 'Episodes'}</span></div>{episodes.length ? <EpisodeSlider episodes={episodes} showId={show.slug ?? show.id} /> : <div className="rounded-md border border-white/10 bg-white/[0.025]"><EmptyEpisodes /></div>}</section>
         <aside className="space-y-4"><SeriesInformation genre={genre} year={year} seasons={seasons.length} episodes={totalEpisodes} description={description} casts={show.casts} directors={show.directors} />{show.more_items?.length ? <RelatedShows shows={show.more_items} /> : null}</aside>
@@ -50,7 +50,33 @@ function ShowDetail({ show }: { show: NonNullable<Awaited<ReturnType<typeof load
   </>
 }
 
-function SeasonSelect({ seasons, seasonId, onChange }: { seasons: SeasonItem[]; seasonId: string; onChange: (id: string) => void }) { return <label className="relative"><select value={seasonId} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 appearance-none rounded-md border border-white/20 bg-[#141414] px-3 pr-9 text-sm font-bold outline-none focus:border-primary">{seasons.map((season) => <option key={season.season_id} value={season.season_id}>{season.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-white/60" /></label> }
+function SeasonSelect({ seasons, seasonId, onChange }: { seasons: SeasonItem[]; seasonId: string; onChange: (id: string) => void }) {
+  return <>
+    <label className="relative md:hidden">
+      <span className="sr-only">Choose season</span>
+      <select value={seasonId} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 appearance-none rounded-md border border-white/20 bg-[#141414] px-3 pr-9 text-sm font-bold outline-none focus:border-primary">
+        {seasons.map((season) => <option key={season.season_id} value={season.season_id}>{season.name}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-white/60" />
+    </label>
+    <div role="tablist" aria-label="Seasons" className="hidden h-10 flex-wrap gap-5 border-b border-white/12 md:flex">
+      {seasons.map((season) => {
+        const selected = String(season.season_id) === seasonId
+
+        return <button
+          key={season.season_id}
+          type="button"
+          role="tab"
+          aria-selected={selected}
+          onClick={() => onChange(String(season.season_id))}
+          className={['-mb-px h-10 border-b-2 px-1 text-sm font-bold transition', selected ? 'border-primary text-white' : 'border-transparent text-white/55 hover:border-white/35 hover:text-white'].join(' ')}
+        >
+          {season.name}
+        </button>
+      })}
+    </div>
+  </>
+}
 
 function EpisodeRow({ episode, index }: { episode: EpisodeItem; index: number }) {
   const featured = index === 0
