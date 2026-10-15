@@ -53,7 +53,15 @@ class AuthorChannelAPIController extends Controller
     {
             $query = AuthorChannel::where('is_active', 1)
                 ->with('plan:id,name,level')
-                ->withCount(['videos', 'movies']);
+                ->withCount([
+                    'videos' => fn ($query) => $query
+                        ->where('videos.status', 1)
+                        ->whereNull('videos.deleted_at'),
+                    'movies' => fn ($query) => $query
+                        ->released()
+                        ->where('entertainments.status', 1)
+                        ->whereNull('entertainments.deleted_at'),
+                ]);
 
             if ($search = $request->input('search')) {
                 $query->where(function ($q) use ($search) {
@@ -115,7 +123,15 @@ class AuthorChannelAPIController extends Controller
                         ->whereNull('videos.deleted_at')
                         ->where('videos.status', 1),
                 ])
-                ->withCount(['videos', 'movies'])
+                ->withCount([
+                    'videos' => fn ($query) => $query
+                        ->where('videos.status', 1)
+                        ->whereNull('videos.deleted_at'),
+                    'movies' => fn ($query) => $query
+                        ->released()
+                        ->where('entertainments.status', 1)
+                        ->whereNull('entertainments.deleted_at'),
+                ])
                 ->first();
 
             return $channel ? $this->formatChannel($channel, true) : null;
@@ -200,7 +216,15 @@ class AuthorChannelAPIController extends Controller
         $userId   = Auth::id();
         $channels = AuthorChannel::where('user_id', $userId)
             ->with('plan:id,name,level')
-            ->withCount(['videos', 'movies'])
+            ->withCount([
+                'videos' => fn ($query) => $query
+                    ->where('videos.status', 1)
+                    ->whereNull('videos.deleted_at'),
+                'movies' => fn ($query) => $query
+                    ->released()
+                    ->where('entertainments.status', 1)
+                    ->whereNull('entertainments.deleted_at'),
+            ])
             ->get()
             ->map(fn ($ch) => $this->formatChannel($ch, true));
 

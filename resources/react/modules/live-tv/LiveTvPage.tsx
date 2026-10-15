@@ -460,7 +460,7 @@ function LiveTvDetailPage({
                   <Button
                     type="button"
                     size="lg"
-                    className="h-11 w-full px-3 bg-white text-black hover:bg-white/85 sm:w-[140px] sm:px-4"
+                    className="h-11 w-full min-w-0 px-3 bg-white text-black hover:bg-white/85 sm:w-[190px] sm:px-4"
                     disabled={!stream && !loading}
                     onClick={() => {
                       setPlayerStarted(true)
@@ -472,14 +472,14 @@ function LiveTvDetailPage({
                   </Button>
                 ) : null}
                 {vodChannelUrl ? (
-                  <Button asChild size="lg" className="h-11 w-full px-3 bg-[#d4a843] text-black hover:bg-[#e5bd58] sm:w-[140px] sm:px-4">
+                  <Button asChild size="lg" className="h-11 w-full min-w-0 px-3 bg-[#d4a843] text-black hover:bg-[#e5bd58] sm:w-[190px] sm:px-4">
                     <a href={vodChannelUrl}>
                       <Film className="h-5 w-5" />
-                      {vodChannelButtonName}
+                      <span className="truncate">{vodChannelButtonName}</span>
                     </a>
                   </Button>
                 ) : null}
-                <Button asChild size="lg" variant="secondary" className="h-11 w-full border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[140px] sm:px-4">
+                <Button asChild size="lg" variant="secondary" className="h-11 w-full min-w-0 border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[190px] sm:px-4">
                   <a href="/livetv">
                     <Radio className="h-5 w-5" />
                     All Channels
@@ -489,7 +489,7 @@ function LiveTvDetailPage({
                   title={title}
                   copied={copiedShareUrl}
                   wrapperClassName="w-full sm:w-auto"
-                  buttonClassName="h-11 w-full border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[140px] sm:px-4"
+                  buttonClassName="h-11 w-full min-w-0 border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[190px] sm:px-4"
                   onCopy={() => {
                     copyLiveTvShareUrl().then(() => {
                       setCopiedShareUrl(true)
@@ -497,7 +497,7 @@ function LiveTvDetailPage({
                     }).catch(() => undefined)
                   }}
                 />
-                <Button asChild size="lg" variant="secondary" className="h-11 w-full border border-[#d4a843]/45 px-3 bg-[#d4a843]/12 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:w-[140px] sm:px-4">
+                <Button asChild size="lg" variant="secondary" className="h-11 w-full min-w-0 border border-[#d4a843]/45 px-3 bg-[#d4a843]/12 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:w-[190px] sm:px-4">
                   <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
                     <UsersRound className="h-5 w-5" />
                     Connect

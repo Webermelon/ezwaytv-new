@@ -106,7 +106,7 @@ class TvshowDetailResource extends JsonResource
                 'discount'=> $season->discount,
                 'available_for' => $season->available_for,
                 'episodes' => EpisodeResource::collection(
-                                    $episodes->take(8)->map(function ($episode) {
+                                    $episodes->map(function ($episode) {
                                         return new EpisodeResource($episode, $this->user_id);
                                     })
                                 ),
