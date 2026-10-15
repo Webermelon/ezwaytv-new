@@ -54,8 +54,9 @@ declare global {
 
 const navItems = [
   { key: 'home', label: 'Home', href: '/' },
-  // { key: 'movies', label: 'Movies', href: '/movies' },
   { key: 'videos', label: 'Videos', href: '/videos' },
+  { key: 'movies', label: 'Movies', href: '/movies' },
+  { key: 'tvshows', label: 'TV Shows', href: '/tv-shows' },
   { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand' },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv' },
   { key: 'pricing', label: 'Pricing', href: '/subscription-plan' },
@@ -67,8 +68,9 @@ type DropdownKey = 'videos' | 'livetv' | 'ondemand'
 
 const mobileNavItems = [
   { key: 'home', label: 'Home', href: '/', icon: HomeIcon },
-  { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
   { key: 'videos', label: 'Videos', href: '/videos', icon: Video },
+  { key: 'movies', label: 'Movies', href: '/movies', icon: Film },
+  { key: 'tvshows', label: 'TV Shows', href: '/tv-shows', icon: Tv },
   { key: 'on-demand', label: 'Channels', href: '/on-demand', dropdown: 'ondemand', icon: Film },
   { key: 'livetv', label: 'Live TV', href: '/livetv', dropdown: 'livetv', icon: Radio },
   { key: 'pricing', label: 'Pricing', href: '/subscription-plan', icon: CreditCard },
@@ -250,8 +252,7 @@ function MobileMenu({
   const visibleMobileNavItems = mobileNavItems.filter((item) => {
     if (nativeIos && ['pricing', 'stream-music'].includes(item.key)) return false
     if (!isMenuVisible(visibleMenuKeys, item.key)) return false
-    if (item.key === 'movies') return hasMovies
-    if (item.key === 'tvshows') return true
+    if (item.key === 'movies' || item.key === 'tvshows') return true
 
     return true
   })
@@ -782,7 +783,7 @@ function normalizeChannelLabel(value?: string | number | null) {
 }
 
 function isMenuVisible(visibleMenuKeys: string[] | null, key: string) {
-  if (key === 'pricing') return true
+  if (key === 'pricing' || key === 'movies' || key === 'tvshows') return true
   return visibleMenuKeys === null || visibleMenuKeys.includes(key)
 }
 
