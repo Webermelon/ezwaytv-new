@@ -51,6 +51,10 @@ export default function App() {
     page = <MoviesPage />
   } else if (pathname === '/tv-shows') {
     page = <TvShowsPage />
+  } else if (/^\/tv-shows\/[^/]+\/episodes\/[^/]+$/.test(pathname)) {
+    page = <EpisodePlayerPage />
+  } else if (/^\/tv-shows\/[^/]+$/.test(pathname)) {
+    page = <TvShowDetailPage />
   } else if (pathname.startsWith('/tvshow-details/')) {
     page = <TvShowDetailPage />
   } else if (pathname.startsWith('/episode-details/')) {

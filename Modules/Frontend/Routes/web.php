@@ -167,8 +167,10 @@ Route::view('/movies', 'react-modernization')->middleware('checkModule')->name('
 Route::get('/watch-movie/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-watch');
 Route::get('/movie-details/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
 Route::view('/tv-shows', 'react-modernization')->middleware('checkModule')->name('tv-shows');
-Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tvshow-details');
-Route::get('/episode-details/{id}', [ReactMetaController::class, 'episodeDetails'])->middleware('checkModule')->name('episode-details');
+Route::get('/tv-shows/{show}/episodes/{episode}', [ReactMetaController::class, 'tvshowEpisodeDetails'])->middleware('checkModule')->name('tv-shows.episode');
+Route::get('/tv-shows/{show}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tv-shows.show');
+Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'legacyTvshowDetails'])->middleware('checkModule')->name('tvshow-details');
+Route::get('/episode-details/{id}', [ReactMetaController::class, 'legacyEpisodeDetails'])->middleware('checkModule')->name('episode-details');
 Route::view('/videos', 'react-modernization')->middleware('checkModule')->name('videos');
 Route::view('/videos/category/{slug}', 'react-modernization')->middleware('checkModule')->name('videos.by-category');
 Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');

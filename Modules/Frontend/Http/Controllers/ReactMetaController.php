@@ -123,7 +123,16 @@ class ReactMetaController extends Controller
             $id
         );
 
-        return $this->renderContent($tvshow, 'tvshow', '/tvshow-details/');
+        return $this->renderContent($tvshow, 'tvshow', '/tv-shows/');
+    }
+
+    public function legacyTvshowDetails(string $id)
+    {
+        $tvshow = $this->findBySlugOrId(Entertainment::query()->where('type', 'tvshow'), $id);
+
+        return $tvshow
+            ? redirect('/tv-shows/' . ($tvshow->slug ?: $tvshow->id), 301)
+            : $this->render();
     }
 
     public function episodeDetails(string $id)
@@ -131,6 +140,27 @@ class ReactMetaController extends Controller
         $episode = $this->findBySlugOrId(Episode::query(), $id);
 
         return $this->renderContent($episode, 'episode', '/episode-details/');
+    }
+
+    public function tvshowEpisodeDetails(string $show, string $episode)
+    {
+        $episodeModel = $this->findBySlugOrId(Episode::query(), $episode);
+
+        return $this->renderContent($episodeModel, 'episode', '/tv-shows/' . $show . '/episodes/');
+    }
+
+    public function legacyEpisodeDetails(string $id)
+    {
+        $episode = $this->findBySlugOrId(Episode::query()->with('entertainmentdata'), $id);
+
+        if (! $episode) {
+            return $this->render();
+        }
+
+        $show = $episode->entertainmentdata;
+        $showId = $show?->slug ?: $show?->id ?: $episode->entertainment_id;
+
+        return redirect('/tv-shows/' . $showId . '/episodes/' . $episode->id, 301);
     }
 
     private function renderContent(?Model $content, string $pageType, string $pathPrefix)

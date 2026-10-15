@@ -75,7 +75,7 @@ function ShowCard({ show }: { show: MediaItem }) {
   const access = (show.movie_access ?? show.access ?? 'free').toLowerCase()
   const locked = access === 'paid' && !Boolean(show.has_content_access)
   return (
-    <a href={`/tvshow-details/${show.id}`} className="group min-w-0">
+    <a href={`/tv-shows/${show.slug ?? show.id}`} className="group min-w-0">
       <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-white/10 bg-[#111] shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/65">
         <MediaThumbnail src={show.poster_image ?? show.poster_url} alt={show.name} className="h-full w-full" imageClassName="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/76 via-transparent to-transparent" />

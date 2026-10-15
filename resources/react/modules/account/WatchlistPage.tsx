@@ -204,7 +204,7 @@ function itemHref(item: WatchlistItem) {
       ? `${videoPath}?autoplay=1&ondemand_channel=${encodeURIComponent(String(item.ondemand_channel_id))}`
       : videoPath
   }
-  if (type === 'tvshow') return `/tvshow-details/${slug ?? id}`
+  if (type === 'tvshow') return `/tv-shows/${slug ?? id}`
   return `/movie-details/${slug ?? id}`
 }
 

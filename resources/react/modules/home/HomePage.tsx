@@ -774,7 +774,7 @@ function contentHref(item?: MediaItem) {
   }
 
   if (type === 'tvshow' && item.slug) {
-    return `/tvshow-details/${item.slug}`
+    return `/tv-shows/${item.slug}`
   }
 
   if (type === 'ondemand' || item.profile_url) {

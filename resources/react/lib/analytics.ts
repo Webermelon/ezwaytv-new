@@ -103,6 +103,8 @@ function routeAnalyticsMetadata(path: string) {
   if (pathname === '/movies') return { route_name: 'movies.index', page_name: 'Movies' }
   if (pathname.startsWith('/movie-details/')) return { route_name: 'movie-details', page_name: `Movie: ${lastSegment(pathname)}` }
   if (pathname === '/tv-shows') return { route_name: 'tvshows.index', page_name: 'TV Shows' }
+  if (/^\/tv-shows\/[^/]+\/episodes\/[^/]+$/.test(pathname)) return { route_name: 'tvshows.episode', page_name: `Episode: ${lastSegment(pathname)}` }
+  if (/^\/tv-shows\/[^/]+$/.test(pathname)) return { route_name: 'tvshows.show', page_name: `TV Show: ${lastSegment(pathname)}` }
   if (pathname.startsWith('/tvshow-details/')) return { route_name: 'tvshow-details', page_name: `TV Show: ${lastSegment(pathname)}` }
   if (pathname.startsWith('/episode-details/')) return { route_name: 'episode-details', page_name: `Episode: ${lastSegment(pathname)}` }
   if (pathname === '/castcrew-list') return { route_name: 'castcrew.index', page_name: 'Cast & Crew' }
