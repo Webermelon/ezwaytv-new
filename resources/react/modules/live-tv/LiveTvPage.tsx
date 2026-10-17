@@ -479,20 +479,20 @@ function LiveTvDetailPage({
               <div className="relative z-[80] grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
                 {isSubscriptionLocked ? <PremiumActionButton /> : null}
                 {vodChannelUrl ? (
-                  <Button asChild className="h-8 w-full min-w-0 rounded-md border border-[#d4a843] bg-[#d4a843] px-2.5 text-sm text-black hover:bg-[#e5bd58] focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                  <Button asChild className="h-10 w-full min-w-0 rounded-md border border-[#d4a843] bg-[#d4a843] px-4 text-sm text-black hover:bg-[#e5bd58] focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                     <a href={vodChannelUrl}>
                       <Film className="h-3.5 w-3.5" />
                       <span className="truncate">{vodChannelButtonName}</span>
                     </a>
                   </Button>
                 ) : null}
-                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-2.5 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                <Button asChild variant="secondary" className="h-10 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-4 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                   <a href="/livetv">
                     <Radio className="h-3.5 w-3.5" />
                     All Channels
                   </a>
                 </Button>
-                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-2.5 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                <Button asChild variant="secondary" className="h-10 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-4 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                   <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
                     <UsersRound className="h-3.5 w-3.5" />
                     Connect
@@ -502,7 +502,7 @@ function LiveTvDetailPage({
                   title={title}
                   copied={copiedShareUrl}
                   wrapperClassName="w-full sm:w-auto"
-                  buttonClassName="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-2.5 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
+                  buttonClassName="h-10 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-4 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
                   onCopy={() => {
                     copyLiveTvShareUrl().then(() => {
                       setCopiedShareUrl(true)
