@@ -456,7 +456,7 @@ class SettingsController extends Controller
             }
             $timeFormatList = $data;
 
-        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'homepage_rail_item_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled'];
+        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'homepage_rail_item_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled', 'live_tv_chat_link_allowed_emails'];
         $settings = $this->fieldsData($fields);
         return view('setting::backend.setting.section-pages.misc-settings', compact('settings', 'languages', 'timezones','dateFormat','timeFormatList'));
     }
@@ -587,6 +587,19 @@ class SettingsController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error("Validation failed: ".json_encode($e->errors()));
             throw $e; // Re-throw to maintain normal validation behavior
+        }
+
+        if (array_key_exists('live_tv_chat_link_allowed_emails', $data)) {
+            $emails = preg_split('/[\s,;]+/', strtolower((string) $data['live_tv_chat_link_allowed_emails']), -1, PREG_SPLIT_NO_EMPTY);
+            $invalidEmails = array_filter($emails, fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL) === false);
+
+            if ($invalidEmails !== []) {
+                return redirect()->back()
+                    ->withErrors(['live_tv_chat_link_allowed_emails' => 'Enter valid email addresses separated by a new line or comma.'])
+                    ->withInput();
+            }
+
+            $data['live_tv_chat_link_allowed_emails'] = implode("\n", array_values(array_unique($emails)));
         }
         $validSettings = array_keys($rules);
 

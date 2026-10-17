@@ -100,6 +100,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-12">
+                        {{ html()->label('Users Allowed to Post Links in Live Chat', 'live_tv_chat_link_allowed_emails')->class('form-label') }}
+                        {{ html()->textarea('live_tv_chat_link_allowed_emails', old('live_tv_chat_link_allowed_emails', $settings['live_tv_chat_link_allowed_emails'] ?? ''))->class('form-control')->attribute('rows', 5)->placeholder("creator@example.com\nmoderator@example.com") }}
+                        <small class="text-muted d-block mt-1">Enter one account email per line. Commas are also accepted. Everyone else can use chat and emojis, but links will be blocked.</small>
+                        @error('live_tv_chat_link_allowed_emails')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
                 </div>
 
             </div>

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, UsersRound, Volume2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, Smile, UsersRound, Volume2 } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -332,6 +332,7 @@ function LiveTvDetailPage({
   })
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
+  const showPlayerChat = Boolean(channel?.id && chat?.enabled)
   const schedule = scheduleQuery.data ?? []
   const displayedSchedule = schedule.length > 0 ? schedule : detailSchedule
   const hasScheduleUi = scheduleEnabled && Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
@@ -379,58 +380,65 @@ function LiveTvDetailPage({
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
           <PlayerHeader fallbackHref="/livetv" />
-          <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
-            {isSubscriptionLocked ? (
-              <PremiumPlayerLock
-                image={image}
-                title={title}
-                label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
-              />
-            ) : stream && playerStarted ? (
-              <VideoJsPlayer
-                source={stream.url}
-                poster={image}
-                autoplay={false}
-                muted={false}
-                playTrigger={playTrigger}
-                vastAds={ads.vast}
-                isLive
-                onPlay={() => {
-                  if (!channel || playIdRef.current) return
-                  trackPlayMutation.mutate(channel)
-                }}
-                onTimeUpdate={(seconds) => {
-                  if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
+          <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,1fr)_390px]' : 'bg-black'}>
+            <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
+              {isSubscriptionLocked ? (
+                <PremiumPlayerLock
+                  image={image}
+                  title={title}
+                  label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
+                />
+              ) : stream && playerStarted ? (
+                <VideoJsPlayer
+                  source={stream.url}
+                  poster={image}
+                  autoplay={false}
+                  muted={false}
+                  playTrigger={playTrigger}
+                  vastAds={ads.vast}
+                  isLive
+                  onPlay={() => {
+                    if (!channel || playIdRef.current) return
+                    trackPlayMutation.mutate(channel)
+                  }}
+                  onTimeUpdate={(seconds) => {
+                    if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
+                      lastWatchUpdateRef.current = seconds
+                      updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+                    }
+                  }}
+                  onPause={(seconds) => {
+                    if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+
                     lastWatchUpdateRef.current = seconds
                     updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                  }
-                }}
-                onPause={(seconds) => {
-                  if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+                  }}
+                  onEnded={(seconds) => {
+                    if (!playIdRef.current) return
 
-                  lastWatchUpdateRef.current = seconds
-                  updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                }}
-                onEnded={(seconds) => {
-                  if (!playIdRef.current) return
-
-                  const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
-                  lastWatchUpdateRef.current = finalSeconds
-                  updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
-                }}
-              />
-            ) : stream ? (
-              <LiveTvStartScreen image={image} title={title} onStart={() => {
-                setPlayerStarted(true)
-                setPlayTrigger((value) => value + 1)
-              }} />
-            ) : loading ? (
-              <LiveTvPlayerPreparing image={image} title={title} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
-                No playable Live TV stream was returned for this channel.
-              </div>
-            )}
+                    const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                    lastWatchUpdateRef.current = finalSeconds
+                    updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                  }}
+                />
+              ) : stream ? (
+                <LiveTvStartScreen image={image} title={title} onStart={() => {
+                  setPlayerStarted(true)
+                  setPlayTrigger((value) => value + 1)
+                }} />
+              ) : loading ? (
+                <LiveTvPlayerPreparing image={image} title={title} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
+                  No playable Live TV stream was returned for this channel.
+                </div>
+              )}
+            </div>
+            {showPlayerChat ? (
+              <aside className="h-[520px] border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
+                <LiveTvChat channelId={channelId as string | number} chat={chat} />
+              </aside>
+            ) : null}
           </div>
 
           <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
@@ -526,19 +534,14 @@ function LiveTvDetailPage({
 
       <AdStrip ads={ads.custom} />
 
-      {hasScheduleUi || (channel?.id && chat?.enabled) ? (
+      {hasScheduleUi ? (
         <section className="px-3 pb-16 sm:px-6 lg:px-8">
-          <div className={chat?.enabled && hasScheduleUi ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]' : undefined}>
-            {hasScheduleUi ? (
-              <SchedulePanel
-                now={channel?.now_playing}
-                next={channel?.next_playing}
-                items={displayedSchedule}
-                loading={loading || scheduleQuery.isLoading}
-              />
-            ) : null}
-            {channel?.id && chat?.enabled ? <LiveTvChat channelId={channel.id} chat={chat} /> : null}
-          </div>
+          <SchedulePanel
+            now={channel?.now_playing}
+            next={channel?.next_playing}
+            items={displayedSchedule}
+            loading={loading || scheduleQuery.isLoading}
+          />
         </section>
       ) : null}
 
@@ -1547,6 +1550,7 @@ function LiveTvChat({
   chat: LiveTvChatState | null
 }) {
   const [message, setMessage] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const canUseLiveChat = isAuthenticated()
   const queryClient = useQueryClient()
   const sendMessageMutation = useMutation({
@@ -1562,23 +1566,26 @@ function LiveTvChat({
   })
 
   return (
-    <section className="rounded-md border border-white/10 bg-white/[0.045] p-5">
+    <section className="flex h-full min-h-0 flex-col bg-[#0a0a0a] p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-bold">
           <MessageCircle className="h-4 w-4 text-primary" />
           Live Chat
         </div>
-        {canUseLiveChat && chat?.guest_name ? <span className="text-xs text-white/48">{chat.guest_name}</span> : null}
+        <div className="flex items-center gap-2 text-xs text-white/48">
+          {chat?.can_post_links ? <span className="rounded-sm bg-[#d4a843]/14 px-2 py-1 font-semibold text-[#f0c24d]">Links enabled</span> : null}
+          {canUseLiveChat && chat?.guest_name ? <span>{chat.guest_name}</span> : null}
+        </div>
       </div>
 
-      <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {chat?.messages?.length ? chat.messages.map((item) => (
           <article key={item.id} className="rounded-md bg-black/32 p-3">
             <div className="mb-1 flex items-center justify-between gap-2 text-xs">
               <span className="font-bold text-white/78">{item.guest_name ?? 'Guest'}</span>
               <span className="text-white/36">{item.time}</span>
             </div>
-            <p className="text-sm leading-5 text-white/66">{item.message}</p>
+            <p className="break-words text-sm leading-5 text-white/66"><LiveChatMessageText message={item.message} /></p>
           </article>
         )) : (
           <p className="rounded-md bg-black/32 p-4 text-sm text-white/50">
@@ -1589,7 +1596,7 @@ function LiveTvChat({
 
       {canUseLiveChat ? (
         <form
-          className="mt-4 flex gap-2"
+          className="relative mt-4 flex gap-2"
           onSubmit={(event) => {
             event.preventDefault()
             const nextMessage = message.trim()
@@ -1598,6 +1605,35 @@ function LiveTvChat({
             sendMessageMutation.mutate(nextMessage)
           }}
         >
+          {showEmojiPicker ? (
+            <div className="absolute bottom-12 left-0 z-20 grid w-52 grid-cols-6 gap-1 rounded-md border border-white/12 bg-[#171717] p-2 shadow-2xl shadow-black/70">
+              {LIVE_CHAT_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded text-lg transition hover:bg-white/12"
+                  onClick={() => {
+                    setMessage((current) => `${current}${emoji}`)
+                    setShowEmojiPicker(false)
+                  }}
+                  aria-label={`Add ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="shrink-0 border border-white/10 bg-white/8 text-white hover:bg-white/14"
+            onClick={() => setShowEmojiPicker((open) => !open)}
+            aria-label="Add emoji"
+            title="Add emoji"
+          >
+            <Smile className="h-4 w-4" />
+          </Button>
           <input
             value={message}
             onChange={(event) => setMessage(event.target.value)}
@@ -1612,12 +1648,35 @@ function LiveTvChat({
         <div className="mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-white">You need to login for live chat.</p>
           <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
-            <a href="/login">Login</a>
+            <a href={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`}>Login</a>
           </Button>
         </div>
       )}
     </section>
   )
+}
+
+const LIVE_CHAT_EMOJIS = ['😀', '😂', '😍', '🔥', '👏', '❤️', '👍', '🎉', '😮', '😢', '🙏', '📺', '🎬', '⭐', '💯', '🚀', '✅', '🙌']
+
+function LiveChatMessageText({ message }: { message: string }) {
+  const linkPattern = /((?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/giu
+  const parts = message.split(linkPattern)
+
+  return parts.map((part, index) => {
+    if (!part || !linkPattern.test(part)) {
+      linkPattern.lastIndex = 0
+      return part
+    }
+
+    linkPattern.lastIndex = 0
+    const href = /^https?:\/\//i.test(part) ? part : `https://${part}`
+
+    return (
+      <a key={`${part}-${index}`} href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#f0c24d] underline decoration-[#f0c24d]/45 underline-offset-2 hover:text-white">
+        {part}
+      </a>
+    )
+  })
 }
 
 function LiveTvPremiumNotice({ channel }: { channel?: MediaItem }) {

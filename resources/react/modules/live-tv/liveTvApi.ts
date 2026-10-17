@@ -29,6 +29,7 @@ export type LiveTvChatState = {
   guest_name?: string | null
   identity_type?: string | null
   can_change_name?: boolean
+  can_post_links?: boolean
   messages: LiveTvChatMessage[]
 }
 

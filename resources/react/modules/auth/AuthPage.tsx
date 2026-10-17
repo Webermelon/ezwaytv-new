@@ -130,7 +130,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
       const response = await postAuth('/auth/spa-otp/verify', formData)
       ensureApiSuccess(response, 'You are signed in.')
       setMessage({ tone: 'success', text: getApiMessage(response, 'You are signed in.') })
-      window.location.href = getRedirectUrl(response) || '/'
+      window.location.href = getRequestedRedirectUrl() || getRedirectUrl(response) || '/'
     } catch (error) {
       const text = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
       const retryAfter = retryAfterSecondsFromError(error)
@@ -562,6 +562,20 @@ function getRedirectUrl(payload: ApiEnvelope) {
   if (!payload.data || typeof payload.data !== 'object') return ''
   const data = payload.data as Record<string, unknown>
   return typeof data.redirect_url === 'string' ? data.redirect_url : ''
+}
+
+function getRequestedRedirectUrl() {
+  const requested = new URLSearchParams(window.location.search).get('redirect')
+  if (!requested) return ''
+
+  try {
+    const destination = new URL(requested, window.location.origin)
+    if (destination.origin !== window.location.origin || destination.pathname.startsWith('/login')) return ''
+
+    return `${destination.pathname}${destination.search}${destination.hash}`
+  } catch {
+    return ''
+  }
 }
 
 function inferAuthMode(): AuthMode {

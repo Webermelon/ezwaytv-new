@@ -128,6 +128,16 @@ return [
                 'datatype' => 'misc',
             ],
             [
+                'type' => 'textarea',
+                'data' => 'string',
+                'name' => 'live_tv_chat_link_allowed_emails',
+                'label' => 'Live Chat Link Allowed Emails',
+                'rules' => 'nullable|string|max:5000',
+                'class' => '',
+                'value' => '',
+                'datatype' => 'misc',
+            ],
+            [
                 'type' => 'file', // input fields type
                 'data' => 'string', // data type, string, int, boolean
                 'name' => 'logo', // unique name for field

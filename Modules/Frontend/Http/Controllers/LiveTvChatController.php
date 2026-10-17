@@ -26,6 +26,7 @@ class LiveTvChatController extends Controller
                 'guest_name' => session(self::SESSION_KEY),
                 'identity_type' => 'guest',
                 'can_change_name' => true,
+                'can_post_links' => false,
                 'messages' => [],
             ]);
         }
@@ -37,6 +38,7 @@ class LiveTvChatController extends Controller
             'guest_name' => $identity['display_name'],
             'identity_type' => $identity['type'],
             'can_change_name' => $identity['type'] === 'guest',
+            'can_post_links' => $this->canPostLinks(),
             'messages' => $this->formatMessages($channel),
         ]);
 
@@ -45,18 +47,22 @@ class LiveTvChatController extends Controller
 
     public function storeGuest(Request $request, int $channelId)
     {
-        if (! auth()->check()) {
-            return response()->json([
-                'message' => 'Please log in to use live chat.',
-            ], 401);
-        }
-
         $channel = $this->resolveChannel($channelId);
 
         if (! $this->isChatEnabled($channel)) {
             return response()->json([
                 'message' => 'Live chat is disabled for this channel.',
             ], 403);
+        }
+
+        if ($request->boolean('logout')) {
+            $request->session()->forget(self::SESSION_KEY);
+
+            return response()->json([
+                'guest_name' => null,
+                'identity_type' => 'guest',
+                'can_change_name' => true,
+            ])->withCookie(Cookie::forget(self::COOKIE_KEY, '/'));
         }
 
         $guestName = $request->filled('guest_name')
@@ -82,12 +88,6 @@ class LiveTvChatController extends Controller
 
     public function storeMessage(Request $request, int $channelId)
     {
-        if (! auth()->check()) {
-            return response()->json([
-                'message' => 'Please log in to use live chat.',
-            ], 401);
-        }
-
         $channel = $this->resolveChannel($channelId);
 
         if (! $this->isChatEnabled($channel)) {
@@ -117,9 +117,9 @@ class LiveTvChatController extends Controller
             ], 422);
         }
 
-        if ($this->containsLink($message)) {
+        if ($this->containsLink($message) && ! $this->canPostLinks()) {
             return response()->json([
-                'message' => 'Links are not allowed in live chat.',
+                'message' => 'Your account is not allowed to post links in live chat.',
             ], 422);
         }
 
@@ -307,6 +307,23 @@ class LiveTvChatController extends Controller
     private function containsLink(string $value): bool
     {
         return (bool) preg_match('/((https?:\/\/|www\.)\S+)|(\b[a-z0-9][a-z0-9\-]*\.(com|net|org|tv|io|co|me|ly|us|uk|info|biz|app|dev|gg|live|fm|ai|edu|gov)(\/\S*)?\b)/iu', $value);
+    }
+
+    private function canPostLinks(): bool
+    {
+        $email = strtolower(trim((string) auth()->user()?->email));
+        if ($email === '') {
+            return false;
+        }
+
+        $allowedEmails = preg_split(
+            '/[\s,;]+/',
+            strtolower((string) GetSettingValue('live_tv_chat_link_allowed_emails')),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        return in_array($email, $allowedEmails ?: [], true);
     }
 
     private function wordCount(string $value): int
