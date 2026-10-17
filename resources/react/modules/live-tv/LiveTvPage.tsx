@@ -1587,14 +1587,14 @@ function LiveTvChat({
   }, [showEmojiPicker])
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-[#0a0a0a]">
+    <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
       {chat?.ads_enabled && chat.ad_banners?.length ? (
         <LiveTvChatAdSlider
           banners={chat.ad_banners}
         />
       ) : null}
 
-      <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:border-b-0 lg:bg-transparent lg:pb-4 lg:pt-5">
         <div className="flex items-center gap-2 text-sm font-bold">
           <MessageCircle className="h-4 w-4 text-primary" />
           <span>{chat?.title || 'Live Chat'}</span>
@@ -1610,7 +1610,7 @@ function LiveTvChat({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pt-3 sm:px-5 lg:pt-0">
         {chat?.messages?.length ? chat.messages.map((item) => (
           <article key={item.id} className="rounded-md bg-black/32 p-3">
             <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -1745,7 +1745,7 @@ function LiveTvChatAdSlider({
   )
 
   return (
-    <div className="relative aspect-[16/5] min-h-[82px] shrink-0 overflow-hidden bg-black">
+    <div className="relative aspect-[16/5] min-h-[82px] shrink-0 overflow-hidden border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
       {banner.link_url ? (
         <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
           {image}
