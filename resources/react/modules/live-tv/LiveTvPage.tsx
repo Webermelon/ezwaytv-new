@@ -155,15 +155,15 @@ export function LiveTvPage() {
               {heroDescription}
             </p>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7 sm:flex sm:flex-wrap">
-              <Button asChild size="lg" className="min-w-0 border border-[#f3cf70]/40 bg-[#d4a843] px-3 text-black shadow-lg shadow-[#d4a843]/15 hover:bg-[#e8c463] sm:px-6">
+              <Button asChild className="h-10 min-w-0 border border-[#f3cf70]/40 bg-[#d4a843] px-3 text-sm text-black shadow-lg shadow-[#d4a843]/15 hover:bg-[#e8c463] sm:px-4">
                 <a href={liveTvSpaHref(heroChannel)}>
-                  <Play className="h-5 w-5 fill-current" />
+                  <Play className="h-4 w-4 fill-current" />
                   View Channel
                 </a>
               </Button>
-              <Button asChild size="lg" variant="secondary" className="min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:px-6">
+              <Button asChild variant="secondary" className="h-10 min-w-0 border border-white/22 bg-white/8 px-3 text-sm text-white hover:bg-white/16 sm:px-4">
                 <a href="/livetv#channels" onClick={scrollToChannels}>
-                  <Grid2X2 className="h-5 w-5" />
+                  <Grid2X2 className="h-4 w-4" />
                   All Live TV
                 </a>
               </Button>
@@ -171,7 +171,7 @@ export function LiveTvPage() {
                 title="eZWay TV"
                 copied={copiedShareUrl}
                 wrapperClassName="col-span-2 w-full sm:col-span-auto sm:w-auto"
-                buttonClassName="w-full min-w-0 border border-white/22 bg-white/8 px-3 text-white hover:bg-white/16 sm:w-auto sm:px-6"
+                buttonClassName="h-10 w-full min-w-0 border border-white/22 bg-white/8 px-3 text-sm text-white hover:bg-white/16 sm:w-auto sm:px-4"
                 onCopy={() => {
                   copyLiveTvShareUrl().then(() => {
                     setCopiedShareUrl(true)
@@ -179,9 +179,9 @@ export function LiveTvPage() {
                   }).catch(() => undefined)
                 }}
               />
-              <Button asChild size="lg" variant="secondary" className="col-span-2 w-full min-w-0 border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:col-span-auto sm:w-auto sm:px-6">
+              <Button asChild variant="secondary" className="col-span-2 h-10 w-full min-w-0 border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 sm:col-span-auto sm:w-auto sm:px-4">
                 <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
-                  <UsersRound className="h-5 w-5" />
+                  <UsersRound className="h-4 w-4" />
                   Connect
                 </a>
               </Button>
@@ -461,35 +461,34 @@ function LiveTvDetailPage({
                 </div>
               </div>
 
-              <div className="relative z-[80] grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
+              <div className="relative z-[80] grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
                 {isSubscriptionLocked ? (
                   <PremiumActionButton />
                 ) : !playerStarted ? (
                   <Button
                     type="button"
-                    size="lg"
-                    className="h-11 w-full min-w-0 px-3 bg-white text-black hover:bg-white/85 sm:w-[190px] sm:px-4"
+                    className="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
                     disabled={!stream && !loading}
                     onClick={() => {
                       setPlayerStarted(true)
                       setPlayTrigger((value) => value + 1)
                     }}
                   >
-                    <Play className="h-5 w-5 fill-current" />
+                    <Play className="h-3.5 w-3.5 fill-current" />
                     Watch Live
                   </Button>
                 ) : null}
                 {vodChannelUrl ? (
-                  <Button asChild size="lg" className="h-11 w-full min-w-0 px-3 bg-[#d4a843] text-black hover:bg-[#e5bd58] sm:w-[190px] sm:px-4">
+                  <Button asChild className="h-8 w-full min-w-0 rounded-md border border-[#d4a843] bg-[#d4a843] px-2.5 text-sm text-black hover:bg-[#e5bd58] focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                     <a href={vodChannelUrl}>
-                      <Film className="h-5 w-5" />
+                      <Film className="h-3.5 w-3.5" />
                       <span className="truncate">{vodChannelButtonName}</span>
                     </a>
                   </Button>
                 ) : null}
-                <Button asChild size="lg" variant="secondary" className="h-11 w-full min-w-0 border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[190px] sm:px-4">
+                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-2.5 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                   <a href="/livetv">
-                    <Radio className="h-5 w-5" />
+                    <Radio className="h-3.5 w-3.5" />
                     All Channels
                   </a>
                 </Button>
@@ -497,7 +496,7 @@ function LiveTvDetailPage({
                   title={title}
                   copied={copiedShareUrl}
                   wrapperClassName="w-full sm:w-auto"
-                  buttonClassName="h-11 w-full min-w-0 border-white/10 px-3 bg-white/14 text-white hover:bg-white/24 sm:w-[190px] sm:px-4"
+                  buttonClassName="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-2.5 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
                   onCopy={() => {
                     copyLiveTvShareUrl().then(() => {
                       setCopiedShareUrl(true)
@@ -505,9 +504,9 @@ function LiveTvDetailPage({
                     }).catch(() => undefined)
                   }}
                 />
-                <Button asChild size="lg" variant="secondary" className="h-11 w-full min-w-0 border border-[#d4a843]/45 px-3 bg-[#d4a843]/12 text-[#f0c24d] hover:bg-[#d4a843]/20 sm:w-[190px] sm:px-4">
+                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-2.5 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                   <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
-                    <UsersRound className="h-5 w-5" />
+                    <UsersRound className="h-3.5 w-3.5" />
                     Connect
                   </a>
                 </Button>
@@ -667,14 +666,13 @@ function LiveTvShareMenu({
     <div ref={menuRef} className={['relative z-[90] max-sm:static', wrapperClassName].filter(Boolean).join(' ')}>
       <Button
         type="button"
-        size="lg"
         variant="secondary"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={buttonClassName}
       >
-        <Share2 className="h-5 w-5" />
+        <Share2 className="h-3.5 w-3.5" />
         Share
       </Button>
       <div
@@ -791,8 +789,8 @@ function LiveTvPlayerPreparing({ image, title }: { image?: string; title: string
 
 function PlayerHeader({ fallbackHref }: { fallbackHref: string }) {
   return (
-    <div className="flex min-h-12 items-center border-b border-white/10 bg-[#050505] px-3 py-2 sm:min-h-14 sm:px-5">
-      <PlayerBackButton fallbackHref={fallbackHref} />
+    <div className="flex min-h-10 items-center border-b border-white/10 bg-[#050505] px-3 py-1 sm:px-4">
+      <PlayerBackButton fallbackHref={fallbackHref} className="h-8 px-2.5 py-1 text-[11px] tracking-[0.1em]" />
     </div>
   )
 }
@@ -1551,6 +1549,7 @@ function LiveTvChat({
 }) {
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null)
   const canUseLiveChat = isAuthenticated()
   const queryClient = useQueryClient()
   const sendMessageMutation = useMutation({
@@ -1564,6 +1563,27 @@ function LiveTvChat({
       setMessage('')
     },
   })
+
+  useEffect(() => {
+    if (!showEmojiPicker) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!emojiPickerRef.current?.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowEmojiPicker(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showEmojiPicker])
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-[#0a0a0a] p-5">
@@ -1605,43 +1625,56 @@ function LiveTvChat({
             sendMessageMutation.mutate(nextMessage)
           }}
         >
-          {showEmojiPicker ? (
-            <div className="absolute bottom-12 left-0 z-20 grid w-52 grid-cols-6 gap-1 rounded-md border border-white/12 bg-[#171717] p-2 shadow-2xl shadow-black/70">
-              {LIVE_CHAT_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded text-lg transition hover:bg-white/12"
-                  onClick={() => {
-                    setMessage((current) => `${current}${emoji}`)
-                    setShowEmojiPicker(false)
-                  }}
-                  aria-label={`Add ${emoji}`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <Button
-            type="button"
-            size="icon"
-            variant="secondary"
-            className="shrink-0 border border-white/10 bg-white/8 text-white hover:bg-white/14"
-            onClick={() => setShowEmojiPicker((open) => !open)}
-            aria-label="Add emoji"
-            title="Add emoji"
-          >
-            <Smile className="h-4 w-4" />
-          </Button>
-          <input
+          <div ref={emojiPickerRef} className="relative shrink-0">
+            {showEmojiPicker ? (
+              <div className="absolute bottom-16 left-0 z-20 grid w-72 grid-cols-6 gap-2 rounded-md border border-white/12 bg-[#171717] p-3 shadow-2xl shadow-black/70">
+                {LIVE_CHAT_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded text-xl transition hover:bg-white/12"
+                    onClick={() => {
+                      setMessage((current) => `${current}${emoji}`)
+                      setShowEmojiPicker(false)
+                    }}
+                    aria-label={`Add ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
+              onClick={() => setShowEmojiPicker((open) => !open)}
+              aria-label="Add emoji"
+              title="Add emoji"
+            >
+              <Smile className="h-5 w-5" />
+            </Button>
+          </div>
+          <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+
+              event.preventDefault()
+              const nextMessage = message.trim()
+              if (!nextMessage || sendMessageMutation.isPending) return
+
+              sendMessageMutation.mutate(nextMessage)
+            }}
             placeholder="Message live chat"
-            className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/38 px-3 text-sm text-white outline-none placeholder:text-white/40"
+            rows={1}
+            style={{ fontSize: '12px', lineHeight: '16px' }}
+            className="h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border border-white/10 bg-black/38 px-3 py-2.5 text-xs leading-4 text-white outline-none placeholder:text-white/40"
           />
-          <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} aria-label="Send message">
-            <Send className="h-4 w-4" />
+          <Button type="submit" size="icon" className="h-11 w-12 shrink-0" disabled={sendMessageMutation.isPending} aria-label="Send message">
+            <Send className="h-5 w-5" />
           </Button>
         </form>
       ) : (
@@ -1702,9 +1735,9 @@ function PremiumActionButton() {
 
   if (!isAuthenticated()) {
     return (
-      <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+      <Button asChild className="h-8 min-w-[108px] rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0">
         <a href={`/login?redirect=${encodeURIComponent(window.location.href)}`}>
-          <Lock className="h-5 w-5" />
+          <Lock className="h-4 w-4" />
           Sign In to Watch
         </a>
       </Button>
@@ -1712,9 +1745,9 @@ function PremiumActionButton() {
   }
 
   return (
-    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+    <Button asChild className="h-8 min-w-[108px] rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0">
       <a href="/subscription-plan">
-        <Lock className="h-5 w-5" />
+        <Lock className="h-4 w-4" />
         Upgrade Plan
       </a>
     </Button>
