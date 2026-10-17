@@ -395,7 +395,7 @@ function LiveTvDetailPage({
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
           <PlayerHeader fallbackHref="/livetv" />
-          <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,1fr)_390px]' : 'bg-black'}>
+          <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'bg-black'}>
             <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
               {isSubscriptionLocked ? (
                 <PremiumPlayerLock
@@ -1604,7 +1604,6 @@ function LiveTvChat({
           />
         </div>
         <div className="flex items-center gap-2 text-xs text-white/48">
-          {chat?.can_post_links ? <span className="rounded-sm bg-[#d4a843]/14 px-2 py-1 font-semibold text-[#f0c24d]">Links enabled</span> : null}
           {canUseLiveChat && chat?.guest_name ? <span>{chat.guest_name}</span> : null}
         </div>
       </div>
