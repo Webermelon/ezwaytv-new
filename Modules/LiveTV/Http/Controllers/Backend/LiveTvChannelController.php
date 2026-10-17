@@ -228,6 +228,7 @@ class LiveTvChannelController extends Controller
         $data = $request->all();
         if ($this->supportsLiveChatSetting()) {
             $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+            $this->normalizeChatSettings($data, $request);
         } else {
             unset($data['enable_live_chat']);
         }
@@ -303,6 +304,7 @@ class LiveTvChannelController extends Controller
         $data = $request->all();
         if ($this->supportsLiveChatSetting()) {
             $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+            $this->normalizeChatSettings($data, $request);
         } else {
             unset($data['enable_live_chat']);
         }
@@ -356,7 +358,7 @@ class LiveTvChannelController extends Controller
         }
 
         $message = trans('messages.update_form_livetv', ['form' => 'Tv Channel']);
-        return redirect()->route('backend.tv-channel.index')->with('success', $message);
+        return redirect()->route('backend.tv-channel.edit', $id)->with('success', $message);
     }
 
     private function supportsLiveChatSetting(): bool
@@ -385,6 +387,23 @@ class LiveTvChannelController extends Controller
         $data['vod_channel_button_name'] = $data['vod_channel_id']
             ? trim((string) ($data['vod_channel_button_name'] ?? '')) ?: 'View On Demand'
             : null;
+    }
+
+    private function normalizeChatSettings(array &$data, Request $request): void
+    {
+        $data['chat_title'] = trim((string) $request->input('chat_title', '')) ?: 'Live Chat';
+        $data['chat_ads_enabled'] = $request->boolean('chat_ads_enabled');
+        $data['chat_ad_rotation_seconds'] = 3;
+        $data['chat_ad_banners'] = collect($request->input('chat_ad_banners', []))
+            ->map(fn ($banner) => [
+                'image_url' => trim((string) ($banner['image_url'] ?? '')),
+                'link_url' => trim((string) ($banner['link_url'] ?? '')) ?: null,
+                'label' => trim((string) ($banner['label'] ?? '')) ?: null,
+            ])
+            ->filter(fn ($banner) => $banner['image_url'] !== '')
+            ->take(10)
+            ->values()
+            ->all();
     }
 
     /**

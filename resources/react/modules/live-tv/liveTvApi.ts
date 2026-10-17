@@ -26,11 +26,21 @@ export type LiveTvChatMessage = {
 
 export type LiveTvChatState = {
   enabled: boolean
+  title?: string | null
+  ads_enabled?: boolean
+  ad_rotation_seconds?: number
+  ad_banners?: LiveTvChatAdBanner[]
   guest_name?: string | null
   identity_type?: string | null
   can_change_name?: boolean
   can_post_links?: boolean
   messages: LiveTvChatMessage[]
+}
+
+export type LiveTvChatAdBanner = {
+  image_url: string
+  link_url?: string | null
+  label?: string | null
 }
 
 export type LiveTvScheduleItem = {

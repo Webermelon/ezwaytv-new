@@ -27,6 +27,10 @@ class LiveTvChatController extends Controller
                 'identity_type' => 'guest',
                 'can_change_name' => true,
                 'can_post_links' => false,
+                'title' => $channel->chat_title ?: 'Live Chat',
+                'ads_enabled' => false,
+                'ad_rotation_seconds' => 3,
+                'ad_banners' => [],
                 'messages' => [],
             ]);
         }
@@ -39,6 +43,10 @@ class LiveTvChatController extends Controller
             'identity_type' => $identity['type'],
             'can_change_name' => $identity['type'] === 'guest',
             'can_post_links' => $this->canPostLinks(),
+            'title' => $channel->chat_title ?: 'Live Chat',
+            'ads_enabled' => (bool) $channel->chat_ads_enabled,
+            'ad_rotation_seconds' => 3,
+            'ad_banners' => $channel->chat_ads_enabled ? ($channel->chat_ad_banners ?? []) : [],
             'messages' => $this->formatMessages($channel),
         ]);
 

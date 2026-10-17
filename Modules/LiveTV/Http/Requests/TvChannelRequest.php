@@ -29,6 +29,12 @@ class TvChannelRequest extends FormRequest
             'enable_live_chat' => 'nullable|boolean',
             'vod_channel_id' => ['nullable', 'exists:author_channels,id'],
             'vod_channel_button_name' => ['nullable', 'string', 'max:80'],
+            'chat_title' => ['nullable', 'string', 'max:80'],
+            'chat_ad_rotation_seconds' => ['nullable', 'integer', 'min:3', 'max:60'],
+            'chat_ad_banners' => ['nullable', 'array', 'max:10'],
+            'chat_ad_banners.*.image_url' => ['nullable', 'url', 'max:2048'],
+            'chat_ad_banners.*.link_url' => ['nullable', 'url', 'max:2048'],
+            'chat_ad_banners.*.label' => ['nullable', 'string', 'max:100'],
         ];
 
         // Validate server_url when type is "t_url" and stream_type is selected (any stream type: URL, HLS, YouTube, Vimeo, x265, etc.)

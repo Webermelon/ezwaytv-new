@@ -26,6 +26,7 @@ import {
   updateLiveTvWatchTime,
   type LiveTvGuideChannel,
   type LiveTvScheduleItem,
+  type LiveTvChatAdBanner,
   type LiveTvChatState,
 } from './liveTvApi'
 
@@ -1586,11 +1587,22 @@ function LiveTvChat({
   }, [showEmojiPicker])
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-[#0a0a0a] p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="flex h-full min-h-0 flex-col bg-[#0a0a0a]">
+      {chat?.ads_enabled && chat.ad_banners?.length ? (
+        <LiveTvChatAdSlider
+          banners={chat.ad_banners}
+        />
+      ) : null}
+
+      <div className="flex items-center justify-between gap-3 px-5 pb-4 pt-5">
         <div className="flex items-center gap-2 text-sm font-bold">
           <MessageCircle className="h-4 w-4 text-primary" />
-          Live Chat
+          <span>{chat?.title || 'Live Chat'}</span>
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+            aria-label="Live"
+            title="Live"
+          />
         </div>
         <div className="flex items-center gap-2 text-xs text-white/48">
           {chat?.can_post_links ? <span className="rounded-sm bg-[#d4a843]/14 px-2 py-1 font-semibold text-[#f0c24d]">Links enabled</span> : null}
@@ -1598,7 +1610,7 @@ function LiveTvChat({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5">
         {chat?.messages?.length ? chat.messages.map((item) => (
           <article key={item.id} className="rounded-md bg-black/32 p-3">
             <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -1616,7 +1628,7 @@ function LiveTvChat({
 
       {canUseLiveChat ? (
         <form
-          className="relative mt-4 flex gap-2"
+          className="relative mx-5 mb-5 mt-4 flex gap-2"
           onSubmit={(event) => {
             event.preventDefault()
             const nextMessage = message.trim()
@@ -1678,7 +1690,7 @@ function LiveTvChat({
           </Button>
         </form>
       ) : (
-        <div className="mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-5 mb-5 mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-white">You need to login for live chat.</p>
           <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
             <a href={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`}>Login</a>
@@ -1686,6 +1698,74 @@ function LiveTvChat({
         </div>
       )}
     </section>
+  )
+}
+
+function LiveTvChatAdSlider({
+  banners,
+}: {
+  banners: LiveTvChatAdBanner[]
+}) {
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [banners])
+
+  useEffect(() => {
+    if (banners.length < 2) return
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % banners.length)
+    }, 3000)
+
+    return () => window.clearInterval(timer)
+  }, [banners.length])
+
+  const banner = banners[activeIndex]
+  if (!banner?.image_url) return null
+
+  const image = (
+    <div className="relative h-full w-full overflow-hidden bg-black">
+      <img
+        src={banner.image_url}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-xl"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-black/20" />
+      <img
+        src={banner.image_url}
+        alt={banner.label || 'Advertisement'}
+        className="relative z-10 h-full w-full object-contain"
+        loading="lazy"
+      />
+    </div>
+  )
+
+  return (
+    <div className="relative aspect-[16/5] min-h-[82px] shrink-0 overflow-hidden bg-black">
+      {banner.link_url ? (
+        <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
+          {image}
+        </a>
+      ) : image}
+      <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white/70">Ad</span>
+      {banners.length > 1 ? (
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+          {banners.map((item, index) => (
+            <button
+              key={`${item.image_url}-${index}`}
+              type="button"
+              aria-label={`Show advertisement ${index + 1}`}
+              onClick={() => setActiveIndex(index)}
+              className={index === activeIndex ? 'h-1.5 w-5 rounded-full bg-[#d4a843]' : 'h-1.5 w-1.5 rounded-full bg-white/50 hover:bg-white/80'}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

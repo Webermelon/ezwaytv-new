@@ -32,12 +32,15 @@ class LiveTvChannel extends BaseModel
      */
     protected $table = 'live_tv_channel';
     protected $fillable = [
-        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url','enable_live_chat','channel_number','vod_channel_id','vod_channel_button_name'
+        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url','enable_live_chat','chat_title','chat_ads_enabled','chat_ad_rotation_seconds','chat_ad_banners','channel_number','vod_channel_id','vod_channel_button_name'
     ];
 
     protected $casts = [
         'status' => 'boolean',
         'enable_live_chat' => 'boolean',
+        'chat_ads_enabled' => 'boolean',
+        'chat_ad_rotation_seconds' => 'integer',
+        'chat_ad_banners' => 'array',
     ];
     // protected $appends = ['poster_url'];
 

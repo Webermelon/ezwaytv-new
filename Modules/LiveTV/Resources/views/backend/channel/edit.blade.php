@@ -251,17 +251,6 @@
                                             @enderror
                                         </div>
                                         <div class="col-md-6 col-xl-3">
-                                            {{ html()->label('Live Chat', 'enable_live_chat')->class('form-label') }}
-                                            <div class="d-flex justify-content-between align-items-center form-control">
-                                                {{ html()->label('Enable live chat', 'enable_live_chat')->class('form-label mb-0 text-body') }}
-                                                <div class="form-check form-switch">
-                                                    {{ html()->hidden('enable_live_chat', 0) }}
-                                                    {{ html()->checkbox('enable_live_chat', old('enable_live_chat', $data->enable_live_chat), 1)->class('form-check-input')->id('enable_live_chat') }}
-                                                </div>
-                                            </div>
-                                            <small class="text-muted d-block mt-1">Messages stay attached if chat is later disabled.</small>
-                                        </div>
-                                        <div class="col-md-6 col-xl-3">
                                             {{ html()->label('Show Views on Player Page', 'show_player_views')->class('form-label') }}
                                             <div class="d-flex justify-content-between align-items-center form-control">
                                                 {{ html()->label('Show view count', 'show_player_views')->class('form-label mb-0 text-body') }}
@@ -291,6 +280,7 @@
                                                 <span class="text-danger">{{ $message }}</span>
                                             @enderror
                                         </div>
+                                        @include('livetv::backend.channel._chat-settings', ['data' => $data])
                                         <div class="col-md-6">
                                             {{ html()->label('Button Name', 'vod_channel_button_name')->class('form-label') }}
                                             {{ html()->text('vod_channel_button_name', old('vod_channel_button_name', $data->vod_channel_button_name))->placeholder('View On Demand')->class('form-control')->id('vod_channel_button_name') }}
