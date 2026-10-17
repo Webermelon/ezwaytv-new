@@ -293,17 +293,31 @@ function LiveTvDetailPage({
   const category = channel?.details?.category
   const stream = resolveLiveTvStream(channel)
   const isSubscriptionLocked = isPremiumMediaLocked(channel)
-  const vodChannel = channel?.details?.vod_channel
-  const vodChannelUrl = vodChannel?.url || (vodChannel?.username ? `/on-demand/${vodChannel.username}` : null)
-  const vodChannelButtonName = vodChannel?.button_name || vodChannel?.name || 'View On Demand'
   const [playId, setPlayId] = useState<number | null>(null)
   const [playerStarted, setPlayerStarted] = useState(false)
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const playIdRef = useRef<number | null>(null)
+  const resolvedVodActionRef = useRef<{ channelId: string | number; url: string; label: string } | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | number | null>(null)
   const channelId = channel?.id
+  const vodChannel = channel?.details?.vod_channel
+  const currentVodChannelUrl = vodChannel?.url || (vodChannel?.username ? `/on-demand/${vodChannel.username}` : null)
+
+  if (channelId != null && currentVodChannelUrl) {
+    resolvedVodActionRef.current = {
+      channelId,
+      url: currentVodChannelUrl,
+      label: vodChannel?.button_name || vodChannel?.name || 'View On Demand',
+    }
+  }
+
+  const cachedVodAction = resolvedVodActionRef.current?.channelId === channelId ? resolvedVodActionRef.current : null
+  const vodChannelUrl = currentVodChannelUrl ?? cachedVodAction?.url ?? null
+  const vodChannelButtonName = currentVodChannelUrl
+    ? vodChannel?.button_name || vodChannel?.name || 'View On Demand'
+    : cachedVodAction?.label || 'View On Demand'
   const statsQuery = useQuery({
     queryKey: ['content-stats', 'livetv', channelId],
     queryFn: () => loadContentStats('livetv', channelId as string | number),
@@ -463,22 +477,7 @@ function LiveTvDetailPage({
               </div>
 
               <div className="relative z-[80] grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
-                {isSubscriptionLocked ? (
-                  <PremiumActionButton />
-                ) : !playerStarted ? (
-                  <Button
-                    type="button"
-                    className="h-8 w-full min-w-0 rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
-                    disabled={!stream && !loading}
-                    onClick={() => {
-                      setPlayerStarted(true)
-                      setPlayTrigger((value) => value + 1)
-                    }}
-                  >
-                    <Play className="h-3.5 w-3.5 fill-current" />
-                    Watch Live
-                  </Button>
-                ) : null}
+                {isSubscriptionLocked ? <PremiumActionButton /> : null}
                 {vodChannelUrl ? (
                   <Button asChild className="h-8 w-full min-w-0 rounded-md border border-[#d4a843] bg-[#d4a843] px-2.5 text-sm text-black hover:bg-[#e5bd58] focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
                     <a href={vodChannelUrl}>
@@ -493,6 +492,12 @@ function LiveTvDetailPage({
                     All Channels
                   </a>
                 </Button>
+                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-2.5 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                  <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                    <UsersRound className="h-3.5 w-3.5" />
+                    Connect
+                  </a>
+                </Button>
                 <LiveTvShareMenu
                   title={title}
                   copied={copiedShareUrl}
@@ -505,12 +510,6 @@ function LiveTvDetailPage({
                     }).catch(() => undefined)
                   }}
                 />
-                <Button asChild variant="secondary" className="h-8 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-2.5 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
-                  <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
-                    <UsersRound className="h-3.5 w-3.5" />
-                    Connect
-                  </a>
-                </Button>
               </div>
             </div>
           </div>
