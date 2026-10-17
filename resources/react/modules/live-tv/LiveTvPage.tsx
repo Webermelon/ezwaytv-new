@@ -1608,17 +1608,20 @@ function LiveTvChat({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pt-3 sm:px-5 lg:pt-0">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3">
         {chat?.messages?.length ? chat.messages.map((item) => (
-          <article key={item.id} className="rounded-md bg-black/32 p-3">
-            <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-white/78">{item.guest_name ?? 'Guest'}</span>
-              <span className="text-white/36">{item.time}</span>
+          <article key={item.id} className="flex gap-2.5">
+            <LiveChatAvatar name={item.guest_name ?? 'Guest'} />
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex items-baseline gap-2 text-xs leading-none">
+                <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
+                <span className="text-[10px] text-white/38">{item.time}</span>
+              </div>
+              <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p>
             </div>
-            <p className="break-words text-sm leading-5 text-white/66"><LiveChatMessageText message={item.message} /></p>
           </article>
         )) : (
-          <p className="rounded-md bg-black/32 p-4 text-sm text-white/50">
+          <p className="py-2 text-sm text-white/50">
             No live chat messages yet.
           </p>
         )}
@@ -1767,6 +1770,12 @@ function LiveTvChatAdSlider({
 }
 
 const LIVE_CHAT_EMOJIS = ['😀', '😂', '😍', '🔥', '👏', '❤️', '👍', '🎉', '😮', '😢', '🙏', '📺', '🎬', '⭐', '💯', '🚀', '✅', '🙌']
+
+function LiveChatAvatar({ name }: { name: string }) {
+  const initials = name.trim().split(/\s+/).map((part) => part.charAt(0)).join('').slice(0, 2).toUpperCase() || '?'
+
+  return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d4a843]/55 bg-[#161208] text-[10px] font-black text-[#f0c24d]" aria-hidden="true">{initials}</span>
+}
 
 function LiveChatMessageText({ message }: { message: string }) {
   const linkPattern = /((?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/giu
