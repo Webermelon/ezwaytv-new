@@ -1627,11 +1627,11 @@ function LiveTvChat({
 
       {canUseLiveChat ? (
         <form
-          className="relative mx-5 mb-5 mt-4 flex gap-2"
+          className="relative mx-5 mb-5 mt-4 flex items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault()
             const nextMessage = message.trim()
-            if (!nextMessage) return
+            if (!nextMessage || sendMessageMutation.isPending) return
 
             sendMessageMutation.mutate(nextMessage)
           }}
@@ -1659,7 +1659,7 @@ function LiveTvChat({
               type="button"
               size="icon"
               variant="ghost"
-              className="h-8 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
+              className="h-11 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
               onClick={() => setShowEmojiPicker((open) => !open)}
               aria-label="Add emoji"
               title="Add emoji"
@@ -1674,10 +1674,7 @@ function LiveTvChat({
               if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
 
               event.preventDefault()
-              const nextMessage = message.trim()
-              if (!nextMessage || sendMessageMutation.isPending) return
-
-              sendMessageMutation.mutate(nextMessage)
+              event.currentTarget.form?.requestSubmit()
             }}
             placeholder="Message live chat"
             rows={1}
