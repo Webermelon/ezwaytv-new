@@ -1740,15 +1740,17 @@ function LiveTvChatAdSlider({
   )
 
   return (
-    <div className="relative aspect-[16/5] min-h-[82px] shrink-0 overflow-hidden border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
-      {banner.link_url ? (
-        <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
-          {image}
-        </a>
-      ) : image}
-      <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white/70">Ad</span>
+    <div className="shrink-0 border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
+      <div className="relative aspect-[16/5] min-h-[82px] overflow-hidden">
+        {banner.link_url ? (
+          <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
+            {image}
+          </a>
+        ) : image}
+        <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white/70">Ad</span>
+      </div>
       {banners.length > 1 ? (
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+        <div className="mt-2 flex h-5 justify-center gap-1.5">
           {banners.map((item, index) => (
             <button
               key={`${item.image_url}-${index}`}
