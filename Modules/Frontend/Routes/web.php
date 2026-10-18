@@ -52,8 +52,8 @@ Route::get('/auth/check-username', [OTPController::class, 'checkSpaUsername'])->
 Route::get('/auth/check-invite-code', [OTPController::class, 'checkSpaInviteCode'])->middleware('throttle:30,1')->name('auth.check-invite-code');
 Route::get('/auth/check-email', [OTPController::class, 'checkSpaEmail'])->middleware('throttle:30,1')->name('auth.check-email');
 Route::post('/auth/spa-register', [OTPController::class, 'registerSpa'])->middleware('throttle:5,1')->name('auth.spa-register');
-Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:5,1')->name('auth.spa-otp.send');
-Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:10,1')->name('auth.spa-otp.verify');
+Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:tv-otp-send')->name('auth.spa-otp.send');
+Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:tv-otp-verify')->name('auth.spa-otp.verify');
 Route::post('/auth/otp-login-store', [OTPController::class, 'otpLoginStore'])->name('auth.otp-login-store');
 Route::get('/auth/check-user-exists', [OTPController::class, 'checkUserExists'])->name('check.user.exists');
 Route::post('/auth/check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('check.mobile.exists');

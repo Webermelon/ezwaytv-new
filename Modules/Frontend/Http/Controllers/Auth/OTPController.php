@@ -24,10 +24,9 @@ class OTPController extends Controller
 {
     use LoginTrait;
 
-    private const OTP_SEND_MAX_ATTEMPTS = 5;
-    private const OTP_VERIFY_MAX_ATTEMPTS = 5;
+    private const OTP_VERIFY_MAX_ATTEMPTS = 8;
     private const OTP_ATTEMPT_WINDOW_SECONDS = 900;
-    private const OTP_BLOCK_SECONDS = 900;
+    private const OTP_BLOCK_SECONDS = 300;
 
     public function otpLogin()
     {
@@ -386,15 +385,7 @@ class OTPController extends Controller
 
         $email = $this->normalizeEmail($validated['email']);
 
-        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'verify')) {
-            return $response;
-        }
-
         if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'send')) {
-            return $response;
-        }
-
-        if ($response = $this->recordOtpAttempt($request, $email, 'send', self::OTP_SEND_MAX_ATTEMPTS)) {
             return $response;
         }
 
@@ -760,7 +751,6 @@ class OTPController extends Controller
 
     private function otpBlockedResponseIfNeeded(Request $request, string $email, string $action)
     {
-        return 0;
         $remainingSeconds = $this->otpBlockRemainingSeconds($request, $email, $action);
 
         return $remainingSeconds > 0 ? $this->otpBlockedResponse($remainingSeconds) : null;
@@ -815,16 +805,14 @@ class OTPController extends Controller
     private function otpAttemptKeys(Request $request, string $email, string $action): array
     {
         return [
-            'tv_otp_attempts:'.$action.':email:'.sha1($this->normalizeEmail($email)),
-            'tv_otp_attempts:'.$action.':ip:'.sha1((string) $request->ip()),
+            'tv_otp_attempts:'.$action.':identity:'.sha1($this->normalizeEmail($email).'|'.$request->ip()),
         ];
     }
 
     private function otpBlockKeys(Request $request, string $email, string $action): array
     {
         return [
-            'tv_otp_block:'.$action.':email:'.sha1($this->normalizeEmail($email)),
-            'tv_otp_block:'.$action.':ip:'.sha1((string) $request->ip()),
+            'tv_otp_block:'.$action.':identity:'.sha1($this->normalizeEmail($email).'|'.$request->ip()),
         ];
     }
 
