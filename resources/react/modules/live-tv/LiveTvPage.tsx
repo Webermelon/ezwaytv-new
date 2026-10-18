@@ -501,6 +501,7 @@ function LiveTvDetailPage({
                 <LiveTvShareMenu
                   title={title}
                   copied={copiedShareUrl}
+                  embedCode={liveTvIframeEmbedCode(stream?.url)}
                   wrapperClassName="w-full sm:w-auto"
                   buttonClassName="h-10 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-4 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
                   onCopy={() => {
@@ -594,17 +595,20 @@ function LiveTvNotFound({ fallbackKey }: { fallbackKey: string }) {
 function LiveTvShareMenu({
   title,
   copied,
+  embedCode,
   onCopy,
   buttonClassName = 'bg-white/14 text-white hover:bg-white/24',
   wrapperClassName,
 }: {
   title: string
   copied: boolean
+  embedCode?: string | null
   onCopy: () => void
   buttonClassName?: string
   wrapperClassName?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [copiedEmbed, setCopiedEmbed] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentLiveTvShareUrl()
   const shareText = `Watch ${title} live on EZWay TV`
@@ -678,7 +682,7 @@ function LiveTvShareMenu({
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(21rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
@@ -719,6 +723,27 @@ function LiveTvShareMenu({
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
         </div>
+        {embedCode ? (
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold text-white">Embed live channel</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(embedCode).then(() => {
+                    setCopiedEmbed(true)
+                    window.setTimeout(() => setCopiedEmbed(false), 1800)
+                  }).catch(() => undefined)
+                }}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-2.5 text-xs font-bold text-black transition hover:bg-white/85"
+              >
+                {copiedEmbed ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedEmbed ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <textarea readOnly value={embedCode} aria-label="Live channel iframe embed code" className="h-20 w-full resize-none rounded-md border border-white/10 bg-black/45 p-2 text-[11px] leading-4 text-white/68 outline-none" />
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -1960,6 +1985,27 @@ function resolveLiveTvStream(channel?: MediaItem) {
   if (!url || stream?.url_type === 'Embedded') return null
 
   return { url, type: stream?.url_type ?? 'HLS' }
+}
+
+function liveTvIframeEmbedCode(streamUrl?: string | null) {
+  if (!streamUrl) return null
+
+  try {
+    const url = new URL(streamUrl)
+    if (url.hostname.toLowerCase() !== 'stream.ezway.tv') return null
+
+    const pathParts = url.pathname.split('/').filter(Boolean)
+    const hlsIndex = pathParts.findIndex((part) => part.toLowerCase() === 'hls')
+    const streamPart = hlsIndex >= 0 ? pathParts[hlsIndex + 1] : null
+    const streamId = streamPart?.replace(/\.m3u8$/i, '')
+    if (!streamId) return null
+
+    const playerUrl = `https://stream.ezway.tv/player/${encodeURIComponent(streamId)}`
+
+    return `<iframe src="${playerUrl}" style="width: 100%; aspect-ratio: 16/9; min-height: 400px; border: none;" allowfullscreen allow="autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>`
+  } catch {
+    return null
+  }
 }
 
 function isPremiumMediaLocked(item?: MediaItem | null) {
