@@ -150,9 +150,10 @@ class LiveTvChatController extends Controller
             'live_tv_channel_id' => $channel->id,
             'user_id' => $identity['type'] === 'user' ? auth()->id() : null,
             'guest_name' => $displayName,
+            'avatar_url' => $identity['avatar_url'] ?? null,
             'message' => $message,
             'ip_address' => $request->ip(),
-        ]);
+        ])->load('user:id,file_url');
 
         return response()->json([
             'message' => $this->transformMessage($chatMessage),
@@ -179,6 +180,7 @@ class LiveTvChatController extends Controller
     {
         return LiveTvChatMessage::query()
             ->where('live_tv_channel_id', $channel->id)
+            ->with('user:id,file_url')
             ->latest('id')
             ->take(50)
             ->get()
@@ -193,6 +195,7 @@ class LiveTvChatController extends Controller
         return [
             'id' => $message->id,
             'guest_name' => $message->guest_name,
+            'avatar_url' => $message->avatar_url ?: $this->accountAvatarUrl($message->user),
             'message' => $message->message,
             'time' => optional($message->created_at)->diffForHumans(),
             'created_at' => optional($message->created_at)->toIso8601String(),
@@ -210,11 +213,13 @@ class LiveTvChatController extends Controller
     private function resolveIdentity(Request $request, bool $createGuestIfMissing = false): array
     {
         if (auth()->check()) {
+            $user = auth()->user();
             $identity = [
                 'type' => 'user',
-                'display_name' => trim((string) auth()->user()->full_name) ?: ('User ' . auth()->id()),
-                'email' => auth()->user()->email,
+                'display_name' => trim((string) $user->full_name) ?: ('User ' . auth()->id()),
+                'email' => $user->email,
                 'user_id' => auth()->id(),
+                'avatar_url' => $this->activeProfileAvatarUrl($user),
             ];
 
             session([self::SESSION_KEY => $identity['display_name']]);
@@ -236,6 +241,7 @@ class LiveTvChatController extends Controller
                 'display_name' => null,
                 'email' => null,
                 'user_id' => null,
+                'avatar_url' => null,
             ], null];
         }
 
@@ -256,6 +262,7 @@ class LiveTvChatController extends Controller
             'display_name' => $name,
             'email' => ($slug ?: 'anonymous') . '@guest.ezway.tv',
             'user_id' => null,
+            'avatar_url' => null,
         ];
     }
 
@@ -280,7 +287,44 @@ class LiveTvChatController extends Controller
             'display_name' => $displayName,
             'email' => $decoded['email'] ?? null,
             'user_id' => null,
+            'avatar_url' => null,
         ];
+    }
+
+    private function activeProfileAvatarUrl($user): ?string
+    {
+        $profile = getCurrentProfileSession();
+        if ($profile && (int) ($profile->user_id ?? 0) === (int) $user->id) {
+            $avatar = trim((string) ($profile->avatar ?? ''));
+            if ($avatar !== '') {
+                return $this->resolveAvatarUrl($avatar);
+            }
+        }
+
+        return $this->accountAvatarUrl($user);
+    }
+
+    private function accountAvatarUrl($user): ?string
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $avatar = trim((string) ($user->file_url ?? ''));
+        if ($avatar === '') {
+            $avatar = trim((string) $user->getFirstMediaUrl('profile_image'));
+        }
+
+        return $avatar !== '' ? $this->resolveAvatarUrl($avatar) : null;
+    }
+
+    private function resolveAvatarUrl(string $avatar): string
+    {
+        if (filter_var($avatar, FILTER_VALIDATE_URL)) {
+            return $avatar;
+        }
+
+        return setBaseUrlWithFileName($avatar, 'image', 'users');
     }
 
     private function encodeIdentityCookie(array $identity): string

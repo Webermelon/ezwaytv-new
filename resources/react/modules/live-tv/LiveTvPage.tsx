@@ -1655,7 +1655,7 @@ function LiveTvChat({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3">
         {chat?.messages?.length ? chat.messages.map((item) => (
           <article key={item.id} className="flex gap-2.5">
-            <LiveChatAvatar name={item.guest_name ?? 'Guest'} />
+            <LiveChatAvatar name={item.guest_name ?? 'Guest'} avatarUrl={item.avatar_url} />
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-baseline gap-2 text-xs leading-none">
                 <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
@@ -1817,8 +1817,17 @@ function LiveTvChatAdSlider({
 
 const LIVE_CHAT_EMOJIS = ['😀', '😂', '😍', '🔥', '👏', '❤️', '👍', '🎉', '😮', '😢', '🙏', '📺', '🎬', '⭐', '💯', '🚀', '✅', '🙌']
 
-function LiveChatAvatar({ name }: { name: string }) {
+function LiveChatAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
   const initials = name.trim().split(/\s+/).map((part) => part.charAt(0)).join('').slice(0, 2).toUpperCase() || '?'
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (avatarUrl && !imageFailed) {
+    return (
+      <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#d4a843]/55 bg-[#161208]" aria-hidden="true">
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" onError={() => setImageFailed(true)} />
+      </span>
+    )
+  }
 
   return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d4a843]/55 bg-[#161208] text-[10px] font-black text-[#f0c24d]" aria-hidden="true">{initials}</span>
 }

@@ -12,6 +12,7 @@ class LiveTvChatMessage extends Model
         'live_tv_channel_id',
         'user_id',
         'guest_name',
+        'avatar_url',
         'message',
         'ip_address',
     ];
@@ -19,5 +20,10 @@ class LiveTvChatMessage extends Model
     public function channel()
     {
         return $this->belongsTo(LiveTvChannel::class, 'live_tv_channel_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 }
