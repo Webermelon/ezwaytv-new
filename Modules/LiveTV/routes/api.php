@@ -17,8 +17,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
 Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('livetv-details', [LiveTVsController::class, 'liveTvDetailsV3']);
+    Route::get('livetv/{channel}/chat-ads', [LiveTVsController::class, 'liveTvChatAds']);
     Route::get('channel-list', [LiveTVsController::class, 'channelListV3']);
 });
 ?>
-
 

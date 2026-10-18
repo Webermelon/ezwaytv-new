@@ -43,6 +43,13 @@ export type LiveTvChatAdBanner = {
   label?: string | null
 }
 
+export type LiveTvChatAdsState = {
+  channel_id: number | string
+  enabled: boolean
+  rotation_seconds?: number | null
+  banners: LiveTvChatAdBanner[]
+}
+
 export type LiveTvScheduleItem = {
   id?: number | string
   title?: string | null
@@ -106,6 +113,12 @@ export async function updateLiveTvWatchTime(playId: number, watchSeconds: number
 
 export async function loadLiveTvChat(channelId: string | number) {
   return api.get<LiveTvChatState>(`/livetv-chat/${channelId}/messages`)
+}
+
+export async function loadLiveTvChatAds(channel: string | number) {
+  const response = await api.get<ApiEnvelope<LiveTvChatAdsState>>(`/api/v3/livetv/${encodeURIComponent(String(channel))}/chat-ads`)
+
+  return response.data ?? null
 }
 
 export async function sendLiveTvChatMessage(channelId: string | number, message: string) {

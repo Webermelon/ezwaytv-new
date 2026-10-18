@@ -16,6 +16,7 @@ import { loadContentStats, type ContentStats, type VideoAd } from '@/modules/vid
 import {
   loadLiveTvAds,
   loadLiveTvChat,
+  loadLiveTvChatAds,
   loadLiveTvDashboard,
   loadLiveTvDetail,
   loadLiveTvGuideChannel,
@@ -27,6 +28,7 @@ import {
   type LiveTvGuideChannel,
   type LiveTvScheduleItem,
   type LiveTvChatAdBanner,
+  type LiveTvChatAdsState,
   type LiveTvChatState,
 } from './liveTvApi'
 
@@ -337,8 +339,15 @@ function LiveTvDetailPage({
     enabled: Boolean(channelId),
     staleTime: 10_000,
   })
+  const chatAdsLookup = channel?.slug ?? channelId
+  const chatAdsQuery = useQuery({
+    queryKey: ['livetv-chat-ads', chatAdsLookup],
+    queryFn: () => loadLiveTvChatAds(chatAdsLookup as string | number),
+    enabled: Boolean(chatAdsLookup) && Boolean(chatQuery.data?.enabled),
+    staleTime: 60_000,
+  })
   const detailSchedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
-  const scheduleEnabled = channel?.schedule_enabled !== false && channel?.schedule_enabled !== 0
+  const scheduleEnabled = false
   const scheduleQuery = useQuery({
     queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
     queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),
@@ -347,6 +356,7 @@ function LiveTvDetailPage({
   })
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
+  const chatAds = chatAdsQuery.data ?? null
   const showPlayerChat = Boolean(channel?.id && chat?.enabled)
   const schedule = scheduleQuery.data ?? []
   const displayedSchedule = schedule.length > 0 ? schedule : detailSchedule
@@ -451,7 +461,7 @@ function LiveTvDetailPage({
             </div>
             {showPlayerChat ? (
               <aside className="h-[520px] border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
-                <LiveTvChat channelId={channelId as string | number} chat={chat} />
+                <LiveTvChat channelId={channelId as string | number} chat={chat} ads={chatAds} />
               </aside>
             ) : null}
           </div>
@@ -1575,9 +1585,11 @@ function TvGuidePendingRows({ count }: { count: number }) {
 function LiveTvChat({
   channelId,
   chat,
+  ads,
 }: {
   channelId: string | number
   chat: LiveTvChatState | null
+  ads: LiveTvChatAdsState | null
 }) {
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -1619,9 +1631,10 @@ function LiveTvChat({
 
   return (
     <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
-      {chat?.ads_enabled && chat.ad_banners?.length ? (
+      {ads?.enabled && ads.banners.length ? (
         <LiveTvChatAdSlider
-          banners={chat.ad_banners}
+          banners={ads.banners}
+          rotationSeconds={ads.rotation_seconds}
         />
       ) : null}
 
@@ -1732,8 +1745,10 @@ function LiveTvChat({
 
 function LiveTvChatAdSlider({
   banners,
+  rotationSeconds,
 }: {
   banners: LiveTvChatAdBanner[]
+  rotationSeconds?: number | null
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -1746,10 +1761,10 @@ function LiveTvChatAdSlider({
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % banners.length)
-    }, 3000)
+    }, Math.max(3, rotationSeconds ?? 3) * 1000)
 
     return () => window.clearInterval(timer)
-  }, [banners.length])
+  }, [banners.length, rotationSeconds])
 
   const banner = banners[activeIndex]
   if (!banner?.image_url) return null
