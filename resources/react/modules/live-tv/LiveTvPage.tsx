@@ -1593,7 +1593,7 @@ function LiveTvChat({
         />
       ) : null}
 
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:border-b-0 lg:bg-transparent lg:pb-4 lg:pt-5">
+      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/12 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:px-5">
         <div className="flex items-center gap-2 text-sm font-bold">
           <MessageCircle className="h-4 w-4 text-primary" />
           <span>{chat?.title || 'Live Chat'}</span>
