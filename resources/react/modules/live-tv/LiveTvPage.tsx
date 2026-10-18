@@ -1639,7 +1639,7 @@ function LiveTvChat({
       ) : null}
 
       <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/12 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:px-5">
-        <div className="flex items-center text-sm font-bold">
+        <div className="flex items-center gap-2 text-sm font-bold">
           <span>{chat?.title || 'Live Chat'}</span>
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
@@ -1655,7 +1655,10 @@ function LiveTvChat({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3">
         {chat?.messages?.length ? chat.messages.map((item) => (
           <article key={item.id} className="flex gap-2.5">
-            <LiveChatAvatar name={item.guest_name ?? 'Guest'} avatarUrl={item.avatar_url} />
+            <LiveChatAvatar
+              name={item.guest_name ?? 'Guest'}
+              avatarUrl={item.avatar_url || (String(item.user_id ?? '') === String(window.ezwayAuth?.id ?? '') ? window.ezwayAuth?.avatar : null)}
+            />
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex items-baseline gap-2 text-xs leading-none">
                 <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>

@@ -18,6 +18,7 @@ export async function loadLiveTvDetail(channelId: number | string) {
 
 export type LiveTvChatMessage = {
   id: number | string
+  user_id?: number | string | null
   guest_name?: string | null
   avatar_url?: string | null
   message: string

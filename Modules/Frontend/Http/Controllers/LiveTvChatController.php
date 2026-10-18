@@ -194,6 +194,7 @@ class LiveTvChatController extends Controller
     {
         return [
             'id' => $message->id,
+            'user_id' => $message->user_id,
             'guest_name' => $message->guest_name,
             'avatar_url' => $message->avatar_url ?: $this->accountAvatarUrl($message->user),
             'message' => $message->message,
