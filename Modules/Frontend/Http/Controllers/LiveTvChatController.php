@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Http;
 use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Models\LiveTvChatMessage;
 
@@ -27,6 +28,8 @@ class LiveTvChatController extends Controller
                 'identity_type' => 'guest',
                 'can_change_name' => true,
                 'can_post_links' => false,
+                'can_send_promotions' => false,
+                'promotion_packages' => [],
                 'title' => $channel->chat_title ?: 'Live Chat',
                 'ads_enabled' => false,
                 'ad_rotation_seconds' => 3,
@@ -37,12 +40,15 @@ class LiveTvChatController extends Controller
 
         [$identity, $cookieValue] = $this->resolveIdentity($request, false);
 
+        $canSendPromotions = $this->canPostLinks();
         $response = response()->json([
             'enabled' => true,
             'guest_name' => $identity['display_name'],
             'identity_type' => $identity['type'],
             'can_change_name' => $identity['type'] === 'guest',
-            'can_post_links' => $this->canPostLinks(),
+            'can_post_links' => $canSendPromotions,
+            'can_send_promotions' => $canSendPromotions,
+            'promotion_packages' => $canSendPromotions ? $this->promotionPackages(false) : [],
             'title' => $channel->chat_title ?: 'Live Chat',
             'ads_enabled' => (bool) $channel->chat_ads_enabled,
             'ad_rotation_seconds' => 3,
@@ -114,15 +120,52 @@ class LiveTvChatController extends Controller
         }
 
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:1000'],
+            'message' => ['nullable', 'string', 'max:1000'],
+            'promotion_package_ids' => ['nullable', 'array', 'max:10'],
+            'promotion_package_ids.*' => ['integer', 'distinct'],
         ]);
 
-        $message = $this->normalizeMessage($validated['message']);
+        $message = $this->normalizeMessage((string) ($validated['message'] ?? ''));
+        $packageIds = collect($validated['promotion_package_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values();
 
-        if ($message === '') {
+        if ($message === '' && $packageIds->isEmpty()) {
             return response()->json([
-                'message' => 'Message cannot be empty.',
+                'message' => 'Add a message or select at least one promotional package.',
             ], 422);
+        }
+
+        if ($packageIds->isNotEmpty() && ! $this->canPostLinks()) {
+            return response()->json([
+                'message' => 'Your account is not allowed to send promotional packages in live chat.',
+            ], 403);
+        }
+
+        $promotionPackages = [];
+        if ($packageIds->isNotEmpty()) {
+            try {
+                $availablePackages = collect($this->promotionPackages(true))->keyBy(fn (array $package) => (int) $package['id']);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return response()->json([
+                    'message' => 'Promotional packages are temporarily unavailable. Please try again.',
+                ], 502);
+            }
+
+            $promotionPackages = $packageIds
+                ->map(fn (int $id) => $availablePackages->get($id))
+                ->filter()
+                ->values()
+                ->all();
+
+            if (count($promotionPackages) !== $packageIds->count()) {
+                return response()->json([
+                    'message' => 'One or more selected promotional packages are no longer available.',
+                ], 422);
+            }
         }
 
         if ($this->containsLink($message) && ! $this->canPostLinks()) {
@@ -152,6 +195,7 @@ class LiveTvChatController extends Controller
             'guest_name' => $displayName,
             'avatar_url' => $identity['avatar_url'] ?? null,
             'message' => $message,
+            'promotion_packages' => $promotionPackages ?: null,
             'ip_address' => $request->ip(),
         ])->load('user:id,file_url');
 
@@ -198,6 +242,7 @@ class LiveTvChatController extends Controller
             'guest_name' => $message->guest_name,
             'avatar_url' => $message->avatar_url ?: $this->accountAvatarUrl($message->user),
             'message' => $message->message,
+            'promotion_packages' => $message->promotion_packages ?? [],
             'time' => optional($message->created_at)->diffForHumans(),
             'created_at' => optional($message->created_at)->toIso8601String(),
         ];
@@ -377,6 +422,84 @@ class LiveTvChatController extends Controller
         );
 
         return in_array($email, $allowedEmails ?: [], true);
+    }
+
+    private function promotionPackages(bool $fresh): array
+    {
+        $loader = function (): array {
+            $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
+            $token = trim((string) config('services.core_api.token'));
+            if ($baseUrl === '' || $token === '') {
+                return [];
+            }
+
+            $client = Http::withToken($token)->acceptJson()->timeout(12);
+            $host = trim((string) config('services.core_api.host'));
+            if ($host !== '') {
+                $client = $client->withHeaders(['Host' => $host]);
+            }
+
+            $response = $client->get($baseUrl.'/api/tv-channel-chat/packages');
+            $response->throw();
+
+            return collect($response->json('data', []))
+                ->filter(fn ($package) => is_array($package) && isset($package['id'], $package['name']))
+                ->map(fn (array $package) => $this->promotionPackageSnapshot($package))
+                ->values()
+                ->all();
+        };
+
+        if ($fresh) {
+            return $loader();
+        }
+
+        try {
+            return Cache::remember('livetv-chat:promotion-packages', now()->addMinute(), $loader);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
+    }
+
+    private function promotionPackageSnapshot(array $package): array
+    {
+        $billing = is_array($package['billing'] ?? null) ? $package['billing'] : [];
+        $categories = is_array($package['categories'] ?? null) ? $package['categories'] : [];
+        $firstCategory = is_array($categories[0] ?? null) ? $categories[0] : [];
+        $packageSlug = mb_substr(trim((string) ($package['slug'] ?? '')), 0, 255);
+        $categorySlug = mb_substr(trim((string) ($firstCategory['slug'] ?? '')), 0, 255);
+
+        return [
+            'id' => (int) $package['id'],
+            'slug' => $packageSlug,
+            'name' => mb_substr(trim((string) $package['name']), 0, 160),
+            'description' => mb_substr(trim(strip_tags((string) ($package['description'] ?? ''))), 0, 500),
+            'image_url' => filter_var($package['image_url'] ?? null, FILTER_VALIDATE_URL) ? $package['image_url'] : null,
+            'category_slug' => $categorySlug ?: null,
+            'checkout_url' => $this->promotionCheckoutUrl($packageSlug, $categorySlug),
+            'billing' => [
+                'price' => isset($billing['price']) && is_numeric($billing['price']) ? (float) $billing['price'] : null,
+                'currency' => mb_substr(trim((string) ($billing['currency'] ?? 'USD')), 0, 8),
+                'period' => mb_substr(trim((string) ($billing['period'] ?? '')), 0, 30) ?: null,
+            ],
+        ];
+    }
+
+    private function promotionCheckoutUrl(string $packageSlug, string $categorySlug): ?string
+    {
+        $baseUrl = rtrim(trim((string) config('services.ezway_promotion.url')), '/');
+        if ($packageSlug === '' || ! filter_var($baseUrl, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        $query = [];
+        if ($categorySlug !== '') {
+            $query['category'] = $categorySlug;
+        }
+        $query['package'] = $packageSlug;
+
+        return $baseUrl.'/core-checkout/?'.http_build_query($query);
     }
 
     private function wordCount(string $value): int

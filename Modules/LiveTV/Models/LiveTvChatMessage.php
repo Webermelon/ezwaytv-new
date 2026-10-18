@@ -14,7 +14,12 @@ class LiveTvChatMessage extends Model
         'guest_name',
         'avatar_url',
         'message',
+        'promotion_packages',
         'ip_address',
+    ];
+
+    protected $casts = [
+        'promotion_packages' => 'array',
     ];
 
     public function channel()
