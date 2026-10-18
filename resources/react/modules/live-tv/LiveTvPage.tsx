@@ -682,13 +682,13 @@ function LiveTvShareMenu({
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(21rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
         ].join(' ')}
       >
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
               key={label}
@@ -700,7 +700,7 @@ function LiveTvShareMenu({
               aria-label={`Share on ${label}`}
               title={label}
               className={[
-                'inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
+                'inline-flex h-11 w-full items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
                 tone,
               ].join(' ')}
             >
@@ -717,7 +717,7 @@ function LiveTvShareMenu({
             }}
             aria-label={copied ? 'Link copied' : 'Copy link'}
             title={copied ? 'Copied' : 'Copy link'}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
+            className="inline-flex h-11 w-full items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
           >
             {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
@@ -741,7 +741,14 @@ function LiveTvShareMenu({
                 {copiedEmbed ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <textarea readOnly value={embedCode} aria-label="Live channel iframe embed code" className="h-20 w-full resize-none rounded-md border border-white/10 bg-black/45 p-2 text-[11px] leading-4 text-white/68 outline-none" />
+            <textarea
+              readOnly
+              rows={3}
+              value={embedCode}
+              onFocus={(event) => event.currentTarget.select()}
+              aria-label="Live channel iframe embed code"
+              className="w-full resize-none rounded-md border border-white/10 bg-black/45 px-3 py-2 text-xs leading-5 text-white/68 outline-none focus:border-primary/70"
+            />
           </div>
         ) : null}
       </div>
@@ -1619,8 +1626,7 @@ function LiveTvChat({
       ) : null}
 
       <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/12 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:px-5">
-        <div className="flex items-center gap-2 text-sm font-bold">
-          <MessageCircle className="h-4 w-4 text-primary" />
+        <div className="flex items-center text-sm font-bold">
           <span>{chat?.title || 'Live Chat'}</span>
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
