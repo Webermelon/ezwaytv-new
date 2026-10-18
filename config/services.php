@@ -84,6 +84,10 @@ return [
         'checkout_return_path' => env('CORE_CHECKOUT_RETURN_PATH', '/subscription-plan'),
     ],
 
+    'ezway_promotion' => [
+        'url' => env('EZWAY_PROMOTION_URL', 'https://ezwaypromotions.com'),
+    ],
+
     'media_compressor' => [
         'enabled' => env('MEDIA_COMPRESSOR_API_ENABLED', false),
         'url' => env('MEDIA_COMPRESSOR_API_URL', 'https://media-compressor.ezway.io'),

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, Smile, UsersRound, Volume2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Gift, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, Smile, UsersRound, Volume2, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
@@ -30,6 +30,7 @@ import {
   type LiveTvChatAdBanner,
   type LiveTvChatAdsState,
   type LiveTvChatState,
+  type LiveTvPromotionPackage,
 } from './liveTvApi'
 
 type ShareIconProps = {
@@ -1601,11 +1602,21 @@ function LiveTvChat({
 }) {
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showPromotionPicker, setShowPromotionPicker] = useState(false)
+  const [promotionSearch, setPromotionSearch] = useState('')
+  const [selectedPackageIds, setSelectedPackageIds] = useState<Array<string | number>>([])
   const emojiPickerRef = useRef<HTMLDivElement | null>(null)
+  const promotionPickerRef = useRef<HTMLDivElement | null>(null)
   const canUseLiveChat = isAuthenticated()
+  const promotionPackages = chat?.promotion_packages ?? []
+  const selectedPackages = promotionPackages.filter((item) => selectedPackageIds.some((id) => String(id) === String(item.id)))
+  const visiblePromotionPackages = promotionPackages.filter((item) => {
+    const term = promotionSearch.trim().toLowerCase()
+    return !term || `${item.name} ${item.description ?? ''}`.toLowerCase().includes(term)
+  })
   const queryClient = useQueryClient()
   const sendMessageMutation = useMutation({
-    mutationFn: (nextMessage: string) => sendLiveTvChatMessage(channelId, nextMessage),
+    mutationFn: ({ nextMessage, packageIds }: { nextMessage: string; packageIds: Array<string | number> }) => sendLiveTvChatMessage(channelId, nextMessage, packageIds),
     onSuccess: (response) => {
       queryClient.setQueryData<LiveTvChatState | null>(['livetv-chat', channelId], (current) => {
         if (!current) return current
@@ -1613,6 +1624,8 @@ function LiveTvChat({
         return { ...current, messages: [...(current.messages ?? []), response.message] }
       })
       setMessage('')
+      setSelectedPackageIds([])
+      setShowPromotionPicker(false)
     },
   })
 
@@ -1636,6 +1649,27 @@ function LiveTvChat({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [showEmojiPicker])
+
+  useEffect(() => {
+    if (!showPromotionPicker) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!promotionPickerRef.current?.contains(event.target as Node)) {
+        setShowPromotionPicker(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowPromotionPicker(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showPromotionPicker])
 
   return (
     <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
@@ -1684,7 +1718,14 @@ function LiveTvChat({
                 <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
                 <span className="text-[10px] text-white/38">{item.time}</span>
               </div>
-              <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p>
+              {item.message ? <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p> : null}
+              {item.promotion_packages?.length ? (
+                <div className="mt-2 space-y-2">
+                  {item.promotion_packages.map((promotionPackage) => (
+                    <LiveChatPromotionCard key={promotionPackage.id} promotionPackage={promotionPackage} />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </article>
         )) : (
@@ -1696,63 +1737,138 @@ function LiveTvChat({
 
       {canUseLiveChat ? (
         <form
-          className="relative mx-5 mb-5 mt-4 flex items-center gap-2"
+          className="relative mx-5 mb-5 mt-4 flex flex-col gap-2"
           onSubmit={(event) => {
             event.preventDefault()
             const nextMessage = message.trim()
-            if (!nextMessage || sendMessageMutation.isPending) return
+            if ((!nextMessage && selectedPackageIds.length === 0) || sendMessageMutation.isPending) return
 
-            sendMessageMutation.mutate(nextMessage)
+            sendMessageMutation.mutate({ nextMessage, packageIds: selectedPackageIds })
           }}
         >
-          <div ref={emojiPickerRef} className="relative shrink-0">
-            {showEmojiPicker ? (
-              <div className="absolute bottom-16 left-0 z-20 grid w-72 grid-cols-6 gap-2 rounded-md border border-white/12 bg-[#171717] p-3 shadow-2xl shadow-black/70">
-                {LIVE_CHAT_EMOJIS.map((emoji) => (
+          {selectedPackages.length ? (
+            <div className="flex max-w-full gap-2 overflow-x-auto rounded-lg border border-[#d4a843]/20 bg-[#12100b] p-2 [scrollbar-width:thin]">
+              {selectedPackages.map((promotionPackage) => (
+                <div key={promotionPackage.id} className="flex w-44 shrink-0 items-center gap-2 rounded-md border border-[#d4a843]/35 bg-black/50 p-1.5">
+                  <PromotionPackageImage promotionPackage={promotionPackage} className="h-9 w-11" />
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white/85">{promotionPackage.name}</span>
                   <button
-                    key={emoji}
                     type="button"
-                    className="flex h-9 w-9 items-center justify-center rounded text-xl transition hover:bg-white/12"
-                    onClick={() => {
-                      setMessage((current) => `${current}${emoji}`)
-                      setShowEmojiPicker(false)
-                    }}
-                    aria-label={`Add ${emoji}`}
+                    className="rounded p-1 text-white/45 transition hover:bg-white/10 hover:text-white"
+                    aria-label={`Remove ${promotionPackage.name}`}
+                    onClick={() => setSelectedPackageIds((current) => current.filter((id) => String(id) !== String(promotionPackage.id)))}
                   >
-                    {emoji}
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                ))}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-2">
+            <div ref={emojiPickerRef} className="relative shrink-0">
+              {showEmojiPicker ? (
+                <div className="absolute bottom-16 left-0 z-20 grid w-72 grid-cols-6 gap-2 rounded-md border border-white/12 bg-[#171717] p-3 shadow-2xl shadow-black/70">
+                  {LIVE_CHAT_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="flex h-9 w-9 items-center justify-center rounded text-xl transition hover:bg-white/12"
+                      onClick={() => {
+                        setMessage((current) => `${current}${emoji}`)
+                        setShowEmojiPicker(false)
+                      }}
+                      aria-label={`Add ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-11 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
+                onClick={() => setShowEmojiPicker((open) => !open)}
+                aria-label="Add emoji"
+                title="Add emoji"
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+            </div>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+
+                event.preventDefault()
+                event.currentTarget.form?.requestSubmit()
+              }}
+              placeholder="Message live chat"
+              rows={1}
+              style={{ fontSize: '12px', lineHeight: '16px' }}
+              className="h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border border-white/10 bg-black/38 px-3 py-2.5 text-xs leading-4 text-white outline-none placeholder:text-white/40"
+            />
+            {chat?.can_send_promotions ? (
+              <div ref={promotionPickerRef} className="relative shrink-0">
+                {showPromotionPicker ? (
+                  <div className="absolute bottom-14 right-0 z-30 w-[min(22rem,calc(100vw-2.5rem))] rounded-lg border border-[#d4a843]/35 bg-[#151515] p-3 shadow-2xl shadow-black/80">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-white">Choose promotion packages</p>
+                      <button type="button" onClick={() => setShowPromotionPicker(false)} className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close promotion packages">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <label className="flex h-9 items-center gap-2 rounded-md border border-white/12 bg-black/35 px-2.5">
+                      <Search className="h-3.5 w-3.5 text-white/45" />
+                      <input value={promotionSearch} onChange={(event) => setPromotionSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/35" placeholder="Search promotion packages..." />
+                    </label>
+                    <div className="mt-2 max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                      {visiblePromotionPackages.length ? visiblePromotionPackages.map((promotionPackage) => {
+                        const selected = selectedPackageIds.some((id) => String(id) === String(promotionPackage.id))
+                        return (
+                          <div key={promotionPackage.id} className="flex items-center gap-2 rounded-md border border-white/8 bg-black/25 p-2">
+                            <PromotionPackageImage promotionPackage={promotionPackage} className="h-11 w-14" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-white/90">{promotionPackage.name}</p>
+                              <p className="mt-0.5 truncate text-[10px] text-white/45">{promotionPackage.description || formatPromotionPrice(promotionPackage)}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={selected ? 'h-8 border-[#d4a843] bg-[#d4a843] px-3 text-[11px] text-black hover:bg-[#e5bd58]' : 'h-8 border-[#d4a843]/70 bg-transparent px-3 text-[11px] text-[#f0c24d] hover:bg-[#d4a843]/10 hover:text-[#f0c24d]'}
+                              onClick={() => setSelectedPackageIds((current) => selected ? current.filter((id) => String(id) !== String(promotionPackage.id)) : [...current, promotionPackage.id])}
+                            >
+                              {selected ? 'Added' : 'Add'}
+                            </Button>
+                          </div>
+                        )
+                      }) : <p className="py-5 text-center text-xs text-white/45">No promotion packages found.</p>}
+                    </div>
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 gap-1.5 border-[#d4a843]/70 bg-transparent px-3 text-xs font-bold text-[#f0c24d] hover:bg-[#d4a843]/10 hover:text-[#f0c24d]"
+                  onClick={() => {
+                    setShowPromotionPicker((open) => !open)
+                    setShowEmojiPicker(false)
+                  }}
+                  aria-expanded={showPromotionPicker}
+                >
+                  <Gift className="h-4 w-4" />
+                  <span className="hidden xl:inline">Promo</span>
+                </Button>
               </div>
             ) : null}
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-11 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
-              onClick={() => setShowEmojiPicker((open) => !open)}
-              aria-label="Add emoji"
-              title="Add emoji"
-            >
-              <Smile className="h-5 w-5" />
+            <Button type="submit" size="icon" className="h-11 w-12 shrink-0" disabled={sendMessageMutation.isPending || (!message.trim() && selectedPackageIds.length === 0)} aria-label="Send message">
+              <Send className="h-5 w-5" />
             </Button>
           </div>
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
-
-              event.preventDefault()
-              event.currentTarget.form?.requestSubmit()
-            }}
-            placeholder="Message live chat"
-            rows={1}
-            style={{ fontSize: '12px', lineHeight: '16px' }}
-            className="h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border border-white/10 bg-black/38 px-3 py-2.5 text-xs leading-4 text-white outline-none placeholder:text-white/40"
-          />
-          <Button type="submit" size="icon" className="h-11 w-12 shrink-0" disabled={sendMessageMutation.isPending} aria-label="Send message">
-            <Send className="h-5 w-5" />
-          </Button>
+          {sendMessageMutation.isError ? <p className="text-xs text-red-400">{chatMutationError(sendMessageMutation.error)}</p> : null}
         </form>
       ) : (
         <div className="mx-5 mb-5 mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1840,6 +1956,67 @@ function LiveTvChatAdSlider({
       ) : null}
     </div>
   )
+}
+
+function LiveChatPromotionCard({ promotionPackage }: { promotionPackage: LiveTvPromotionPackage }) {
+  const content = (
+    <>
+      <div className="flex gap-2.5">
+        <PromotionPackageImage promotionPackage={promotionPackage} className="h-16 w-20" />
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#d4a843]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f0c24d]">
+            <Gift className="h-2.5 w-2.5" /> Promotion package
+          </span>
+          <p className="mt-1 truncate text-xs font-bold text-white">{promotionPackage.name}</p>
+          {promotionPackage.description ? <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/55">{promotionPackage.description}</p> : null}
+          {formatPromotionPrice(promotionPackage) ? <p className="mt-1 text-[10px] font-bold text-[#f0c24d]">{formatPromotionPrice(promotionPackage)}</p> : null}
+        </div>
+      </div>
+    </>
+  )
+
+  const className = "block overflow-hidden rounded-lg border border-[#d4a843]/40 bg-gradient-to-br from-[#17140d] to-[#0c0c0c] p-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.3)] transition hover:border-[#d4a843]/80 hover:bg-[#1b170e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843]"
+
+  if (promotionPackage.checkout_url) {
+    return <a href={promotionPackage.checkout_url} target="_blank" rel="noopener noreferrer" className={className} aria-label={`Open ${promotionPackage.name}`}>{content}</a>
+  }
+
+  return <div className={className}>{content}</div>
+}
+
+function PromotionPackageImage({ promotionPackage, className }: { promotionPackage: LiveTvPromotionPackage; className: string }) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (promotionPackage.image_url && !imageFailed) {
+    return <img src={promotionPackage.image_url} alt="" className={`${className} shrink-0 rounded-md border border-white/10 object-cover`} onError={() => setImageFailed(true)} />
+  }
+
+  return (
+    <span className={`${className} flex shrink-0 items-center justify-center rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 text-[#f0c24d]`} aria-hidden="true">
+      <Gift className="h-5 w-5" />
+    </span>
+  )
+}
+
+function formatPromotionPrice(promotionPackage: LiveTvPromotionPackage) {
+  const price = promotionPackage.billing?.price
+  if (price == null) return ''
+
+  try {
+    const formatted = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: promotionPackage.billing?.currency || 'USD',
+      maximumFractionDigits: 2,
+    }).format(price)
+    return promotionPackage.billing?.period ? `${formatted} / ${promotionPackage.billing.period}` : formatted
+  } catch {
+    return `${promotionPackage.billing?.currency || 'USD'} ${price}`
+  }
+}
+
+function chatMutationError(error: unknown) {
+  const responseMessage = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof responseMessage === 'string' ? responseMessage : 'Unable to send the message. Please try again.'
 }
 
 const LIVE_CHAT_EMOJIS = ['😀', '😂', '😍', '🔥', '👏', '❤️', '👍', '🎉', '😮', '😢', '🙏', '📺', '🎬', '⭐', '💯', '🚀', '✅', '🙌']

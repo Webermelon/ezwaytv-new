@@ -22,6 +22,7 @@ export type LiveTvChatMessage = {
   guest_name?: string | null
   avatar_url?: string | null
   message: string
+  promotion_packages?: LiveTvPromotionPackage[]
   time?: string | null
   created_at?: string | null
 }
@@ -36,7 +37,24 @@ export type LiveTvChatState = {
   identity_type?: string | null
   can_change_name?: boolean
   can_post_links?: boolean
+  can_send_promotions?: boolean
+  promotion_packages?: LiveTvPromotionPackage[]
   messages: LiveTvChatMessage[]
+}
+
+export type LiveTvPromotionPackage = {
+  id: number | string
+  slug?: string | null
+  name: string
+  description?: string | null
+  image_url?: string | null
+  category_slug?: string | null
+  checkout_url?: string | null
+  billing?: {
+    price?: number | null
+    currency?: string | null
+    period?: string | null
+  } | null
 }
 
 export type LiveTvChatAdBanner = {
@@ -123,8 +141,11 @@ export async function loadLiveTvChatAds(channel: string | number) {
   return response.data ?? null
 }
 
-export async function sendLiveTvChatMessage(channelId: string | number, message: string) {
-  return api.post<{ message: LiveTvChatMessage }>(`/livetv-chat/${channelId}/messages`, { message })
+export async function sendLiveTvChatMessage(channelId: string | number, message: string, promotionPackageIds: Array<string | number> = []) {
+  return api.post<{ message: LiveTvChatMessage }>(`/livetv-chat/${channelId}/messages`, {
+    message,
+    promotion_package_ids: promotionPackageIds,
+  })
 }
 
 export async function loadLiveTvSchedule(channelId: string | number, schedulesUrl?: string | null) {
