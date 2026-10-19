@@ -121,7 +121,7 @@ class LiveTvChatController extends Controller
 
         $validated = $request->validate([
             'message' => ['nullable', 'string', 'max:1000'],
-            'promotion_package_ids' => ['nullable', 'array', 'max:10'],
+            'promotion_package_ids' => ['nullable', 'array', 'max:1'],
             'promotion_package_ids.*' => ['integer', 'distinct'],
         ]);
 

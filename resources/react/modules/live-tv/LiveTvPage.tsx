@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Gift, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, Smile, UsersRound, Volume2, X } from 'lucide-react'
 
@@ -1747,6 +1747,10 @@ function LiveTvChat({
   const [selectedPackageIds, setSelectedPackageIds] = useState<Array<string | number>>([])
   const emojiPickerRef = useRef<HTMLDivElement | null>(null)
   const promotionPickerRef = useRef<HTMLDivElement | null>(null)
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null)
+  const messagesContentRef = useRef<HTMLDivElement | null>(null)
+  const keepMessagesPinnedRef = useRef(true)
+  const previousChatChannelRef = useRef(String(channelId))
   const canUseLiveChat = isAuthenticated()
   const promotionPackages = chat?.promotion_packages ?? []
   const selectedPackages = promotionPackages.filter((item) => selectedPackageIds.some((id) => String(id) === String(item.id)))
@@ -1812,6 +1816,31 @@ function LiveTvChat({
     }
   }, [showPromotionPicker])
 
+  useLayoutEffect(() => {
+    if (previousChatChannelRef.current !== String(channelId)) {
+      previousChatChannelRef.current = String(channelId)
+      keepMessagesPinnedRef.current = true
+    }
+
+    if (keepMessagesPinnedRef.current && messagesViewportRef.current) {
+      messagesViewportRef.current.scrollTop = messagesViewportRef.current.scrollHeight
+    }
+  }, [channelId, chat?.messages?.length])
+
+  useEffect(() => {
+    const content = messagesContentRef.current
+    if (!content || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => {
+      if (keepMessagesPinnedRef.current && messagesViewportRef.current) {
+        messagesViewportRef.current.scrollTop = messagesViewportRef.current.scrollHeight
+      }
+    })
+    observer.observe(content)
+
+    return () => observer.disconnect()
+  }, [channelId])
+
   return (
     <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
       {ads?.enabled && ads.banners.length ? (
@@ -1847,33 +1876,43 @@ function LiveTvChat({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3">
-        {chat?.messages?.length ? chat.messages.map((item) => (
-          <article key={item.id} className="flex gap-2.5">
-            <LiveChatAvatar
-              name={item.guest_name ?? 'Guest'}
-              avatarUrl={item.avatar_url || (String(item.user_id ?? '') === String(window.ezwayAuth?.id ?? '') ? window.ezwayAuth?.avatar : null)}
-            />
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="flex items-baseline gap-2 text-xs leading-none">
-                <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
-                <span className="text-[10px] text-white/38">{item.time}</span>
-              </div>
-              {item.message ? <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p> : null}
-              {item.promotion_packages?.length ? (
-                <div className="mt-2 space-y-2">
-                  {item.promotion_packages.map((promotionPackage) => (
-                    <LiveChatPromotionCard key={promotionPackage.id} promotionPackage={promotionPackage} />
-                  ))}
+      <div
+        ref={messagesViewportRef}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3"
+        onScroll={(event) => {
+          const viewport = event.currentTarget
+          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+          keepMessagesPinnedRef.current = distanceFromBottom <= 64
+        }}
+      >
+        <div ref={messagesContentRef} className="space-y-3">
+          {chat?.messages?.length ? chat.messages.map((item) => (
+            <article key={item.id} className="flex gap-2.5">
+              <LiveChatAvatar
+                name={item.guest_name ?? 'Guest'}
+                avatarUrl={item.avatar_url || (String(item.user_id ?? '') === String(window.ezwayAuth?.id ?? '') ? window.ezwayAuth?.avatar : null)}
+              />
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex items-baseline gap-2 text-xs leading-none">
+                  <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
+                  <span className="text-[10px] text-white/38">{item.time}</span>
                 </div>
-              ) : null}
-            </div>
-          </article>
-        )) : (
-          <p className="py-2 text-sm text-white/50">
-            No live chat messages yet.
-          </p>
-        )}
+                {item.message ? <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p> : null}
+                {item.promotion_packages?.length ? (
+                  <div className="mt-2 space-y-2">
+                    {item.promotion_packages.map((promotionPackage) => (
+                      <LiveChatPromotionCard key={promotionPackage.id} promotionPackage={promotionPackage} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          )) : (
+            <p className="py-2 text-sm text-white/50">
+              No live chat messages yet.
+            </p>
+          )}
+        </div>
       </div>
 
       {canUseLiveChat ? (
@@ -1957,7 +1996,7 @@ function LiveTvChat({
                 {showPromotionPicker ? (
                   <div className="absolute bottom-14 right-0 z-30 w-[min(22rem,calc(100vw-2.5rem))] rounded-lg border border-[#d4a843]/35 bg-[#151515] p-3 shadow-2xl shadow-black/80">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-sm font-bold text-white">Choose promotion packages</p>
+                      <p className="text-sm font-bold text-white">Choose a promotion package</p>
                       <button type="button" onClick={() => setShowPromotionPicker(false)} className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close promotion packages">
                         <X className="h-4 w-4" />
                       </button>
@@ -1980,7 +2019,7 @@ function LiveTvChat({
                               type="button"
                               variant="outline"
                               className={selected ? 'h-8 border-[#d4a843] bg-[#d4a843] px-3 text-[11px] text-black hover:bg-[#e5bd58]' : 'h-8 border-[#d4a843]/70 bg-transparent px-3 text-[11px] text-[#f0c24d] hover:bg-[#d4a843]/10 hover:text-[#f0c24d]'}
-                              onClick={() => setSelectedPackageIds((current) => selected ? current.filter((id) => String(id) !== String(promotionPackage.id)) : [...current, promotionPackage.id])}
+                              onClick={() => setSelectedPackageIds(selected ? [] : [promotionPackage.id])}
                             >
                               {selected ? 'Added' : 'Add'}
                             </Button>

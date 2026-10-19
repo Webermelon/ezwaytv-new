@@ -154,4 +154,11 @@ test('does not allow browser clients to publish messages', async () => {
 test('rejects malformed internal events', async () => {
     const response = await publish('12', { id: 1, message: 123 });
     assert.equal(response.status, 422);
+
+    const tooManyPromotions = await publish('12', {
+        id: 2,
+        message: 'too many packages',
+        promotion_packages: [{ id: 1 }, { id: 2 }],
+    });
+    assert.equal(tooManyPromotions.status, 422);
 });
