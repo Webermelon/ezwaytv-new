@@ -28,6 +28,7 @@ import {
   type LiveTvGuideChannel,
   type LiveTvScheduleItem,
   type LiveTvChatAdBanner,
+  type LiveTvChatMessage,
   type LiveTvChatAdsState,
   type LiveTvChatState,
   type LiveTvPromotionPackage,
@@ -1589,6 +1590,145 @@ function TvGuidePendingRows({ count }: { count: number }) {
   )
 }
 
+function useLiveTvChatSocket(channelId: string | number, enabled: boolean) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!enabled || channelId == null || typeof window.WebSocket === 'undefined') return
+
+    const queryKey = ['livetv-chat', channelId] as const
+    let socket: WebSocket | null = null
+    let reconnectTimer: number | null = null
+    let reconnectAttempt = 0
+    let stopped = false
+
+    const resync = () => {
+      queryClient.invalidateQueries({ queryKey, exact: true })
+    }
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer != null) {
+        window.clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
+    }
+
+    const scheduleReconnect = () => {
+      if (stopped || reconnectTimer != null) return
+
+      const exponentialDelay = Math.min(30_000, 1000 * (2 ** Math.min(reconnectAttempt, 5)))
+      const hiddenPageDelay = document.hidden ? 5000 : 0
+      const delay = Math.max(exponentialDelay + Math.floor(Math.random() * 750), hiddenPageDelay)
+      reconnectAttempt += 1
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null
+        connect()
+      }, delay)
+    }
+
+    const connect = () => {
+      if (stopped) return
+      if (!navigator.onLine) {
+        scheduleReconnect()
+        return
+      }
+      if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return
+
+      const url = new URL('/ws', window.location.origin)
+      url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      url.searchParams.set('channel_id', String(channelId))
+
+      const connection = new WebSocket(url.toString())
+      socket = connection
+
+      connection.addEventListener('open', () => {
+        if (socket !== connection || stopped) return
+        reconnectAttempt = 0
+        resync()
+      })
+
+      connection.addEventListener('message', (event) => {
+        if (socket !== connection || stopped || typeof event.data !== 'string') return
+
+        let payload: unknown
+        try {
+          payload = JSON.parse(event.data)
+        } catch {
+          return
+        }
+
+        if (!isLiveTvChatSocketMessage(payload, channelId)) return
+
+        queryClient.setQueryData<LiveTvChatState | null>(queryKey, (current) => {
+          if (!current) return current
+          return { ...current, messages: mergeLiveTvChatMessage(current.messages ?? [], payload.message) }
+        })
+      })
+
+      connection.addEventListener('close', () => {
+        if (socket !== connection) return
+        socket = null
+        scheduleReconnect()
+      })
+
+      connection.addEventListener('error', () => {
+        if (connection.readyState === WebSocket.OPEN || connection.readyState === WebSocket.CONNECTING) {
+          connection.close()
+        }
+      })
+    }
+
+    const reconnectNow = () => {
+      if (stopped) return
+      clearReconnectTimer()
+      if (socket?.readyState !== WebSocket.OPEN && socket?.readyState !== WebSocket.CONNECTING) connect()
+      resync()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) reconnectNow()
+    }
+
+    const fallbackPoll = window.setInterval(() => {
+      if (socket?.readyState !== WebSocket.OPEN) resync()
+    }, 15_000)
+
+    window.addEventListener('online', reconnectNow)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    connect()
+
+    return () => {
+      stopped = true
+      clearReconnectTimer()
+      window.clearInterval(fallbackPoll)
+      window.removeEventListener('online', reconnectNow)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      const activeSocket = socket
+      socket = null
+      if (activeSocket?.readyState === WebSocket.OPEN) activeSocket.close(1000, 'Page changed')
+      else if (activeSocket?.readyState === WebSocket.CONNECTING) activeSocket.close()
+    }
+  }, [channelId, enabled, queryClient])
+}
+
+function isLiveTvChatSocketMessage(payload: unknown, channelId: string | number): payload is { type: 'chat.message'; channel_id: string | number; message: LiveTvChatMessage } {
+  if (!payload || typeof payload !== 'object') return false
+
+  const event = payload as Record<string, unknown>
+  if (event.type !== 'chat.message' || String(event.channel_id ?? '') !== String(channelId)) return false
+  if (!event.message || typeof event.message !== 'object') return false
+
+  const message = event.message as Record<string, unknown>
+  return (typeof message.id === 'string' || typeof message.id === 'number')
+    && typeof message.message === 'string'
+    && (message.promotion_packages == null || Array.isArray(message.promotion_packages))
+}
+
+function mergeLiveTvChatMessage(messages: LiveTvChatMessage[], incoming: LiveTvChatMessage) {
+  if (messages.some((message) => String(message.id) === String(incoming.id))) return messages
+  return [...messages, incoming].slice(-100)
+}
+
 function LiveTvChat({
   channelId,
   chat,
@@ -1615,13 +1755,14 @@ function LiveTvChat({
     return !term || `${item.name} ${item.description ?? ''}`.toLowerCase().includes(term)
   })
   const queryClient = useQueryClient()
+  useLiveTvChatSocket(channelId, Boolean(chat?.enabled))
   const sendMessageMutation = useMutation({
     mutationFn: ({ nextMessage, packageIds }: { nextMessage: string; packageIds: Array<string | number> }) => sendLiveTvChatMessage(channelId, nextMessage, packageIds),
     onSuccess: (response) => {
       queryClient.setQueryData<LiveTvChatState | null>(['livetv-chat', channelId], (current) => {
         if (!current) return current
 
-        return { ...current, messages: [...(current.messages ?? []), response.message] }
+        return { ...current, messages: mergeLiveTvChatMessage(current.messages ?? [], response.message) }
       })
       setMessage('')
       setSelectedPackageIds([])

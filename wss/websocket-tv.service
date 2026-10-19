@@ -1,0 +1,31 @@
+[Unit]
+Description=eZWay TV live-chat WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+User=ezway4429
+Group=ezway4429
+WorkingDirectory=/home/ezwaytv.webermelon.dev/public_html/wss
+ExecStart=/usr/bin/node server.js
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+UMask=0027
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=full
+RestrictSUIDSGID=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=websocket-server
+
+[Install]
+WantedBy=multi-user.target
