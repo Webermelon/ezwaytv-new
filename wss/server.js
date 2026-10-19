@@ -121,7 +121,7 @@ function validPublishedMessage(message) {
     if (typeof message.message !== 'string' || message.message.length > 1000) return false;
     if (message.guest_name != null && (typeof message.guest_name !== 'string' || message.guest_name.length > 80)) return false;
     if (message.avatar_url != null && (typeof message.avatar_url !== 'string' || message.avatar_url.length > 2048)) return false;
-    if (message.promotion_packages != null && (!Array.isArray(message.promotion_packages) || message.promotion_packages.length > 10)) return false;
+    if (message.promotion_packages != null && (!Array.isArray(message.promotion_packages) || message.promotion_packages.length > 1)) return false;
     return true;
 }
 
