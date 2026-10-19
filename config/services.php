@@ -88,6 +88,13 @@ return [
         'url' => env('EZWAY_PROMOTION_URL', 'https://ezwaypromotions.com'),
     ],
 
+    'live_tv_chat_ws' => [
+        'publish_url' => env('LIVE_TV_CHAT_WS_PUBLISH_URL', 'http://127.0.0.1:3213/publish'),
+        'secret' => env('LIVE_TV_CHAT_WS_SECRET', env('APP_KEY')),
+        'connect_timeout' => env('LIVE_TV_CHAT_WS_CONNECT_TIMEOUT', 1),
+        'timeout' => env('LIVE_TV_CHAT_WS_TIMEOUT', 2),
+    ],
+
     'media_compressor' => [
         'enabled' => env('MEDIA_COMPRESSOR_API_ENABLED', false),
         'url' => env('MEDIA_COMPRESSOR_API_URL', 'https://media-compressor.ezway.io'),

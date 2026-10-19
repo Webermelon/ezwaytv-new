@@ -199,8 +199,11 @@ class LiveTvChatController extends Controller
             'ip_address' => $request->ip(),
         ])->load('user:id,file_url');
 
+        $transformedMessage = $this->transformMessage($chatMessage);
+        $this->publishMessageToWebSocket($channel->id, $transformedMessage);
+
         return response()->json([
-            'message' => $this->transformMessage($chatMessage),
+            'message' => $transformedMessage,
         ], 201);
     }
 
@@ -459,6 +462,34 @@ class LiveTvChatController extends Controller
             report($exception);
 
             return [];
+        }
+    }
+
+    private function publishMessageToWebSocket(int $channelId, array $message): void
+    {
+        $url = trim((string) config('services.live_tv_chat_ws.publish_url'));
+        $secret = (string) config('services.live_tv_chat_ws.secret');
+        if ($url === '' || $secret === '') {
+            return;
+        }
+
+        try {
+            $response = Http::acceptJson()
+                ->asJson()
+                ->connectTimeout(max(1, (int) config('services.live_tv_chat_ws.connect_timeout', 1)))
+                ->timeout(max(1, (int) config('services.live_tv_chat_ws.timeout', 2)))
+                ->withHeaders(['X-Chat-Publish-Secret' => $secret])
+                ->post($url, [
+                    'channel_id' => $channelId,
+                    'message' => $message,
+                ]);
+
+            if (! $response->successful()) {
+                report(new \RuntimeException('Live TV chat WebSocket publish failed with status '.$response->status().'.'));
+            }
+        } catch (\Throwable $exception) {
+            // Persistence is authoritative; clients recover missed events through HTTP resync.
+            report($exception);
         }
     }
 
