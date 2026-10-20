@@ -357,6 +357,7 @@ function LiveTvDetailPage({
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
   const chatAds = chatAdsQuery.data ?? null
+  const isAuthorsChannel = channel?.slug === 'the-authors-channel'
   const showPlayerChat = Boolean(channel?.id && chat?.enabled)
   const schedule = scheduleQuery.data ?? []
   const displayedSchedule = schedule.length > 0 ? schedule : detailSchedule
@@ -461,7 +462,12 @@ function LiveTvDetailPage({
             </div>
             {showPlayerChat ? (
               <aside className="h-[520px] border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
-                <LiveTvChat channelId={channelId as string | number} chat={chat} ads={chatAds} />
+                <LiveTvChat
+                  channelId={channelId as string | number}
+                  chat={chat}
+                  ads={chatAds}
+                  showAdSpotLink={isAuthorsChannel}
+                />
               </aside>
             ) : null}
           </div>
@@ -1586,10 +1592,12 @@ function LiveTvChat({
   channelId,
   chat,
   ads,
+  showAdSpotLink,
 }: {
   channelId: string | number
   chat: LiveTvChatState | null
   ads: LiveTvChatAdsState | null
+  showAdSpotLink?: boolean
 }) {
   const [message, setMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -1636,6 +1644,18 @@ function LiveTvChat({
           banners={ads.banners}
           rotationSeconds={ads.rotation_seconds}
         />
+      ) : null}
+
+      {showAdSpotLink ? (
+        <a
+          href="https://theauthorschannel.com/apply-for-ad"
+          target="_blank"
+          rel="noreferrer"
+          className="flex shrink-0 items-center justify-between gap-3 border-b border-[#d4a843]/25 bg-[#141109] px-4 py-3 text-xs text-white/72 transition-colors hover:bg-[#1d170a] hover:text-white sm:px-5"
+        >
+          <span>Want your brand featured above the live player?</span>
+          <span className="shrink-0 font-bold text-[#f0c24d]">Apply for an Ad Spot</span>
+        </a>
       ) : null}
 
       <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/12 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:px-5">
@@ -1754,10 +1774,14 @@ function LiveTvChatAdSlider({
   rotationSeconds?: number | null
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const bannersKey = useMemo(
+    () => banners.map((banner) => `${banner.image_url}|${banner.link_url ?? ''}`).join('||'),
+    [banners],
+  )
 
   useEffect(() => {
     setActiveIndex(0)
-  }, [banners])
+  }, [bannersKey])
 
   useEffect(() => {
     if (banners.length < 2) return
@@ -1769,7 +1793,7 @@ function LiveTvChatAdSlider({
     return () => window.clearInterval(timer)
   }, [banners.length, rotationSeconds])
 
-  const banner = banners[activeIndex]
+  const banner = banners[activeIndex % banners.length]
   if (!banner?.image_url) return null
 
   const image = (
