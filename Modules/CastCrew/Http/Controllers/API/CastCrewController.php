@@ -19,7 +19,7 @@ class CastCrewController extends Controller
 
         $perPage = $request->input('per_page', 10);
         $cacheKey = 'spa:castcrew:list:' . md5(json_encode([
-            'version' => 2,
+            'version' => 3,
             'cache_version' => Cache::get('spa:castcrew:cache-version', 1),
             'page' => $request->input('page', 1),
             'per_page' => $perPage,
@@ -30,7 +30,7 @@ class CastCrewController extends Controller
         ]));
 
         $cachedResult = Cache::remember($cacheKey, 300, function () use ($request, $perPage) {
-            $castcrew_list = CastCrew::query();
+            $castcrew_list = CastCrew::query()->where('show_in_directory', true);
 
             if ($request->has('search')) {
                 $searchTerm = $request->search;
@@ -48,7 +48,7 @@ class CastCrewController extends Controller
                 $castcrew_list->whereIn('id',$talentIds);
             }
             if($request->has('entertainment_id') && $request->entertainment_id =='all'){
-                $castcrew_list = CastCrew::query();
+                $castcrew_list = CastCrew::query()->where('show_in_directory', true);
             }
 
             $castcrew = $castcrew_list->where('status', 1)->where('deleted_at',null)->orderBy('updated_at', 'desc');
@@ -92,7 +92,7 @@ class CastCrewController extends Controller
         $type = $request->type;
         $userId = $request->user_id ?? auth()->id();
         $cacheKey = 'cast_crew_details_v3_'. md5(json_encode([
-            'version' => 2,
+            'version' => 3,
             'cache_version' => Cache::get('spa:castcrew:cache-version', 1),
             'castcrew_id' => $castcrewId,
             'user_id' => $userId,
@@ -102,6 +102,7 @@ class CastCrewController extends Controller
             $query = CastCrew::with('entertainmentTalentMappings')
                 ->where('id',$castcrewId)
                 ->where('type', $type)
+                ->where('show_in_directory', true)
                 ->where('status', 1)
                 ->whereNull('deleted_at')
                 ->first();
