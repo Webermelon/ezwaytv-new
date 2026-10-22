@@ -2144,7 +2144,7 @@ function PromotionPackageImage({ promotionPackage, className }: { promotionPacka
   const [imageFailed, setImageFailed] = useState(false)
 
   if (promotionPackage.image_url && !imageFailed) {
-    return <img src={promotionPackage.image_url} alt="" className={`${className} shrink-0 rounded-md border border-white/10 object-cover`} onError={() => setImageFailed(true)} />
+    return <img src={promotionPackage.image_url} alt="" className={`${className} shrink-0 rounded-md border border-white/10 object-contain`} onError={() => setImageFailed(true)} />
   }
 
   return (

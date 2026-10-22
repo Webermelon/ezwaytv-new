@@ -93,6 +93,7 @@
         "vue3-signature": "^0.2.4",
         "vue3-tel-input": "^1.0.4",
         "vuedraggable": "^4.1.0",
+        "ws": "^8.22.0",
         "yup": "^1.4.0"
     },
     "husky": {

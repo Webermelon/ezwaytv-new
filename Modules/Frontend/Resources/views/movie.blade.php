@@ -45,7 +45,7 @@
 
                                                     <h4 class="movie-title mb-2">{{ $movie['name'] }}</h4>
 
-                                                    <div class="mb-0 font-size-14 line-count-3">{!! $movie['description'] !!}
+                                                    <div class="mb-0 font-size-14 line-count-3">{{ strip_tags($movie['description']) }}</div>
                                                     </div>
 
                                                     <ul

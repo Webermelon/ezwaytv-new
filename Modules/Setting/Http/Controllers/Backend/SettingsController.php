@@ -101,6 +101,8 @@ class SettingsController extends Controller
 
     public function customCode()
     {
+        abort_unless(Auth::user()?->can('setting_custom_code'), 403, __('messages.permission_denied'));
+
         $fields = ['custom_css_block', 'custom_js_block'];
         $data = $this->fieldsData($fields);
         return view('setting::backend.setting.section-pages.custom-code', compact('data'));
@@ -488,6 +490,13 @@ class SettingsController extends Controller
         $settingTab = $request->input('setting_tab', '');
         if (empty($settingTab) && $request->isJson() && $request->has('customization_json')) {
             $settingTab = 'customization';
+        }
+
+        if (
+            ($settingTab === 'custom_code' || $request->hasAny(['custom_css_block', 'custom_js_block']))
+            && (!$user || !$user->can('setting_custom_code'))
+        ) {
+            abort(403, __('messages.permission_denied'));
         }
 
         $isDemoAdmin = $user && ($user->hasRole('demo_admin') || $user->user_type === 'demo_admin');

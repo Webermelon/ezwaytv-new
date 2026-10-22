@@ -47,7 +47,7 @@
     <!-- @if($data['access'] == 'pay-per-view' && !empty($data['description']))
         <div class="container-fluid">
             <div class="bg-dark text-white p-3 my-3 rounded">
-                {!! $data['description'] !!}
+                {{ strip_tags($data['description']) }}
             </div>
         </div>
     @endif -->

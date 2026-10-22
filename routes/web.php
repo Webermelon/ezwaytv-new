@@ -36,6 +36,7 @@ use App\Http\Controllers\MediaCompressorWebhookController;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
+Route::view('/debug_gg', 'debug.wss');
 Route::view('/docs/api', 'docs.api')->name('docs.api');
 Route::redirect('/docs/apis', '/docs/api');
 Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');

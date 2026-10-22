@@ -2,7 +2,7 @@
     <div class="subscription-plan-header">
         <p class="subscription-name text-capitalize">{{ $plan->name }}</p>
         <p class="mt-2 mb-3 font-size-14 text-break js-episode-desc">
-            <span class="js-desc-text">{!! Str::limit(strip_tags($plan->description), 150) !!}</span>
+            <span class="js-desc-text">{{ Str::limit(strip_tags($plan->description), 150) }}</span>
             @if(strlen(strip_tags($plan->description)) > 150)
                  <a href="javascript:void(0)" class="text-primary p-0 align-baseline js-episode-toggle">{{ __('messages.read_more') }}</a>
             @endif
@@ -16,17 +16,17 @@
             var desc = container.querySelector('.js-desc-text');
             if(!toggle || !desc) return;
 
-            var fullText = `{!! addslashes($plan->description) !!}`;
-            var shortText = `{!! addslashes(Str::limit(strip_tags($plan->description), 150)) !!}`;
+            var fullText = @js(strip_tags($plan->description));
+            var shortText = @js(Str::limit(strip_tags($plan->description), 150));
             var expanded = false;
 
             toggle.addEventListener('click', function(e){
                 e.preventDefault();
                 if(!expanded){
-                    desc.innerHTML = fullText;
+                    desc.textContent = fullText;
                     toggle.textContent = ("{{ __('messages.read_less') ?? 'Read Less' }}").trim();
                 } else {
-                    desc.innerHTML = shortText;
+                    desc.textContent = shortText;
                     toggle.textContent = ("{{ __('messages.read_more') ?? 'Read More' }}").trim();
                 }
                 expanded = !expanded;

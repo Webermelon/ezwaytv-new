@@ -748,18 +748,20 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
 
     public function userDetails(Request $request)
     {
-        $userID = $request->id;
-        $user = User::find($userID);
+        $user = $request->user();
+
+        if (!$user) {
+            return ApiResponse::error(__('messages.user_notfound'), 404);
+        }
+
+        $user->makeHidden(['pin', 'otp']);
+
         $user['about_self'] = $user->profile->about_self ?? null;
         $user['expert'] = $user->profile->expert ?? null;
         $user['facebook_link'] = $user->profile->facebook_link ?? null;
         $user['instagram_link'] = $user->profile->instagram_link ?? null;
         $user['twitter_link'] = $user->profile->twitter_link ?? null;
         $user['dribbble_link'] = $user->profile->dribbble_link ?? null;
-
-        if (!$user) {
-            return ApiResponse::error(__('messages.user_notfound'), 404);
-        }
 
         return ApiResponse::success($user, __('messages.user_details_successfull'), 200);
     }

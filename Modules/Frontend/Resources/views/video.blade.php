@@ -48,7 +48,7 @@
                                                     @endif
 
                                                     <h4 class="movie-title mb-2">{{ data_get($details, 'name') }}</h4>
-                                                    <div class="mb-0 font-size-14 line-count-3">{!! data_get($details, 'description') !!}</div>
+                                                    <div class="mb-0 font-size-14 line-count-3">{{ strip_tags(data_get($details, 'description')) }}</div>
 
                                                     <ul
                                                         class="movie-meta list-inline mt-4 mx-0 p-0 d-flex align-items-center flex-wrap gap-3">

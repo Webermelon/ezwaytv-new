@@ -16,7 +16,14 @@ class FilemanagerRequest extends FormRequest
         }
         // Otherwise, we expect pre-uploaded temp file names (assembled via chunk upload).
         return [
-            'file_names.*' => 'required|string',
+            'file_names' => ['required', 'array', 'min:1'],
+            'file_names.*' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/\A[A-Za-z0-9][A-Za-z0-9._ -]*\z/',
+                'regex:/\.(?:jpe?g|png|gif|mov|mp4|avi)\z/i',
+            ],
         ];
     }
 
@@ -28,6 +35,7 @@ class FilemanagerRequest extends FormRequest
             'file_url.*.mimes' => 'Each file must be a type of: jpeg, jpg, png, gif, mov, mp4, avi.',
             'file_names.*.required' => 'File name is required.',
             'file_names.*.string' => 'Each file name must be a string.',
+            'file_names.*.regex' => 'Each file name must be a supported media file without path characters.',
         ];
     }
 

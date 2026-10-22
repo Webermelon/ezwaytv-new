@@ -65,6 +65,11 @@ class SettingController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->hasAny(['custom_css_block', 'custom_js_block'])
+            && (!$request->user() || !$request->user()->can('setting_custom_code'))) {
+            abort(403, 'You do not have permission to update custom code.');
+        }
+
         if ($request->wantsJson()) {
             $rules = Setting::getSelectedValidationRules(array_keys($request->all()));
         } else {

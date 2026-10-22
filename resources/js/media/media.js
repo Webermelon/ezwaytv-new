@@ -15,6 +15,18 @@ function formatUploadBytes(bytes) {
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
+function createChunkUploadName(fileName) {
+  const extensionSeparator = fileName.lastIndexOf('.');
+  const extension = extensionSeparator >= 0
+    ? fileName.slice(extensionSeparator + 1).toLowerCase().replace(/[^a-z0-9]/g, '')
+    : '';
+  const token = window.crypto && typeof window.crypto.randomUUID === 'function'
+    ? window.crypto.randomUUID().replace(/-/g, '')
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+
+  return `upload_${token}${extension ? `.${extension}` : ''}`;
+}
+
 function setUploadTracker(fileState, percent, label, tone) {
   if (!fileState) return;
 
@@ -53,7 +65,7 @@ function startMediaProcessingTracker(files, destinationFolder) {
   const localFiles = window.uploadedFiles || [];
   trackedFiles.forEach(function (file) {
     const local = localFiles.find(function (item) {
-      return item.file && item.file.name === file.original_name;
+      return item.uploadName === file.original_name;
     });
     if (local) {
       local.remoteFileName = file.file_name;
@@ -84,7 +96,7 @@ function startMediaProcessingTracker(files, destinationFolder) {
           return file.file_name === statusResponse.file_name;
         });
         const local = matchedFile ? localFiles.find(function (item) {
-          return item.file && item.file.name === matchedFile.original_name;
+          return item.uploadName === matchedFile.original_name;
         }) : null;
 
         if (status === 'ready') {
@@ -483,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Send only file names (Mode B) — files are already assembled on server via chunk upload.
         // Do NOT re-send the raw file bytes (Mode A) as that exhausts PHP memory for large files.
         for (var i = 0; i < remainingFiles.length; i++) {
-          formData.append('file_names[]', remainingFiles[i].file.name);
+          formData.append('file_names[]', remainingFiles[i].uploadName);
         }
 
         // Add type value to FormData
@@ -1046,7 +1058,7 @@ if (document.getElementById('file_url_media')) {
 
             // Track the uploaded file
             var itemIndex = uploadedFiles.length;
-            uploadedFiles.push({ file: file, removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
+            uploadedFiles.push({ file: file, uploadName: createChunkUploadName(file.name), removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
             updateUploadSubmitState();
 
             // Start upload and make progress bar visible immediately
@@ -1097,7 +1109,7 @@ if (document.getElementById('file_url_media')) {
 
               // Track the uploaded file
               var itemIndex = uploadedFiles.length;
-              uploadedFiles.push({ file: file, removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
+              uploadedFiles.push({ file: file, uploadName: createChunkUploadName(file.name), removed: false, progressWrap: progressBar, progressBar: progressBar.querySelector('.progress-bar'), statusLabel: statusLabel, done: false });
               updateUploadSubmitState();
 
               // Start upload and make progress bar visible immediately
@@ -1134,7 +1146,7 @@ function uploadChunk(file, index, start, end, chunkSize, uploadedFiles, progress
   formData.append('file_chunk', chunk);
   formData.append('index', chunkIndex);
   formData.append('total_chunks', Math.ceil(file.size / chunkSize));
-  formData.append('file_name', file.name);
+  formData.append('file_name', uploadedFiles[index].uploadName);
 
   // AJAX request to upload chunk
   var xhr = new XMLHttpRequest();

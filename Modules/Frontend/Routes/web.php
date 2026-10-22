@@ -311,7 +311,9 @@ Route::post('/notifications/{id}/mark-read', [\Modules\Frontend\Http\Controllers
 Route::delete('/notifications/delete-all', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteAll'])->name('notifications.deleteAll');
 Route::delete('/notifications/delete-selected', [\Modules\Frontend\Http\Controllers\NotificationController::class, 'deleteSelected'])->name('notifications.deleteSelected');
 
-Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
+Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])
+    ->middleware('auth')
+    ->name('pay-per-view.start-date');
 Route::view('/update-profile', 'react-modernization')->name('update-profile');
 Route::view('/change-password', 'react-modernization')->name('change-password');
 

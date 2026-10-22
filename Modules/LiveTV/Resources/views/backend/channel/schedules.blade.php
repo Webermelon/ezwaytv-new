@@ -55,6 +55,12 @@
     const form = document.getElementById('schedule-form');
     const saveBtn = document.getElementById('save-schedule');
     const cancelBtn = document.getElementById('cancel-edit');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const mutationHeaders = {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'Accept': 'application/json',
+    };
 
     function isoToLocalDatetime(iso){
         if(!iso) return '';
@@ -113,7 +119,7 @@
         const tr = e.target.closest('tr');
         const id = tr.dataset.id;
         if(!confirm('Delete schedule #'+id+' ?')) return;
-        fetch('/api/channel-schedules/'+id, { method: 'DELETE' }).then(()=> loadSchedules());
+        fetch('/api/channel-schedules/'+id, { method: 'DELETE', headers: mutationHeaders }).then(()=> loadSchedules());
     }
 
     cancelBtn.addEventListener('click', function(){
@@ -132,9 +138,9 @@
             end_at: document.getElementById('end_at').value || null,
         };
         if(id){
-            await fetch('/api/channel-schedules/'+id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch('/api/channel-schedules/'+id, { method: 'PUT', headers: mutationHeaders, body: JSON.stringify(payload) });
         } else {
-            await fetch('/api/channel-schedules', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            await fetch('/api/channel-schedules', { method: 'POST', headers: mutationHeaders, body: JSON.stringify(payload) });
         }
         document.getElementById('schedule_id').value = '';
         form.reset();

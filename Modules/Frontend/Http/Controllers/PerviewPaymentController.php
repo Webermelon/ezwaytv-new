@@ -28,7 +28,6 @@ use Modules\Video\Transformers\Backend\VideoResourceV3 as BackendVideoResourceV3
 use Modules\Entertainment\Transformers\Backend\EpisodeResourceV3 as BackendEpisodeResourceV3;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Modules\Entertainment\Models\Watchlist;
-use App\Models\User;
 use Modules\Subscriptions\Models\Subscription;
 use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 
@@ -688,69 +687,6 @@ class PerviewPaymentController extends Controller
     }
 
 
-    public function savePaymentPayperview(Request $request)
-    {
-        $userId = $request->user_id ?? auth()->user()->id;
-        $user = User::find($userId);
-        $accessDuration = $request->input('available_for', 48); // default to 48 hours
-        $viewExpiry = now()->addDays((int) $accessDuration);
-
-        if ($request->type == 'movie') {
-            $movie = Entertainment::find($request->movie_id);
-        } else if ($request->type == 'tvshow') {
-            $movie = Entertainment::find($request->movie_id);
-        } else if ($request->type == 'video') {
-            $movie = Video::find($request->movie_id);
-        } else if ($request->type == 'episode') {
-            $movie = Episode::find($request->movie_id);
-        } else if ($request->type == 'season') {
-            $movie = season::find($request->movie_id);
-        }
-
-        // Update or create the PayPerView record
-        $payperview = PayPerView::create(
-            [
-                'user_id' => $userId,
-                'movie_id' => $request->movie_id,
-                'type' => $request->type,
-                'content_price' => $movie->price,
-                'price' => $request->price,
-                'discount_percentage' => $request->discount,
-                'view_expiry_date' => $viewExpiry,
-                'access_duration' => $accessDuration,
-                'available_for' => $request->available_for,
-            ]
-        );
-
-        // Always create a new transaction
-        PayperviewTransaction::create([
-            'user_id' => $userId,
-            'amount' => $request->price,
-            'payment_type' => $request->payment_type,
-            'payment_status' => $request->payment_status,
-            'transaction_id' => $request->transaction_id,
-            'pay_per_view_id' => $payperview->id,
-        ]);
-
-        sendNotification([
-            'notification_type' => $movie->purchase_type == 'rental' ? 'rent_video' : 'purchase_video',
-            'content_id' => $request->movie_id,
-            'user_id' => $userId,
-            'user_name' => $user->full_name,
-            'name' => $movie->name ?? 'Video',
-            'content_type' => $request->type,
-            'status' => 'success',
-            'amount' => $request->price,
-            'notification_group' => 'pay_per_view',
-            'start_date' => now()->toDateString(),
-            'end_date' => $viewExpiry->toDateString(),
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Payment successful and content rented successfully.'], 200);
-    }
-
     public function unlockVideos()
     {
         $user =  auth()->user();
@@ -1158,8 +1094,7 @@ class PerviewPaymentController extends Controller
 
     public function setStartDate(Request $request)
     {
-        // dd($request->all());
-        $payPerView = PayPerView::where('user_id', $request->user_id)
+        $payPerView = PayPerView::where('user_id', $request->user()->id)
             ->where('movie_id', $request->entertainment_id)
             ->where('type', $request->entertainment_type)
             ->where(function ($query) {

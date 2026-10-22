@@ -80,7 +80,7 @@
 
 
                 <p class="mt-3 mb-0 line-count-2 font-size-14">
-                    {!! $data['description'] !!}
+                    {{ strip_tags($data['description']) }}
                 </p>
                 <ul class="list-inline mt-2 mb-0 mx-0 p-0 d-flex align-items-center flex-wrap gap-3">
                     @if (!empty($data['season_name']))

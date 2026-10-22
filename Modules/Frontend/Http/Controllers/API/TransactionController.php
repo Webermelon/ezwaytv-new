@@ -17,10 +17,12 @@ class TransactionController extends Controller
      */
     public function transactionHistory(Request $request)
     {
-        $payPerViews = PayPerView::where('user_id', $request->user_id)
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
+
+        $payPerViews = PayPerView::where('user_id', $request->user()->id)
             ->with(['movie', 'episode', 'video','PayperviewTransaction'])
             ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 10);
+            ->paginate($perPage);
 
         return ApiResponse::success(
             TransactionResource::collection($payPerViews),
@@ -38,4 +40,4 @@ class TransactionController extends Controller
             ]
         );
     }
-} 
+}

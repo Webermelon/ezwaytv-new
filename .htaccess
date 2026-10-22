@@ -31,6 +31,9 @@ RewriteRule \.(sql|bak|backup|old|orig|save|swp|tar|tgz|gz|zip|7z|rar)$ - [F,L]
    RewriteCond %{HTTP:Authorization} .+
    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+   RewriteCond %{REQUEST_URI} ^/ws
+   RewriteRule ^ - [L]
+
    RewriteCond %{REQUEST_FILENAME} -d [OR]
    RewriteCond %{REQUEST_FILENAME} -f
 

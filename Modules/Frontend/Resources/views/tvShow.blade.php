@@ -48,7 +48,7 @@
                                                     @endif
 
                                                     <h4 class="movie-title mb-2">{{ $slider['name'] ?? '-' }}</h4>
-                                                    <div class="mb-0 font-size-14 line-count-3">{!! $slider['description'] !!}</div>
+                                                    <div class="mb-0 font-size-14 line-count-3">{{ strip_tags($slider['description']) }}</div>
 
                                                     {{-- Meta --}}
                                                     <ul

@@ -89,7 +89,7 @@
         </div>
 
         <p class="mt-2 mb-3 font-size-14 js-episode-desc">
-            <span class="js-desc-text">{!! Str::limit(strip_tags($data['description']), 150) !!}</span>
+            <span class="js-desc-text">{{ Str::limit(strip_tags($data['description']), 150) }}</span>
             @if(strlen(strip_tags($data['description'])) > 150)
                  <a href="javascript:void(0)" class="text-primary p-0 align-baseline js-episode-toggle">{{ __('messages.read_more') }}</a>
             @endif
@@ -102,14 +102,14 @@
             const desc = container?.querySelector('.js-desc-text');
             if(!toggle || !desc) return;
 
-            const fullText = `{!! addslashes($data['description']) !!}`;
-            const shortText = `{!! addslashes(Str::limit(strip_tags($data['description']), 150)) !!}`;
+            const fullText = @js(strip_tags($data['description']));
+            const shortText = @js(Str::limit(strip_tags($data['description']), 150));
             let expanded = false;
 
             toggle.addEventListener('click', function(e){
                 e.preventDefault();
                 expanded = !expanded;
-                desc.innerHTML = expanded ? fullText : shortText;
+                desc.textContent = expanded ? fullText : shortText;
                 toggle.textContent = expanded ? "{{ __('messages.read_less') ?? 'Read Less' }}" : "{{ __('messages.read_more') ?? 'Read More' }}";
             });
         })();

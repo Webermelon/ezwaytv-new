@@ -7,12 +7,10 @@ Route::get('livetv-dashboard', [LiveTVsController::class, 'liveTvDashboard']);
 Route::get('livetv-details', [LiveTVsController::class, 'liveTvDetails']);
 Route::get('channel-list', [LiveTVsController::class, 'channelList']);
 Route::get('channel-schedules', [LiveTVsController::class, 'channelSchedules']);
-Route::post('channel-schedules', [LiveTVsController::class, 'storeChannelSchedule']);
-Route::put('channel-schedules/{id}', [LiveTVsController::class, 'updateChannelSchedule']);
-Route::delete('channel-schedules/{id}', [LiveTVsController::class, 'deleteChannelSchedule']);
-
-Route::group(['middleware' => 'auth:sanctum'], function () {
-
+Route::group(['middleware' => ['auth:sanctum', 'permission:edit_tvchannel']], function () {
+    Route::post('channel-schedules', [LiveTVsController::class, 'storeChannelSchedule']);
+    Route::put('channel-schedules/{id}', [LiveTVsController::class, 'updateChannelSchedule']);
+    Route::delete('channel-schedules/{id}', [LiveTVsController::class, 'deleteChannelSchedule']);
 });
 
 Route::prefix('v3')->middleware(['throttle:api'])->group(function () {

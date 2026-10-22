@@ -39,7 +39,7 @@
                                             </ul>
                                         </div>
                                         <h4 class="mb-2">{{ $data['name'] }}</h4>
-                                        <div class="mb-0 font-size-14 line-count-3">{!! $data['description'] !!}</div>
+                                        <div class="mb-0 font-size-14 line-count-3">{{ strip_tags($data['description']) }}</div>
                                         <ul
                                             class="list-inline mt-4 mb-0 mx-0 p-0 d-flex align-items-center flex-wrap gap-3">
 

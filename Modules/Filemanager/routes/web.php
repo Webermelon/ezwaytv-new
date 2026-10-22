@@ -55,7 +55,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth','ad
         Route::get('get-media-url', [FilemanagersController::class, 'getMediaUrl'])->name('get-media-url');
         Route::get('file-status', [FilemanagersController::class, 'getFileStatus'])->name('file-status');
         Route::get('preview', [FilemanagersController::class, 'preview'])->name('preview');
-        Route::post('destroy', [FilemanagersController::class, 'destroy'])->name('destroy.post');
+        Route::post('destroy', [FilemanagersController::class, 'destroy'])->name('delete');
 
 
 

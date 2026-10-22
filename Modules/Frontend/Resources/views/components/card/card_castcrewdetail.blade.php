@@ -7,7 +7,7 @@
         <h2 class="mb-2 cast-title">{{ $data['name'] }}</h2>
         <p class="actor-description readmore-wrapper">
             <p class="font-size-14 js-episode-desc">
-                <span class="js-desc-text">{!! Str::limit(strip_tags($data['bio']), 300) !!}</span>
+                <span class="js-desc-text">{{ Str::limit(strip_tags($data['bio']), 300) }}</span>
                 @if(strlen(strip_tags($data['bio'])) > 300)
                     <a href="javascript:void(0)" class="text-primary p-0 align-baseline js-episode-toggle">{{ __('messages.read_more') }}</a>
                 @endif
@@ -21,17 +21,17 @@
                 var desc = container.querySelector('.js-desc-text');
                 if(!toggle || !desc) return;
 
-                var fullText = `{!! addslashes($data['bio']) !!}`;
-                var shortText = `{!! addslashes(Str::limit(strip_tags($data['bio']), 300)) !!}`;
+                var fullText = @js(strip_tags($data['bio']));
+                var shortText = @js(Str::limit(strip_tags($data['bio']), 300));
                 var expanded = false;
 
                 toggle.addEventListener('click', function(e){
                     e.preventDefault();
                     if(!expanded){
-                        desc.innerHTML = fullText;
+                        desc.textContent = fullText;
                         toggle.textContent = ("{{ __('messages.read_less') ?? 'Read Less' }}").trim();
                     } else {
-                        desc.innerHTML = shortText;
+                        desc.textContent = shortText;
                         toggle.textContent = ("{{ __('messages.read_more') ?? 'Read More' }}").trim();
                     }
                     expanded = !expanded;

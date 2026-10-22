@@ -41,9 +41,10 @@ Route::get('get-pinpopup/{id}', [DashboardController::class, 'getPinpopup']);
 Route::get('v2/web-continuewatch-list', [DashboardController::class, 'ContinuewatchListV2']);
 Route::get('v2/top-10-movie', [DashboardController::class, 'Top10MoviesV2']);
 
-Route::post('save-payment-pay-per-view', [PerviewPaymentController::class, 'savePaymentPayperview']);
-Route::post('start-date', [PerviewPaymentController::class, 'setStartDate']);
-Route::get('/transaction-history', [TransactionController::class, 'transactionHistory'])->name('api.transaction-history');
+Route::post('start-date', [PerviewPaymentController::class, 'setStartDate'])->middleware('auth:sanctum');
+Route::get('/transaction-history', [TransactionController::class, 'transactionHistory'])
+    ->middleware('auth:sanctum')
+    ->name('api.transaction-history');
 
 Route::get('/check-episode-purchase', [TvShowController::class, 'checkEpisodePurchase'])->name('check.episode.purchase');
 Route::get('/check-movie-purchase', [TvShowController::class, 'checkMoviePurchase'])->name('check.movie.purchase');

@@ -134,7 +134,7 @@
                             @endif
                             <h4>{{ $data['name'] }}</h4>
                             <p class="font-size-14 js-episode-desc">
-                                <span class="js-desc-text">{!! Str::limit(strip_tags($data['description']), 300) !!}</span>
+                                <span class="js-desc-text">{{ Str::limit(strip_tags($data['description']), 300) }}</span>
                                 @if(strlen(strip_tags($data['description'])) > 300)
                                     <a href="javascript:void(0)" class="btn btn-link p-0 align-baseline js-episode-toggle">{{ __('messages.read_more') }}</a>
                                 @endif
@@ -148,17 +148,17 @@
                                     var desc = container.querySelector('.js-desc-text');
                                     if(!toggle || !desc) return;
 
-                                    var fullText = `{!! addslashes($data['description']) !!}`;
-                                    var shortText = `{!! addslashes(Str::limit(strip_tags($data['description']), 300)) !!}`;
+                                    var fullText = @js(strip_tags($data['description']));
+                                    var shortText = @js(Str::limit(strip_tags($data['description']), 300));
                                     var expanded = false;
 
                                     toggle.addEventListener('click', function(e){
                                         e.preventDefault();
                                         if(!expanded){
-                                            desc.innerHTML = fullText;
+                                            desc.textContent = fullText;
                                             toggle.textContent = ("{{ __('messages.read_less') ?? 'Read Less' }}").trim();
                                         } else {
-                                            desc.innerHTML = shortText;
+                                            desc.textContent = shortText;
                                             toggle.textContent = ("{{ __('messages.read_more') ?? 'Read More' }}").trim();
                                         }
                                         expanded = !expanded;
@@ -794,10 +794,10 @@
         (function initIdentity() {
             @if(auth()->check())
                 const userAvatar = '{{ auth()->user()->profile_image ? asset('storage/'.auth()->user()->profile_image) : asset('dummy-images/avatars/icon1.png') }}';
-                showIdentified('{{ addslashes($chatGuestName ?? '') }}', 'Signed in as', userAvatar);
+                showIdentified(@js($chatGuestName ?? ''), 'Signed in as', userAvatar);
             @elseif(!empty($chatIsIdentifiedGuest))
                 const savedAvatar = localStorage.getItem('livetv_chat_avatar') || currentAvatarUrl;
-                const savedName   = localStorage.getItem('livetv_chat_name') || '{{ addslashes($chatGuestName ?? '') }}';
+                const savedName   = localStorage.getItem('livetv_chat_name') || @js($chatGuestName ?? '');
                 showIdentified(savedName, 'Guest', savedAvatar);
             @else
                 showNotIdentified();

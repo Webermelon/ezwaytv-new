@@ -107,7 +107,7 @@ class FilemanagersController extends Controller
     // Mode A: direct file post (fallback)
     if ($request->hasFile('file_url')) {
         foreach ($request->file('file_url') as $file) {
-            $originalName = $file->getClientOriginalName();
+            $originalName = basename(str_replace('\\', '/', $file->getClientOriginalName()));
             $extension = $file->getClientOriginalExtension();
             $fileType = $this->getFileType($extension);
             $baseName = pathinfo($originalName, PATHINFO_FILENAME);
@@ -163,6 +163,19 @@ class FilemanagersController extends Controller
             $uniqueFileName = $sanitizedBaseName . '_' . uniqid() . '.' . $extension;
             // Source path is the assembled temp file produced by /upload
             $temporaryPath = 'temp/uploads/' . $originalName;
+            $temporaryRoot = realpath(storage_path('app/temp/uploads'));
+            $resolvedTemporaryPath = realpath(storage_path('app/' . $temporaryPath));
+
+            if (
+                $temporaryRoot === false
+                || $resolvedTemporaryPath === false
+                || dirname($resolvedTemporaryPath) !== $temporaryRoot
+                || !is_file($resolvedTemporaryPath)
+            ) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'file_names' => ['The assembled upload is missing or has an invalid path.'],
+                ]);
+            }
             $filemanagerData = [
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
@@ -318,6 +331,13 @@ private function sanitizeUploadBaseName(string $baseName): string
 
     public function upload(Request $request)
 {
+    $request->validate([
+        'file_chunk' => ['required', 'file'],
+        'file_name' => ['required', 'string', 'max:255', 'regex:/\A[A-Za-z0-9][A-Za-z0-9._ -]*\z/'],
+        'index' => ['required', 'integer', 'min:0', 'lt:total_chunks'],
+        'total_chunks' => ['required', 'integer', 'min:1'],
+    ]);
+
     $fileChunk = $request->file('file_chunk');
     $fileName = $request->input('file_name');           // unique name/token for the whole file
     $index = (int) $request->input('index');            // 0-based index
@@ -330,6 +350,10 @@ private function sanitizeUploadBaseName(string $baseName): string
 
     // Append this chunk directly to a single temp file
     $outputFilePath = $temporaryDirectory . $fileName;
+
+    if (dirname($outputFilePath) !== rtrim($temporaryDirectory, '/')) {
+        abort(422, 'Invalid upload file name.');
+    }
 
     // First chunk: start fresh
     if ($index === 0 && file_exists($outputFilePath)) {
@@ -372,21 +396,40 @@ private function sanitizeUploadBaseName(string $baseName): string
         $requestPath = (string) $request->input('path', '');
 
         $activeDisk = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
-        $pathsToDelete = $this->storageDeleteCandidates($requestPath, $url, $activeDisk);
-        $relativePath = $pathsToDelete[0] ?? '';
+        $requestedPaths = $this->storageDeleteCandidates($requestPath, $url, $activeDisk);
+        $relativePath = $requestedPaths[0] ?? '';
         $fileName = basename($relativePath ?: mediaStoragePathFromUrl($url));
+
+        $matchingFilemanagers = $this->matchingFilemanagersForDelete($fileName, $requestedPaths);
+
+        if ($matchingFilemanagers->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No authorized media record matched the requested file.',
+            ], 404);
+        }
+
+        $pathsToDelete = [];
+
+        foreach ($matchingFilemanagers as $filemanager) {
+            $trustedSources = [(string) $filemanager->getRawOriginal('file_url')];
+            $media = $filemanager->getFirstMedia('file_url');
+            if ($media) {
+                $trustedSources[] = (string) $media->getUrl();
+            }
+
+            foreach ($trustedSources as $trustedSource) {
+                $storedPath = $this->normalizeDeletePath($trustedSource, $activeDisk);
+                if ($storedPath !== '') {
+                    $pathsToDelete[] = $storedPath;
+                    $pathsToDelete = array_merge($pathsToDelete, $this->mediaTypePathVariants($storedPath));
+                }
+            }
+        }
 
         deleteBunnyStreamVideoByFile($fileName);
 
         $disk = Storage::disk($activeDisk);
-        $matchingFilemanagers = $this->matchingFilemanagersForDelete($fileName, $pathsToDelete);
-
-        foreach ($matchingFilemanagers as $filemanager) {
-            $storedPath = $this->normalizeDeletePath((string) $filemanager->getRawOriginal('file_url'), $activeDisk);
-            if ($storedPath !== '') {
-                $pathsToDelete[] = $storedPath;
-            }
-        }
 
         if ($activeDisk !== 'local') {
             foreach ($pathsToDelete as $candidate) {

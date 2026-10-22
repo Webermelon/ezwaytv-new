@@ -8,8 +8,6 @@ use App\Http\Controllers\Backend\API\InvoiceController;
 use App\Http\Controllers\Backend\API\SettingController as APISettingController;
 use Modules\Frontend\Http\Controllers\PaymentController;
 use Modules\Frontend\Http\Controllers\PerviewPaymentController;
-use Modules\Frontend\Http\Controllers\QueryOptimizeController;
-
 use Modules\User\Http\Controllers\API\UserController;
 use Modules\Entertainment\Http\Controllers\API\EntertainmentsController;
 use Modules\LiveTV\Http\Controllers\API\LiveTVsController;
@@ -36,7 +34,7 @@ use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('user-detail', [AuthController::class, 'userDetails']);
+Route::get('user-detail', [AuthController::class, 'userDetails'])->middleware('auth:sanctum');
 
 Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivateApi::class])->group(function () {
     Route::post('users/sync', [CoreTvAccessController::class, 'syncUser']);
@@ -62,8 +60,6 @@ Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivat
     Route::post('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
     Route::patch('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
 });
-
-Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');
 
 Route::middleware(['auth:sanctum', 'checkApiDevice'])->get('/user', function (Request $request) {
     return $request->user();
