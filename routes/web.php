@@ -21,6 +21,7 @@ use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
 use App\Http\Controllers\CoreCheckoutBridgeController;
 use App\Http\Controllers\MediaCompressorWebhookController;
+use App\Http\Controllers\Auth\ConnectSsoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +36,9 @@ use App\Http\Controllers\MediaCompressorWebhookController;
 
 // Auth Routes
 require __DIR__ . '/auth.php';
+
+Route::get('/auth/connect/start', [ConnectSsoController::class, 'start'])->name('connect.start');
+Route::get('/auth/connect/callback', [ConnectSsoController::class, 'callback'])->name('connect.callback');
 
 Route::view('/docs/api', 'docs.api')->name('docs.api');
 Route::redirect('/docs/apis', '/docs/api');

@@ -80,6 +80,10 @@ export function AuthPage() {
 function AuthPanel({ mode }: { mode: AuthMode }) {
   if (mode === 'register') return <RegisterPanel />
 
+  const query = new URLSearchParams(window.location.search)
+  const connectStatus = query.get('connect_status')
+  const requestedRedirect = getRequestedRedirectUrl()
+  const connectUrl = `/auth/connect/start${requestedRedirect ? `?redirect=${encodeURIComponent(requestedRedirect)}` : ''}`
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string; actionHref?: string; actionLabel?: string } | null>(null)
   const [email, setEmail] = useState('')
@@ -155,6 +159,12 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
         </p>
       </div>
 
+      {connectStatus === 'cancelled' ? (
+        <StatusMessage tone="error" text="Connect login was cancelled. You can try again or use an email code." />
+      ) : null}
+      {connectStatus === 'failed' ? (
+        <StatusMessage tone="error" text="eZWay Connect could not complete the login. Please try again or use an email code." />
+      ) : null}
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
       {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
@@ -164,24 +174,40 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
           <PrimaryButton loading={loading} label="Send Reset Link" />
         </form>
       ) : (
-        <form className="grid gap-4" onSubmit={handleOtpSubmit}>
-          <Field icon={<Mail className="h-5 w-5" />} label="Account email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required disabled={otpStep === 'code'} />
+        <>
+          <a
+            href={connectUrl}
+            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-[#d4a843] px-5 py-3 text-sm font-black text-black transition hover:bg-[#f0c74b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0c74b] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111]"
+          >
+            Login with eZWay Connect
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
 
-          {otpStep === 'code' ? (
-            <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          ) : null}
+          <div className="my-5 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-white/38">
+            <span className="h-px flex-1 bg-white/10" />
+            Or use an email code
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
 
-          <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={blockedSeconds > 0 || !email.trim() || (otpStep === 'code' && otp.length !== 4)} />
+          <form className="grid gap-4" onSubmit={handleOtpSubmit}>
+            <Field icon={<Mail className="h-5 w-5" />} label="Account email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required disabled={otpStep === 'code'} />
 
-          {otpStep === 'code' ? (
-            <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
-              <button type="button" disabled={loading} onClick={() => { setOtp(''); setOtpStep('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-[#f0c74b] transition hover:text-white disabled:opacity-60">
-                <RefreshCw className="h-4 w-4" />
-                Use a different email or resend code
-              </button>
-            </div>
-          ) : null}
-        </form>
+            {otpStep === 'code' ? (
+              <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
+            ) : null}
+
+            <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={blockedSeconds > 0 || !email.trim() || (otpStep === 'code' && otp.length !== 4)} />
+
+            {otpStep === 'code' ? (
+              <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
+                <button type="button" disabled={loading} onClick={() => { setOtp(''); setOtpStep('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+                  <RefreshCw className="h-4 w-4" />
+                  Use a different email or resend code
+                </button>
+              </div>
+            ) : null}
+          </form>
+        </>
       )}
 
       <div className="mt-6 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-center text-sm font-semibold text-white/58">
