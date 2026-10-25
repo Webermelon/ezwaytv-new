@@ -21,6 +21,8 @@ use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
 use App\Http\Controllers\CoreCheckoutBridgeController;
 use App\Http\Controllers\MediaCompressorWebhookController;
+use App\Http\Controllers\Auth\ConnectSsoController;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,6 +37,24 @@ use App\Http\Controllers\MediaCompressorWebhookController;
 
 // Auth Routes
 require __DIR__ . '/auth.php';
+
+Route::get('/auth/connect/start', [ConnectSsoController::class, 'start'])
+    ->middleware('throttle:20,1')->name('connect-sso.start');
+Route::get('/auth/connect/callback', [ConnectSsoController::class, 'callback'])
+    ->middleware('throttle:20,1')->name('connect-sso.callback');
+Route::get('/auth/connect/test', function () {
+    return response()->view('auth.connect-sso-test')->withHeaders([
+        'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+        'Cache-Control' => 'private, no-store',
+    ]);
+})->name('connect-sso.test');
+// Connect's expired-authorization fallback uses this URL.
+Route::get('/auth/login', function (Request $request) {
+    $status = $request->query('connect_status');
+
+    return redirect('/login'.(in_array($status, ['failed', 'cancelled'], true)
+        ? '?'.http_build_query(['connect_status' => $status]) : ''));
+})->name('connect-sso.login');
 
 Route::view('/docs/api', 'docs.api')->name('docs.api');
 Route::redirect('/docs/apis', '/docs/api');

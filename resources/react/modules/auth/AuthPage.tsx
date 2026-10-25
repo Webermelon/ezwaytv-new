@@ -158,6 +158,8 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
       {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
+      {!isForgot ? <ConnectSignIn /> : null}
+
       {isForgot ? (
         <form className="grid gap-4" onSubmit={handleForgotSubmit}>
           <Field icon={<Mail className="h-5 w-5" />} label="Account email" name="email" type="email" autoComplete="email" required />
@@ -192,6 +194,36 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
         )}
       </div>
     </section>
+  )
+}
+
+function ConnectSignIn() {
+  const enabled = (window as Window & { ezwayConnectSsoEnabled?: boolean }).ezwayConnectSsoEnabled === true
+  const status = new URLSearchParams(window.location.search).get('connect_status')
+  const messages: Record<string, string> = {
+    failed: 'Connect sign-in could not be completed. Please try again.',
+    cancelled: 'Connect sign-in was cancelled.',
+    identity_conflict: 'This TV account is connected to a different Connect identity. Please contact support.',
+    disabled: 'Your eZWay TV account is unavailable. Please contact support.',
+  }
+  const message = status && Object.hasOwn(messages, status) ? messages[status] : undefined
+  const query = new URLSearchParams()
+  const destination = getRequestedRedirectUrl()
+  if (destination) query.set('redirect_to', destination)
+
+  return (
+    <>
+      {message ? <StatusMessage tone="error" text={message} /> : null}
+      {enabled ? (
+        <div className="mb-5">
+          <a href={`/auth/connect/start${query.size ? `?${query}` : ''}`} className="flex w-full items-center justify-center gap-2 rounded-md border border-[#d4a843]/40 bg-[#d4a843]/12 px-4 py-3 text-sm font-black text-[#f0c74b] transition hover:bg-[#d4a843]/22">
+            <Shield className="h-5 w-5" />
+            Continue with eZWay Connect
+          </a>
+          <p className="mt-4 text-center text-xs font-semibold text-white/42">Or sign in with your TV email</p>
+        </div>
+      ) : null}
+    </>
   )
 }
 

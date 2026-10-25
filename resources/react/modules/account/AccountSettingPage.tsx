@@ -160,6 +160,24 @@ export function AccountSettingPage() {
           <div className="min-w-0">
             {notice ? <Notice tone={notice.tone} text={notice.text} onClose={() => setNotice(null)} /> : null}
 
+            {(window as Window & { ezwayConnectSsoEnabled?: boolean }).ezwayConnectSsoEnabled ? (
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-md border border-white/10 bg-white/[0.035] p-5">
+                <div>
+                  <h2 className="font-black">eZWay Connect</h2>
+                  <p className="mt-1 text-sm text-white/58">
+                    {(window as Window & { ezwayConnectSsoLinked?: boolean }).ezwayConnectSsoLinked
+                      ? 'Your Connect account is linked for sign-in.'
+                      : 'Sign in with Connect using the same email to keep your TV subscription and watch history.'}
+                  </p>
+                </div>
+                {!(window as Window & { ezwayConnectSsoLinked?: boolean }).ezwayConnectSsoLinked ? (
+                  <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
+                    <a href="/auth/connect/start?redirect_to=%2Faccount-setting">Continue with eZWay Connect</a>
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+
             {accountQuery.isLoading ? (
               <div className="flex min-h-72 items-center justify-center rounded-md border border-white/10 bg-white/[0.035]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#edc342]" />

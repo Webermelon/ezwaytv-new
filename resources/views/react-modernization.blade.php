@@ -134,6 +134,8 @@
     @endphp
     <script>
         window.isAuthenticated = {{ $authUser ? 'true' : 'false' }};
+        window.ezwayConnectSsoEnabled = @json(config('connect_sso.show_login', false) && (string) config('connect_sso.secret') !== '');
+        window.ezwayConnectSsoLinked = @json($authUser?->connect_user_id !== null);
         window.ezwayAuth = @json($authPayload);
         window.ezwayVisibleMenuKeys = @json($visibleMenuKeys);
         window.ezwayIosRestrictionsEnabled = @json((bool) setting('ios_app_restrictions_enabled', true));

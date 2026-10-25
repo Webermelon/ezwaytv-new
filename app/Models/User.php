@@ -33,6 +33,7 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
 
     protected $guarded = [
         'id',
+        'connect_user_id',
         'updated_at',
         '_token',
         '_method',
@@ -51,7 +52,7 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'connect_user_id',
     ];
 
     protected $casts = [
