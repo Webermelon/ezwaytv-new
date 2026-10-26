@@ -14,6 +14,7 @@ export type MediaItem = {
   poster_image?: string
   poster_tv_image?: string
   poster_url?: string
+  hero_background_url?: string | null
   thumbnail_url?: string
   language_image?: string
   cover_image_url?: string
@@ -135,6 +136,7 @@ export type ScheduleProgram = ProgramInfo & {
 }
 
 export type DashboardData = {
+  hero_background_url?: string | null
   homepage_rail_item_limit?: number | string | null
   continue_watch?: MediaItem[]
   top_10?: NamedRail

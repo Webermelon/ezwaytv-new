@@ -12,10 +12,13 @@ class BannerRequest extends FormRequest
             'banner_for' => 'required|string|in:movie,tv_show,livetv,video,promotional,home',
         ];
 
-        // Require type and name_id for non-promotional banner_for
+        // Require type and name_id for content-backed banners.
         if ($this->input('banner_for') !== 'promotional') {
-            $rules['type'] = 'required|string|in:movie,tvshow,livetv,video';
-            $rules['name_id'] = 'required';
+            $rules['type'] = 'required|string|in:movie,tvshow,livetv,video,static';
+
+            if (! ($this->input('banner_for') === 'home' && $this->input('type') === 'static')) {
+                $rules['name_id'] = 'required';
+            }
         }
 
         // Require title for promotional banner_for only

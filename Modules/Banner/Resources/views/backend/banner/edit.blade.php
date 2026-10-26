@@ -120,7 +120,7 @@
                     </div>
                     {{ html()->hidden('type_id', old('type_id', $banner->type_id))->id('type_id') }}
                     {{ html()->hidden('type_name', old('type_name', $banner->type_name))->id('type_name') }}
-                    <div class="col-md-4 col-lg-4 mt-3">
+                    <div class="col-md-4 col-lg-4 mt-3" id="banner-name-div">
                         {{ html()->label(__('banner.lbl_name') . '<span class="text-danger">*</span>', 'name')->class('form-label') }}
                         {{ html()->select('name_id', isset($names[$banner->type]) ? $names[$banner->type] : [], old('name_id', $banner->type_id))->class('form-control select2')->id('name_id')->attribute('required', 'required') }}
                         @error('name_id')
@@ -198,7 +198,14 @@
                 var type = $(this).val();
                 var typeName = $('#type option:selected').text();
 
-                if (type) {
+                if (type === 'static') {
+                    $('#banner-name-div').hide();
+                    $('#name_id').removeAttr('required').empty().trigger('change.select2');
+                    $('#type_id').val('');
+                    $('#type_name').val('');
+                } else if (type) {
+                    $('#banner-name-div').show();
+                    $('#name_id').attr('required', 'required');
                     $('#type_id').val(type);
                     $('#type_name').val(typeName);
 
@@ -484,7 +491,7 @@
                     }
                 }
 
-                if (nameField && nameField.required) {
+                if (nameField && nameField.required && typeField?.value !== 'static') {
                     if (!validateField(nameField)) {
                         isValid = false;
                     }
@@ -516,6 +523,10 @@
             if (bannerForValue === 'promotional') {
                 // For promotional: set type and name to null
                 $('#type').val('');
+                $('#name_id').val('');
+                $('#type_id').val('');
+                $('#type_name').val('');
+            } else if (bannerForValue === 'home' && $('#type').val() === 'static') {
                 $('#name_id').val('');
                 $('#type_id').val('');
                 $('#type_name').val('');

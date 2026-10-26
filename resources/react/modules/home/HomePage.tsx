@@ -29,7 +29,7 @@ const emptyState: HomeState = {
   ondemandChannels: [],
 }
 
-const homeHeroBackground = '/img/home/ezway-studio-hero.png'
+const defaultHomeHeroBackground = '/img/home/ezway-studio-hero.png'
 const homeHeroSlideDurationMs = 11000
 const homeHeroPromos = [
   {
@@ -42,7 +42,7 @@ const homeHeroPromos = [
   },
 ]
 const homeHeroChannelVideos: Record<string, string> = {
-  'ezway-movies': 'https://ezwaynetwork.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_4_13_39_am-360p.mp4',
+  'ezway-movies': 'https://ezwayott.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_11_36_20_pm-360p.mp4',
 }
 export function HomePage() {
   const homeQuery = useQuery({
@@ -84,7 +84,7 @@ export function HomePage() {
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
-      <Hero featured={featured} liveChannels={heroLiveChannels} loading={homeQuery.isLoading} />
+      <Hero featured={featured} liveChannels={heroLiveChannels} backgroundUrl={state.dashboard.hero_background_url} loading={homeQuery.isLoading} />
       {!homeQuery.isLoading ? <HomepagePromos promos={state.dashboard.custom_ads ?? []} /> : null}
 
       <section className="relative z-10 space-y-9 px-4 pb-16 pt-3 sm:px-8 sm:pt-4 lg:px-12">
@@ -303,10 +303,12 @@ function resolvePromoMobileUrl(promo: CustomPromo) {
 function Hero({
   featured,
   liveChannels,
+  backgroundUrl,
   loading,
 }: {
   featured?: MediaItem
   liveChannels: MediaItem[]
+  backgroundUrl?: string | null
   loading: boolean
 }) {
   const channelSlides = useMemo(() => {
@@ -316,6 +318,7 @@ function Hero({
     return featured ? [featured] : []
   }, [featured, liveChannels])
   const [activeIndex, setActiveIndex] = useState(0)
+  const [activeSlideDurationMs, setActiveSlideDurationMs] = useState<number | null>(homeHeroSlideDurationMs)
 
   useEffect(() => {
     if (activeIndex < channelSlides.length) return
@@ -323,20 +326,26 @@ function Hero({
   }, [activeIndex, channelSlides.length])
 
   useEffect(() => {
-    if (channelSlides.length < 2) return undefined
+    if (channelSlides.length < 2 || !activeSlideDurationMs) return undefined
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % channelSlides.length)
-    }, homeHeroSlideDurationMs)
+    }, activeSlideDurationMs)
 
     return () => window.clearInterval(timer)
-  }, [channelSlides.length])
+  }, [activeSlideDurationMs, channelSlides.length])
 
   const activeChannel = channelSlides[activeIndex] ?? featured
   const hasActiveChannel = Boolean(activeChannel)
   const title = activeChannel?.details?.name ?? activeChannel?.name ?? 'eZWay TV Live'
   const category = activeChannel?.details?.category ?? 'Live TV'
   const channelDescription = activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
+  const heroBackground = backgroundUrl ?? activeChannel?.hero_background_url ?? defaultHomeHeroBackground
+  const isEzwayMovies = (activeChannel?.details?.slug ?? activeChannel?.slug) === 'ezway-movies'
+
+  useEffect(() => {
+    setActiveSlideDurationMs(isEzwayMovies ? null : homeHeroSlideDurationMs)
+  }, [isEzwayMovies])
 
   if (!hasActiveChannel) {
     return null
@@ -344,7 +353,7 @@ function Hero({
 
   return (
     <section className="ez-home-hero relative overflow-hidden bg-[#050505]">
-      <img src={homeHeroBackground} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover" />
+      <img src={heroBackground} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover" />
       <div className="ez-home-hero-shade absolute inset-0" />
 
       <div className="relative z-10 mx-auto grid min-h-[560px] max-w-[1800px] items-center gap-8 px-4 pb-8 pt-16 sm:px-8 lg:grid-cols-[minmax(360px,0.9fr)_minmax(500px,1.1fr)] lg:gap-12 lg:px-12 xl:px-16">
@@ -390,7 +399,23 @@ function Hero({
         </div>
 
         <div className="w-full self-center lg:max-w-[760px] lg:justify-self-end lg:pt-4">
-          <HomeHeroPromoEmbed channel={activeChannel} />
+          <HomeHeroPromoEmbed
+            channel={activeChannel}
+            onVideoDurationChange={isEzwayMovies ? (duration) => setActiveSlideDurationMs(duration * 1000) : undefined}
+          />
+          {isEzwayMovies ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[#f3c74d] bg-black/55 px-3 py-3">
+              <p className="text-sm font-extrabold uppercase tracking-normal text-[#f7d65b]">
+                Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movies Channel
+              </p>
+              <Button asChild size="sm" className="min-h-9 rounded-md font-black text-black">
+                <a href={contentHref(activeChannel)}>
+                  <Play className="h-4 w-4 fill-current" />
+                  Watch Live
+                </a>
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -420,7 +445,13 @@ function HeroTitle({ title }: { title: string }) {
   )
 }
 
-function HomeHeroPromoEmbed({ channel }: { channel?: MediaItem }) {
+function HomeHeroPromoEmbed({
+  channel,
+  onVideoDurationChange,
+}: {
+  channel?: MediaItem
+  onVideoDurationChange?: (duration: number) => void
+}) {
   const [activePromoIndex, setActivePromoIndex] = useState(0)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const activePromo = homeHeroPromos[activePromoIndex]
@@ -459,6 +490,10 @@ function HomeHeroPromoEmbed({ channel }: { channel?: MediaItem }) {
             loop
             playsInline
             preload="auto"
+            onLoadedMetadata={(event) => {
+              const duration = event.currentTarget.duration
+              if (Number.isFinite(duration) && duration > 0) onVideoDurationChange?.(duration)
+            }}
           />
         ) : (
           <iframe

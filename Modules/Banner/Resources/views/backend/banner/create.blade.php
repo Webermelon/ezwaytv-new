@@ -116,7 +116,7 @@
                 </div>
 
                 <div class="row gy-3" id="banner-type-div">
-                    <div class="col-md-4 col-lg-4 mt-3">
+                    <div class="col-md-4 col-lg-4 mt-3" id="banner-name-div">
                         {{ html()->label(__('banner.lbl_type') . '<span class="text-danger" id="type-required">*</span>', 'type')->class('form-label') }}
                         {{ html()->select('type', ['' => __('placeholder.lbl_select_type')] + $types, old('type'))->class('form-control select2')->id('type')->attribute('required', 'required') }}
                         @error('type')
@@ -276,7 +276,7 @@
                     }
                 }
 
-                if (nameField && nameField.required) {
+                if (nameField && nameField.required && typeField?.value !== 'static') {
                     if (!validateField(nameField)) {
                         isValid = false;
                     }
@@ -327,6 +327,10 @@
                     $('#name_id').val('');
                     $('#type_id').val('');
                     $('#type_name').val('');
+                } else if (bannerForValue === 'home' && $('#type').val() === 'static') {
+                    $('#name_id').val('');
+                    $('#type_id').val('');
+                    $('#type_name').val('');
                 } else {
                     // For non-promotional: set title to null
                     $('#title').val('');
@@ -340,12 +344,19 @@
                 var type = $(this).val();
                 var typeName = $('#type option:selected').text();
 
-                if (type === 'promotional') {
+                if (type === 'static') {
+                    $('#banner-name-div').hide();
+                    $('#name_id').removeAttr('required').empty().trigger('change.select2');
+                    $('#type_id').val('');
+                    $('#type_name').val('');
+                } else if (type === 'promotional') {
                     // Handle promotional type
                     $('#type_id').val(type);
                     $('#type_name').val(typeName);
                     $('#name_id').empty().trigger('change.select2');
                 } else if (type) {
+                    $('#banner-name-div').show();
+                    $('#name_id').attr('required', 'required');
                     // Handle regular types
                     $('#type_id').val(type);
                     $('#type_name').val(typeName);

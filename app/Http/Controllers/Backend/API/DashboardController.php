@@ -1727,6 +1727,15 @@ public function getTrandingData(Request $request){
 
             $heroLiveTvSetting = MobileSetting::getNameAndValueBySlug('hero-banner-slider-live-tv');
             $heroLiveTvIds = json_decode($heroLiveTvSetting['value'] ?? null, true);
+            $staticHeroBackground = Banner::where('banner_for', 'home')
+                ->where('type', 'static')
+                ->where('status', 1)
+                ->whereNull('deleted_at')
+                ->latest('updated_at')
+                ->value('file_url');
+            $staticHeroBackground = $staticHeroBackground
+                ? setBaseUrlWithFileName($staticHeroBackground, 'image', 'banner')
+                : null;
             $heroLiveTvChannels = [];
             if (!empty($heroLiveTvIds) && is_array($heroLiveTvIds)) {
                 $heroLiveTvIds = array_values(array_filter(array_map('intval', $heroLiveTvIds)));
@@ -1740,6 +1749,18 @@ public function getTrandingData(Request $request){
                     ->sortBy(fn ($channel) => $heroLiveTvOrder[(int) $channel->id] ?? PHP_INT_MAX)
                     ->values();
 
+                $heroBackgrounds = Banner::where('banner_for', 'home')
+                    ->where('type', 'livetv')
+                    ->whereIn('type_id', $heroLiveTvChannelsCollection->pluck('id'))
+                    ->where('status', 1)
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('updated_at')
+                    ->get(['type_id', 'file_url'])
+                    ->unique('type_id')
+                    ->mapWithKeys(fn ($banner) => [
+                        (int) $banner->type_id => setBaseUrlWithFileName($banner->file_url, 'image', 'banner'),
+                    ]);
+
                 $heroLiveTvChannelsCollection->each(function ($channel) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
                     $channel->user_id = $user_id;
                     $channel->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
@@ -1750,6 +1771,11 @@ public function getTrandingData(Request $request){
                 });
 
                 $heroLiveTvChannels = LiveTvChannelResourceV3::collection($heroLiveTvChannelsCollection)->toArray(request());
+                $heroLiveTvChannels = collect($heroLiveTvChannels)->map(function ($channel) use ($heroBackgrounds) {
+                    $channel['hero_background_url'] = $heroBackgrounds[(int) ($channel['id'] ?? 0)] ?? null;
+
+                    return $channel;
+                })->values()->toArray();
             }
 
             $today = Carbon::now()->toDateString();
@@ -1863,6 +1889,7 @@ public function getTrandingData(Request $request){
                             'name' => $heroLiveTvSetting['name'] ?? 'Hero Banner Slider Live Tv',
                             'data' => $heroLiveTvChannels,
                         ],
+                        'hero_background_url' => $staticHeroBackground,
                         'personality' => [
                             'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
                             'data' => $personality,

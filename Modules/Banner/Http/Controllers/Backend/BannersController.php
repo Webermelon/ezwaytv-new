@@ -82,6 +82,7 @@ class BannersController extends Controller
         $moduleName = __('banner.title');
 
         clearRelatedCache(['banner_list'], 'banner');
+        clearDashboardCache();
         // Also clear Live TV dashboard cache in case LiveTV banners were affected
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
@@ -95,6 +96,7 @@ class BannersController extends Controller
         $id->update(['status' => $request->status]);
 
         clearRelatedCache('banner_list', 'banner');
+        clearDashboardCache();
         // Invalidate LiveTV dashboard cache so banner changes reflect in API
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
@@ -306,7 +308,7 @@ class BannersController extends Controller
     public function create()
     {
         $module_title = __('banner.add_title');
-        $types = ['movie' => __('messages.movie'), 'tvshow' => __('messages.tvshow') , 'video' => __('messages.video'), 'livetv' => __('messages.livetv')];
+        $types = ['movie' => __('messages.movie'), 'tvshow' => __('messages.tvshow'), 'video' => __('messages.video'), 'livetv' => __('messages.livetv'), 'static' => 'Static background'];
         $mediaUrls = getMediaUrls();
         $page_type='banner';
         return view('banner::backend.banner.create', compact('module_title', 'types', 'mediaUrls','page_type'));
@@ -317,15 +319,17 @@ class BannersController extends Controller
     {
         $data = $request->all();
 
-        // Handle promotional type differently
-        if ($data['banner_for'] === 'promotional') {
+        $isStaticHomeBackground = $data['banner_for'] === 'home' && ($data['type'] ?? null) === 'static';
+
+        // Promotional and static home banners are not tied to a content record.
+        if ($data['banner_for'] === 'promotional' || $isStaticHomeBackground) {
             // For promotional banners: set type and name to null, use title and description
-            $data['type'] = null;
+            $data['type'] = $isStaticHomeBackground ? 'static' : null;
             $data['name_id'] = null;
             $data['type_id'] = null;
             $data['type_name'] = null;
-            $data['title'] = $data['title'];
-            $data['description'] = $data['description'] ?? null;
+            $data['title'] = $isStaticHomeBackground ? null : $data['title'];
+            $data['description'] = $isStaticHomeBackground ? null : ($data['description'] ?? null);
             // Process file URLs for promotional banners
             $data['file_url'] = extractFileNameFromUrl($data['file_url'], 'banner');
             $data['poster_url'] = extractFileNameFromUrl($data['poster_url'], 'banner');
@@ -355,6 +359,8 @@ class BannersController extends Controller
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
         }
+        clearDashboardCache();
+        clearDashboardCache();
         $title = __('banner.title');
         $message = trans('messages.create_form_banner', ['form' => $title]);
         return redirect()->route('backend.banners.index')->with('success', $message);
@@ -369,7 +375,7 @@ class BannersController extends Controller
     public function edit(Banner $banner)
     {
         $module_title = __('banner.edit_title');
-        $types = ['movie' => __('messages.movie'), 'tvshow' => __('messages.tvshow') , 'video' => __('messages.video'), 'livetv' => __('messages.livetv')];
+        $types = ['movie' => __('messages.movie'), 'tvshow' => __('messages.tvshow'), 'video' => __('messages.video'), 'livetv' => __('messages.livetv'), 'static' => 'Static background'];
         $names = [];
 
         $banner['name_id'] = $banner->type_id;
@@ -436,13 +442,15 @@ class BannersController extends Controller
     {
         $data = $request->all();
 
-        if ($data['banner_for'] === 'promotional') {
-            $data['type'] = null;
+        $isStaticHomeBackground = $data['banner_for'] === 'home' && ($data['type'] ?? null) === 'static';
+
+        if ($data['banner_for'] === 'promotional' || $isStaticHomeBackground) {
+            $data['type'] = $isStaticHomeBackground ? 'static' : null;
             $data['name_id'] = null;
             $data['type_id'] = null;
             $data['type_name'] = null;
-            $data['title'] = $data['title'];
-            $data['description'] = $data['description'] ?? null;
+            $data['title'] = $isStaticHomeBackground ? null : $data['title'];
+            $data['description'] = $isStaticHomeBackground ? null : ($data['description'] ?? null);
             // Check if URLs are the same as existing banner URLs
             $data['file_url'] = ($banner->file_url === $data['file_url']) ? $data['file_url'] : extractFileNameFromUrl($data['file_url'], 'banner');
             $data['poster_url'] = ($banner->poster_url === $data['poster_url']) ? $data['poster_url'] : extractFileNameFromUrl($data['poster_url'], 'banner');
@@ -494,6 +502,7 @@ class BannersController extends Controller
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
         }
+        clearDashboardCache();
         return response()->json(['message' => $message, 'status' => true], 200);
     }
 
@@ -508,6 +517,7 @@ class BannersController extends Controller
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
         }
+        clearDashboardCache();
         return response()->json(['message' => $message, 'status' => true], 200);
     }
 
@@ -523,9 +533,7 @@ class BannersController extends Controller
         if (function_exists('clearLiveTvDashboardCache')) {
             clearLiveTvDashboardCache();
         }
+        clearDashboardCache();
         return response()->json(['message' => $message,'status' => true], 200);
     }
 }
-
-
-
