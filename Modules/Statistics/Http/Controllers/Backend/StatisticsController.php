@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Schema;
 use Modules\Statistics\Models\PlayEvent;
 use Modules\Statistics\Models\StatSetting;
 use Modules\Statistics\Models\ContentBoost;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 // External stream API disabled: only internal ezway.tv data returned
 
 class StatisticsController extends Controller
@@ -1047,6 +1049,105 @@ class StatisticsController extends Controller
         return view('statistics::backend.statistics.booster_settings', compact(
             'module_title', 'module_name', 'module_icon', 'module_action', 'settings'
         ));
+    }
+
+    /**
+     * Admin-only configuration for managed Live TV scheduled display counts.
+     * This route is intentionally not exposed in the navigation menu.
+     */
+    public function liveTvViewAutomation()
+    {
+        $module_title = 'Live TV View Automation';
+        $settings = StatSetting::all()->pluck('value', 'key');
+        $config = json_decode((string) ($settings['livetv_view_automation_channels'] ?? '{}'), true);
+        $config = is_array($config) ? $config : [];
+        $channels = \Modules\LiveTV\Models\LiveTvChannel::whereIn('id', [37, 69, 93])
+            ->orderByRaw('FIELD(id, 37, 69, 93)')
+            ->get(['id', 'name', 'slug']);
+        $runCounts = ContentBoost::where('content_type', 'livetv')
+            ->whereIn('content_id', $channels->pluck('id'))
+            ->where('note', 'like', 'Scheduled % display increment%')
+            ->selectRaw('content_id, COUNT(*) as run_count')
+            ->groupBy('content_id')
+            ->pluck('run_count', 'content_id');
+        $now = now('UTC');
+        $nextRun = $now->copy()->second(0);
+        if ($now->minute < 30) {
+            $nextRun->minute(30);
+        } else {
+            $nextRun->addHour()->minute(0);
+        }
+        $minutesUntilNextRun = (int) ceil(max(0, $now->diffInSeconds($nextRun, false)) / 60);
+
+        $defaults = [37 => false, 69 => true, 93 => false];
+        $channels->each(function ($channel) use (&$config, $defaults, $settings, $runCounts) {
+            $config[$channel->id] = [
+                'enabled' => (bool) ($config[$channel->id]['enabled'] ?? $defaults[$channel->id]),
+                'increment' => max(1, min(100000, (int) ($config[$channel->id]['increment'] ?? 500))),
+                'last_window' => $settings["livetv_view_automation_last_window:{$channel->id}"] ?? null,
+                'run_count' => (int) ($runCounts[$channel->id] ?? 0),
+            ];
+        });
+
+        return view('statistics::backend.statistics.ezway_movies_view_automation', compact(
+            'module_title', 'channels', 'config', 'nextRun', 'minutesUntilNextRun'
+        ));
+    }
+
+    public function saveLiveTvViewAutomation(Request $request)
+    {
+        $input = $request->input('channels', []);
+        $config = [];
+        foreach ([37, 69, 93] as $channelId) {
+            $row = $input[$channelId] ?? [];
+            $increment = filter_var($row['increment'] ?? null, FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => 100000],
+            ]);
+            if ($increment === false) {
+                return back()->withInput()->withErrors(["channels.{$channelId}.increment" => 'Enter a view increment between 1 and 100,000.']);
+            }
+
+            $config[$channelId] = [
+                'enabled' => isset($row['enabled']) && (string) $row['enabled'] === '1',
+                'increment' => $increment,
+            ];
+        }
+
+        StatSetting::set('livetv_view_automation_channels', json_encode($config));
+        cache()->forget('stat_settings_all');
+
+        return redirect()->route('backend.statistics.live_tv_view_automation')
+            ->with('success', 'Live TV view automation settings saved.');
+    }
+
+    public function runLiveTvViewAutomation(int $channelId)
+    {
+        $defaults = [37 => false, 69 => true, 93 => false];
+        abort_unless(array_key_exists($channelId, $defaults), 404);
+        $config = json_decode((string) StatSetting::get('livetv_view_automation_channels', '{}'), true);
+        $config = is_array($config) ? $config : [];
+        $enabled = (bool) ($config[$channelId]['enabled'] ?? $defaults[$channelId]);
+
+        if (! $enabled) {
+            return redirect()->route('backend.statistics.live_tv_view_automation')
+                ->with('error', 'Enable this channel before running its automation.');
+        }
+
+        $output = new BufferedOutput();
+        $command = app(\Modules\Statistics\Console\BoostEzwayMoviesViewsCommand::class);
+        $command->setLaravel(app());
+        $exitCode = $command->run(
+            new ArrayInput(['--force' => true, '--channel' => (string) $channelId]),
+            $output
+        );
+
+        if ($exitCode !== 0) {
+            return redirect()->route('backend.statistics.live_tv_view_automation')
+                ->with('error', trim($output->fetch()) ?: 'The manual automation run failed.');
+        }
+
+        return redirect()->route('backend.statistics.live_tv_view_automation')
+            ->with('success', trim($output->fetch()));
     }
 
     /**

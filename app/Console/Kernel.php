@@ -31,6 +31,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('continuewatch:notify')->dailyAt('11:00')->description('Send continue watching reminders');
         $schedule->command('streamit:clean-latest-movies')->dailyAt('11:00')->description('Remove old movies from latest-movies list');
         $schedule->command('statistics:prune')->weeklyOn(0, '02:00')->description('Prune old statistics records');
+        $schedule->command('statistics:boost-ezway-movies-views')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->description('Apply the configured eZWay Movies half-hour display-view increment');
 
         $schedule->call(function () {
             \App\Models\Device::whereNotNull('session_id')

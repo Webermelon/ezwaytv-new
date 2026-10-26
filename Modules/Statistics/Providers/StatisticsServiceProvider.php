@@ -20,6 +20,7 @@ class StatisticsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Modules\Statistics\Console\PruneStatisticsCommand::class,
+                \Modules\Statistics\Console\BoostEzwayMoviesViewsCommand::class,
             ]);
         }
     }

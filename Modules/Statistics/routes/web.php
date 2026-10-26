@@ -22,6 +22,11 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth', 'a
         Route::get('/settings',  [StatisticsController::class, 'settings'])->name('settings');
         Route::get('/booster-settings', [StatisticsController::class, 'boosterSettings'])->name('booster_settings');
         Route::post('/settings', [StatisticsController::class, 'saveSettings'])->name('settings.save');
+        Route::get('/live-tv-view-automation', [StatisticsController::class, 'liveTvViewAutomation'])->name('live_tv_view_automation');
+        Route::post('/live-tv-view-automation', [StatisticsController::class, 'saveLiveTvViewAutomation'])->name('live_tv_view_automation.save');
+        Route::post('/live-tv-view-automation/run/{channelId}', [StatisticsController::class, 'runLiveTvViewAutomation'])->name('live_tv_view_automation.run');
+        Route::redirect('/ezway-movies-view-automation', '/app/statistics/live-tv-view-automation')
+            ->name('ezway_movies_view_automation');
 
         // Content Booster (admin only)
         Route::get('/booster',          [ContentBoostController::class, 'index'])->name('booster');
