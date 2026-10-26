@@ -347,7 +347,7 @@ function LiveTvDetailPage({
     staleTime: 60_000,
   })
   const detailSchedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
-  const scheduleEnabled = false
+  const scheduleEnabled = true
   const scheduleQuery = useQuery({
     queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
     queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),

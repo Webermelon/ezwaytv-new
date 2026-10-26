@@ -382,31 +382,6 @@ function Hero({
             <span>Than TV</span>
           </div>
 
-          {channelSlides.length > 1 ? (
-            <div className="ez-home-slider-nav mt-7 flex w-full max-w-[370px] items-center justify-start">
-              <div className="flex min-w-0 items-center justify-start gap-2.5">
-                {channelSlides.map((channel, index) => {
-                  const channelTitle = channel.details?.name ?? channel.name
-
-                  return (
-                    <button
-                      key={`hero-channel-dot-${channel.id}`}
-                      type="button"
-                      onClick={() => setActiveIndex(index)}
-                      className={[
-                        'h-2 rounded-full transition-all duration-300',
-                        index === activeIndex
-                          ? 'w-8 bg-[#f4c238] shadow-[0_0_12px_rgba(244,194,56,0.5)]'
-                          : 'w-4 bg-white/25 hover:bg-white/60',
-                      ].join(' ')}
-                      aria-label={`Show ${channelTitle}`}
-                      aria-current={index === activeIndex ? 'true' : undefined}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
         </div>
 
         <div className="w-full self-center lg:max-w-[760px] lg:justify-self-end lg:pt-4">
