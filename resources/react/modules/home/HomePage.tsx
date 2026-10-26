@@ -273,7 +273,12 @@ function PromoPanel({ promo, eager }: { promo: CustomPromo; eager: boolean }) {
   if (!promo.redirect_url) return panel
 
   return (
-    <a href={promo.redirect_url} target="_blank" rel="noreferrer" className="block">
+    <a
+      href={promo.redirect_url}
+      target={promo.redirect_target === 'same_tab' ? '_self' : '_blank'}
+      rel={promo.redirect_target === 'same_tab' ? undefined : 'noreferrer'}
+      className="block"
+    >
       {panel}
     </a>
   )

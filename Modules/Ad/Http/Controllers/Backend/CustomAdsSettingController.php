@@ -271,6 +271,7 @@ class CustomAdsSettingController extends Controller
             $data['status'] = $request->has('status') ? 1 : 0;
 
             CustomAdsSetting::create($data);
+            clearDashboardCache();
 
             return redirect()->route('backend.customads.index')->with('success', __('messages.customads_created_successfully'));
         } catch (\Exception $e) {
@@ -393,6 +394,7 @@ class CustomAdsSettingController extends Controller
         $targetCategories = array_map('intval', $request->input('target_categories', []));
         $data['target_categories'] = json_encode($targetCategories);
         $customad->update($data);
+        clearDashboardCache();
 
         return redirect()->route('backend.customads.index')->with('success', __('messages.customads_updated_successfully'));
     }
@@ -404,6 +406,7 @@ class CustomAdsSettingController extends Controller
     {
         $data = CustomAdsSetting::findOrFail($id);
         $data->delete();
+        clearDashboardCache();
         $message = trans('messages.delete_form');
 
         return response()->json(['message' => $message, 'status' => true], 200);
@@ -413,6 +416,7 @@ class CustomAdsSettingController extends Controller
     {
         $data = CustomAdsSetting::withTrashed()->findOrFail($id);
         $data->restore();
+        clearDashboardCache();
         $message = trans('messages.restore_form');
 
         return response()->json(['message' => $message, 'status' => true], 200);
@@ -422,6 +426,7 @@ class CustomAdsSettingController extends Controller
     {
         $category = CustomAdsSetting::withTrashed()->findOrFail($id);
         $category->forceDelete();
+        clearDashboardCache();
         $message = trans('messages.permanent_delete_form');
 
         return response()->json(['message' => $message, 'status' => true], 200);
@@ -430,6 +435,7 @@ class CustomAdsSettingController extends Controller
     public function update_status(Request $request, CustomAdsSetting $id)
     {
         $id->update(['status' => $request->status]);
+        clearDashboardCache();
 
         return response()->json(['status' => true, 'message' => __('messages.status_updated')]);
     }

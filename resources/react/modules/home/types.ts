@@ -165,6 +165,7 @@ export type CustomPromo = {
   media?: string | null
   mobile_media?: string | null
   redirect_url?: string | null
+  redirect_target?: 'new_tab' | 'same_tab' | string | null
   name?: string | null
 }
 

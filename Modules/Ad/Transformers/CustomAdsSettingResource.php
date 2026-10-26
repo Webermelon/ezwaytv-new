@@ -23,6 +23,7 @@ class CustomAdsSettingResource extends JsonResource
             'media' => $this->url_type =='local' ? setBaseUrlWithFileName($this->media,$this->type,'ads') : $this->media,
             'mobile_media' => $this->mobile_media ? ($this->url_type =='local' ? setBaseUrlWithFileName($this->mobile_media,$this->type,'ads') : $this->mobile_media) : null,
             'redirect_url' => $this->redirect_url,
+            'redirect_target' => $this->redirect_target,
             'target_content_type' => $this->target_content_type,
             'target_categories' => $this->target_categories,
             'status' => $this->status,

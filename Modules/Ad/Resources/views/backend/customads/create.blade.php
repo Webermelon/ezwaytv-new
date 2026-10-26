@@ -157,6 +157,14 @@
 
                 </div>
 
+                <div class="col-md-6 col-lg-4">
+                    {{ html()->label('Open link', 'redirect_target')->class('form-label') }}
+                    {{ html()->select('redirect_target', [
+                        'new_tab' => 'Open in new tab',
+                        'same_tab' => 'Open in same tab',
+                    ], old('redirect_target', 'new_tab'))->class('form-control select2')->id('redirect_target') }}
+                </div>
+
 
                 {{-- Start of Target Fields Wrapper --}}
                 {{-- <div id="target-fields-wrapper"> --}}

@@ -180,6 +180,14 @@
                     {{ html()->text('redirect_url')->placeholder('https://example.com/vast/tag?id=12345')->value(old('redirect_url', $data->redirect_url ?? ''))->class('form-control') }}
                 </div>
 
+                <div class="col-md-6 col-lg-4">
+                    {{ html()->label('Open link', 'redirect_target')->class('form-label') }}
+                    {{ html()->select('redirect_target', [
+                        'new_tab' => 'Open in new tab',
+                        'same_tab' => 'Open in same tab',
+                    ], old('redirect_target', $data->redirect_target ?? 'new_tab'))->class('form-control')->id('redirect_target') }}
+                </div>
+
 
                 <div class="col-md-6 col-lg-4">
                     {{ html()->label(__('messages.target_content_type') . '<span class="text-danger">*</span>', 'frequency')->class('form-label') }}
