@@ -20,6 +20,8 @@ use Modules\Setting\Http\Controllers\Backend\SettingsController;
 use Modules\Frontend\Http\Controllers\FrontendController;
 use App\Http\Controllers\Auth\WebQrLoginController;
 use App\Http\Controllers\CoreCheckoutBridgeController;
+use App\Http\Controllers\MediaCompressorWebhookController;
+use App\Http\Controllers\Auth\ConnectSsoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,11 +37,15 @@ use App\Http\Controllers\CoreCheckoutBridgeController;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
+Route::get('/auth/connect/start', [ConnectSsoController::class, 'start'])->name('connect.start');
+Route::get('/auth/connect/callback', [ConnectSsoController::class, 'callback'])->name('connect.callback');
+
 Route::view('/docs/api', 'docs.api')->name('docs.api');
 Route::redirect('/docs/apis', '/docs/api');
 Route::get('/core/payment-methods', [CoreCheckoutBridgeController::class, 'paymentMethods'])->name('core.payment-methods');
 Route::get('/core/payment-history', [CoreCheckoutBridgeController::class, 'paymentHistory'])->name('core.payment-history');
 Route::post('/core/checkouts', [CoreCheckoutBridgeController::class, 'checkout'])->name('core.checkouts');
+Route::post('/webhooks/media', MediaCompressorWebhookController::class)->name('webhooks.media');
 
 if (app()->environment('local')) {
     Route::view('/react-modernization', 'react-modernization')->name('react-modernization');
@@ -69,6 +75,8 @@ Route::get('/web-qr-status/{id}', [WebQrLoginController::class, 'checkStatus'])-
 
 
 Route::group(['prefix' => 'app', ['middleware' => ['auth','admin']]], function () {
+    Route::redirect('/', '/app/dashboard')->name('backend.app');
+
     // Language Switch
     Route::get('language/{language}', [LanguageController::class, 'switch'])->name('language.switch');
     Route::post('set-user-setting', [BackendController::class, 'setUserSetting'])->name('backend.setUserSetting');

@@ -78,6 +78,47 @@ return [
         'base_url' => env('CORE_API_URL', 'https://ezwaycore.webermelon.dev'),
         'token' => env('CORE_API_TOKEN'),
         'host' => env('CORE_API_HOST'),
+        'platform_slug' => env('CORE_PLATFORM_SLUG', 'tv'),
+        'tv_package_slug' => env('CORE_TV_PACKAGE_SLUG', 'tv-subscription-monthly'),
+        'checkout_return_url' => env('CORE_CHECKOUT_RETURN_URL', env('APP_URL')),
+        'checkout_return_path' => env('CORE_CHECKOUT_RETURN_PATH', '/subscription-plan'),
+    ],
+
+    'ezway_promotion' => [
+        'url' => env('EZWAY_PROMOTION_URL', 'https://ezwaypromotions.com'),
+    ],
+
+    'live_tv_chat_ws' => [
+        'publish_url' => env('LIVE_TV_CHAT_WS_PUBLISH_URL', 'http://127.0.0.1:3213/publish'),
+        'secret' => env('LIVE_TV_CHAT_WS_SECRET', env('APP_KEY')),
+        'connect_timeout' => env('LIVE_TV_CHAT_WS_CONNECT_TIMEOUT', 1),
+        'timeout' => env('LIVE_TV_CHAT_WS_TIMEOUT', 2),
+    ],
+
+    'media_compressor' => [
+        'enabled' => env('MEDIA_COMPRESSOR_API_ENABLED', false),
+        'url' => env('MEDIA_COMPRESSOR_API_URL', 'https://media-compressor.ezway.io'),
+        'token' => env('MEDIA_COMPRESSOR_API_TOKEN'),
+        'webhook_secret' => env('MEDIA_COMPRESSOR_WEBHOOK_SECRET'),
+        'webhook_url' => env('MEDIA_COMPRESSOR_WEBHOOK_URL', env('APP_URL').'/webhooks/media'),
+        'bucket' => env('MEDIA_COMPRESSOR_BUCKET', env('MEDIA_COMPRESSOR_DEFAULT_BUCKET')),
+        'default_converter' => env('MEDIA_COMPRESSOR_DEFAULT_CONVERTER', 'webp'),
+        'timeout' => env('MEDIA_COMPRESSOR_TIMEOUT', env('MEDIA_COMPRESSOR_API_TIMEOUT', 60)),
+        'download_timeout' => env('MEDIA_COMPRESSOR_DOWNLOAD_TIMEOUT', 120),
+        'image_wait_seconds' => env('MEDIA_COMPRESSOR_IMAGE_WAIT_SECONDS', 8),
+        'fallback_on_failure' => env('MEDIA_COMPRESSOR_FALLBACK_ON_FAILURE', false),
+        'video_direct_upload_threshold' => env('MEDIA_COMPRESSOR_VIDEO_DIRECT_UPLOAD_THRESHOLD', 8388608),
+        'video_remote_chunk_upload_enabled' => env('MEDIA_COMPRESSOR_VIDEO_REMOTE_CHUNK_UPLOAD_ENABLED', false),
+        'video_chunk_size' => env('MEDIA_COMPRESSOR_VIDEO_CHUNK_SIZE', 16777216),
+        'video_chunk_concurrency' => env('MEDIA_COMPRESSOR_VIDEO_CHUNK_CONCURRENCY', 4),
+        'paths' => [
+            'images' => env('MEDIA_COMPRESSOR_IMAGES_PATH', '/api/v1/images'),
+            'videos' => env('MEDIA_COMPRESSOR_VIDEOS_PATH', '/api/v1/videos'),
+            'job' => env('MEDIA_COMPRESSOR_JOB_PATH', '/api/v1/jobs/{job}'),
+            'video_upload_init' => env('MEDIA_COMPRESSOR_VIDEO_UPLOAD_INIT_PATH', '/api/v1/videos/uploads/init'),
+            'video_upload_chunk' => env('MEDIA_COMPRESSOR_VIDEO_UPLOAD_CHUNK_PATH', '/api/v1/videos/uploads/{upload}/chunks'),
+            'video_upload_complete' => env('MEDIA_COMPRESSOR_VIDEO_UPLOAD_COMPLETE_PATH', '/api/v1/videos/uploads/{upload}/complete'),
+        ],
     ],
 
 ];

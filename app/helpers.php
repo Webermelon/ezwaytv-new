@@ -1232,8 +1232,8 @@ function extractFileNameFromUrl($url = '', $page_type = 'default')
         $normalizedFolder = 'tvshow/episode';
     }
 
-    $path = (string) parse_url($url, PHP_URL_PATH);
-    $fileName = basename($path ?: $url);
+    $path = mediaStoragePathFromUrl((string) $url);
+    $fileName = basename($path ?: (string) $url);
     $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
     $videoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', '3gp', 'm4v', 'mpg', 'mpeg'];
 
@@ -1252,7 +1252,7 @@ function extractFileNameFromUrl($url = '', $page_type = 'default')
         $url = copyImageToFolder($url, $page_type);
     }
 
-    return basename(parse_url($url, PHP_URL_PATH));
+    return basename(mediaStoragePathFromUrl((string) $url));
 }
 
 function copyImageToFolder($fileUrl, $folder = 'other')
@@ -1420,6 +1420,27 @@ if (! function_exists('encodeUrlPathSegments')) {
     }
 }
 
+if (! function_exists('mediaStoragePathFromUrl')) {
+    function mediaStoragePathFromUrl(string $url): string
+    {
+        if ($url === '') {
+            return '';
+        }
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return ltrim(rawurldecode($url), '/');
+        }
+
+        $encodedUrl = preg_replace_callback('/#([^?]*)/', function ($matches) {
+            return '%23' . $matches[1];
+        }, $url, 1);
+
+        $path = (string) parse_url($encodedUrl ?: $url, PHP_URL_PATH);
+
+        return ltrim(rawurldecode($path), '/');
+    }
+}
+
 function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other')
 {
 
@@ -1477,8 +1498,9 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
         }
     };
 
-    $fileName = basename((string) (parse_url($url, PHP_URL_PATH) ?: $url));
-    $remotePath = ltrim((string) parse_url($url, PHP_URL_PATH), '/'); // If this is the generic default image, always return the local asset
+    $remotePath = mediaStoragePathFromUrl((string) $url);
+    $fileName = basename($remotePath ?: (string) $url);
+    // If this is the generic default image, always return the local asset
     // to avoid constructing cloud URLs for a local default placeholder.
     if (
         str_ends_with(strtolower($fileName), 'default-image.jpg') ||
@@ -1551,7 +1573,7 @@ function setBaseUrlWithFileName($url = '', $type = 'image', $page_type = 'other'
     } else {
         $baseUrl = rtrim((string) env('DO_SPACES_URL'), '/');
 
-        $urlPath = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+        $urlPath = $remotePath;
         if ($urlPath !== '' && str_contains($urlPath, '/')) {
             if ($isCloudDisk) {
                 $signedUrl = $resolveCloudUrl($remotePathWithoutBucket !== '' ? $remotePathWithoutBucket : $urlPath);

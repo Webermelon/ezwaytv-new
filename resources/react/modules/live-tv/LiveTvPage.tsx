@@ -1,19 +1,22 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Lock, MessageCircle, Play, Radio, Search, Send, Share2 } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, Film, Gem, Gift, Grid2X2, Lock, Maximize, MessageCircle, Monitor, Play, Radio, Search, Send, Share2, Smile, UsersRound, Volume2, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { PlayerBackButton } from '@/components/PlayerBackButton'
 import { useSpaPath } from '@/lib/spa-router'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { LiveTvDashboard, MediaItem, ProgramInfo } from '@/modules/home/types'
 import { VideoJsPlayer } from '@/modules/video-detail/VideoJsPlayer'
 import { loadContentStats, type ContentStats, type VideoAd } from '@/modules/video-detail/videoDetailApi'
 import {
   loadLiveTvAds,
   loadLiveTvChat,
+  loadLiveTvChatAds,
   loadLiveTvDashboard,
   loadLiveTvDetail,
   loadLiveTvGuideChannel,
@@ -24,7 +27,11 @@ import {
   updateLiveTvWatchTime,
   type LiveTvGuideChannel,
   type LiveTvScheduleItem,
+  type LiveTvChatAdBanner,
+  type LiveTvChatMessage,
+  type LiveTvChatAdsState,
   type LiveTvChatState,
+  type LiveTvPromotionPackage,
 } from './liveTvApi'
 
 type ShareIconProps = {
@@ -32,18 +39,6 @@ type ShareIconProps = {
 }
 
 const liveTvHeroImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_6a16d19e8d157.jpg'
-const featuredLiveTvSlugGroups = [
-  ['ezway-tv'],
-  ['music-channel', 'ezway-music-channel', 'ezway-music'],
-  ['xo-tv'],
-  ['xpn-tv'],
-  ['bill-duke-tv'],
-  ['kate-linder-tv'],
-  ['movie-channel'],
-  ['podstream-tv'],
-  ['the-womens-channel'],
-  ['patrion-tv', 'patrion'],
-]
 
 export function LiveTvPage() {
   const path = useSpaPath()
@@ -51,6 +46,10 @@ export function LiveTvPage() {
   const channelKey = decodeURIComponent(pathname.replace(/^\/(?:spa\/live-tv|livetv)\/?/, '')).replace(/^\/+|\/+$/g, '')
   const [activeCategory, setActiveCategory] = useState('all')
   const [query, setQuery] = useState('')
+  const [guideSelection, setGuideSelection] = useState<{ channel: MediaItem; playTrigger: number } | null>(null)
+  const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+  const guideHeroPlayerRef = useRef<HTMLDivElement | null>(null)
+  const guidePlayedChannelRef = useRef<string | number | null>(null)
   const dashboardQuery = useQuery({
     queryKey: ['livetv-dashboard'],
     queryFn: loadLiveTvDashboard,
@@ -59,7 +58,7 @@ export function LiveTvPage() {
   const dashboard = dashboardQuery.data ?? {}
 
   const categories = dashboard.category_data ?? []
-  const allChannels = useMemo(() => categories.flatMap((category) => category.channel_data ?? []), [categories])
+  const allChannels = useMemo(() => liveTvChannelsFromDashboard(dashboard), [dashboard])
   const matchedChannel = useMemo(
     () => (channelKey ? findChannel(allChannels, dashboard.slider ?? [], channelKey) : undefined),
     [allChannels, channelKey, dashboard.slider],
@@ -70,6 +69,7 @@ export function LiveTvPage() {
     queryKey: ['livetv-detail', detailLookupId],
     queryFn: () => loadLiveTvDetail(detailLookupId),
     enabled: Boolean(channelKey),
+    retry: false,
     staleTime: 30_000,
   })
   const detail = detailQuery.data ?? null
@@ -80,17 +80,30 @@ export function LiveTvPage() {
       ? allChannels
       : categories.find((category) => String(category.id) === activeCategory)?.channel_data ?? []
 
-    if (!term) return sortFeaturedLiveTvFirst(source)
+    if (!term) return sortByDashboardOrder(source)
 
-    return sortFeaturedLiveTvFirst(source.filter((channel) => {
+    return sortByDashboardOrder(source.filter((channel) => {
       const name = channel.details?.name ?? channel.name
       const category = channel.details?.category
 
       return [name, category].filter(Boolean).some((value) => String(value).toLowerCase().includes(term))
     }))
   }, [activeCategory, allChannels, categories, query])
+  const featuredDashboardChannel = dashboard.slider?.[0] ?? channels[0]
+  const featuredGuideQuery = useQuery({
+    queryKey: ['livetv-guide-channel-detail-schedule-v3', featuredDashboardChannel?.id],
+    queryFn: () => loadLiveTvGuideChannel(featuredDashboardChannel as MediaItem),
+    enabled: !channelKey && Boolean(featuredDashboardChannel?.id),
+    staleTime: 10 * 60_000,
+    gcTime: 45 * 60_000,
+  })
+  const featured = featuredGuideQuery.data ? channelWithGuideSchedule(featuredGuideQuery.data) : featuredDashboardChannel
 
   if (channelKey) {
+    if (!dashboardQuery.isLoading && !detailQuery.isLoading && !detail && !matchedChannel) {
+      return <LiveTvNotFound fallbackKey={channelKey} />
+    }
+
     return (
       <LiveTvDetailPage
         channel={detail ?? matchedChannel}
@@ -102,7 +115,22 @@ export function LiveTvPage() {
     )
   }
 
-  const featured = dashboard.slider?.[0] ?? channels[0]
+  const selectedGuideChannel = guideSelection?.channel
+  const heroChannel = selectedGuideChannel ?? featured
+  const heroTitle = heroChannel ? channelName(heroChannel) : 'eZWay TV'
+  const heroDescription = liveTvHeroDescription(heroChannel)
+  const heroScheduleLoading = dashboardQuery.isLoading || (!selectedGuideChannel && featuredGuideQuery.isLoading)
+  const heroFeatures = liveTvHeroFeatures(heroChannel, heroScheduleLoading)
+  const selectGuideChannel = (channel: MediaItem) => {
+    guidePlayedChannelRef.current = null
+    setGuideSelection((current) => ({
+      channel,
+      playTrigger: (current?.playTrigger ?? 0) + 1,
+    }))
+    window.requestAnimationFrame(() => {
+      guideHeroPlayerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }
   const scrollToChannels = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
     document.getElementById('channels')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -113,38 +141,90 @@ export function LiveTvPage() {
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="livetv" />
 
-      <section className="relative min-h-[66vh] overflow-hidden">
-        <img src={liveTvHeroImage} alt="" className="absolute inset-0 h-full w-full object-cover opacity-78" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.86)_34%,rgba(5,5,5,0.38)_70%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
+      <section className="relative overflow-hidden border-b border-[#d4a843]/15 bg-[#050505]">
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,#050505_0%,#050505_36%,rgba(54,39,12,0.82)_58%,rgba(116,84,24,0.34)_72%,#050505_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.22)_48%,#050505_100%)]" />
 
-        <div className="relative z-10 flex min-h-[66vh] max-w-4xl flex-col justify-end px-4 pb-16 pt-20 sm:px-8 lg:px-12">
-          <Badge className="w-fit rounded-sm bg-primary text-white">
-            <Radio className="mr-1 h-3.5 w-3.5" />
-            Live TV
-          </Badge>
-          <h1 className="mt-4 max-w-3xl text-5xl font-black leading-none sm:text-6xl">
-            {featured?.details?.name ?? featured?.name ?? 'Live TV'}
-          </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-white/66 sm:text-base">
-            Watch live channels, music, entertainment, and original programming from the eZWay TV network.
-          </p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
-              <a href={liveTvSpaHref(featured)}>
-                <Play className="h-5 w-5 fill-current" />
-                View Channel
-              </a>
-            </Button>
-            <Button asChild size="lg" variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-              <a href="/livetv#channels" onClick={scrollToChannels}>All Live TV</a>
-            </Button>
+        <div
+          className="relative z-10 mx-auto grid max-w-[1840px] gap-6 px-4 pb-8 pt-20 sm:px-8 sm:pb-10 sm:pt-24 lg:min-h-[610px] lg:grid-cols-[minmax(350px,0.95fr)_minmax(480px,1fr)] lg:items-center lg:gap-8 lg:px-12"
+        >
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#f0c24d] sm:gap-3 sm:text-sm sm:tracking-[0.28em]">
+              <Radio className="h-4 w-4 sm:h-6 sm:w-6" />
+              {heroChannel?.details?.category ?? 'Live TV'}
+            </div>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-none text-white sm:text-6xl xl:text-[4.5rem]">
+              {heroTitle}
+            </h1>
+            <p className="mt-4 line-clamp-3 max-w-xl text-sm leading-6 text-white/72 sm:mt-5 sm:line-clamp-4 sm:text-base">
+              {heroDescription}
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:mt-7 sm:flex sm:flex-wrap">
+              <Button asChild className="h-10 min-w-0 border border-[#f3cf70]/40 bg-[#d4a843] px-3 text-sm text-black shadow-lg shadow-[#d4a843]/15 hover:bg-[#e8c463] sm:px-4">
+                <a href={liveTvSpaHref(heroChannel)}>
+                  <Play className="h-4 w-4 fill-current" />
+                  View Channel
+                </a>
+              </Button>
+              <Button asChild variant="secondary" className="h-10 min-w-0 border border-white/22 bg-white/8 px-3 text-sm text-white hover:bg-white/16 sm:px-4">
+                <a href="/livetv#channels" onClick={scrollToChannels}>
+                  <Grid2X2 className="h-4 w-4" />
+                  All Live TV
+                </a>
+              </Button>
+              <LiveTvShareMenu
+                title="eZWay TV"
+                copied={copiedShareUrl}
+                wrapperClassName="col-span-2 w-full sm:col-span-auto sm:w-auto"
+                buttonClassName="h-10 w-full min-w-0 border border-white/22 bg-white/8 px-3 text-sm text-white hover:bg-white/16 sm:w-auto sm:px-4"
+                onCopy={() => {
+                  copyLiveTvShareUrl().then(() => {
+                    setCopiedShareUrl(true)
+                    window.setTimeout(() => setCopiedShareUrl(false), 1800)
+                  }).catch(() => undefined)
+                }}
+              />
+              <Button asChild variant="secondary" className="col-span-2 h-10 w-full min-w-0 border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 sm:col-span-auto sm:w-auto sm:px-4">
+                <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                  <UsersRound className="h-4 w-4" />
+                  Connect
+                </a>
+              </Button>
+            </div>
+
+            {heroFeatures.length > 0 ? (
+              <div className="mt-7 grid max-w-2xl gap-3 text-white/70 sm:mt-8">
+                {heroFeatures.map((feature) => (
+                  <HeroFeature key={feature.title} icon={feature.icon} title={feature.title} detail={feature.detail} loading={feature.loading} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div ref={guideHeroPlayerRef} className="w-full max-w-[940px] justify-self-end lg:mt-0 xl:max-w-[980px]">
+            <LiveTvGuideHeroPlayer
+              channel={heroChannel}
+              previewChannel={featured}
+              previewWhenMissingStream={!selectedGuideChannel}
+              playTrigger={guideSelection?.playTrigger ?? 0}
+              onPlay={(channel) => {
+                if (guidePlayedChannelRef.current === channel.id) return
+
+                guidePlayedChannelRef.current = channel.id
+                trackLiveTvPlay(channel).catch(() => undefined)
+              }}
+            />
           </div>
         </div>
       </section>
 
       <section className="px-3 pb-16 sm:px-6 lg:px-8">
-        <TvGuide channels={allChannels} loading={dashboardQuery.isLoading} />
+        <TvGuide
+          channels={allChannels}
+          loading={dashboardQuery.isLoading}
+          selectedChannelId={selectedGuideChannel?.id}
+          onSelectChannel={selectGuideChannel}
+        />
 
         <div id="channels" className="mb-6 scroll-mt-24 grid gap-3 rounded-md border border-white/10 bg-white/[0.045] p-3 lg:grid-cols-[1fr_auto]">
           <div className="flex min-h-11 items-center gap-2 rounded-md bg-black/38 px-3">
@@ -222,9 +302,26 @@ function LiveTvDetailPage({
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const playIdRef = useRef<number | null>(null)
+  const resolvedVodActionRef = useRef<{ channelId: string | number; url: string; label: string } | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | number | null>(null)
   const channelId = channel?.id
+  const vodChannel = channel?.details?.vod_channel
+  const currentVodChannelUrl = vodChannel?.url || (vodChannel?.username ? `/on-demand/${vodChannel.username}` : null)
+
+  if (channelId != null && currentVodChannelUrl) {
+    resolvedVodActionRef.current = {
+      channelId,
+      url: currentVodChannelUrl,
+      label: vodChannel?.button_name || vodChannel?.name || 'View On Demand',
+    }
+  }
+
+  const cachedVodAction = resolvedVodActionRef.current?.channelId === channelId ? resolvedVodActionRef.current : null
+  const vodChannelUrl = currentVodChannelUrl ?? cachedVodAction?.url ?? null
+  const vodChannelButtonName = currentVodChannelUrl
+    ? vodChannel?.button_name || vodChannel?.name || 'View On Demand'
+    : cachedVodAction?.label || 'View On Demand'
   const statsQuery = useQuery({
     queryKey: ['content-stats', 'livetv', channelId],
     queryFn: () => loadContentStats('livetv', channelId as string | number),
@@ -244,18 +341,29 @@ function LiveTvDetailPage({
     enabled: Boolean(channelId),
     staleTime: 10_000,
   })
+  const chatAdsLookup = channel?.slug ?? channelId
+  const chatAdsQuery = useQuery({
+    queryKey: ['livetv-chat-ads', chatAdsLookup],
+    queryFn: () => loadLiveTvChatAds(chatAdsLookup as string | number),
+    enabled: Boolean(chatAdsLookup) && Boolean(chatQuery.data?.enabled),
+    staleTime: 60_000,
+  })
   const detailSchedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
+  const scheduleEnabled = false
   const scheduleQuery = useQuery({
     queryKey: ['livetv-schedule', channelId, channel?.schedules_url],
     queryFn: () => loadLiveTvSchedule(channelId as string | number, channel?.schedules_url),
-    enabled: Boolean(channelId) && detailSchedule.length === 0,
+    enabled: Boolean(channelId) && scheduleEnabled && (Boolean(channel?.schedules_url) || detailSchedule.length === 0),
     staleTime: 60_000,
   })
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const chat = chatQuery.data ?? null
+  const chatAds = chatAdsQuery.data ?? null
+  const isAuthorsChannel = channel?.slug === 'the-authors-channel'
+  const showPlayerChat = Boolean(channel?.id && chat?.enabled)
   const schedule = scheduleQuery.data ?? []
-  const displayedSchedule = detailSchedule.length > 0 ? detailSchedule : schedule
-  const hasScheduleUi = Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
+  const displayedSchedule = schedule.length > 0 ? schedule : detailSchedule
+  const hasScheduleUi = scheduleEnabled && Boolean(channel?.now_playing?.title || channel?.next_playing?.title || displayedSchedule.length > 0 || scheduleQuery.isLoading)
   const trackViewMutation = useMutation({
     mutationFn: (nextChannel: MediaItem) => trackLiveTvView(nextChannel),
     onSuccess: () => {
@@ -299,58 +407,71 @@ function LiveTvDetailPage({
       <AppHeader active="livetv" />
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
-          <div className="livetv-player relative h-[76svh] min-h-[430px] w-full overflow-hidden bg-black">
-            {isSubscriptionLocked ? (
-              <PremiumPlayerLock
-                image={image}
-                title={title}
-                label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
-              />
-            ) : stream && playerStarted ? (
-              <VideoJsPlayer
-                source={stream.url}
-                poster={image}
-                autoplay={false}
-                muted={false}
-                playTrigger={playTrigger}
-                vastAds={ads.vast}
-                isLive
-                onPlay={() => {
-                  if (!channel || playIdRef.current) return
-                  trackPlayMutation.mutate(channel)
-                }}
-                onTimeUpdate={(seconds) => {
-                  if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
+          <PlayerHeader fallbackHref="/livetv" />
+          <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'bg-black'}>
+            <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
+              {isSubscriptionLocked ? (
+                <PremiumPlayerLock
+                  image={image}
+                  title={title}
+                  label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
+                />
+              ) : stream && playerStarted ? (
+                <VideoJsPlayer
+                  source={stream.url}
+                  poster={image}
+                  autoplay={false}
+                  muted={false}
+                  playTrigger={playTrigger}
+                  vastAds={ads.vast}
+                  isLive
+                  onPlay={() => {
+                    if (!channel || playIdRef.current) return
+                    trackPlayMutation.mutate(channel)
+                  }}
+                  onTimeUpdate={(seconds) => {
+                    if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
+                      lastWatchUpdateRef.current = seconds
+                      updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+                    }
+                  }}
+                  onPause={(seconds) => {
+                    if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+
                     lastWatchUpdateRef.current = seconds
                     updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                  }
-                }}
-                onPause={(seconds) => {
-                  if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+                  }}
+                  onEnded={(seconds) => {
+                    if (!playIdRef.current) return
 
-                  lastWatchUpdateRef.current = seconds
-                  updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                }}
-                onEnded={(seconds) => {
-                  if (!playIdRef.current) return
-
-                  const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
-                  lastWatchUpdateRef.current = finalSeconds
-                  updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
-                }}
-              />
-            ) : stream ? (
-              <LiveTvStartScreen image={image} title={title} onStart={() => {
-                setPlayerStarted(true)
-                setPlayTrigger((value) => value + 1)
-              }} />
-            ) : loading ? (
-              <LiveTvPlayerPreparing image={image} title={title} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
-                No playable Live TV stream was returned for this channel.
-              </div>
-            )}
+                    const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                    lastWatchUpdateRef.current = finalSeconds
+                    updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                  }}
+                />
+              ) : stream ? (
+                <LiveTvStartScreen image={image} title={title} onStart={() => {
+                  setPlayerStarted(true)
+                  setPlayTrigger((value) => value + 1)
+                }} />
+              ) : loading ? (
+                <LiveTvPlayerPreparing image={image} title={title} />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
+                  No playable Live TV stream was returned for this channel.
+                </div>
+              )}
+            </div>
+            {showPlayerChat ? (
+              <aside className="h-[520px] border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
+                <LiveTvChat
+                  channelId={channelId as string | number}
+                  chat={chat}
+                  ads={chatAds}
+                  showAdSpotLink={isAuthorsChannel}
+                />
+              </aside>
+            ) : null}
           </div>
 
           <div className="border-t border-white/10 bg-[#050505] px-3 pb-4 pt-4 sm:px-6 lg:px-8">
@@ -373,29 +494,34 @@ function LiveTvDetailPage({
                 </div>
               </div>
 
-              <div className="relative z-[80] flex flex-wrap gap-2 lg:justify-end">
-                {isSubscriptionLocked ? (
-                  <PremiumActionButton />
-                ) : !playerStarted ? (
-                  <Button
-                    type="button"
-                    className="bg-white text-black hover:bg-white/85"
-                    disabled={!stream && !loading}
-                    onClick={() => {
-                      setPlayerStarted(true)
-                      setPlayTrigger((value) => value + 1)
-                    }}
-                  >
-                    <Play className="h-5 w-5 fill-current" />
-                    Watch Live
+              <div className="relative z-[80] grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap lg:justify-end">
+                {isSubscriptionLocked ? <PremiumActionButton /> : null}
+                {vodChannelUrl ? (
+                  <Button asChild className="h-10 w-full min-w-0 rounded-md border border-[#d4a843] bg-[#d4a843] px-4 text-sm text-black hover:bg-[#e5bd58] focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                    <a href={vodChannelUrl}>
+                      <Film className="h-3.5 w-3.5" />
+                      <span className="truncate">{vodChannelButtonName}</span>
+                    </a>
                   </Button>
                 ) : null}
-                <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
-                  <a href="/livetv">All Channels</a>
+                <Button asChild variant="secondary" className="h-10 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-4 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                  <a href="/livetv">
+                    <Radio className="h-3.5 w-3.5" />
+                    All Channels
+                  </a>
+                </Button>
+                <Button asChild variant="secondary" className="h-10 w-full min-w-0 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-4 text-sm text-[#f0c24d] hover:bg-[#d4a843]/20 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]">
+                  <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                    <UsersRound className="h-3.5 w-3.5" />
+                    Connect
+                  </a>
                 </Button>
                 <LiveTvShareMenu
                   title={title}
                   copied={copiedShareUrl}
+                  embedCode={liveTvIframeEmbedCode(stream?.url)}
+                  wrapperClassName="w-full sm:w-auto"
+                  buttonClassName="h-10 w-full min-w-0 rounded-md border border-white/20 bg-white/14 px-4 text-sm text-white hover:bg-white/24 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0 sm:w-auto sm:min-w-[108px]"
                   onCopy={() => {
                     copyLiveTvShareUrl().then(() => {
                       setCopiedShareUrl(true)
@@ -426,19 +552,14 @@ function LiveTvDetailPage({
 
       <AdStrip ads={ads.custom} />
 
-      {hasScheduleUi || (channel?.id && chat?.enabled) ? (
+      {hasScheduleUi ? (
         <section className="px-3 pb-16 sm:px-6 lg:px-8">
-          <div className={chat?.enabled && hasScheduleUi ? 'grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]' : undefined}>
-            {hasScheduleUi ? (
-              <SchedulePanel
-                now={channel?.now_playing}
-                next={channel?.next_playing}
-                items={displayedSchedule}
-                loading={loading || scheduleQuery.isLoading}
-              />
-            ) : null}
-            {channel?.id && chat?.enabled ? <LiveTvChat channelId={channel.id} chat={chat} /> : null}
-          </div>
+          <SchedulePanel
+            now={channel?.now_playing}
+            next={channel?.next_playing}
+            items={displayedSchedule}
+            loading={loading || scheduleQuery.isLoading}
+          />
         </section>
       ) : null}
 
@@ -460,8 +581,52 @@ function LiveTvDetailPage({
   )
 }
 
-function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boolean; onCopy: () => void }) {
+function LiveTvNotFound({ fallbackKey }: { fallbackKey: string }) {
+  return (
+    <main className="min-h-screen bg-[#050505] text-white">
+      <AppHeader active="livetv" />
+      <section className="border-b border-white/10 bg-black">
+        <PlayerHeader fallbackHref="/livetv" />
+      </section>
+      <section className="flex min-h-[58vh] items-center justify-center px-4 py-16">
+        <div className="max-w-md text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-md border border-white/10 bg-white/[0.06] text-white/68">
+            <Radio className="h-6 w-6" />
+          </div>
+          <h1 className="mt-5 text-2xl font-black text-white">Live channel not found</h1>
+          <p className="mt-3 text-sm leading-6 text-white/56">
+            We could not load this live channel. It may be unavailable or the app opened an old link.
+          </p>
+          {fallbackKey ? <p className="mt-2 text-xs text-white/34">Channel key: {fallbackKey}</p> : null}
+          <Button asChild className="mt-6 bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+            <a href="/livetv">
+              <Radio className="h-5 w-5" />
+              All Channels
+            </a>
+          </Button>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function LiveTvShareMenu({
+  title,
+  copied,
+  embedCode,
+  onCopy,
+  buttonClassName = 'bg-white/14 text-white hover:bg-white/24',
+  wrapperClassName,
+}: {
+  title: string
+  copied: boolean
+  embedCode?: string | null
+  onCopy: () => void
+  buttonClassName?: string
+  wrapperClassName?: string
+}) {
   const [open, setOpen] = useState(false)
+  const [copiedEmbed, setCopiedEmbed] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const shareUrl = currentLiveTvShareUrl()
   const shareText = `Watch ${title} live on EZWay TV`
@@ -520,29 +685,28 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
   }, [open])
 
   return (
-    <div ref={menuRef} className="relative z-[90] max-sm:static">
+    <div ref={menuRef} className={['relative z-[90] max-sm:static', wrapperClassName].filter(Boolean).join(' ')}>
       <Button
         type="button"
-        size="lg"
         variant="secondary"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="bg-white/14 text-white hover:bg-white/24"
+        className={buttonClassName}
       >
-        <Share2 className="h-5 w-5" />
+        <Share2 className="h-3.5 w-3.5" />
         Share
       </Button>
       <div
         role="menu"
         className={[
-          'absolute right-0 top-full z-[120] mt-3 w-[min(13.5rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
+          'absolute right-0 top-full z-[120] mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-md border border-white/12 bg-[#111]/98 p-3 shadow-2xl shadow-black/50 backdrop-blur transition',
           open ? 'visible opacity-100' : 'pointer-events-none invisible opacity-0',
           'max-sm:static max-sm:w-full max-sm:basis-full max-sm:shadow-none',
           open ? 'max-sm:block' : 'max-sm:hidden',
         ].join(' ')}
       >
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {shareTargets.map(({ label, icon: Icon, href, tone }) => (
             <a
               key={label}
@@ -554,7 +718,7 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
               aria-label={`Share on ${label}`}
               title={label}
               className={[
-                'inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
+                'inline-flex h-11 w-full items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:text-white',
                 tone,
               ].join(' ')}
             >
@@ -571,12 +735,40 @@ function LiveTvShareMenu({ title, copied, onCopy }: { title: string; copied: boo
             }}
             aria-label={copied ? 'Link copied' : 'Copy link'}
             title={copied ? 'Copied' : 'Copy link'}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
+            className="inline-flex h-11 w-full items-center justify-center rounded-md border border-white/10 bg-white/[0.07] text-white/86 transition hover:border-primary/70 hover:bg-primary/16 hover:text-white"
           >
             {copied ? <Check className="h-[18px] w-[18px] shrink-0" /> : <Copy className="h-[18px] w-[18px] shrink-0" />}
             <span className="sr-only">{copied ? 'Copied' : 'Copy Link'}</span>
           </button>
         </div>
+        {embedCode ? (
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold text-white">Embed live channel</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(embedCode).then(() => {
+                    setCopiedEmbed(true)
+                    window.setTimeout(() => setCopiedEmbed(false), 1800)
+                  }).catch(() => undefined)
+                }}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-2.5 text-xs font-bold text-black transition hover:bg-white/85"
+              >
+                {copiedEmbed ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedEmbed ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <textarea
+              readOnly
+              rows={3}
+              value={embedCode}
+              onFocus={(event) => event.currentTarget.select()}
+              aria-label="Live channel iframe embed code"
+              className="w-full resize-none rounded-md border border-white/10 bg-black/45 px-3 py-2 text-xs leading-5 text-white/68 outline-none focus:border-primary/70"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -645,6 +837,14 @@ function LiveTvPlayerPreparing({ image, title }: { image?: string; title: string
   )
 }
 
+function PlayerHeader({ fallbackHref }: { fallbackHref: string }) {
+  return (
+    <div className="flex min-h-10 items-center border-b border-white/10 bg-[#050505] px-3 py-1 sm:px-4">
+      <PlayerBackButton fallbackHref={fallbackHref} className="h-8 px-2.5 py-1 text-[11px] tracking-[0.1em]" />
+    </div>
+  )
+}
+
 function SchedulePanel({
   now,
   next,
@@ -694,7 +894,7 @@ function SchedulePanel({
           >
             <span>
               <span className="block text-base font-bold text-white">Full Schedule</span>
-              <span className="mt-1 block text-xs text-white/44">{rows.length} current and upcoming programs</span>
+              <span className="mt-1 block text-xs text-white/44">{rows.length} programs through tomorrow</span>
             </span>
             <ChevronDown className={['h-5 w-5 shrink-0 text-white/58 transition', showFullSchedule ? 'rotate-180' : ''].join(' ')} />
           </button>
@@ -703,21 +903,25 @@ function SchedulePanel({
             <div className="mt-3 max-h-[460px] overflow-y-auto pr-1">
               {rows.map((item, index) => {
                 const active = Boolean(now?.title && item.title && item.title === now.title && item.start === now.start_time)
+                const previousItem = rows[index - 1]
+                const startsNewDay = index === 0 || scheduleDayKey(item.start, item.timezone) !== scheduleDayKey(previousItem?.start, previousItem?.timezone)
 
                 return (
-                  <article
-                    key={`${item.id ?? index}`}
-                    className={[
-                      'grid gap-3 border-b border-white/8 px-1 py-4 last:border-b-0 sm:grid-cols-[150px_1fr_auto]',
-                      active ? 'text-white' : 'text-white/72',
-                    ].join(' ')}
-                  >
-                    <div className="text-xs font-semibold text-white/46">
-                      {[formatScheduleTime(item.start, item.timezone), formatScheduleTime(item.end, item.timezone)].filter(Boolean).join(' - ')}
-                    </div>
-                    <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
-                    {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
-                  </article>
+                  <Fragment key={`${item.id ?? index}`}>
+                    {startsNewDay ? <ScheduleDayDivider value={item.start} timezone={item.timezone} /> : null}
+                    <article
+                      className={[
+                        'grid gap-3 border-b border-white/8 px-1 py-4 last:border-b-0 sm:grid-cols-[150px_1fr_auto]',
+                        active ? 'text-white' : 'text-white/72',
+                      ].join(' ')}
+                    >
+                      <div className="text-xs font-semibold text-white/46">
+                        {[formatScheduleTime(item.start, item.timezone), formatScheduleTime(item.end, item.timezone)].filter(Boolean).join(' - ')}
+                      </div>
+                      <h3 className="min-w-0 text-sm font-bold leading-5">{cleanScheduleTitle(item.title)}</h3>
+                      {active ? <Badge className="h-fit w-fit rounded-sm bg-red-600 text-white">On Air</Badge> : null}
+                    </article>
+                  </Fragment>
                 )
               })}
             </div>
@@ -765,6 +969,14 @@ function ProgramSummary({
         )
       )}
     </article>
+  )
+}
+
+function ScheduleDayDivider({ value, timezone }: { value?: string | null; timezone?: string | null }) {
+  return (
+    <div className="sticky top-0 z-10 border-l-2 border-[#d4a843] bg-[#d4a843]/10 px-3 py-2 backdrop-blur">
+      <span className="text-xs font-black uppercase text-[#f2d16f]">{scheduleDayLabel(value, timezone)}</span>
+    </div>
   )
 }
 
@@ -820,17 +1032,289 @@ function LiveTvCard({ channel, channelNumber }: { channel: MediaItem; channelNum
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail src={channel.poster_tv_image ?? channel.poster_image ?? channel.details?.thumbnail_image} alt={name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/34 via-transparent to-transparent" />
+        <LiveChannelBadge />
       </div>
       <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{name}</h3>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
         {label ? <span className="text-[#d4a843]">{label}</span> : null}
-        <span className="inline-flex items-center gap-1 text-red-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-          Live
-        </span>
         {channel.details?.category ? <span className="text-white/58">{channel.details.category}</span> : null}
       </div>
     </a>
+  )
+}
+
+function HeroFeature({
+  icon: Icon,
+  title,
+  detail,
+  loading,
+}: {
+  icon: typeof Monitor
+  title: string
+  detail?: string | null
+  loading?: boolean
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[#d4a843]/45 bg-black/24 text-[#f0c24d] sm:h-10 sm:w-10">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-bold leading-tight text-white">{title}</span>
+        {loading || !detail ? <HeroFeatureLoadingDetail /> : <HeroFeatureDetail text={detail} />}
+      </span>
+    </div>
+  )
+}
+
+function HeroFeatureLoadingDetail() {
+  return (
+    <span className="mt-0.5 flex items-center gap-2 text-xs font-medium text-white/46">
+      <span>Loading schedule</span>
+      <span className="flex items-center gap-1" aria-hidden="true">
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843]" />
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843] [animation-delay:150ms]" />
+        <span className="h-1 w-1 animate-pulse rounded-full bg-[#d4a843] [animation-delay:300ms]" />
+      </span>
+    </span>
+  )
+}
+
+function HeroFeatureDetail({ text }: { text: string }) {
+  const measureRef = useRef<HTMLSpanElement | null>(null)
+  const [shouldScroll, setShouldScroll] = useState(false)
+
+  useEffect(() => {
+    const element = measureRef.current
+    if (!element) return
+
+    const updateOverflow = () => {
+      setShouldScroll(element.scrollWidth > element.clientWidth + 4)
+    }
+
+    updateOverflow()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateOverflow)
+
+      return () => window.removeEventListener('resize', updateOverflow)
+    }
+
+    const observer = new ResizeObserver(updateOverflow)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [text])
+
+  return (
+    <span className={['livetv-hero-marquee-window mt-0.5 block text-xs font-medium text-white/52', shouldScroll ? 'is-moving' : ''].join(' ')}>
+      <span ref={measureRef} className="invisible absolute block w-full overflow-hidden whitespace-nowrap">
+        {text}
+      </span>
+      {shouldScroll ? (
+        <span className="livetv-hero-marquee-track">
+          <span>{text}</span>
+          <span aria-hidden="true">{text}</span>
+        </span>
+      ) : (
+        <span className="block truncate">{text}</span>
+      )}
+    </span>
+  )
+}
+
+function liveTvHeroDescription(channel?: MediaItem) {
+  const description = cleanLiveTvDescription(channel?.details?.description ?? channel?.description)
+  if (description) return description
+
+  const name = channel ? channelName(channel) : 'eZWay TV'
+  const category = channel?.details?.category
+
+  if (category) {
+    return `Watch ${name} live with ${category.toLowerCase()} programming from the eZWay TV network.`
+  }
+
+  return 'Watch live channels, music, entertainment, and original programming from the eZWay TV network. Inspiring content for entrepreneurs, creators, and change-makers worldwide.'
+}
+
+function liveTvHeroFeatures(channel: MediaItem | undefined, loading: boolean) {
+  const schedule = liveTvHeroSchedule(channel)
+  const nowPlayingTitle = schedule.now?.title ? cleanScheduleTitle(schedule.now.title) : null
+  const nextPlayingTitle = schedule.next?.title ? cleanScheduleTitle(schedule.next.title) : null
+  const nowDetail = nowPlayingTitle && nowPlayingTitle !== 'Untitled program' ? nowPlayingTitle : null
+  const nextDetail = nextPlayingTitle && nextPlayingTitle !== 'Untitled program' ? nextPlayingTitle : null
+
+  if (!loading && !nowDetail && !nextDetail) {
+    return []
+  }
+
+  return [
+    {
+      icon: UsersRound,
+      title: 'Now Playing',
+      detail: nowDetail,
+      loading: loading || !nowDetail,
+    },
+    {
+      icon: Gem,
+      title: 'Next Playing',
+      detail: nextDetail,
+      loading: loading || !nextDetail,
+    },
+  ]
+}
+
+function liveTvHeroSchedule(channel?: MediaItem) {
+  const currentTime = Date.now()
+  const schedule = Array.isArray(channel?.full_schedule) ? channel.full_schedule : []
+  let now = channel?.now_playing ?? null
+  let next = channel?.next_playing ?? null
+
+  if ((!now || !next) && schedule.length > 0) {
+    const sorted = [...schedule]
+      .filter((item) => item.title || scheduleStart(item))
+      .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
+
+    const onAirIndex = sorted.findIndex((item) => isScheduleOnAir(item, currentTime))
+    const upcomingIndex = sorted.findIndex((item) => {
+      const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+
+      return Boolean(start && start > currentTime)
+    })
+
+    if (!now && onAirIndex >= 0) {
+      now = liveTvScheduleProgramInfo(sorted[onAirIndex], currentTime)
+    }
+
+    if (!next) {
+      const nextIndex = onAirIndex >= 0 ? onAirIndex + 1 : upcomingIndex
+      if (nextIndex >= 0 && sorted[nextIndex]) {
+        next = liveTvScheduleProgramInfo(sorted[nextIndex], currentTime)
+      }
+    }
+  }
+
+  return { now, next }
+}
+
+function liveTvScheduleProgramInfo(item: LiveTvScheduleItem, currentTime: number): ProgramInfo {
+  const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+  const end = parseScheduleDate(scheduleEnd(item), item.timezone)?.getTime()
+  const durationSeconds = item.duration_seconds ?? (start && end ? Math.max(0, Math.round((end - start) / 1000)) : null)
+  const elapsedSeconds = start && currentTime >= start ? Math.max(0, Math.round((currentTime - start) / 1000)) : null
+
+  return {
+    title: item.title ?? null,
+    start_time: scheduleStart(item),
+    end_time: scheduleEnd(item),
+    timezone: item.timezone ?? null,
+    status: item.status ?? null,
+    duration_seconds: durationSeconds,
+    elapsed_seconds: elapsedSeconds,
+  }
+}
+
+function LiveTvGuideHeroPlayer({
+  channel,
+  previewChannel,
+  previewWhenMissingStream = false,
+  playTrigger,
+  onPlay,
+}: {
+  channel?: MediaItem
+  previewChannel?: MediaItem
+  previewWhenMissingStream?: boolean
+  playTrigger: number
+  onPlay: (channel: MediaItem) => void
+}) {
+  const displayChannel = channel ?? previewChannel
+  const title = displayChannel ? channelName(displayChannel) : 'eZWay TV'
+  const image = channelArtwork(displayChannel) ?? liveTvHeroImage
+  const stream = channel ? resolveLiveTvStream(channel) : null
+  const locked = isPremiumMediaLocked(channel)
+  const isPreview = !channel || (!stream && previewWhenMissingStream)
+
+  return (
+    <div
+      id="livetv-hero-player"
+      className="livetv-hero-player relative w-full overflow-hidden rounded-md border border-[#f0c24d]/70 bg-black shadow-2xl shadow-black/65 ring-1 ring-[#d4a843]/25"
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 hidden items-start justify-between gap-3 bg-gradient-to-b from-black/76 to-transparent p-5 sm:flex">
+        <div className="min-w-0">
+          <Badge className="w-fit rounded-sm bg-red-600 px-2.5 py-0.5 text-xs text-white">LIVE</Badge>
+          <h2 className="mt-2 line-clamp-1 text-2xl font-black leading-tight text-white">{title}</h2>
+          <p className="mt-0.5 line-clamp-1 text-xs font-bold uppercase tracking-normal text-white/80">Passport to a brighter tomorrow</p>
+        </div>
+      </div>
+
+      <div className="aspect-video sm:min-h-[250px]">
+        {locked ? (
+          <PremiumPlayerLock
+            image={image}
+            title={title}
+            label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
+          />
+        ) : stream ? (
+          <VideoJsPlayer
+            key={`${channel.id}-${stream.url}`}
+            source={stream.url}
+            poster={image}
+            autoplay
+            muted
+            playTrigger={playTrigger}
+            vastAds={[]}
+            isLive
+            onPlay={() => onPlay(channel)}
+          />
+        ) : isPreview ? (
+          <HeroVideoPreview image={image} title={title} href={liveTvSpaHref(previewChannel)} />
+        ) : (
+          <div className="relative flex h-full min-h-[240px] w-full items-center justify-center overflow-hidden bg-black p-8 text-center">
+            {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-24 blur-sm" /> : null}
+            <div className="absolute inset-0 bg-black/70" />
+            <div className="relative max-w-sm">
+              <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/10 text-white/72">
+                <Play className="h-6 w-6 fill-current" />
+              </span>
+              <h2 className="mt-4 text-xl font-black text-white">{title}</h2>
+              <p className="mt-2 text-sm leading-6 text-white/54">This channel is loading, but no playable stream is available yet.</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HeroVideoPreview({ image, title, href }: { image: string; title: string; href: string }) {
+  return (
+    <a href={href} className="group relative block h-full w-full overflow-hidden bg-black" aria-label={`View ${title}`}>
+      <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-500 group-hover:scale-[1.02]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.18)_0%,rgba(0,0,0,0.10)_50%,rgba(0,0,0,0.76)_100%)]" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-black shadow-2xl shadow-black/40 transition group-hover:scale-105 group-hover:bg-[#f0c24d]">
+          <Play className="h-7 w-7 fill-current" />
+        </span>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-end gap-3 p-3 sm:gap-4 sm:p-5">
+        <Volume2 className="h-4 w-4 shrink-0 text-white sm:h-5 sm:w-5" />
+        <span className="flex shrink-0 items-center gap-1 text-[10px] font-black uppercase text-white sm:gap-1.5 sm:text-xs">
+          <span className="h-2 w-2 rounded-full bg-red-600 sm:h-2.5 sm:w-2.5" />
+          Live
+        </span>
+        <span className="hidden rounded-sm border border-white/45 px-1.5 py-0.5 text-xs font-black leading-none text-white sm:inline-flex">HD</span>
+        <Maximize className="hidden h-5 w-5 shrink-0 text-white sm:block" />
+      </div>
+    </a>
+  )
+}
+
+function LiveChannelBadge() {
+  return (
+    <span className="absolute right-2 top-2 z-30 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/72 px-2.5 py-1 text-[11px] font-extrabold uppercase leading-none tracking-normal text-white shadow-lg backdrop-blur-md">
+      <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.95)]" aria-hidden="true" />
+      LIVE
+    </span>
   )
 }
 
@@ -856,9 +1340,18 @@ function ChannelGridSkeleton() {
   )
 }
 
-function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolean }) {
+function TvGuide({
+  channels,
+  loading,
+  selectedChannelId,
+  onSelectChannel,
+}: {
+  channels: MediaItem[]
+  loading: boolean
+  selectedChannelId?: string | number
+  onSelectChannel: (channel: MediaItem) => void
+}) {
   const [currentTime, setCurrentTime] = useState(() => Date.now())
-  const [channelSort, setChannelSort] = useState<'asc' | 'desc'>('asc')
   const guideQueries = useQueries({
     queries: channels.map((channel) => ({
       queryKey: ['livetv-guide-channel-detail-schedule-v3', channel.id],
@@ -874,14 +1367,14 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
       .filter((item): item is { row: LiveTvGuideChannel; loadedAt: number; index: number } => Boolean(item.row))
       .filter(({ row }) => tvGuidePrograms(row, currentTime).length > 0)
       .sort((a, b) => {
-        const aFeatured = featuredLiveTvOrder(a.row.channel)
-        const bFeatured = featuredLiveTvOrder(b.row.channel)
+        const aOrder = channelDashboardOrder(a.row.channel)
+        const bOrder = channelDashboardOrder(b.row.channel)
         const nameCompare = channelName(a.row.channel).localeCompare(channelName(b.row.channel), undefined, { sensitivity: 'base' })
-        const featuredCompare = aFeatured - bFeatured
+        const orderCompare = aOrder - bOrder
 
-        return featuredCompare || (channelSort === 'asc' ? nameCompare : -nameCompare) || a.loadedAt - b.loadedAt || a.index - b.index
+        return orderCompare || nameCompare || a.loadedAt - b.loadedAt || a.index - b.index
       })
-  ), [channelSort, currentTime, guideQueries])
+  ), [currentTime, guideQueries])
   const loadedCount = guideQueries.filter((query) => Boolean(query.data)).length
   const programCount = visibleRows.reduce((total, { row }) => total + tvGuidePrograms(row, currentTime).length, 0)
   const pendingCount = guideQueries.filter((query) => query.isPending || query.isFetching).length
@@ -911,35 +1404,10 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
           </div>
           <span className="hidden items-center gap-2 rounded-full bg-red-600/10 px-3 py-1 text-[11px] font-black uppercase text-red-400 sm:inline-flex">
             <span className="h-2 w-2 rounded-full bg-red-500" />
-            Live Now
+            LIVE
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="rounded-md border border-[#d4a843]/20 bg-[#d4a843]/10 px-3 py-2 text-sm font-black text-[#f2d16f]">
-            Now + Next
-          </div>
-          <div className="flex rounded-md border border-white/10 bg-white/[0.045] p-1">
-            {[
-              { value: 'asc', label: 'A-Z' },
-              { value: 'desc', label: 'Z-A' },
-            ].map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setChannelSort(item.value as 'asc' | 'desc')}
-                className={[
-                  'h-8 rounded px-3 text-xs font-black transition',
-                  channelSort === item.value
-                    ? 'bg-[#d4a843] text-black'
-                    : 'text-white/54 hover:bg-white/[0.08] hover:text-white',
-                ].join(' ')}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="max-h-[560px] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -953,6 +1421,8 @@ function TvGuide({ channels, loading }: { channels: MediaItem[]; loading: boolea
                 row={row}
                 currentTime={currentTime}
                 channelNumber={liveTvChannelNumber(row.channel, channels)}
+                selected={String(selectedChannelId ?? '') === String(row.channel.id)}
+                onSelectChannel={onSelectChannel}
               />
             ))}
             {pendingCount > 0 ? <TvGuidePendingRows count={Math.min(pendingCount, 3)} /> : null}
@@ -971,26 +1441,38 @@ function TvGuideRow({
   row,
   currentTime,
   channelNumber,
+  selected,
+  onSelectChannel,
 }: {
   row: LiveTvGuideChannel
   currentTime: number
   channelNumber?: number
+  selected: boolean
+  onSelectChannel: (channel: MediaItem) => void
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const name = row.channel.details?.name ?? row.channel.name
   const label = channelNumber ? channelLabel(channelNumber) : null
   const image = channelArtwork(row.channel)
   const programs = useMemo(() => tvGuidePrograms(row, currentTime), [currentTime, row])
+  const selectableChannel = useMemo(() => channelWithGuideSchedule(row), [row])
 
   function scrollByProgram(direction: -1 | 1) {
     scrollerRef.current?.scrollBy({ left: direction * 320, behavior: 'smooth' })
   }
 
   return (
-    <article className="grid gap-2 px-3 py-2.5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center">
-      <a
-        href={liveTvSpaHref(row.channel)}
-        className="grid min-w-0 grid-cols-[82px_minmax(0,1fr)] items-center gap-3 rounded-md border border-white/8 bg-white/[0.035] p-2 text-left transition hover:border-[#d4a843]/34 hover:bg-[#d4a843]/8 sm:grid-cols-[92px_minmax(0,1fr)]"
+    <article className={['grid gap-2 px-3 py-2.5 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center', selected ? 'bg-[#d4a843]/6' : ''].join(' ')}>
+      <button
+        type="button"
+        onClick={() => onSelectChannel(selectableChannel)}
+        aria-pressed={selected}
+        className={[
+          'grid min-w-0 grid-cols-[82px_minmax(0,1fr)] items-center gap-3 rounded-md border p-2 text-left transition sm:grid-cols-[92px_minmax(0,1fr)]',
+          selected
+            ? 'border-[#d4a843]/70 bg-[#d4a843]/14 shadow-[0_0_18px_rgba(212,168,67,0.12)]'
+            : 'border-white/8 bg-white/[0.035] hover:border-[#d4a843]/34 hover:bg-[#d4a843]/8',
+        ].join(' ')}
       >
         <span className="block aspect-video overflow-hidden rounded border border-white/10 bg-black">
           <MediaThumbnail src={image} alt={name} />
@@ -1000,7 +1482,7 @@ function TvGuideRow({
           <span className="line-clamp-2 text-sm font-black leading-tight text-[#d4a843]">{name}</span>
           {row.channel.details?.category ? <span className="mt-1 block truncate text-xs font-semibold text-white/38">{row.channel.details.category}</span> : null}
         </span>
-      </a>
+      </button>
 
       <div className="grid min-w-0 grid-cols-1 items-center sm:grid-cols-[32px_minmax(0,1fr)_32px] sm:gap-2">
           <button
@@ -1018,31 +1500,42 @@ function TvGuideRow({
         >
           {programs.map((program, index) => {
             const onAir = isScheduleOnAir(program, currentTime)
+            const previousProgram = programs[index - 1]
+            const startsNewDay = index > 0 && scheduleDayKey(scheduleStart(program), program.timezone) !== scheduleDayKey(scheduleStart(previousProgram), previousProgram?.timezone)
 
             return (
-              <a
-                href={liveTvSpaHref(row.channel)}
-                key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}
-                className={[
-                  'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
-                  onAir
-                    ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
-                    : 'border-[#d4a843] bg-[#d4a843]/10',
-                ].join(' ')}
-              >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
-                    {[formatTime(scheduleStart(program), program.timezone), formatTime(scheduleEnd(program), program.timezone)].filter(Boolean).join(' - ')}
-                  </span>
-                  {onAir ? (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                      On Air
+              <Fragment key={`${program.id ?? index}-${scheduleStart(program) ?? index}`}>
+                {startsNewDay ? (
+                  <div className="flex w-20 shrink-0 items-center justify-center border-x border-[#d4a843]/30 bg-[#d4a843]/8 px-2 text-center text-[11px] font-black uppercase text-[#f2d16f]">
+                    {scheduleDayLabel(scheduleStart(program), program.timezone)}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onSelectChannel(selectableChannel)}
+                  aria-pressed={selected}
+                  className={[
+                    'min-h-16 w-[min(245px,78vw)] shrink-0 rounded-md border-l-4 px-3 py-2 text-left transition hover:-translate-y-0.5 hover:border-[#f2d16f] hover:bg-[#d4a843]/16 sm:w-[245px]',
+                    onAir
+                      ? 'border-red-500 bg-red-500/12 ring-1 ring-red-500/35 shadow-[0_0_22px_rgba(220,38,38,0.18)] hover:border-red-400 hover:bg-red-500/16'
+                      : 'border-[#d4a843] bg-[#d4a843]/10',
+                    selected ? 'outline outline-1 outline-[#f2d16f]/70' : '',
+                  ].join(' ')}
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="inline-flex rounded-sm bg-black/38 px-2 py-1 text-[11px] font-black leading-none text-[#f2d16f]">
+                      {[formatTime(scheduleStart(program), program.timezone), formatTime(scheduleEnd(program), program.timezone)].filter(Boolean).join(' - ')}
                     </span>
-                  ) : null}
-                </div>
-                <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
-              </a>
+                    {onAir ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase leading-none text-white">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        On Air
+                      </span>
+                    ) : null}
+                  </div>
+                  <h3 className="line-clamp-2 text-xs font-black leading-4 text-[#f1dc90]">{cleanScheduleTitle(program.title)}</h3>
+                </button>
+              </Fragment>
             )
           })}
         </div>
@@ -1097,75 +1590,651 @@ function TvGuidePendingRows({ count }: { count: number }) {
   )
 }
 
+function useLiveTvChatSocket(channelId: string | number, enabled: boolean) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!enabled || channelId == null || typeof window.WebSocket === 'undefined') return
+
+    const queryKey = ['livetv-chat', channelId] as const
+    let socket: WebSocket | null = null
+    let reconnectTimer: number | null = null
+    let reconnectAttempt = 0
+    let stopped = false
+
+    const resync = () => {
+      queryClient.invalidateQueries({ queryKey, exact: true })
+    }
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer != null) {
+        window.clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
+    }
+
+    const scheduleReconnect = () => {
+      if (stopped || reconnectTimer != null) return
+
+      const exponentialDelay = Math.min(30_000, 1000 * (2 ** Math.min(reconnectAttempt, 5)))
+      const hiddenPageDelay = document.hidden ? 5000 : 0
+      const delay = Math.max(exponentialDelay + Math.floor(Math.random() * 750), hiddenPageDelay)
+      reconnectAttempt += 1
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null
+        connect()
+      }, delay)
+    }
+
+    const connect = () => {
+      if (stopped) return
+      if (!navigator.onLine) {
+        scheduleReconnect()
+        return
+      }
+      if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return
+
+      const url = new URL('/ws', window.location.origin)
+      url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      url.searchParams.set('channel_id', String(channelId))
+
+      const connection = new WebSocket(url.toString())
+      socket = connection
+
+      connection.addEventListener('open', () => {
+        if (socket !== connection || stopped) return
+        reconnectAttempt = 0
+        resync()
+      })
+
+      connection.addEventListener('message', (event) => {
+        if (socket !== connection || stopped || typeof event.data !== 'string') return
+
+        let payload: unknown
+        try {
+          payload = JSON.parse(event.data)
+        } catch {
+          return
+        }
+
+        if (!isLiveTvChatSocketMessage(payload, channelId)) return
+
+        queryClient.setQueryData<LiveTvChatState | null>(queryKey, (current) => {
+          if (!current) return current
+          return { ...current, messages: mergeLiveTvChatMessage(current.messages ?? [], payload.message) }
+        })
+      })
+
+      connection.addEventListener('close', () => {
+        if (socket !== connection) return
+        socket = null
+        scheduleReconnect()
+      })
+
+      connection.addEventListener('error', () => {
+        if (connection.readyState === WebSocket.OPEN || connection.readyState === WebSocket.CONNECTING) {
+          connection.close()
+        }
+      })
+    }
+
+    const reconnectNow = () => {
+      if (stopped) return
+      clearReconnectTimer()
+      if (socket?.readyState !== WebSocket.OPEN && socket?.readyState !== WebSocket.CONNECTING) connect()
+      resync()
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) reconnectNow()
+    }
+
+    const fallbackPoll = window.setInterval(() => {
+      if (socket?.readyState !== WebSocket.OPEN) resync()
+    }, 15_000)
+
+    window.addEventListener('online', reconnectNow)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    connect()
+
+    return () => {
+      stopped = true
+      clearReconnectTimer()
+      window.clearInterval(fallbackPoll)
+      window.removeEventListener('online', reconnectNow)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      const activeSocket = socket
+      socket = null
+      if (activeSocket?.readyState === WebSocket.OPEN) activeSocket.close(1000, 'Page changed')
+      else if (activeSocket?.readyState === WebSocket.CONNECTING) activeSocket.close()
+    }
+  }, [channelId, enabled, queryClient])
+}
+
+function isLiveTvChatSocketMessage(payload: unknown, channelId: string | number): payload is { type: 'chat.message'; channel_id: string | number; message: LiveTvChatMessage } {
+  if (!payload || typeof payload !== 'object') return false
+
+  const event = payload as Record<string, unknown>
+  if (event.type !== 'chat.message' || String(event.channel_id ?? '') !== String(channelId)) return false
+  if (!event.message || typeof event.message !== 'object') return false
+
+  const message = event.message as Record<string, unknown>
+  return (typeof message.id === 'string' || typeof message.id === 'number')
+    && typeof message.message === 'string'
+    && (message.promotion_packages == null || Array.isArray(message.promotion_packages))
+}
+
+function mergeLiveTvChatMessage(messages: LiveTvChatMessage[], incoming: LiveTvChatMessage) {
+  if (messages.some((message) => String(message.id) === String(incoming.id))) return messages
+  return [...messages, incoming].slice(-100)
+}
+
 function LiveTvChat({
   channelId,
   chat,
+  ads,
+  showAdSpotLink,
 }: {
   channelId: string | number
   chat: LiveTvChatState | null
+  ads: LiveTvChatAdsState | null
+  showAdSpotLink?: boolean
 }) {
   const [message, setMessage] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showPromotionPicker, setShowPromotionPicker] = useState(false)
+  const [promotionSearch, setPromotionSearch] = useState('')
+  const [selectedPackageIds, setSelectedPackageIds] = useState<Array<string | number>>([])
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null)
+  const promotionPickerRef = useRef<HTMLDivElement | null>(null)
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null)
+  const messagesContentRef = useRef<HTMLDivElement | null>(null)
+  const keepMessagesPinnedRef = useRef(true)
+  const previousChatChannelRef = useRef(String(channelId))
+  const canUseLiveChat = isAuthenticated()
+  const promotionPackages = chat?.promotion_packages ?? []
+  const selectedPackages = promotionPackages.filter((item) => selectedPackageIds.some((id) => String(id) === String(item.id)))
+  const visiblePromotionPackages = promotionPackages.filter((item) => {
+    const term = promotionSearch.trim().toLowerCase()
+    return !term || `${item.name} ${item.description ?? ''}`.toLowerCase().includes(term)
+  })
   const queryClient = useQueryClient()
+  useLiveTvChatSocket(channelId, Boolean(chat?.enabled))
   const sendMessageMutation = useMutation({
-    mutationFn: (nextMessage: string) => sendLiveTvChatMessage(channelId, nextMessage),
+    mutationFn: ({ nextMessage, packageIds }: { nextMessage: string; packageIds: Array<string | number> }) => sendLiveTvChatMessage(channelId, nextMessage, packageIds),
     onSuccess: (response) => {
       queryClient.setQueryData<LiveTvChatState | null>(['livetv-chat', channelId], (current) => {
         if (!current) return current
 
-        return { ...current, messages: [...(current.messages ?? []), response.message] }
+        return { ...current, messages: mergeLiveTvChatMessage(current.messages ?? [], response.message) }
       })
       setMessage('')
+      setSelectedPackageIds([])
+      setShowPromotionPicker(false)
     },
   })
 
+  useEffect(() => {
+    if (!showEmojiPicker) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!emojiPickerRef.current?.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowEmojiPicker(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showEmojiPicker])
+
+  useEffect(() => {
+    if (!showPromotionPicker) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!promotionPickerRef.current?.contains(event.target as Node)) {
+        setShowPromotionPicker(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowPromotionPicker(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showPromotionPicker])
+
+  useLayoutEffect(() => {
+    if (previousChatChannelRef.current !== String(channelId)) {
+      previousChatChannelRef.current = String(channelId)
+      keepMessagesPinnedRef.current = true
+    }
+
+    if (keepMessagesPinnedRef.current && messagesViewportRef.current) {
+      messagesViewportRef.current.scrollTop = messagesViewportRef.current.scrollHeight
+    }
+  }, [channelId, chat?.messages?.length])
+
+  useEffect(() => {
+    const content = messagesContentRef.current
+    if (!content || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => {
+      if (keepMessagesPinnedRef.current && messagesViewportRef.current) {
+        messagesViewportRef.current.scrollTop = messagesViewportRef.current.scrollHeight
+      }
+    })
+    observer.observe(content)
+
+    return () => observer.disconnect()
+  }, [channelId])
+
   return (
-    <section className="rounded-md border border-white/10 bg-white/[0.045] p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
+      {ads?.enabled && ads.banners.length ? (
+        <LiveTvChatAdSlider
+          banners={ads.banners}
+          rotationSeconds={ads.rotation_seconds}
+        />
+      ) : null}
+
+      {showAdSpotLink ? (
+        <a
+          href="https://theauthorschannel.com/apply-for-ad"
+          target="_blank"
+          rel="noreferrer"
+          className="flex shrink-0 items-center justify-between gap-3 border-b border-[#d4a843]/25 bg-[#141109] px-4 py-3 text-xs text-white/72 transition-colors hover:bg-[#1d170a] hover:text-white sm:px-5"
+        >
+          <span>Want your brand featured above the live player?</span>
+          <span className="shrink-0 font-bold text-[#f0c24d]">Apply for an Ad Spot</span>
+        </a>
+      ) : null}
+
+      <div className="flex min-h-14 items-center justify-between gap-3 border-b border-white/12 bg-[#0d0d0d] px-4 py-3.5 sm:px-5 lg:px-5">
         <div className="flex items-center gap-2 text-sm font-bold">
-          <MessageCircle className="h-4 w-4 text-primary" />
-          Live Chat
+          <span>{chat?.title || 'Live Chat'}</span>
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+            aria-label="Live"
+            title="Live"
+          />
         </div>
-        {chat?.guest_name ? <span className="text-xs text-white/48">{chat.guest_name}</span> : null}
+        <div className="flex items-center gap-2 text-xs text-white/48">
+          {canUseLiveChat && chat?.guest_name ? <span>{chat.guest_name}</span> : null}
+        </div>
       </div>
 
-      <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-        {chat?.messages?.length ? chat.messages.map((item) => (
-          <article key={item.id} className="rounded-md bg-black/32 p-3">
-            <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-white/78">{item.guest_name ?? 'Guest'}</span>
-              <span className="text-white/36">{item.time}</span>
-            </div>
-            <p className="text-sm leading-5 text-white/66">{item.message}</p>
-          </article>
-        )) : (
-          <p className="rounded-md bg-black/32 p-4 text-sm text-white/50">
-            No live chat messages yet.
-          </p>
-        )}
-      </div>
-
-      <form
-        className="mt-4 flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const nextMessage = message.trim()
-          if (!nextMessage) return
-
-          sendMessageMutation.mutate(nextMessage)
+      <div
+        ref={messagesViewportRef}
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 lg:pt-3"
+        onScroll={(event) => {
+          const viewport = event.currentTarget
+          const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+          keepMessagesPinnedRef.current = distanceFromBottom <= 64
         }}
       >
-        <input
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder="Message live chat"
-          className="h-10 min-w-0 flex-1 rounded-md border border-white/10 bg-black/38 px-3 text-sm text-white outline-none placeholder:text-white/40"
-        />
-        <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} aria-label="Send message">
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+        <div ref={messagesContentRef} className="space-y-3">
+          {chat?.messages?.length ? chat.messages.map((item) => (
+            <article key={item.id} className="flex gap-2.5">
+              <LiveChatAvatar
+                name={item.guest_name ?? 'Guest'}
+                avatarUrl={item.avatar_url || (String(item.user_id ?? '') === String(window.ezwayAuth?.id ?? '') ? window.ezwayAuth?.avatar : null)}
+              />
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="flex items-baseline gap-2 text-xs leading-none">
+                  <span className="font-bold text-white/90">{item.guest_name ?? 'Guest'}</span>
+                  <span className="text-[10px] text-white/38">{item.time}</span>
+                </div>
+                {item.message ? <p className="mt-1 break-words text-xs leading-[1.35] text-white/70"><LiveChatMessageText message={item.message} /></p> : null}
+                {item.promotion_packages?.length ? (
+                  <div className="mt-2 space-y-2">
+                    {item.promotion_packages.map((promotionPackage) => (
+                      <LiveChatPromotionCard key={promotionPackage.id} promotionPackage={promotionPackage} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          )) : (
+            <p className="py-2 text-sm text-white/50">
+              No live chat messages yet.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {canUseLiveChat ? (
+        <form
+          className="relative mx-5 mb-5 mt-4 flex flex-col gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const nextMessage = message.trim()
+            if ((!nextMessage && selectedPackageIds.length === 0) || sendMessageMutation.isPending) return
+
+            sendMessageMutation.mutate({ nextMessage, packageIds: selectedPackageIds })
+          }}
+        >
+          {selectedPackages.length ? (
+            <div className="flex max-w-full gap-2 overflow-x-auto rounded-lg border border-[#d4a843]/20 bg-[#12100b] p-2 [scrollbar-width:thin]">
+              {selectedPackages.map((promotionPackage) => (
+                <div key={promotionPackage.id} className="flex w-44 shrink-0 items-center gap-2 rounded-md border border-[#d4a843]/35 bg-black/50 p-1.5">
+                  <PromotionPackageImage promotionPackage={promotionPackage} className="h-9 w-11" />
+                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-white/85">{promotionPackage.name}</span>
+                  <button
+                    type="button"
+                    className="rounded p-1 text-white/45 transition hover:bg-white/10 hover:text-white"
+                    aria-label={`Remove ${promotionPackage.name}`}
+                    onClick={() => setSelectedPackageIds((current) => current.filter((id) => String(id) !== String(promotionPackage.id)))}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-2">
+            <div ref={emojiPickerRef} className="relative shrink-0">
+              {showEmojiPicker ? (
+                <div className="absolute bottom-16 left-0 z-20 grid w-72 grid-cols-6 gap-2 rounded-md border border-white/12 bg-[#171717] p-3 shadow-2xl shadow-black/70">
+                  {LIVE_CHAT_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="flex h-9 w-9 items-center justify-center rounded text-xl transition hover:bg-white/12"
+                      onClick={() => {
+                        setMessage((current) => `${current}${emoji}`)
+                        setShowEmojiPicker(false)
+                      }}
+                      aria-label={`Add ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-11 w-8 border-0 bg-transparent p-0 text-white/80 shadow-none hover:bg-transparent hover:text-[#d4a843] focus-visible:ring-1 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0"
+                onClick={() => setShowEmojiPicker((open) => !open)}
+                aria-label="Add emoji"
+                title="Add emoji"
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+            </div>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
+
+                event.preventDefault()
+                event.currentTarget.form?.requestSubmit()
+              }}
+              placeholder="Message live chat"
+              rows={1}
+              style={{ fontSize: '12px', lineHeight: '16px' }}
+              className="h-11 min-w-0 flex-1 resize-none overflow-y-auto rounded-md border border-white/10 bg-black/38 px-3 py-2.5 text-xs leading-4 text-white outline-none placeholder:text-white/40"
+            />
+            {chat?.can_send_promotions ? (
+              <div ref={promotionPickerRef} className="relative shrink-0">
+                {showPromotionPicker ? (
+                  <div className="absolute bottom-14 right-0 z-30 w-[min(22rem,calc(100vw-2.5rem))] rounded-lg border border-[#d4a843]/35 bg-[#151515] p-3 shadow-2xl shadow-black/80">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-white">Choose a promotion package</p>
+                      <button type="button" onClick={() => setShowPromotionPicker(false)} className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close promotion packages">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <label className="flex h-9 items-center gap-2 rounded-md border border-white/12 bg-black/35 px-2.5">
+                      <Search className="h-3.5 w-3.5 text-white/45" />
+                      <input value={promotionSearch} onChange={(event) => setPromotionSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-white/35" placeholder="Search promotion packages..." />
+                    </label>
+                    <div className="mt-2 max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                      {visiblePromotionPackages.length ? visiblePromotionPackages.map((promotionPackage) => {
+                        const selected = selectedPackageIds.some((id) => String(id) === String(promotionPackage.id))
+                        return (
+                          <div key={promotionPackage.id} className="flex items-center gap-2 rounded-md border border-white/8 bg-black/25 p-2">
+                            <PromotionPackageImage promotionPackage={promotionPackage} className="h-11 w-14" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold text-white/90">{promotionPackage.name}</p>
+                              <p className="mt-0.5 truncate text-[10px] text-white/45">{promotionPackage.description || formatPromotionPrice(promotionPackage)}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={selected ? 'h-8 border-[#d4a843] bg-[#d4a843] px-3 text-[11px] text-black hover:bg-[#e5bd58]' : 'h-8 border-[#d4a843]/70 bg-transparent px-3 text-[11px] text-[#f0c24d] hover:bg-[#d4a843]/10 hover:text-[#f0c24d]'}
+                              onClick={() => setSelectedPackageIds(selected ? [] : [promotionPackage.id])}
+                            >
+                              {selected ? 'Added' : 'Add'}
+                            </Button>
+                          </div>
+                        )
+                      }) : <p className="py-5 text-center text-xs text-white/45">No promotion packages found.</p>}
+                    </div>
+                  </div>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 gap-1.5 border-[#d4a843]/70 bg-transparent px-3 text-xs font-bold text-[#f0c24d] hover:bg-[#d4a843]/10 hover:text-[#f0c24d]"
+                  onClick={() => {
+                    setShowPromotionPicker((open) => !open)
+                    setShowEmojiPicker(false)
+                  }}
+                  aria-expanded={showPromotionPicker}
+                >
+                  <Gift className="h-4 w-4" />
+                  <span className="hidden xl:inline">Promo</span>
+                </Button>
+              </div>
+            ) : null}
+            <Button type="submit" size="icon" className="h-11 w-12 shrink-0" disabled={sendMessageMutation.isPending || (!message.trim() && selectedPackageIds.length === 0)} aria-label="Send message">
+              <Send className="h-5 w-5" />
+            </Button>
+          </div>
+          {sendMessageMutation.isError ? <p className="text-xs text-red-400">{chatMutationError(sendMessageMutation.error)}</p> : null}
+        </form>
+      ) : (
+        <div className="mx-5 mb-5 mt-4 flex flex-col gap-3 rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-white">You need to login for live chat.</p>
+          <Button asChild className="bg-[#d4a843] text-black hover:bg-[#e5bd58]">
+            <a href={`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`}>Login</a>
+          </Button>
+        </div>
+      )}
     </section>
   )
+}
+
+function LiveTvChatAdSlider({
+  banners,
+  rotationSeconds,
+}: {
+  banners: LiveTvChatAdBanner[]
+  rotationSeconds?: number | null
+}) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const bannersKey = useMemo(
+    () => banners.map((banner) => `${banner.image_url}|${banner.link_url ?? ''}`).join('||'),
+    [banners],
+  )
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [bannersKey])
+
+  useEffect(() => {
+    if (banners.length < 2) return
+
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % banners.length)
+    }, Math.max(3, rotationSeconds ?? 3) * 1000)
+
+    return () => window.clearInterval(timer)
+  }, [banners.length, rotationSeconds])
+
+  const banner = banners[activeIndex % banners.length]
+  if (!banner?.image_url) return null
+
+  const image = (
+    <div className="relative h-full w-full overflow-hidden bg-black">
+      <img
+        src={banner.image_url}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-55 blur-xl"
+        loading="lazy"
+      />
+      <div className="absolute inset-0 bg-black/20" />
+      <img
+        src={banner.image_url}
+        alt={banner.label || 'Advertisement'}
+        className="relative z-10 h-full w-full object-contain"
+        loading="lazy"
+      />
+    </div>
+  )
+
+  return (
+    <div className="shrink-0 border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
+      <div className="relative aspect-[16/5] min-h-[82px] overflow-hidden">
+        {banner.link_url ? (
+          <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
+            {image}
+          </a>
+        ) : image}
+        <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white/70">Ad</span>
+      </div>
+      {banners.length > 1 ? (
+        <div className="mt-2 flex h-5 justify-center gap-1.5">
+          {banners.map((item, index) => (
+            <button
+              key={`${item.image_url}-${index}`}
+              type="button"
+              aria-label={`Show advertisement ${index + 1}`}
+              onClick={() => setActiveIndex(index)}
+              className={index === activeIndex ? 'h-1.5 w-5 rounded-full bg-[#d4a843]' : 'h-1.5 w-1.5 rounded-full bg-white/50 hover:bg-white/80'}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function LiveChatPromotionCard({ promotionPackage }: { promotionPackage: LiveTvPromotionPackage }) {
+  const content = (
+    <>
+      <div className="flex gap-2.5">
+        <PromotionPackageImage promotionPackage={promotionPackage} className="h-16 w-20" />
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[#d4a843]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#f0c24d]">
+            <Gift className="h-2.5 w-2.5" /> Promotion package
+          </span>
+          <p className="mt-1 truncate text-xs font-bold text-white">{promotionPackage.name}</p>
+          {promotionPackage.description ? <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-white/55">{promotionPackage.description}</p> : null}
+          {formatPromotionPrice(promotionPackage) ? <p className="mt-1 text-[10px] font-bold text-[#f0c24d]">{formatPromotionPrice(promotionPackage)}</p> : null}
+        </div>
+      </div>
+    </>
+  )
+
+  const className = "block overflow-hidden rounded-lg border border-[#d4a843]/40 bg-gradient-to-br from-[#17140d] to-[#0c0c0c] p-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.3)] transition hover:border-[#d4a843]/80 hover:bg-[#1b170e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4a843]"
+
+  if (promotionPackage.checkout_url) {
+    return <a href={promotionPackage.checkout_url} target="_blank" rel="noopener noreferrer" className={className} aria-label={`Open ${promotionPackage.name}`}>{content}</a>
+  }
+
+  return <div className={className}>{content}</div>
+}
+
+function PromotionPackageImage({ promotionPackage, className }: { promotionPackage: LiveTvPromotionPackage; className: string }) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (promotionPackage.image_url && !imageFailed) {
+    return <img src={promotionPackage.image_url} alt="" className={`${className} shrink-0 rounded-md border border-white/10 object-cover`} onError={() => setImageFailed(true)} />
+  }
+
+  return (
+    <span className={`${className} flex shrink-0 items-center justify-center rounded-md border border-[#d4a843]/25 bg-[#d4a843]/10 text-[#f0c24d]`} aria-hidden="true">
+      <Gift className="h-5 w-5" />
+    </span>
+  )
+}
+
+function formatPromotionPrice(promotionPackage: LiveTvPromotionPackage) {
+  const price = promotionPackage.billing?.price
+  if (price == null) return ''
+
+  try {
+    const formatted = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: promotionPackage.billing?.currency || 'USD',
+      maximumFractionDigits: 2,
+    }).format(price)
+    return promotionPackage.billing?.period ? `${formatted} / ${promotionPackage.billing.period}` : formatted
+  } catch {
+    return `${promotionPackage.billing?.currency || 'USD'} ${price}`
+  }
+}
+
+function chatMutationError(error: unknown) {
+  const responseMessage = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
+  return typeof responseMessage === 'string' ? responseMessage : 'Unable to send the message. Please try again.'
+}
+
+const LIVE_CHAT_EMOJIS = ['😀', '😂', '😍', '🔥', '👏', '❤️', '👍', '🎉', '😮', '😢', '🙏', '📺', '🎬', '⭐', '💯', '🚀', '✅', '🙌']
+
+function LiveChatAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  const initials = name.trim().split(/\s+/).map((part) => part.charAt(0)).join('').slice(0, 2).toUpperCase() || '?'
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (avatarUrl && !imageFailed) {
+    return (
+      <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#d4a843]/55 bg-[#161208]" aria-hidden="true">
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" onError={() => setImageFailed(true)} />
+      </span>
+    )
+  }
+
+  return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#d4a843]/55 bg-[#161208] text-[10px] font-black text-[#f0c24d]" aria-hidden="true">{initials}</span>
+}
+
+function LiveChatMessageText({ message }: { message: string }) {
+  const linkPattern = /((?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+(?:\/[^\s]*)?)/giu
+  const parts = message.split(linkPattern)
+
+  return parts.map((part, index) => {
+    if (!part || !linkPattern.test(part)) {
+      linkPattern.lastIndex = 0
+      return part
+    }
+
+    linkPattern.lastIndex = 0
+    const href = /^https?:\/\//i.test(part) ? part : `https://${part}`
+
+    return (
+      <a key={`${part}-${index}`} href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#f0c24d] underline decoration-[#f0c24d]/45 underline-offset-2 hover:text-white">
+        {part}
+      </a>
+    )
+  })
 }
 
 function LiveTvPremiumNotice({ channel }: { channel?: MediaItem }) {
@@ -1187,11 +2256,13 @@ function LiveTvPremiumNotice({ channel }: { channel?: MediaItem }) {
 }
 
 function PremiumActionButton() {
+  if (isNativeIosApp()) return null
+
   if (!isAuthenticated()) {
     return (
-      <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+      <Button asChild className="h-8 min-w-[108px] rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0">
         <a href={`/login?redirect=${encodeURIComponent(window.location.href)}`}>
-          <Lock className="h-5 w-5" />
+          <Lock className="h-4 w-4" />
           Sign In to Watch
         </a>
       </Button>
@@ -1199,9 +2270,9 @@ function PremiumActionButton() {
   }
 
   return (
-    <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
+    <Button asChild className="h-8 min-w-[108px] rounded-md border border-white/20 bg-white px-2.5 text-sm text-black hover:bg-white/85 focus-visible:ring-[#d4a843] focus-visible:ring-offset-0">
       <a href="/subscription-plan">
-        <Lock className="h-5 w-5" />
+        <Lock className="h-4 w-4" />
         Upgrade Plan
       </a>
     </Button>
@@ -1230,6 +2301,7 @@ function PremiumPlayerLock({ image, title, label }: { image?: string | null; tit
 
 function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo | null) {
   const threshold = parseScheduleDate(now?.start_time, now?.timezone)?.getTime() ?? Date.now()
+  const endOfTomorrow = scheduleEndOfTomorrow().getTime()
 
   return items
     .map((item) => ({
@@ -1242,8 +2314,9 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
       const endTime = parseScheduleDate(item.end, item.timezone)?.getTime()
       const startTime = parseScheduleDate(item.start, item.timezone)?.getTime()
 
-      if (endTime) return endTime >= threshold
-      if (startTime) return startTime >= threshold
+      if (endTime && endTime < threshold) return false
+      if (!endTime && startTime && startTime < threshold) return false
+      if (startTime && startTime > endOfTomorrow) return false
 
       return true
     })
@@ -1253,13 +2326,27 @@ function normalizeScheduleItems(items: LiveTvScheduleItem[], now?: ProgramInfo |
 function tvGuidePrograms(row: LiveTvGuideChannel, currentTime: number) {
   const normalized = normalizeScheduleItems(row.schedule, row.channel.now_playing)
 
-  if (normalized.length > 0) return normalized.slice(0, 100)
+  if (normalized.length > 0) return normalized
 
   return row.schedule
     .filter((item) => item.title || scheduleStart(item))
     .filter((item) => isCurrentOrUpcomingSchedule(item, currentTime))
+    .filter((item) => {
+      const start = parseScheduleDate(scheduleStart(item), item.timezone)?.getTime()
+      return !start || start <= scheduleEndOfTomorrow().getTime()
+    })
     .sort((a, b) => (parseScheduleDate(scheduleStart(a), a.timezone)?.getTime() ?? 0) - (parseScheduleDate(scheduleStart(b), b.timezone)?.getTime() ?? 0))
-    .slice(0, 100)
+}
+
+function channelWithGuideSchedule(row: LiveTvGuideChannel): MediaItem {
+  const fullSchedule = Array.isArray(row.channel.full_schedule) && row.channel.full_schedule.length > 0
+    ? row.channel.full_schedule
+    : row.schedule
+
+  return {
+    ...row.channel,
+    full_schedule: fullSchedule,
+  }
 }
 
 function AdStrip({ ads }: { ads: VideoAd[] }) {
@@ -1312,6 +2399,27 @@ function resolveLiveTvStream(channel?: MediaItem) {
   if (!url || stream?.url_type === 'Embedded') return null
 
   return { url, type: stream?.url_type ?? 'HLS' }
+}
+
+function liveTvIframeEmbedCode(streamUrl?: string | null) {
+  if (!streamUrl) return null
+
+  try {
+    const url = new URL(streamUrl)
+    if (url.hostname.toLowerCase() !== 'stream.ezway.tv') return null
+
+    const pathParts = url.pathname.split('/').filter(Boolean)
+    const hlsIndex = pathParts.findIndex((part) => part.toLowerCase() === 'hls')
+    const streamPart = hlsIndex >= 0 ? pathParts[hlsIndex + 1] : null
+    const streamId = streamPart?.replace(/\.m3u8$/i, '')
+    if (!streamId) return null
+
+    const playerUrl = `https://stream.ezway.tv/player/${encodeURIComponent(streamId)}`
+
+    return `<iframe src="${playerUrl}" style="width: 100%; aspect-ratio: 16/9; min-height: 400px; border: none;" allowfullscreen allow="autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>`
+  } catch {
+    return null
+  }
 }
 
 function isPremiumMediaLocked(item?: MediaItem | null) {
@@ -1459,7 +2567,11 @@ function rowHasOnAirProgram(row: LiveTvGuideChannel, currentTime: number) {
 }
 
 function isEzWayTvChannel(channel: MediaItem) {
-  return featuredLiveTvOrder(channel) === 0
+  return [
+    channel.slug,
+    channel.details?.slug,
+    channelName(channel),
+  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value))).includes('ezway-tv')
 }
 
 function channelName(channel: MediaItem) {
@@ -1468,36 +2580,50 @@ function channelName(channel: MediaItem) {
 
 function liveTvChannelNumber(channel: MediaItem | null | undefined, channels: MediaItem[]) {
   if (!channel) return undefined
-  const featuredOrder = featuredLiveTvOrder(channel)
+  const storedChannelNumber = Number(channel.channel_number)
 
-  if (featuredOrder < featuredLiveTvSlugGroups.length) return featuredOrder + 1
+  if (Number.isFinite(storedChannelNumber) && storedChannelNumber > 0) {
+    return storedChannelNumber
+  }
 
-  const channelIndex = sortFeaturedLiveTvFirst(channels)
-    .filter((item) => featuredLiveTvOrder(item) >= featuredLiveTvSlugGroups.length)
+  const channelIndex = sortByDashboardOrder(channels)
     .findIndex((item) => String(item.id) === String(channel.id))
 
-  return channelIndex >= 0 ? channelIndex + featuredLiveTvSlugGroups.length + 1 : undefined
+  return channelIndex >= 0 ? channelIndex + 1 : undefined
 }
 
-function sortFeaturedLiveTvFirst(channels: MediaItem[]) {
-  return [...channels].sort((a, b) => {
-    const featuredCompare = featuredLiveTvOrder(a) - featuredLiveTvOrder(b)
-    if (featuredCompare !== 0) return featuredCompare
+function liveTvChannelsFromDashboard(dashboard: LiveTvDashboard) {
+  const channels = [
+    ...(dashboard.channel_data ?? []),
+    ...((dashboard.category_data ?? []).flatMap((category) => category.channel_data ?? [])),
+  ]
 
-    return 0
+  return sortByDashboardOrder(uniqueMediaItems(channels))
+}
+
+function uniqueMediaItems(channels: MediaItem[]) {
+  const seen = new Set<string>()
+
+  return channels.filter((channel) => {
+    const key = channel.id ? `id:${channel.id}` : `channel:${channel.slug ?? channel.details?.slug ?? channelName(channel)}`
+    if (seen.has(key)) return false
+
+    seen.add(key)
+    return true
   })
 }
 
-function featuredLiveTvOrder(channel: MediaItem) {
-  const values = [
-    channel.slug,
-    channel.details?.slug,
-    channelName(channel),
-  ].filter(Boolean).map((value) => normalizeLiveTvSlug(String(value)))
+function sortByDashboardOrder(channels: MediaItem[]) {
+  return [...channels].sort((a, b) => {
+    const aOrder = channelDashboardOrder(a)
+    const bOrder = channelDashboardOrder(b)
 
-  const index = featuredLiveTvSlugGroups.findIndex((slugs) => slugs.some((slug) => values.includes(slug)))
+    return aOrder - bOrder
+  })
+}
 
-  return index >= 0 ? index : featuredLiveTvSlugGroups.length
+function channelDashboardOrder(channel: MediaItem) {
+  return typeof channel.dashboard_order === 'number' ? channel.dashboard_order : Number.MAX_SAFE_INTEGER
 }
 
 function normalizeLiveTvSlug(value: string) {
@@ -1566,6 +2692,38 @@ function parseScheduleDate(value?: string | null, timezone?: string | null) {
   return date
 }
 
+function scheduleEndOfTomorrow() {
+  const end = new Date()
+  end.setDate(end.getDate() + 1)
+  end.setHours(23, 59, 59, 999)
+
+  return end
+}
+
+function scheduleDayKey(value?: string | null, timezone?: string | null) {
+  const date = parseScheduleDate(value, timezone)
+  if (!date) return 'unknown'
+
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+}
+
+function scheduleDayLabel(value?: string | null, timezone?: string | null) {
+  const date = parseScheduleDate(value, timezone)
+  if (!date) return 'Scheduled'
+
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+  const key = scheduleDayKey(value, timezone)
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+  const tomorrowKey = `${tomorrow.getFullYear()}-${tomorrow.getMonth()}-${tomorrow.getDate()}`
+
+  if (key === todayKey) return 'Today'
+  if (key === tomorrowKey) return 'Tomorrow'
+
+  return date.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
+}
+
 function formatScheduleTime(value?: string | null, timezone?: string | null) {
   if (!value) return null
 
@@ -1582,6 +2740,6 @@ function formatScheduleTime(value?: string | null, timezone?: string | null) {
   })
 }
 
-function scheduleDisplayTimeZone(_timezone?: string | null) {
-  return 'Asia/Dhaka'
+function scheduleDisplayTimeZone(_timezone?: string | null): string | undefined {
+  return undefined
 }

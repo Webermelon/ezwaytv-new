@@ -1,11 +1,13 @@
 {
   "networks": [
     {
-      "name": "EZWAY.TV",
-      "slug": "ezway-tv",
-      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Frame_14_69bffc354fd95.jpg",
-      "description": "Official flagship streaming platform of the eZWay ecosystem delivering curated entertainment, interviews, and creator-driven content across multiple devices and audiences.",
-      "tag": "Flagship · Network Hub"
+      "name": "Tribeca One Distribution",
+      "slug": "tribeca-one-distribution",
+      "image": "/img/distribution/tribeca-one-distribution.svg",
+      "description": "Distribution onboarding partner for licensors submitting company details, film metadata, feature masters, audio, captions, trailers, and final artwork for platform delivery review.",
+      "tag": "Film Distribution · Onboarding",
+      "href": "/tribeka-one-distribution",
+      "showOnboardingCta": false
     },
     {
       "name": "XOTV",
@@ -22,6 +24,13 @@
       "tag": "Broadcast · Digital TV"
     },
     {
+      "name": "CIE TV",
+      "slug": "cie-tv",
+      "image": "/img/distribution/cie-tv.png",
+      "description": "CIE TV brings fashion, entertainment, AI-driven video, red carpet coverage, celebrity interviews, movies, and emerging talent to audiences through eZWay.TV—connecting viewers with the people and stories shaping entertainment.",
+      "tag": "Fashion · Entertainment · Culture"
+    },
+    {
       "name": "National Biz TV",
       "slug": "national-biz-tv",
       "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/1000154509_69defe5ac06b2.jpg",
@@ -36,18 +45,17 @@
       "tag": "Music · Entertainment"
     },
     {
-      "name": "The Women’s Channel",
-      "slug": "the-womens-channel",
-      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/the_womans_channel_69d0a0d4083c3.jpeg",
-      "description": "Content platform focused on empowering stories, leadership, lifestyle, and women-centered programming.",
-      "tag": "Lifestyle · Empowerment"
-    },
-    {
       "name": "Be Spire TV",
       "slug": "be-spire-tv",
       "image": "/img/distribution/bespire-tv.jpeg",
-      "description": "Inspirational and purpose-driven content platform aligned with empowerment and positive storytelling.",
-      "tag": "Inspirational · Purpose-Driven"
+      "description": "BE SPIRE TV is a streaming television network delivering inspiring entertainment and programming that connects audiences with brands, stories, and personalities. Available on Roku and Amazon Fire TV, BE SPIRE TV reaches close to 10 million viewers per month, creating a powerful platform for visibility and audience engagement.",
+      "tag": "Roku · Amazon Fire TV"
+    },
+    {
+      "name": "Las Vegas Television Network",
+      "slug": "las-vegas-television-network",
+      "description": "An established Las Vegas media enterprise with more than 15 years of continuous broadcasting, producing and distributing original programming, live events, and content across television, streaming, digital, and emerging platforms.",
+      "tag": "Las Vegas · Broadcast · Streaming"
     },
     {
       "name": "XPN TV",
@@ -59,7 +67,7 @@
     {
       "name": "Fan TV Global",
       "slug": "fan-tv-global",
-      "image": "https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/Untitled_69e138d4675c9.jpeg",
+      "image": "/img/distribution/fan-tv.jpeg",
       "description": "Global creator-focused streaming and distribution platform amplifying independent voices worldwide.",
       "tag": "Web3 · Global · Creator"
     },
@@ -120,6 +128,13 @@
       "tag": "Premium · Originals"
     },
     {
+      "name": "Prime Video",
+      "slug": "prime-video",
+      "image": "/img/distribution/prime-video.jpg",
+      "description": "Prime Video connects entertainment brands with Amazon's global streaming audience across web, mobile, Fire TV, and connected TV devices.",
+      "tag": "Amazon · Premium Streaming"
+    },
+    {
       "name": "Peacock",
       "slug": "peacock",
       "image": "/img/distribution/peacock-tv-logo.png",
@@ -139,20 +154,6 @@
       "image": "/img/distribution/fire-tv.png",
       "description": "Amazon Fire TV reaches over 200 million devices sold worldwide. eZWay programming is distributed through the Fire TV app ecosystem — connecting with Amazon's vast customer base across Fire TV Sticks, Fire TV Cubes, and Fire TV Edition smart TVs.",
       "tag": "Amazon · 200M+ Devices"
-    },
-    {
-      "name": "Whale TV",
-      "slug": "whale-tv",
-      "image": "/img/distribution/whale-tv.png",
-      "description": "Whale TV is an emerging streaming platform delivering curated independent content to audiences hungry for fresh, authentic programming outside the mainstream. eZWay's distribution on Whale TV connects the network's purpose-driven content with a growing community of engaged viewers.",
-      "tag": "Independent · Streaming"
-    },
-    {
-      "name": "iVOD",
-      "slug": "ivod",
-      "image": "/img/distribution/ivod-logo.jpg",
-      "description": "iVOD delivers video-on-demand content to audiences across connected TV devices and digital platforms. eZWay's presence on iVOD extends the network's reach into on-demand viewing, giving audiences the flexibility to watch compelling content on their own schedule.",
-      "tag": "VOD · Connected TV"
     }
   ]
 }

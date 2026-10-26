@@ -150,6 +150,7 @@ class CastCrewController extends Controller
 
         $data = $request->all();
         $data['file_url'] = extractFileNameFromUrl($data['file_url'],'castcrew');
+        $data['show_in_directory'] = true;
 
         $this->castcrewService->create($data);
 

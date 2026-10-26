@@ -9,8 +9,10 @@ use App\Models\User;
 use Hash;
 use Auth;
 use Str;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Services\CoreTvAccessService;
 use App\Models\Device;
 use App\Models\Setting;
@@ -21,6 +23,10 @@ use App\Models\WebQrSession;
 class OTPController extends Controller
 {
     use LoginTrait;
+
+    private const OTP_VERIFY_MAX_ATTEMPTS = 8;
+    private const OTP_ATTEMPT_WINDOW_SECONDS = 900;
+    private const OTP_BLOCK_SECONDS = 300;
 
     public function otpLogin()
     {
@@ -102,7 +108,7 @@ class OTPController extends Controller
     public function checkSpaUsername(Request $request)
     {
         $validated = $request->validate([
-            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^(?=(?:.*[A-Za-z]){3,})[A-Za-z0-9_.-]+$/'],
         ]);
 
         $localExists = User::withTrashed()->where('username', $validated['username'])->exists();
@@ -131,6 +137,50 @@ class OTPController extends Controller
             if (is_array($payload) && array_key_exists('available', $payload)) {
                 $payload['message'] = $payload['available'] ? 'Username is valid' : ($payload['message'] ?? 'Already taken.');
                 return response()->json($payload, $response->status());
+            }
+        }
+
+        return response($response->body(), $response->status())
+            ->header('Content-Type', $response->header('Content-Type', 'application/json'));
+    }
+
+    public function checkSpaInviteCode(Request $request)
+    {
+        $validated = $request->validate([
+            'invite_code' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+        ]);
+
+        $inviteCode = trim((string) $validated['invite_code']);
+        $localExists = User::withTrashed()->where('username', $inviteCode)->exists();
+        if ($localExists) {
+            return response()->json([
+                'status' => true,
+                'available' => true,
+                'message' => 'Invite code is valid',
+            ]);
+        }
+
+        $response = $this->coreGet('/api/users/check-username', [
+            'username' => $inviteCode,
+        ]);
+
+        if (!$response || $response->serverError()) {
+            return response()->json([
+                'status' => true,
+                'available' => false,
+                'message' => 'Invite code could not be verified right now.',
+            ]);
+        }
+
+        if ($response->successful()) {
+            $payload = $response->json();
+            if (is_array($payload) && array_key_exists('available', $payload)) {
+                $exists = ! (bool) $payload['available'];
+                return response()->json([
+                    'status' => true,
+                    'available' => $exists,
+                    'message' => $exists ? 'Invite code is valid' : 'Invite code was not found.',
+                ], $response->status());
             }
         }
 
@@ -180,13 +230,21 @@ class OTPController extends Controller
     public function registerSpa(Request $request)
     {
         $validated = $request->validate([
-            'invite_code' => ['nullable', 'string', 'max:32'],
+            'invite_code' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:32'],
-            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9_.-]+$/'],
+            'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^(?=(?:.*[A-Za-z]){3,})[A-Za-z0-9_.-]+$/'],
             'email' => ['required', 'email', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:32'],
+            'password' => ['required', 'string', 'min:8', 'max:190', 'confirmed'],
         ]);
+
+        if (! $this->inviteCodeExists((string) $validated['invite_code'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invite code was not found.',
+            ], 422);
+        }
 
         $existing = User::withTrashed()->where('email', $validated['email'])->first();
         if ($existing) {
@@ -196,19 +254,18 @@ class OTPController extends Controller
             ], 409);
         }
 
-        $otp = $this->makeLoginOtp();
         $name = trim($validated['first_name'].' '.$validated['last_name']);
+        $verificationResponse = $this->requestCoreSignupVerification($validated['email'], $name);
 
-        if (! $this->sendOtpViaCore($validated['email'], $otp, $name)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
+        if (isset($verificationResponse['response'])) {
+            return $verificationResponse['response'];
         }
 
+        $registrationData = $validated;
+        unset($registrationData['password'], $registrationData['password_confirmation']);
+
         $request->session()->put('tv_pending_registration', [
-            'data' => $validated,
-            'otp' => $otp,
+            'data' => $registrationData,
             'email' => $validated['email'],
             'expires_at' => now()->addMinutes(10)->timestamp,
             'ip_address' => $request->ip(),
@@ -218,11 +275,11 @@ class OTPController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'We sent a 4-digit login code to your email.',
+            'message' => 'We sent a 6-digit email verification code to your email.',
         ]);
     }
 
-    private function createCoreRegistrationUser(Request $request, array $validated): array
+    private function createCoreRegistrationUser(Request $request, array $validated, string $emailVerificationToken, string $password): array
     {
         $existing = User::withTrashed()->where('email', $validated['email'])->first();
         if ($existing) {
@@ -241,6 +298,9 @@ class OTPController extends Controller
             'username' => $validated['username'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
+            'password' => $password,
+            'password_confirmation' => $password,
+            'email_verification_token' => $emailVerificationToken,
             'source' => 'ezway-tv',
             'timezone' => config('app.timezone', 'UTC'),
             'active' => '1',
@@ -323,33 +383,43 @@ class OTPController extends Controller
             'email' => 'required|email|max:255',
         ]);
 
-        $user = User::where('email', $validated['email'])->first();
+        $email = $this->normalizeEmail($validated['email']);
 
-        if (!$user) {
-            $user = $this->syncMissingUserFromCore($validated['email']);
+        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'send')) {
+            return $response;
         }
 
-        if (!$user || $user->user_type !== 'user') {
-            return response()->json([
-                'status' => false,
-                'message' => 'We could not find an active eZWay TV account with that email.',
-            ], 404);
+        $coreLogin = $this->coreLoginPayloadForEmail($email);
+        if ($coreLogin) {
+            return $this->sendPendingCoreLoginOtp($request, $email, $coreLogin);
         }
 
-        return $this->sendLoginOtpForUser($request, $user, 'We sent a 4-digit login code to your email.');
+        return response()->json([
+            'status' => false,
+            'message' => 'We could not find an active eZWay TV account with that email.',
+        ], 404);
     }
 
     public function verifySpaOtp(Request $request)
     {
         $validated = $request->validate([
             'email' => 'required|email|max:255',
-            'otp' => 'required|digits:4',
+            'otp' => ['required', 'string', 'regex:/^[0-9]{4,6}$/'],
+            'password' => ['nullable', 'string', 'min:8', 'max:190'],
+            'password_confirmation' => ['nullable', 'same:password'],
         ]);
+
+        $email = $this->normalizeEmail($validated['email']);
+        $otp = (string) $validated['otp'];
+
+        if ($response = $this->otpBlockedResponseIfNeeded($request, $email, 'verify')) {
+            return $response;
+        }
 
         $sessionEmail = $request->session()->get('tv_login_otp_email');
         $expiresAt = (int) $request->session()->get('tv_login_otp_expires_at', 0);
 
-        if (!$sessionEmail || strcasecmp($sessionEmail, $validated['email']) !== 0 || $expiresAt < now()->timestamp) {
+        if (!$sessionEmail || strcasecmp($sessionEmail, $email) !== 0 || $expiresAt < now()->timestamp) {
             return response()->json([
                 'status' => false,
                 'message' => 'Your login code has expired. Please request a new one.',
@@ -357,7 +427,7 @@ class OTPController extends Controller
         }
 
         $pendingRegistration = $request->session()->get('tv_pending_registration');
-        if (is_array($pendingRegistration) && strcasecmp((string) ($pendingRegistration['email'] ?? ''), $validated['email']) === 0) {
+        if (is_array($pendingRegistration) && strcasecmp((string) ($pendingRegistration['email'] ?? ''), $email) === 0) {
             if ((int) ($pendingRegistration['expires_at'] ?? 0) < now()->timestamp) {
                 $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
 
@@ -367,11 +437,23 @@ class OTPController extends Controller
                 ], 422);
             }
 
-            if (!hash_equals((string) ($pendingRegistration['otp'] ?? ''), $validated['otp'])) {
+            if (!preg_match('/^[0-9]{6}$/', (string) $validated['otp'])) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'The code you entered is not valid.',
+                    'message' => 'Please enter the 6-digit email verification code.',
                 ], 422);
+            }
+
+            if (empty($validated['password'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Please enter your password again to finish creating the account.',
+                ], 422);
+            }
+
+            $verification = $this->verifyCoreSignupCode($validated['email'], (string) $validated['otp']);
+            if (isset($verification['response'])) {
+                return $verification['response'];
             }
 
             $registrationData = $pendingRegistration['data'] ?? null;
@@ -384,7 +466,7 @@ class OTPController extends Controller
                 ], 422);
             }
 
-            $result = $this->createCoreRegistrationUser($request, $registrationData);
+            $result = $this->createCoreRegistrationUser($request, $registrationData, (string) $verification['token'], (string) $validated['password']);
             if (isset($result['response'])) {
                 return $result['response'];
             }
@@ -392,6 +474,7 @@ class OTPController extends Controller
             $user = $result['user'];
             $request->session()->forget(['tv_pending_registration', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
             $request->session()->regenerate();
+            $this->clearOtpAttempts($request, $email);
 
             Auth::login($user);
             $this->setDevice($user, $request);
@@ -405,29 +488,181 @@ class OTPController extends Controller
             ]);
         }
 
-        $user = User::where('email', $validated['email'])->where('otp', $validated['otp'])->first();
+        $pendingCoreLogin = $request->session()->get('tv_pending_core_login');
+        if (is_array($pendingCoreLogin) && strcasecmp((string) ($pendingCoreLogin['email'] ?? ''), $email) === 0) {
+            if ((int) ($pendingCoreLogin['expires_at'] ?? 0) < now()->timestamp) {
+                $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
 
-        if (!$user || $user->user_type !== 'user') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Your login code has expired. Please request a new one.',
+                ], 422);
+            }
+
+            if (!hash_equals((string) ($pendingCoreLogin['otp'] ?? ''), $otp)) {
+                return $this->recordOtpFailure($request, $email);
+            }
+
+            try {
+                $user = $this->createUserFromVerifiedCoreLogin($pendingCoreLogin);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'TV could not prepare your local account right now.',
+                ], 500);
+            }
+
+            if (!$user || $user->user_type !== 'user') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'We could not find an active eZWay TV account with that email.',
+                ], 404);
+            }
+
+            $request->session()->forget(['tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at']);
+            $request->session()->regenerate();
+            $this->clearOtpAttempts($request, $email);
+
+            Auth::login($user);
+            $this->setDevice($user, $request);
+
             return response()->json([
-                'status' => false,
-                'message' => 'The code you entered is not valid.',
-            ], 422);
+                'status' => true,
+                'message' => 'You are signed in.',
+                'data' => [
+                    'redirect_url' => route('user.login'),
+                ],
+            ]);
         }
 
-        $request->session()->forget(['tv_login_otp_email', 'tv_login_otp_expires_at']);
-        $request->session()->regenerate();
-        $user->forceFill(['otp' => null])->save();
-
-        Auth::login($user);
-        $this->setDevice($user, $request);
-
         return response()->json([
-            'status' => true,
-            'message' => 'You are signed in.',
-            'data' => [
-                'redirect_url' => route('user.login'),
-            ],
-        ]);
+            'status' => false,
+            'message' => 'Your login code has expired. Please request a new one.',
+        ], 422);
+
+        // $user = User::where('email', $email)->where('otp', $otp)->first();
+
+        // if (!preg_match('/^[0-9]{4}$/', (string) $validated['otp'])) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'Please enter the 4-digit login code.',
+        //     ], 422);
+        // }
+
+        // $user = User::where('email', $validated['email'])->where('otp', $validated['otp'])->first();
+
+
+        // if (!$user || $user->user_type !== 'user') {
+        //     return $this->recordOtpFailure($request, $email);
+        // }
+
+        // $request->session()->forget(['tv_login_otp_email', 'tv_login_otp_expires_at']);
+        // $request->session()->regenerate();
+        // $this->clearOtpAttempts($request, $email);
+        // $user->forceFill(['otp' => null])->save();
+
+        // Auth::login($user);
+        // $this->setDevice($user, $request);
+
+        // return response()->json([
+        //     'status' => true,
+        //     'message' => 'You are signed in.',
+        //     'data' => [
+        //         'redirect_url' => route('user.login'),
+        //     ],
+        // ]);
+    }
+
+    private function inviteCodeExists(string $inviteCode): bool
+    {
+        $inviteCode = trim($inviteCode);
+        if ($inviteCode === '') {
+            return false;
+        }
+
+        if (User::withTrashed()->where('username', $inviteCode)->exists()) {
+            return true;
+        }
+
+        $response = $this->coreGet('/api/users/check-username', ['username' => $inviteCode]);
+        if (!$response || !$response->successful()) {
+            return false;
+        }
+
+        $payload = $response->json();
+        return is_array($payload) && array_key_exists('available', $payload) && ! (bool) $payload['available'];
+    }
+
+    private function requestCoreSignupVerification(string $email, string $name): array
+    {
+        $response = $this->corePost('/api/users/email-verification/request', [
+            'email' => $email,
+            'name' => $name !== '' ? $name : $email,
+            'platform_name' => 'eZWay TV',
+            'platform_url' => config('app.url'),
+        ], 20);
+
+        if (!$response) {
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'Core email verification is not available right now.',
+                ], 503),
+            ];
+        }
+
+        if (!$response->successful()) {
+            Log::warning('Core signup verification request failed for TV.', [
+                'email' => $email,
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+
+            return [
+                'response' => response($response->body(), $response->status())
+                    ->header('Content-Type', $response->header('Content-Type', 'application/json')),
+            ];
+        }
+
+        return ['response_payload' => $response->json()];
+    }
+
+    private function verifyCoreSignupCode(string $email, string $code): array
+    {
+        $response = $this->corePost('/api/users/email-verification/verify', [
+            'email' => $email,
+            'code' => $code,
+        ], 20);
+
+        if (!$response) {
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'Core email verification is not available right now.',
+                ], 503),
+            ];
+        }
+
+        if (!$response->successful()) {
+            return [
+                'response' => response($response->body(), $response->status())
+                    ->header('Content-Type', $response->header('Content-Type', 'application/json')),
+            ];
+        }
+
+        $token = (string) $response->json('verification_token', '');
+        if ($token === '') {
+            return [
+                'response' => response()->json([
+                    'status' => false,
+                    'message' => 'Core email verification did not return a valid token.',
+                ], 502),
+            ];
+        }
+
+        return ['token' => $token];
     }
 
     private function sendLoginOtpForUser(Request $request, User $user, string $message)
@@ -437,8 +672,8 @@ class OTPController extends Controller
         if (! $this->sendOtpViaCore($user->email, $otp, trim($user->first_name.' '.$user->last_name))) {
             return response()->json([
                 'status' => false,
-                'message' => 'Could not send the login code right now. Please check Core email delivery settings and try again.',
-            ], 500);
+                'message' => 'Core could not deliver the login code right now. Please wait a moment and try again.',
+            ], 503);
         }
 
         $this->storeLoginOtp($request, $user, $otp);
@@ -449,16 +684,136 @@ class OTPController extends Controller
         ]);
     }
 
+    private function sendPendingCoreLoginOtp(Request $request, string $email, array $coreLogin)
+    {
+        $otp = $this->makeLoginOtp();
+        $syncData = $coreLogin['sync_data'] ?? [];
+        $name = trim((string) (($syncData['first_name'] ?? '').' '.($syncData['last_name'] ?? '')));
+
+        if (! $this->sendOtpViaCore($email, $otp, $name)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Core could not deliver the login code right now. Please wait a moment and try again.',
+            ], 503);
+        }
+
+        $request->session()->put('tv_pending_core_login', [
+            'email' => $email,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10)->timestamp,
+            'otp_provider' => 'core',
+            'sync_data' => $syncData,
+            'access_data' => $coreLogin['access_data'] ?? null,
+        ]);
+        $request->session()->put('tv_login_otp_email', $email);
+        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'We sent a 4-digit login code to your email.',
+        ]);
+    }
+
     private function makeLoginOtp(): string
     {
         return (string) random_int(1000, 9999);
     }
 
-    private function storeLoginOtp(Request $request, User $user, string $otp): void
+    private function recordOtpFailure(Request $request, string $email)
     {
-        $user->forceFill(['otp' => $otp])->save();
-        $request->session()->put('tv_login_otp_email', $user->email);
-        $request->session()->put('tv_login_otp_expires_at', now()->addMinutes(10)->timestamp);
+        if ($response = $this->recordOtpAttempt($request, $email, 'verify', self::OTP_VERIFY_MAX_ATTEMPTS)) {
+            return $response;
+        }
+
+        return response()->json([
+            'status' => false,
+            'message' => 'The code you entered is not valid.',
+        ], 422);
+    }
+
+    private function recordOtpAttempt(Request $request, string $email, string $action, int $maxAttempts)
+    {
+        $email = $this->normalizeEmail($email);
+
+        foreach ($this->otpAttemptKeys($request, $email, $action) as $key) {
+            Cache::add($key, 0, now()->addSeconds(self::OTP_ATTEMPT_WINDOW_SECONDS));
+            $attempts = Cache::increment($key);
+
+            if ($attempts >= $maxAttempts) {
+                $this->blockOtpIdentity($request, $email, $action);
+
+                return $this->otpBlockedResponse($this->otpBlockRemainingSeconds($request, $email, $action));
+            }
+        }
+
+        return null;
+    }
+
+    private function otpBlockedResponseIfNeeded(Request $request, string $email, string $action)
+    {
+        $remainingSeconds = $this->otpBlockRemainingSeconds($request, $email, $action);
+
+        return $remainingSeconds > 0 ? $this->otpBlockedResponse($remainingSeconds) : null;
+    }
+
+    private function otpBlockedResponse(int $remainingSeconds)
+    {
+        $remainingSeconds = max(1, $remainingSeconds);
+        $minutes = max(5, (int) ceil($remainingSeconds / 60));
+
+        return response()->json([
+            'status' => false,
+            'message' => "Too Many Attempts. Please try again in {$minutes} minute".($minutes === 1 ? '' : 's').'.',
+            'retry_after_seconds' => $remainingSeconds,
+            'retry_after_at' => now()->addSeconds($remainingSeconds)->toIso8601String(),
+        ], 429)->header('Retry-After', (string) $remainingSeconds);
+    }
+
+    private function blockOtpIdentity(Request $request, string $email, string $action): void
+    {
+        $blockedUntil = now()->addSeconds(self::OTP_BLOCK_SECONDS)->timestamp;
+
+        foreach ($this->otpBlockKeys($request, $email, $action) as $key) {
+            Cache::put($key, $blockedUntil, now()->addSeconds(self::OTP_BLOCK_SECONDS));
+        }
+    }
+
+    private function otpBlockRemainingSeconds(Request $request, string $email, string $action): int
+    {
+        $remainingSeconds = 0;
+
+        foreach ($this->otpBlockKeys($request, $email, $action) as $key) {
+            $blockedUntil = (int) Cache::get($key, 0);
+            $remainingSeconds = max($remainingSeconds, $blockedUntil - now()->timestamp);
+        }
+
+        return max(0, $remainingSeconds);
+    }
+
+    private function clearOtpAttempts(Request $request, string $email): void
+    {
+        foreach (['send', 'verify'] as $action) {
+            foreach (array_merge(
+                $this->otpAttemptKeys($request, $email, $action),
+                $this->otpBlockKeys($request, $email, $action)
+            ) as $key) {
+                Cache::forget($key);
+            }
+        }
+    }
+
+    private function otpAttemptKeys(Request $request, string $email, string $action): array
+    {
+        return [
+            'tv_otp_attempts:'.$action.':identity:'.sha1($this->normalizeEmail($email).'|'.$request->ip()),
+        ];
+    }
+
+    private function otpBlockKeys(Request $request, string $email, string $action): array
+    {
+        return [
+            'tv_otp_block:'.$action.':identity:'.sha1($this->normalizeEmail($email).'|'.$request->ip()),
+        ];
     }
 
     private function coreGet(string $path, array $query = [], int $timeout = 12): ?\Illuminate\Http\Client\Response
@@ -523,42 +878,55 @@ class OTPController extends Controller
             .'<p style="font-size:28px;font-weight:800;letter-spacing:8px;margin:18px 0;">'.e($otp).'</p>'
             .'<p>This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>';
 
-        try {
-            $response = $this->coreApiRequest(15)
-                ->post($baseUrl.'/api/emails/send', [
+        $payload = [
                     'mode' => 'direct',
                     'to' => $email,
-                    'to_name' => $name !== '' ? $name : null,
                     'subject' => 'Your eZWay TV login code',
                     'body_html' => $bodyHtml,
                     'body_text' => $bodyText,
                     'from_name' => 'eZWay TV',
-                    'variables' => [
-                        'platform' => [
-                            'name' => 'eZWay TV',
-                            'network_name' => 'eZWay TV',
-                            'url' => config('app.url'),
-                            'network_url' => config('app.url'),
-                        ],
-                    ],
-                ]);
-        } catch (\Throwable $exception) {
-            report($exception);
-            return false;
+                ];
+
+        $response = null;
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $response = $this->coreApiRequest(20)
+                    ->post($baseUrl.'/api/emails/send', $payload);
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                if ($attempt < 2) {
+                    usleep(400000);
+                    continue;
+                }
+
+                return false;
+            }
+
+            if ($response->successful()) {
+                return true;
+            }
+
+            if ($attempt < 2 && ($response->serverError() || $response->status() === 429)) {
+                usleep(400000);
+                continue;
+            }
+
+            break;
         }
 
-        if (! $response->successful()) {
+        if ($response) {
             Log::warning('Core email API failed to send TV OTP.', [
                 'email' => $email,
                 'status' => $response->status(),
                 'body' => $response->json() ?? $response->body(),
             ]);
-            return false;
         }
 
-        return true;
+        return false;
     }
-    private function syncMissingUserFromCore(string $email): ?User
+    private function coreLoginPayloadForEmail(string $email): ?array
     {
         $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
         $token = (string) config('services.core_api.token');
@@ -572,7 +940,7 @@ class OTPController extends Controller
             $response = $this->coreApiRequest(12)
                 ->get($baseUrl.'/api/tv/login-user', [
                     'email' => $email,
-                    'package_slug' => 'tv-channel-access-monthly',
+                    'package_slug' => $this->coreTvPackageSlug(),
                 ]);
         } catch (\Throwable $exception) {
             report($exception);
@@ -584,26 +952,346 @@ class OTPController extends Controller
                 'email' => $email,
                 'status' => $response->status(),
             ]);
+        } else {
+            $payload = $response->json('data');
+            if (is_array($payload) && !empty($payload['core_user_id'])) {
+                return [
+                    'sync_data' => $this->coreUserFromAccessPayload($payload, $email),
+                    'access_data' => $payload,
+                ];
+            }
+        }
+
+        return $this->coreIdentityPayloadByEmail($email);
+    }
+
+    private function coreIdentityPayloadByEmail(string $email): ?array
+    {
+        $email = $this->normalizeEmail($email);
+        $response = $this->coreGet('/api/users/check-email', ['email' => $email]);
+
+        if (!$response) {
             return null;
         }
 
-        $payload = $response->json('data');
-        if (! is_array($payload) || empty($payload['core_user_id'])) {
+        $payload = $response->json();
+        if (!is_array($payload)) {
             return null;
         }
 
-        try {
-            $access = app(CoreTvAccessService::class);
-            $access->activate($payload);
-        } catch (\Throwable $exception) {
-            report($exception);
+        if (!$response->successful() && $response->serverError()) {
             return null;
         }
 
-        return User::query()
-            ->where('network_user_id', (int) $payload['core_user_id'])
-            ->orWhere('email', $email)
-            ->first();
+        if (!is_array($payload) || !$this->coreEmailExists($payload)) {
+            return null;
+        }
+
+        $syncData = $this->coreUserFromLookupPayload($payload)
+            ?: $this->coreLookupUserDetailsByEmail($email)
+            ?: $this->fallbackCoreUserFromEmail($email);
+
+        return [
+            'sync_data' => $syncData,
+            'access_data' => null,
+        ];
+    }
+
+    private function createUserFromVerifiedCoreLogin(array $pendingCoreLogin): ?User
+    {
+        $accessData = $pendingCoreLogin['access_data'] ?? null;
+        if (is_array($accessData) && !empty($accessData['core_user_id'])) {
+            app(CoreTvAccessService::class)->activate($accessData);
+
+            $user = User::withTrashed()
+                ->where('network_user_id', (int) $accessData['core_user_id'])
+                ->orWhere('email', $this->normalizeEmail((string) ($accessData['email'] ?? $pendingCoreLogin['email'] ?? '')))
+                ->first();
+
+            return $user ? $this->prepareCoreVerifiedTvUser($user, true) : null;
+        }
+
+        $syncData = $pendingCoreLogin['sync_data'] ?? null;
+        if (!is_array($syncData)) {
+            return null;
+        }
+
+        if ((int) ($syncData['core_user_id'] ?? 0) > 0) {
+            $user = app(CoreTvAccessService::class)->syncUser($syncData);
+            $user->forceFill(['is_subscribe' => 0])->save();
+
+            return $this->prepareCoreVerifiedTvUser($user);
+        }
+
+        return $this->createFreeCoreShellUser($syncData);
+    }
+
+    private function createFreeCoreShellUser(array $syncData): User
+    {
+        $email = $this->normalizeEmail((string) ($syncData['email'] ?? ''));
+        $localPart = Str::of($email)->before('@')->replaceMatches('/[^A-Za-z0-9_.-]+/', '-')->trim('-')->lower();
+        $requestedUsername = trim((string) ($syncData['username'] ?? ''));
+        $username = $this->uniqueLocalUsername($requestedUsername !== '' ? $requestedUsername : (string) ($localPart ?: 'tv-user'));
+
+        $user = User::withTrashed()->where('email', $email)->first();
+        if ($user) {
+            if ($user->trashed()) {
+                $user->restore();
+            }
+
+            $user->forceFill([
+                'status' => 1,
+                'user_type' => 'user',
+                'login_type' => $user->login_type ?: 'otp',
+                'email_verified_at' => $user->email_verified_at ?: now(),
+                'is_subscribe' => 0,
+            ])->save();
+
+            return $this->prepareCoreVerifiedTvUser($user);
+        }
+
+        $name = (string) Str::of($localPart)->replace(['.', '_', '-'], ' ')->title();
+
+        $user = User::create([
+            'first_name' => trim((string) ($syncData['first_name'] ?? '')) ?: ($name ?: 'eZWay'),
+            'last_name' => trim((string) ($syncData['last_name'] ?? '')) ?: 'Member',
+            'username' => $username,
+            'email' => $email,
+            'password' => Hash::make(Str::password(32)),
+            'status' => 1,
+            'user_type' => 'user',
+            'login_type' => 'otp',
+            'email_verified_at' => now(),
+            'is_network_user' => 0,
+            'is_subscribe' => 0,
+        ]);
+
+        return $this->prepareCoreVerifiedTvUser($user);
+    }
+
+    private function prepareCoreVerifiedTvUser(User $user, bool $keepSubscription = false): User
+    {
+        if ($user->trashed()) {
+            $user->restore();
+        }
+
+        $values = [
+            'status' => 1,
+            'user_type' => 'user',
+            'login_type' => $user->login_type ?: 'otp',
+            'email_verified_at' => $user->email_verified_at ?: now(),
+        ];
+
+        if (!$keepSubscription) {
+            $values['is_subscribe'] = 0;
+        }
+
+        $user->forceFill($values)->save();
+
+        $user->unsetRelation('roles');
+
+        if (!$user->hasRole('user')) {
+            try {
+                $user->assignRole('user');
+            } catch (UniqueConstraintViolationException $exception) {
+                Log::info('TV Core login role already attached while preparing local account.', [
+                    'user_id' => $user->id,
+                ]);
+            }
+        }
+
+        $user->createOrUpdateProfileWithAvatar();
+
+        return $user->refresh();
+    }
+
+    private function coreEmailExists(array $payload): bool
+    {
+        if (array_key_exists('available', $payload)) {
+            return $payload['available'] === false || $payload['available'] === 0 || $payload['available'] === 'false';
+        }
+
+        foreach ([
+            $payload['data'] ?? null,
+            $payload['data']['user'] ?? null,
+            $payload['data']['wo_user'] ?? null,
+            $payload['user'] ?? null,
+            $payload['wo_user'] ?? null,
+        ] as $candidate) {
+            if (is_array($candidate) && $this->coreEmailExists($candidate)) {
+                return true;
+            }
+        }
+
+        foreach (['exists', 'registered', 'is_registered', 'taken'] as $key) {
+            if (array_key_exists($key, $payload) && filter_var($payload[$key], FILTER_VALIDATE_BOOLEAN)) {
+                return true;
+            }
+        }
+
+        $message = strtolower((string) ($payload['message'] ?? $payload['error'] ?? ''));
+        if (isset($payload['errors']) && is_array($payload['errors'])) {
+            $message .= ' '.strtolower(json_encode($payload['errors']));
+        }
+
+        return str_contains($message, 'already')
+            || str_contains($message, 'registered')
+            || str_contains($message, 'exist')
+            || str_contains($message, 'taken');
+    }
+
+    private function normalizeEmail(string $email): string
+    {
+        return strtolower(trim($email));
+    }
+
+    private function coreUserFromLookupPayload(array $payload): ?array
+    {
+        foreach ([
+            $payload['data']['wo_user'] ?? null,
+            $payload['data']['user']['wo_user'] ?? null,
+            $payload['data']['user'] ?? null,
+            $payload['data'] ?? null,
+            $payload['wo_user'] ?? null,
+            $payload['user']['wo_user'] ?? null,
+            $payload['user'] ?? null,
+        ] as $coreUser) {
+            if (is_array($coreUser) && ($mapped = $this->mapCoreLookupUser($coreUser))) {
+                return $mapped;
+            }
+        }
+
+        if (isset($payload['data']) && is_array($payload['data'])) {
+            foreach ($payload['data'] as $coreUser) {
+                if (is_array($coreUser) && ($mapped = $this->mapCoreLookupUser($coreUser))) {
+                    return $mapped;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function coreLookupUserDetailsByEmail(string $email): ?array
+    {
+        foreach ([
+            ['/api/users', ['search' => $email, 'limit' => 10]],
+            ['/api/wo-users', ['search' => $email, 'limit' => 10]],
+        ] as [$path, $query]) {
+            $response = $this->coreGet($path, $query);
+            if (!$response || !$response->successful()) {
+                continue;
+            }
+
+            $payload = $response->json();
+            if (!is_array($payload)) {
+                continue;
+            }
+
+            $syncData = $this->coreUserFromLookupPayload($payload);
+            if ($syncData && strcasecmp((string) ($syncData['email'] ?? ''), $email) === 0) {
+                return $syncData;
+            }
+        }
+
+        return null;
+    }
+
+    private function mapCoreLookupUser(array $coreUser): ?array
+    {
+        $profile = isset($coreUser['profile']) && is_array($coreUser['profile']) ? $coreUser['profile'] : [];
+        $coreUserId = (int) ($coreUser['core_user_id'] ?? $coreUser['network_id'] ?? $coreUser['id'] ?? $coreUser['user_id'] ?? 0);
+        $email = (string) ($coreUser['email'] ?? $coreUser['user_email'] ?? '');
+
+        if ($coreUserId < 1 && trim($email) === '') {
+            return null;
+        }
+
+        $nameParts = $this->splitCoreName((string) ($coreUser['name'] ?? $coreUser['full_name'] ?? ''));
+
+        return [
+            'core_user_id' => $coreUserId,
+            'connect_user_id' => (int) ($coreUser['connect_user_id'] ?? $coreUserId),
+            'email' => $email,
+            'username' => (string) ($coreUser['username'] ?? $coreUser['user_name'] ?? ''),
+            'first_name' => (string) ($coreUser['first_name'] ?? $coreUser['firstName'] ?? $coreUser['fname'] ?? $profile['first_name'] ?? $nameParts['first_name'] ?? ''),
+            'last_name' => (string) ($coreUser['last_name'] ?? $coreUser['lastName'] ?? $coreUser['lname'] ?? $profile['last_name'] ?? $nameParts['last_name'] ?? ''),
+            'phone' => (string) ($coreUser['phone'] ?? $coreUser['phone_number'] ?? $coreUser['mobile'] ?? $profile['phone'] ?? $profile['phone_number'] ?? ''),
+            'country_code' => (string) ($coreUser['country_code'] ?? $coreUser['countryCode'] ?? $profile['country_code'] ?? ''),
+            'file_url' => (string) ($coreUser['avatar'] ?? $coreUser['profile_image'] ?? $coreUser['image'] ?? $profile['avatar'] ?? $profile['image'] ?? ''),
+        ];
+    }
+
+    private function splitCoreName(string $name): array
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return ['first_name' => '', 'last_name' => ''];
+        }
+
+        $parts = preg_split('/\s+/', $name, 2);
+
+        return [
+            'first_name' => $parts[0] ?? '',
+            'last_name' => $parts[1] ?? '',
+        ];
+    }
+
+    private function coreUserFromAccessPayload(array $payload, string $email): array
+    {
+        $coreUser = $payload['user'] ?? $payload['core_user'] ?? $payload;
+        if (!is_array($coreUser)) {
+            $coreUser = [];
+        }
+
+        $coreUserId = (int) ($payload['core_user_id'] ?? $coreUser['core_user_id'] ?? $coreUser['id'] ?? $coreUser['user_id'] ?? 0);
+        $connectUserId = (int) ($payload['connect_user_id'] ?? $coreUser['connect_user_id'] ?? $coreUserId);
+
+        return [
+            'core_user_id' => $coreUserId,
+            'connect_user_id' => $connectUserId,
+            'email' => (string) ($payload['email'] ?? $coreUser['email'] ?? $email),
+            'username' => (string) ($payload['username'] ?? $coreUser['username'] ?? ''),
+            'first_name' => (string) ($payload['first_name'] ?? $coreUser['first_name'] ?? $coreUser['firstName'] ?? ''),
+            'last_name' => (string) ($payload['last_name'] ?? $coreUser['last_name'] ?? $coreUser['lastName'] ?? ''),
+            'phone' => (string) ($payload['phone'] ?? $payload['phone_number'] ?? $coreUser['phone'] ?? $coreUser['phone_number'] ?? ''),
+        ];
+    }
+
+    private function fallbackCoreUserFromEmail(string $email): array
+    {
+        $email = $this->normalizeEmail($email);
+        $localPart = (string) Str::of($email)->before('@')->replaceMatches('/[^A-Za-z0-9_.-]+/', '-')->trim('-')->lower();
+        $name = (string) Str::of($localPart)->replace(['.', '_', '-'], ' ')->title();
+
+        return [
+            'core_user_id' => 0,
+            'connect_user_id' => 0,
+            'email' => $email,
+            'username' => $localPart,
+            'first_name' => $name ?: 'eZWay',
+            'last_name' => 'Member',
+            'phone' => '',
+        ];
+    }
+
+    private function uniqueLocalUsername(string $base): string
+    {
+        $base = trim($base) !== '' ? $base : 'tv-user';
+        $username = $base;
+        $suffix = 2;
+
+        while (User::withTrashed()->where('username', $username)->exists()) {
+            $username = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $username;
+    }
+
+    private function coreTvPackageSlug(): string
+    {
+        return (string) config('services.core_api.tv_package_slug', 'tv-subscription-monthly');
     }
     public function checkUserExists(Request $request)
     {

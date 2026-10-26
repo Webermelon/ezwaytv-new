@@ -64,7 +64,7 @@ class EpisodeDetailResource extends JsonResource
                 'trailer_url ' => $season->trailer_url_type=='Local' ? setBaseUrlWithFileName($season->trailer_url,'video','season') : $season->trailer_url,
                 'total_episodes' => $totalEpisodes,
                 'episodes' => EpisodeResource::collection(
-                                    $episodes->take(8)->map(function ($episode) {
+                                    $episodes->map(function ($episode) {
                                         return new EpisodeResource($episode, $this->user_id);
                                     })
                                 ),

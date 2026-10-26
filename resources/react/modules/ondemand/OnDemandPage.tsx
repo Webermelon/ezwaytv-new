@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Check, Clapperboard, Copy, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clapperboard, Copy, Eye, ListVideo, Lock, MessageCircle, Play, Search, Share2, Tv } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
 import { WatchlistToggleButton } from '@/components/WatchlistToggleButton'
 import { trackView } from '@/lib/analytics'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { useSpaPath } from '@/lib/spa-router'
 import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandChannels, loadOnDemandProfile } from './ondemandApi'
@@ -16,9 +18,19 @@ type ShareIconProps = {
   className?: string
 }
 
+type PlaylistGroup = {
+  id: string
+  name: string
+  description?: string | null
+  videos: MediaItem[]
+}
+
+type PlaylistSortOption = 'default' | 'name-asc' | 'name-desc' | 'videos-desc' | 'videos-asc'
+
 export function OnDemandPage() {
   const path = useSpaPath()
   const routeUsername = getUsernameFromPath(path)
+  const routePlaylistId = getPlaylistIdFromPath(path)
   const [query, setQuery] = useState('')
   const trackedProfileViewRef = useRef<string | number | null>(null)
   const isProfileRoute = Boolean(routeUsername)
@@ -35,7 +47,7 @@ export function OnDemandPage() {
     enabled: Boolean(routeUsername),
     staleTime: 60_000,
   })
-  const profileState = profileQuery.data ?? { profile: null, videos: [] }
+  const profileState = profileQuery.data ?? { profile: null, videos: [], movies: [], playlists: [] }
 
   useEffect(() => {
     const profile = profileState.profile
@@ -92,7 +104,7 @@ export function OnDemandPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(229,9,20,0.22),transparent_30%),radial-gradient(circle_at_12%_18%,rgba(212,168,67,0.12),transparent_24%)]" />
         <div className="relative mx-auto max-w-[1800px]">
           {isProfileRoute ? (
-            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} />
+            <ProfilePanel loading={profileQuery.isLoading} profile={profileState.profile} videos={profileState.videos} movies={profileState.movies} manualPlaylists={profileState.playlists} routePlaylistId={routePlaylistId} />
           ) : (
             <ArchiveView
               channels={filteredChannels}
@@ -197,8 +209,51 @@ function ChannelSidebar({
   )
 }
 
-function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile: MediaItem | null; videos: MediaItem[] }) {
+function ProfilePanel({
+  loading,
+  profile,
+  videos,
+  movies,
+  manualPlaylists,
+  routePlaylistId,
+}: {
+  loading: boolean
+  profile: MediaItem | null
+  videos: MediaItem[]
+  movies: MediaItem[]
+  manualPlaylists: NonNullable<MediaItem['playlists']>
+  routePlaylistId?: string | null
+}) {
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
+  const [activePlaylistId, setActivePlaylistId] = useState('all')
+  const appliedRoutePlaylistRef = useRef<string | null>(null)
+  const playlists = useMemo(() => buildChannelPlaylists(videos, manualPlaylists), [videos, manualPlaylists])
+  const activePlaylist = playlists.find((playlist) => playlist.id === activePlaylistId) ?? playlists[0]
+
+  useEffect(() => {
+    const requestedPlaylistId = routePlaylistId ? `playlist:${routePlaylistId}` : null
+
+    if (!requestedPlaylistId) {
+      appliedRoutePlaylistRef.current = null
+      return
+    }
+
+    if (appliedRoutePlaylistRef.current === requestedPlaylistId) {
+      return
+    }
+
+    if (requestedPlaylistId && playlists.some((playlist) => playlist.id === requestedPlaylistId)) {
+      setActivePlaylistId(requestedPlaylistId)
+      appliedRoutePlaylistRef.current = requestedPlaylistId
+      return
+    }
+  }, [playlists, routePlaylistId])
+
+  useEffect(() => {
+    if (!playlists.some((playlist) => playlist.id === activePlaylistId)) {
+      setActivePlaylistId('all')
+    }
+  }, [activePlaylistId, playlists])
 
   if (loading) {
     return <div className="min-h-[620px] animate-pulse rounded-md border border-white/10 bg-white/[0.04]" />
@@ -218,10 +273,12 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
   }
 
   const channelLocked = isPremiumChannelLocked(profile)
+  const profileVideoCount = formatVideoCount(channelVideoCount(profile) || videos.length)
+  const profileViews = channelTotalViews(profile)
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#111]/86 shadow-2xl shadow-black/40">
-      <div className="relative h-[38vw] max-h-48 min-h-36 overflow-hidden bg-black sm:h-[30vw] sm:max-h-52 lg:h-[24vw] lg:max-h-56">
+      <div className="relative h-[44vw] max-h-60 min-h-44 overflow-hidden bg-black sm:h-[34vw] sm:max-h-64 lg:h-[28vw] lg:max-h-72">
         {profile.cover_image_url ? (
           <img
             src={profile.cover_image_url}
@@ -250,7 +307,21 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
                   </Badge>
                 ) : null}
               </div>
-              <p className="mt-1 text-sm leading-5 text-white/58">@{profile.username} · {profile.videos_count ?? videos.length} videos</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-sm border border-white/10 bg-black/24 px-2.5 py-1 text-xs font-semibold text-white/62">
+                  @{profile.username}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-sm border border-white/10 bg-black/24 px-2.5 py-1 text-xs font-bold text-white/72">
+                  <Clapperboard className="h-3.5 w-3.5 text-primary" />
+                  {profileVideoCount}
+                </span>
+                {profileViews !== null ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-sm border border-primary/35 bg-primary/12 px-2.5 py-1 text-xs font-black text-primary shadow-[0_0_22px_rgba(214,168,58,0.10)]">
+                    <Eye className="h-3.5 w-3.5" />
+                    {formatCompactNumber(profileViews)} total views
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="grid gap-2 sm:mb-2 sm:flex sm:w-auto">
@@ -273,47 +344,517 @@ function ProfilePanel({ loading, profile, videos }: { loading: boolean; profile:
           </div>
         </div>
 
-        {profile.description ? (
-          <p className="mt-5 line-clamp-3 max-w-4xl text-sm leading-6 text-white/64">{stripHtml(profile.description)}</p>
-        ) : null}
+        <ChannelAbout description={profile.description} />
 
         {channelLocked ? <OnDemandPremiumPanel item={profile} /> : null}
 
-        <div className="mt-8">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xl font-bold">Videos</h3>
-            <Badge variant="outline" className="border-white/16 text-white/70">{videos.length} videos</Badge>
-          </div>
-
-          {channelLocked && videos.length > 0 ? (
-            <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
-              <div className="pointer-events-none grid gap-4 p-1 opacity-65 blur-sm sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {videos.map((video) => (
-                  <VideoCard key={video.id} video={video} channelId={profile.id} />
-                ))}
-              </div>
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
-                <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
-                  <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
-                  <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
-                </div>
-              </div>
-            </div>
-          ) : videos.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-              {videos.map((video) => (
-                <VideoCard key={video.id} video={video} channelId={profile.id} />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
-              <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
-              No videos yet.
-            </div>
-          )}
-        </div>
+        <PlaylistSection
+          channelId={profile.id}
+          channelLocked={channelLocked}
+          profile={profile}
+          movies={movies}
+          playlists={playlists}
+          activePlaylist={activePlaylist}
+          activePlaylistId={activePlaylistId}
+          onPlaylistChange={setActivePlaylistId}
+        />
       </div>
     </article>
+  )
+}
+
+function PlaylistSection({
+  channelId,
+  channelLocked,
+  profile,
+  movies,
+  playlists,
+  activePlaylist,
+  activePlaylistId,
+  onPlaylistChange,
+}: {
+  channelId: string | number
+  channelLocked: boolean
+  profile: MediaItem
+  movies: MediaItem[]
+  playlists: PlaylistGroup[]
+  activePlaylist?: PlaylistGroup
+  activePlaylistId: string
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  const [playlistQuery, setPlaylistQuery] = useState('')
+  const [playlistSort, setPlaylistSort] = useState<PlaylistSortOption>('default')
+  const allVideosPlaylist = playlists.find((playlist) => playlist.id === 'all') ?? playlists[0]
+  const curatedPlaylists = playlists.filter((playlist) => playlist.id !== 'all' && playlist.videos.length > 0)
+  const visiblePlaylists = useMemo(
+    () => sortPlaylists(
+      curatedPlaylists.filter((playlist) => (
+        (activePlaylistId === 'all' || playlist.id === activePlaylistId)
+        && playlistMatchesQuery(playlist, playlistQuery)
+      )),
+      playlistSort,
+      curatedPlaylists,
+    ),
+    [activePlaylistId, curatedPlaylists, playlistQuery, playlistSort],
+  )
+  const selectedPlaylist = activePlaylist && activePlaylist.id !== 'all' ? activePlaylist : null
+
+  return (
+    <div className="mt-8 space-y-8">
+      {movies.length ? (
+        <MovieRail movies={movies} />
+      ) : null}
+
+      {allVideosPlaylist?.videos.length ? (
+        <VideoRail
+          title="All Videos"
+          videos={allVideosPlaylist.videos}
+          channelId={channelId}
+          channelLocked={channelLocked}
+          profile={profile}
+        />
+      ) : (
+        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
+          <Clapperboard className="mx-auto mb-3 h-8 w-8 text-white/36" />
+          No videos yet.
+        </div>
+      )}
+
+      {curatedPlaylists.length ? (
+        <>
+          <PlaylistControls
+            query={playlistQuery}
+            sort={playlistSort}
+            playlists={curatedPlaylists}
+            activePlaylistId={activePlaylistId}
+            onQueryChange={setPlaylistQuery}
+            onSortChange={setPlaylistSort}
+            onPlaylistChange={onPlaylistChange}
+          />
+          <PlaylistCardsRail
+            playlists={visiblePlaylists}
+            totalCount={curatedPlaylists.length}
+            channelId={channelId}
+            activePlaylistId={activePlaylistId}
+            onPlaylistChange={onPlaylistChange}
+          />
+        </>
+      ) : null}
+
+      {selectedPlaylist ? (
+        <VideoRail
+          title={selectedPlaylist.name}
+          description={selectedPlaylist.description}
+          videos={selectedPlaylist.videos}
+          channelId={channelId}
+          playlistId={selectedPlaylist.id}
+          channelLocked={channelLocked}
+          profile={profile}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function MovieRail({ movies }: { movies: MediaItem[] }) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+  function scrollRail(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * 640, behavior: 'smooth' })
+  }
+
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-white/10 pb-3">
+        <h4 className="text-xl font-black text-white">Movies</h4>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => scrollRail(-1)} className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex" aria-label="Scroll movies left">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => scrollRail(1)} className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex" aria-label="Scroll movies right">
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <Badge variant="outline" className="border-white/16 text-white/70">{movies.length} {movies.length === 1 ? 'movie' : 'movies'}</Badge>
+        </div>
+      </div>
+
+      <div ref={scrollerRef} className="grid grid-flow-col auto-cols-[42%] gap-3 overflow-x-auto pb-5 [scrollbar-width:none] [-ms-overflow-style:none] sm:auto-cols-[calc((100%-4rem)/5)] lg:auto-cols-[calc((100%-6rem)/7)] 2xl:auto-cols-[calc((100%-8rem)/9)] [&::-webkit-scrollbar]:hidden">
+        {movies.map((movie) => <OnDemandMovieCard key={movie.id} movie={movie} />)}
+      </div>
+    </section>
+  )
+}
+
+function OnDemandMovieCard({ movie }: { movie: MediaItem }) {
+  const locked = isPremiumVideoCard(movie)
+  const accessLabel = locked ? 'Premium' : formatAccessLabel(movie.access ?? movie.movie_access)
+
+  return (
+    <a href={`/watch-movie/${movie.id}?autoplay=1`} className="group block min-w-0">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition duration-300 group-hover:-translate-y-1 group-hover:border-primary/60">
+        <MediaThumbnail src={movie.poster_image ?? movie.poster_url ?? movie.thumbnail_url} alt={movie.name} className="h-full w-full" imageClassName="object-cover" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
+        {locked ? <div className="absolute inset-0 bg-black/38" /> : null}
+        {accessLabel ? (
+          <Badge className="absolute left-2 top-2 z-20 inline-flex h-6 items-center gap-1 rounded-sm bg-primary px-2 text-[10px] font-black uppercase text-black">
+            {locked ? <Lock className="h-3 w-3" /> : null}
+            {accessLabel}
+          </Badge>
+        ) : null}
+        <div className="absolute right-2 top-2 z-20">
+          <WatchlistToggleButton entertainmentId={movie.id} type="movie" initialInWatchlist={movie.is_watch_list ?? movie.is_in_watchlist} />
+        </div>
+      </div>
+      <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{movie.name}</h4>
+    </a>
+  )
+}
+
+function VideoRail({
+  title,
+  description,
+  videos,
+  channelId,
+  playlistId,
+  channelLocked,
+  profile,
+}: {
+  title: string
+  description?: string | null
+  videos: MediaItem[]
+  channelId: string | number
+  playlistId?: string
+  channelLocked: boolean
+  profile: MediaItem
+}) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    scrollLeft: 0,
+  })
+  const dragCleanupRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.()
+      document.body.classList.remove('ez-home-rail-drag-lock')
+    }
+  }, [])
+
+  function scrollRail(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * 720, behavior: 'smooth' })
+  }
+
+  function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    dragCleanupRef.current?.()
+
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const activeScroller = scrollerRef.current
+      if (!dragRef.current.active || !activeScroller) return
+
+      const deltaX = moveEvent.pageX - dragRef.current.startX
+      if (Math.abs(deltaX) > 4) {
+        dragRef.current.moved = true
+      }
+
+      activeScroller.scrollLeft = dragRef.current.scrollLeft - deltaX
+    }
+
+    const handleMouseUp = () => {
+      stopDragging()
+      dragCleanupRef.current?.()
+    }
+
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startX: event.pageX,
+      scrollLeft: scroller.scrollLeft,
+    }
+    scroller.classList.add('ez-home-rail-dragging')
+    document.body.classList.add('ez-home-rail-drag-lock')
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    dragCleanupRef.current = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      dragCleanupRef.current = null
+    }
+  }
+
+  function stopDragging() {
+    dragRef.current.active = false
+    scrollerRef.current?.classList.remove('ez-home-rail-dragging')
+    document.body.classList.remove('ez-home-rail-drag-lock')
+  }
+
+  function handleClickCapture(event: MouseEvent<HTMLDivElement>) {
+    if (!dragRef.current.moved) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragRef.current.moved = false
+  }
+
+  const rail = (
+    <div
+      ref={scrollerRef}
+      onMouseDown={handleMouseDown}
+      onDragStart={(event) => event.preventDefault()}
+      onClickCapture={handleClickCapture}
+      className="ez-home-rail-scroller grid grid-flow-col auto-cols-[minmax(220px,72vw)] gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [-ms-overflow-style:none] sm:auto-cols-[calc((100%-3rem)/4)] lg:auto-cols-[calc((100%-4rem)/5)] 2xl:auto-cols-[calc((100%-6rem)/7)] [&::-webkit-scrollbar]:hidden"
+    >
+      {videos.map((video) => (
+        <div key={video.id} className="min-w-0">
+          <VideoCard video={video} channelId={channelId} playlistId={playlistId} />
+        </div>
+      ))}
+    </div>
+  )
+
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-white/10 pb-3">
+        <div className="min-w-0">
+          <h4 className="line-clamp-1 text-xl font-black text-white">{title}</h4>
+          {description ? <p className="mt-1 line-clamp-2 max-w-3xl text-sm leading-6 text-white/56">{stripHtml(description)}</p> : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollRail(-1)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex"
+            aria-label={`Scroll ${title} left`}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollRail(1)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.055] text-white/70 transition hover:border-primary/50 hover:text-primary sm:flex"
+            aria-label={`Scroll ${title} right`}
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <Badge variant="outline" className="border-white/16 text-white/70">{formatVideoCount(videos.length)}</Badge>
+        </div>
+      </div>
+
+      {channelLocked && videos.length > 0 ? (
+        <div className="relative overflow-hidden rounded-md border border-primary/30 bg-black/30">
+          <div className="pointer-events-none p-1 opacity-65 blur-sm">{rail}</div>
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/44 px-4 text-center backdrop-blur-[2px]">
+            <div className="max-w-md rounded-md border border-primary/40 bg-[#111]/92 px-5 py-4 shadow-2xl shadow-black/45">
+              <Lock className="mx-auto mb-3 h-8 w-8 text-primary" />
+              <p className="text-base font-bold text-white">Videos are available with {requiredPlanLabel(profile)}.</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        rail
+      )}
+    </section>
+  )
+}
+
+function PlaylistCardsRail({
+  playlists,
+  totalCount,
+  channelId,
+  activePlaylistId,
+  onPlaylistChange,
+}: {
+  playlists: PlaylistGroup[]
+  totalCount: number
+  channelId: string | number
+  activePlaylistId: string
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  return (
+    <section className="min-w-0">
+      <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+        <div>
+          <span className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Playlist</span>
+          <h4 className="mt-1 text-xl font-black text-white">Playlists</h4>
+        </div>
+        <Badge variant="outline" className="shrink-0 border-white/16 text-white/70">
+          {playlists.length === totalCount ? totalCount : `${playlists.length}/${totalCount}`}
+        </Badge>
+      </div>
+
+      {playlists.length === 0 ? (
+        <div className="rounded-md border border-white/10 bg-black/24 p-8 text-center text-white/56">
+          <ListVideo className="mx-auto mb-3 h-8 w-8 text-white/36" />
+          No playlists match your search.
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-4">
+        {playlists.map((playlist) => (
+          <PlaylistRailCard
+            key={playlist.id}
+            playlist={playlist}
+            channelId={channelId}
+            active={playlist.id === activePlaylistId}
+            onSelect={() => onPlaylistChange(playlist.id)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ChannelAbout({ description }: { description?: string | null }) {
+  const [expanded, setExpanded] = useState(false)
+  const text = stripHtml(description ?? '')
+  const canToggle = text.length > 150
+
+  useEffect(() => {
+    setExpanded(false)
+  }, [text])
+
+  if (!text) {
+    return null
+  }
+
+  return (
+    <div className="mt-5 max-w-4xl">
+      <p className={['text-sm leading-6 text-white/64', expanded ? '' : 'line-clamp-3'].join(' ')}>
+        {text}
+      </p>
+      {canToggle ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-2 text-sm font-bold text-primary transition hover:text-[#f2d16f]"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+function PlaylistControls({
+  query,
+  sort,
+  playlists,
+  activePlaylistId,
+  onQueryChange,
+  onSortChange,
+  onPlaylistChange,
+}: {
+  query: string
+  sort: PlaylistSortOption
+  playlists: PlaylistGroup[]
+  activePlaylistId: string
+  onQueryChange: (query: string) => void
+  onSortChange: (sort: PlaylistSortOption) => void
+  onPlaylistChange: (playlistId: string) => void
+}) {
+  return (
+    <div className="grid gap-3 rounded-md border border-white/10 bg-black/24 p-3 lg:grid-cols-[minmax(0,1fr)_240px_220px] lg:items-center">
+      <label className="relative block min-w-0">
+        <span className="sr-only">Search playlists</span>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/42" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search playlists"
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] pl-10 pr-3 text-sm font-semibold text-white outline-none transition placeholder:text-white/36 focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        />
+      </label>
+      <label className="block min-w-0">
+        <span className="sr-only">Select playlist</span>
+        <select
+          value={activePlaylistId === 'all' ? '' : activePlaylistId}
+          onChange={(event) => onPlaylistChange(event.target.value || 'all')}
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] px-3 text-sm font-black text-white outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">All playlists</option>
+          {playlists.map((playlist) => (
+            <option key={playlist.id} value={playlist.id}>
+              {playlist.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block min-w-0">
+        <span className="sr-only">Sort playlists</span>
+        <select
+          value={sort}
+          onChange={(event) => onSortChange(event.target.value as PlaylistSortOption)}
+          className="h-11 w-full rounded-sm border border-white/10 bg-[#050505] px-3 text-sm font-black text-white outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="default">Default order</option>
+          <option value="name-asc">A to Z</option>
+          <option value="name-desc">Z to A</option>
+          <option value="videos-desc">Most videos</option>
+          <option value="videos-asc">Fewest videos</option>
+        </select>
+      </label>
+    </div>
+  )
+}
+
+function PlaylistRailCard({
+  playlist,
+  channelId,
+  active,
+  onSelect,
+}: {
+  playlist: PlaylistGroup
+  channelId: string | number
+  active: boolean
+  onSelect: () => void
+}) {
+  const firstVideo = playlist.videos[0]
+  const image = firstVideo ? videoThumb(firstVideo) : null
+  const href = firstVideo ? buildPlaylistVideoHref(firstVideo, channelId, playlist.id) : undefined
+
+  return (
+    <a
+      href={href}
+      draggable={false}
+      onClick={onSelect}
+      className={[
+        'group block w-full text-left transition sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)] 2xl:w-[calc((100%-3rem)/4)]',
+        active ? 'text-white' : 'text-white/82 hover:text-white',
+      ].join(' ')}
+    >
+      <div className="relative pt-2">
+        <div className="absolute left-3 right-3 top-0 h-full rounded-md bg-white/14" />
+        <div className="absolute left-1.5 right-1.5 top-1 h-full rounded-md bg-white/10" />
+        <div className={[
+          'relative overflow-hidden rounded-md border bg-black shadow-xl transition',
+          active ? 'border-primary/70 shadow-primary/10' : 'border-white/10 group-hover:border-white/24',
+        ].join(' ')}>
+          <MediaThumbnail
+            src={image}
+            previewSrc={firstVideo ? previewHref(firstVideo) : null}
+            alt={playlist.name}
+            className="aspect-video"
+            imageClassName="object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/86 to-transparent" />
+          <span className="absolute bottom-2 right-2 z-20 inline-flex h-7 items-center gap-1.5 rounded-sm bg-black/78 px-2.5 text-xs font-black text-white shadow-lg ring-1 ring-white/10 backdrop-blur-sm">
+            <ListVideo className="h-3.5 w-3.5" />
+            {playlist.videos.length} {playlist.videos.length === 1 ? 'video' : 'videos'}
+          </span>
+        </div>
+      </div>
+      <h5 className="mt-3 line-clamp-2 text-sm font-black leading-snug">{playlist.name}</h5>
+      {playlist.description ? <p className="mt-1 line-clamp-1 text-xs text-white/52">{stripHtml(playlist.description)}</p> : null}
+      <span className="mt-1 inline-flex text-xs font-bold text-white/56 transition group-hover:text-primary">View full playlist</span>
+    </a>
   )
 }
 
@@ -334,9 +875,11 @@ function OnDemandPremiumPanel({ item }: { item: MediaItem }) {
         </div>
         <div className="grid gap-2 sm:flex md:justify-end">
           <PremiumActionButton item={item} />
-          <Button asChild variant="outline" className="border-white/14 bg-white/[0.04] text-white hover:bg-white/[0.09]">
-            <a href="/login">Sign In</a>
-          </Button>
+          {!isNativeIosApp() ? (
+            <Button asChild variant="outline" className="border-white/14 bg-white/[0.04] text-white hover:bg-white/[0.09]">
+              <a href="/login">Sign In</a>
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -344,6 +887,8 @@ function OnDemandPremiumPanel({ item }: { item: MediaItem }) {
 }
 
 function PremiumActionButton({ item }: { item: MediaItem }) {
+  if (isNativeIosApp()) return null
+
   const isSignedIn = Number(item.current_plan_level ?? 0) > 0
 
   return (
@@ -508,6 +1053,9 @@ function LinkedInIcon({ className }: ShareIconProps) {
 
 function ChannelCard({ channel }: { channel: MediaItem }) {
   const href = channel.username ? `/on-demand/${channel.username}` : '/on-demand'
+  const videoCount = channelVideoCount(channel)
+  const videoCountLabel = formatVideoCount(videoCount)
+  const channelViews = channelTotalViews(channel)
 
   return (
     <a href={href} className="group block min-w-0 overflow-hidden rounded-md border border-white/10 bg-[#141414] transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-[#191919]">
@@ -518,7 +1066,6 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
           className="aspect-[16/10] w-full"
         />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/88 to-transparent" />
-        <Badge className="absolute bottom-3 left-3 rounded-sm bg-black/70 text-white">{channel.videos_count ?? 0} videos</Badge>
         {channel.access === 'paid' ? (
           <Badge className="absolute right-3 top-3 rounded-sm bg-primary text-black">
             <Lock className="mr-1 h-3.5 w-3.5" />
@@ -535,7 +1082,22 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
         <div className="min-w-0">
           <h2 className="line-clamp-2 text-base font-black leading-tight text-white">{channel.name}</h2>
           <p className="mt-1 truncate text-xs font-semibold text-white/52">@{channel.username}</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <p className="inline-flex items-center gap-1 rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
+              <Clapperboard className="h-3 w-3 text-primary" />
+              {videoCountLabel}
+            </p>
+            {channelViews !== null ? (
+              <p className="inline-flex items-center rounded-sm bg-white/[0.06] px-2 py-0.5 text-[11px] font-black uppercase text-white/70">
+                {formatCompactNumber(channelViews)} total views
+              </p>
+            ) : null}
+          </div>
         </div>
+        <span className="col-span-2 mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-white px-3 text-xs font-black text-black shadow-sm transition group-hover:bg-primary group-hover:text-black">
+          View Channel
+          <ArrowRight className="h-3.5 w-3.5" />
+        </span>
       </div>
     </a>
   )
@@ -543,6 +1105,9 @@ function ChannelCard({ channel }: { channel: MediaItem }) {
 
 function ChannelListItem({ channel, active }: { channel: MediaItem; active: boolean }) {
   const href = channel.username ? `/on-demand/${channel.username}` : '/on-demand'
+  const videoCountLabel = formatVideoCount(channelVideoCount(channel))
+  const channelViews = channelTotalViews(channel)
+  const statsLabel = channelViews !== null ? `${videoCountLabel} · ${formatCompactNumber(channelViews)} total views` : videoCountLabel
 
   return (
     <a
@@ -564,22 +1129,22 @@ function ChannelListItem({ channel, active }: { channel: MediaItem; active: bool
           <span className="block min-w-0 truncate text-sm font-bold">{channel.name}</span>
           {channel.access === 'paid' ? <Lock className="h-3.5 w-3.5 shrink-0 text-primary" /> : null}
         </span>
-        <span className="mt-1 block truncate text-xs text-white/52">@{channel.username} · {channel.videos_count ?? 0} videos</span>
+        <span className="mt-1 block truncate text-xs text-white/52">@{channel.username} · {statsLabel}</span>
       </span>
     </a>
   )
 }
 
-function VideoCard({ video, channelId }: { video: MediaItem; channelId: string | number }) {
+function VideoCard({ video, channelId, playlistId }: { video: MediaItem; channelId: string | number; playlistId?: string }) {
   const image = videoThumb(video)
-  const href = `/video-details/${video.slug}?autoplay=1&ondemand_channel=${channelId}`
+  const href = buildPlaylistVideoHref(video, channelId, playlistId)
   const locked = isPremiumVideoCard(video)
   const inWatchlist = video.is_watch_list ?? video.is_in_watchlist
   const accessLabel = locked ? 'Premium' : formatAccessLabel(video.access)
   const durationLabel = formatDurationLabel(video.duration)
 
   return (
-    <a href={href} className="group block min-w-0">
+    <a href={href} draggable={false} className="group block min-w-0">
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black shadow-lg transition group-hover:scale-[1.02] group-hover:border-primary/60">
         <MediaThumbnail
           src={image}
@@ -607,7 +1172,7 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
         <div className="absolute right-3 top-3 z-10">
           <WatchlistToggleButton
             entertainmentId={video.id}
-            type="video"
+            type={video.type === 'movie' ? 'movie' : 'video'}
             initialInWatchlist={inWatchlist}
           />
         </div>
@@ -616,6 +1181,25 @@ function VideoCard({ video, channelId }: { video: MediaItem; channelId: string |
       <h4 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-white">{video.name}</h4>
     </a>
   )
+}
+
+function buildPlaylistVideoHref(video: MediaItem, channelId: string | number, playlistId?: string) {
+  if (!video.slug) return '/videos'
+
+  if (video.type === 'movie') {
+    return `/movie-details/${video.slug}`
+  }
+
+  const params = new URLSearchParams({
+    autoplay: '1',
+    ondemand_channel: String(channelId),
+  })
+  const normalizedPlaylistId = playlistId?.startsWith('playlist:') ? playlistId.slice('playlist:'.length) : null
+  if (normalizedPlaylistId) {
+    params.set('playlist', normalizedPlaylistId)
+  }
+
+  return `/video-details/${video.slug}?${params.toString()}`
 }
 
 function SearchBox({
@@ -683,6 +1267,60 @@ async function copyText(value: string) {
   document.body.removeChild(textArea)
 }
 
+function buildChannelPlaylists(videos: MediaItem[], manualPlaylists: NonNullable<MediaItem['playlists']> = []): PlaylistGroup[] {
+  const curatedPlaylists = manualPlaylists
+    .map((playlist) => ({
+      id: `playlist:${playlist.id}`,
+      name: playlist.name,
+      description: playlist.description,
+      videos: playlist.videos ?? [],
+    }))
+
+  return [
+    {
+      id: 'all',
+      name: 'All Videos',
+      videos,
+    },
+    ...curatedPlaylists,
+  ]
+}
+
+function playlistMatchesQuery(playlist: PlaylistGroup, query: string) {
+  const term = query.trim().toLowerCase()
+  if (!term) return true
+
+  return [playlist.name, playlist.description]
+    .filter(Boolean)
+    .some((value) => stripHtml(String(value)).toLowerCase().includes(term))
+}
+
+function sortPlaylists(playlists: PlaylistGroup[], sort: PlaylistSortOption, originalOrder: PlaylistGroup[]) {
+  const ordered = [...playlists]
+
+  if (sort === 'name-asc') {
+    return ordered.sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  if (sort === 'name-desc') {
+    return ordered.sort((a, b) => b.name.localeCompare(a.name))
+  }
+
+  if (sort === 'videos-desc') {
+    return ordered.sort((a, b) => b.videos.length - a.videos.length || a.name.localeCompare(b.name))
+  }
+
+  if (sort === 'videos-asc') {
+    return ordered.sort((a, b) => a.videos.length - b.videos.length || a.name.localeCompare(b.name))
+  }
+
+  return ordered.sort((a, b) => originalOrder.findIndex((playlist) => playlist.id === a.id) - originalOrder.findIndex((playlist) => playlist.id === b.id))
+}
+
+function profileVideoTotal(profile: MediaItem, playlists: PlaylistGroup[]) {
+  return channelVideoCount(profile) || playlists[0]?.videos.length || 0
+}
+
 function videoThumb(video: MediaItem) {
   return video.thumbnail_image
     ?? video.thumbnail_url
@@ -728,12 +1366,48 @@ function getUsernameFromPath(path: string) {
   return match?.[1] ? decodeURIComponent(match[1]) : ''
 }
 
+function getPlaylistIdFromPath(path: string) {
+  const params = new URLSearchParams(path.split('?')[1] ?? '')
+  const playlistId = params.get('playlist')
+
+  return playlistId ? playlistId.trim() : null
+}
+
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
+}
+
+function channelVideoCount(channel: MediaItem) {
+  const value = channel.content_count ?? channel.videos_count ?? channel.video_count ?? channel.total_videos ?? 0
+  const count = Number(value)
+
+  return Number.isFinite(count) ? Math.max(0, count) : 0
+}
+
+function channelTotalViews(channel: MediaItem) {
+  if (channel.stats?.show_views_frontend === false) {
+    return null
+  }
+
+  const value = channel.stats?.display_views ?? channel.stats?.total_views
+  const count = Number(value)
+
+  return Number.isFinite(count) ? Math.max(0, count) : null
+}
+
+function formatVideoCount(count: number) {
+  return `${count.toLocaleString()} ${count === 1 ? 'video' : 'videos'}`
+}
+
+function formatCompactNumber(count: number) {
+  return new Intl.NumberFormat(undefined, {
+    notation: count >= 10_000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(count)
 }
 
 function isPremiumVideoCard(video: MediaItem) {

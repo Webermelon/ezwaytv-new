@@ -83,11 +83,6 @@
         <a href="{{ route('backend.statistics.settings') }}" class="btn btn-sm btn-dark" style="display:none">
             <i class="ph ph-gear me-1"></i>Settings
         </a>
-        @if(auth()->user()->hasRole('admin'))
-        <span id="boostBadge" style="display:none" class="badge bg-danger ms-1 align-self-center">
-            <i class="ph ph-rocket-launch me-1"></i>Boost Active
-        </span>
-        @endif
     </div>
 </div>
 
@@ -446,9 +441,6 @@
             document.getElementById('val-hours').textContent     = `${data.watch_hours} h`;
             const viewsEl = document.getElementById('val-views');
             if (viewsEl) viewsEl.textContent = data.total_views;
-
-            const boostBadge = document.getElementById('boostBadge');
-            if (boostBadge) boostBadge.style.display = data.boost_active ? 'inline-block' : 'none';
 
             const setChange = (elId, val) => {
                 if (val === null) return;

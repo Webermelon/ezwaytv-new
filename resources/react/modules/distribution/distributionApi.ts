@@ -6,6 +6,8 @@ export type DistributionNetwork = {
   image?: string | null
   description?: string | null
   tag?: string | null
+  href?: string | null
+  showOnboardingCta?: boolean
 }
 
 type DistributionResponse = {
@@ -18,6 +20,7 @@ export async function loadDistribution() {
   return {
     networks: (response.networks ?? []).map((item) => ({
       ...item,
+      name: cleanText(item.name)?.replace(/tribecca/gi, 'Tribeca') ?? item.name,
       tag: cleanText(item.tag),
       description: cleanText(item.description),
       image: resolveAssetUrl(item.image),

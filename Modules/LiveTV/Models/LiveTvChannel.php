@@ -3,6 +3,7 @@
 namespace Modules\LiveTV\Models;
 
 use App\Models\BaseModel;
+use App\Models\AuthorChannel;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\LiveTV\Models\TvChannelStreamContentMapping;
 use Modules\Subscriptions\Models\Plan;
@@ -31,12 +32,15 @@ class LiveTvChannel extends BaseModel
      */
     protected $table = 'live_tv_channel';
     protected $fillable = [
-        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url','enable_live_chat'
+        'name','slug','category_id','poster_url','thumb_url','access','plan_id','description','status','poster_tv_url','enable_live_chat','chat_title','chat_ads_enabled','chat_ad_rotation_seconds','chat_ad_banners','channel_number','vod_channel_id','vod_channel_button_name'
     ];
 
     protected $casts = [
         'status' => 'boolean',
         'enable_live_chat' => 'boolean',
+        'chat_ads_enabled' => 'boolean',
+        'chat_ad_rotation_seconds' => 'integer',
+        'chat_ad_banners' => 'array',
     ];
     // protected $appends = ['poster_url'];
 
@@ -58,6 +62,10 @@ class LiveTvChannel extends BaseModel
         static::creating(function ($liveTvChannel) {
             if (empty($liveTvChannel->slug) && !empty($liveTvChannel->name)) {
                 $liveTvChannel->slug = \Illuminate\Support\Str::slug(trim($liveTvChannel->name));
+            }
+
+            if (empty($liveTvChannel->channel_number)) {
+                $liveTvChannel->channel_number = ((int) static::withTrashed()->max('channel_number')) + 1;
             }
         });
 
@@ -111,6 +119,11 @@ class LiveTvChannel extends BaseModel
         return $this->hasMany(LiveTvChatMessage::class, 'live_tv_channel_id');
     }
 
+    public function vodChannel()
+    {
+        return $this->belongsTo(AuthorChannel::class, 'vod_channel_id');
+    }
+
     public function schedules()
     {
         return $this->hasMany(ChannelSchedule::class, 'live_tv_channel_id');
@@ -146,7 +159,7 @@ class LiveTvChannel extends BaseModel
         }
 
         $items = LiveTvChannel::select([
-            'id','name','slug','plan_id','description','status','access','category_id','poster_url','poster_tv_url',
+            'id','name','slug','channel_number','plan_id','description','status','access','category_id','poster_url','poster_tv_url',
         ])
         ->with([
             'plan:id,level',
@@ -174,7 +187,7 @@ class LiveTvChannel extends BaseModel
     public static function get_channel()
     {
         $items = LiveTvChannel::select([
-            'id','category_id','name','plan_id','slug','description','status','access','poster_url','poster_tv_url',
+            'id','category_id','name','plan_id','slug','channel_number','description','status','access','poster_url','poster_tv_url',
         ])
         ->with([
             'plan:id,level',
@@ -203,7 +216,7 @@ class LiveTvChannel extends BaseModel
     public static function get_tvChannels_catgory_wise($category)
     {
         $items = LiveTvChannel::select([
-            'id','name','plan_id','description','status','access','category_id','poster_url','poster_tv_url'
+            'id','name','channel_number','plan_id','description','status','access','category_id','poster_url','poster_tv_url'
         ])
         ->with([
             'plan:id,level',

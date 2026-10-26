@@ -1,7 +1,7 @@
 import { api } from '@/lib/api'
 import type { MediaItem } from '@/modules/home/types'
 
-export type SearchKind = 'video' | 'livetv' | 'ondemand'
+export type SearchKind = 'movie' | 'tvshow' | 'video' | 'livetv' | 'ondemand' | 'playlist'
 
 export type SearchResult = MediaItem & {
   searchKind: SearchKind
@@ -18,9 +18,22 @@ type SearchResponse = {
     avatar_url?: string | null
     profile_url?: string | null
   }>
+  playlistList?: Array<{
+    id?: number | string
+    name?: string
+    description?: string | null
+    thumbnail_url?: string | null
+    video_count?: number | null
+    channel_name?: string | null
+    channel_username?: string | null
+    profile_url?: string | null
+    href?: string | null
+  }>
 }
 
 export async function loadSearchResults(query: string, types: string[] = []) {
+  const movieOnly = types.length === 1 && types[0] === 'movie'
+  const includeMovies = types.length === 0 || types.includes('movie')
   const params = new URLSearchParams({
     search: query,
     is_ajax: '1',
@@ -29,11 +42,37 @@ export async function loadSearchResults(query: string, types: string[] = []) {
 
   if (types.length > 0) {
     params.set('type', types.join(','))
+    params.set('search_type', types.join(','))
   }
 
-  const response = await api.get<SearchResponse>(`/api/v3/get-search-data?${params.toString()}`)
+  const movieParams = new URLSearchParams({
+    search: query,
+    is_ajax: '1',
+    per_page: '48',
+  })
 
-  return normalizeSearchResponse(response)
+  const [response, movieResponse] = await Promise.all([
+    movieOnly
+      ? Promise.resolve({} as SearchResponse)
+      : api.get<SearchResponse>(`/api/v3/get-search-data?${params.toString()}`),
+    includeMovies
+      ? api.get<{ data?: MediaItem[] }>(`/api/v3/movie-list?${movieParams.toString()}`)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  return uniqueResults([
+    ...normalizeSearchResponse(response),
+    ...(movieResponse.data ?? []).map(normalizeMovieResult),
+  ])
+}
+
+function normalizeMovieResult(item: MediaItem): SearchResult {
+  return {
+    ...item,
+    name: item.name ?? item.details?.name ?? 'Movie',
+    searchKind: 'movie',
+    href: `/watch-movie/${item.id}?autoplay=1`,
+  }
 }
 
 function normalizeSearchResponse(response: SearchResponse) {
@@ -49,8 +88,22 @@ function normalizeSearchResponse(response: SearchResponse) {
     searchKind: 'ondemand',
     href: item.username ? `/on-demand/${item.username}` : '/on-demand',
   }))
+  const playlistResults = (response.playlistList ?? []).map((item): SearchResult => ({
+    id: item.id ?? `${item.channel_username ?? 'playlist'}-${item.name ?? 'result'}`,
+    name: item.name ?? 'Playlist',
+    description: item.description,
+    thumbnail_url: item.thumbnail_url ?? undefined,
+    poster_image: item.thumbnail_url ?? undefined,
+    video_count: item.video_count ?? undefined,
+    channel_name: item.channel_name,
+    channel_username: item.channel_username,
+    profile_url: item.profile_url ?? undefined,
+    type: 'playlist',
+    searchKind: 'playlist',
+    href: item.href ? relativeUrl(item.href) : playlistHref(item.channel_username, item.id),
+  }))
 
-  return uniqueResults([...htmlResults, ...ondemandResults])
+  return uniqueResults([...htmlResults, ...playlistResults, ...ondemandResults])
 }
 
 function parseHtmlResults(html: string) {
@@ -67,10 +120,20 @@ function parseHtmlResults(html: string) {
       const item = JSON.parse(decodeHtml(raw)) as MediaItem
       if (!item?.id) return
 
+      // Series search is intentionally show-level; individual seasons and
+      // episodes are discovered from the TV show detail page.
+      if (item.type === 'episode' || item.type === 'season' || item.episode_number != null) return
+
+      const searchKind: SearchKind = item.type === 'tvshow' ? 'tvshow' : item.type === 'movie' ? 'movie' : 'video'
+
       results.push({
         ...item,
-        searchKind: 'video',
-        href: item.slug ? `/video-details/${item.slug}?autoplay=1&is_search=1` : '/videos',
+        searchKind,
+        href: searchKind === 'tvshow'
+          ? `/tv-shows/${item.slug ?? item.id}`
+          : searchKind === 'movie'
+            ? `/watch-movie/${item.id}?autoplay=1`
+            : item.slug ? `/video-details/${item.slug}?autoplay=1&is_search=1` : '/videos',
       })
     } catch {
       // Ignore malformed legacy card data.
@@ -107,6 +170,29 @@ function decodeHtml(value: string) {
   const textarea = document.createElement('textarea')
   textarea.innerHTML = value
   return textarea.value
+}
+
+function playlistHref(username?: string | null, playlistId?: string | number) {
+  if (!username) return '/on-demand'
+
+  const params = new URLSearchParams()
+  if (playlistId) {
+    params.set('playlist', String(playlistId))
+  }
+
+  const query = params.toString()
+
+  return `/on-demand/${encodeURIComponent(username)}${query ? `?${query}` : ''}`
+}
+
+function relativeUrl(value: string) {
+  try {
+    const url = new URL(value, window.location.origin)
+
+    return `${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return value
+  }
 }
 
 function uniqueResults(items: SearchResult[]) {

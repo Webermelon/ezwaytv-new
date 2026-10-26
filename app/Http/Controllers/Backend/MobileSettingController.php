@@ -161,6 +161,9 @@ class MobileSettingController extends Controller
         // and also affect multiple homepage/dashboard sections.
         clearRelatedCache(['setting', 'genres', 'genres_v2', 'home_banners'], null);
         clearDashboardCache();
+        if (function_exists('clearLiveTvDashboardCache')) {
+            clearLiveTvDashboardCache();
+        }
         if ($request->ajax()) {
 
             return response()->json(['success' => true, 'message' => $message]);
@@ -441,6 +444,13 @@ class MobileSettingController extends Controller
                     return response()->json(['message' => 'Unsupported type'], 422);
                 }
                 break;
+        }
+
+        if ($selected_values && !empty($selectedIds)) {
+            $selectedOrder = array_flip(array_map('strval', $selectedIds));
+            $selected_values = $selected_values
+                ->sortBy(fn ($item) => $selectedOrder[(string) $item->id] ?? PHP_INT_MAX)
+                ->values();
         }
 
         if ($value && !empty($selectedIds)) {

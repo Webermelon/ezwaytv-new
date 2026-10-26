@@ -21,10 +21,12 @@ class AuthorChannel extends Model
         'is_active',
         'access',
         'plan_id',
+        'movies_enabled',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'movies_enabled' => 'boolean',
     ];
 
     /**
@@ -59,6 +61,18 @@ class AuthorChannel extends Model
     {
         // Video model lives in the Video module
         return $this->belongsToMany(\Modules\Video\Models\Video::class, 'author_channel_video', 'author_channel_id', 'video_id')->withTimestamps();
+    }
+
+    public function movies()
+    {
+        return $this->belongsToMany(\Modules\Entertainment\Models\Entertainment::class, 'author_channel_entertainment', 'author_channel_id', 'entertainment_id')->withTimestamps();
+    }
+
+    public function playlists()
+    {
+        return $this->hasMany(AuthorChannelPlaylist::class, 'author_channel_id')
+            ->orderBy('sort_order')
+            ->orderBy('created_at');
     }
 
     public function plan()

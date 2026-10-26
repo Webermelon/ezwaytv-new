@@ -15,9 +15,20 @@ type ApiEnvelope = {
   errors?: Record<string, string[] | string>
   data?: unknown
   available?: boolean
+  retry_after_seconds?: unknown
 }
 
 const authBackground = '/dummy-images/login_banner.jpg'
+
+class AuthRequestError extends Error {
+  payload: ApiEnvelope
+
+  constructor(message: string, payload: ApiEnvelope = {}) {
+    super(message)
+    this.name = 'AuthRequestError'
+    this.payload = payload
+  }
+}
 
 export function AuthPage() {
   const mode = inferAuthMode()
@@ -69,11 +80,17 @@ export function AuthPage() {
 function AuthPanel({ mode }: { mode: AuthMode }) {
   if (mode === 'register') return <RegisterPanel />
 
+  const query = new URLSearchParams(window.location.search)
+  const connectStatus = query.get('connect_status')
+  const requestedRedirect = getRequestedRedirectUrl()
+  const connectUrl = `/auth/connect/start${requestedRedirect ? `?redirect=${encodeURIComponent(requestedRedirect)}` : ''}`
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string; actionHref?: string; actionLabel?: string } | null>(null)
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [otpStep, setOtpStep] = useState<OtpStep>('email')
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const blockedSeconds = useCountdown(blockedUntil)
 
   const isForgot = mode === 'forgot'
 
@@ -113,13 +130,15 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
         return
       }
 
-      formData.set('otp', otp.replace(/\D/g, '').slice(0, 4))
+      formData.set('otp', otp.replace(/\D/g, '').slice(0, 6))
       const response = await postAuth('/auth/spa-otp/verify', formData)
       ensureApiSuccess(response, 'You are signed in.')
       setMessage({ tone: 'success', text: getApiMessage(response, 'You are signed in.') })
-      window.location.href = getRedirectUrl(response) || '/'
+      window.location.href = getRequestedRedirectUrl() || getRedirectUrl(response) || '/'
     } catch (error) {
       const text = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+      const retryAfter = retryAfterSecondsFromError(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       setMessage({ tone: 'error', text })
     } finally {
       setLoading(false)
@@ -140,7 +159,14 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
         </p>
       </div>
 
+      {connectStatus === 'cancelled' ? (
+        <StatusMessage tone="error" text="Connect login was cancelled. You can try again or use an email code." />
+      ) : null}
+      {connectStatus === 'failed' ? (
+        <StatusMessage tone="error" text="eZWay Connect could not complete the login. Please try again or use an email code." />
+      ) : null}
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
+      {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
       {isForgot ? (
         <form className="grid gap-4" onSubmit={handleForgotSubmit}>
@@ -148,24 +174,40 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
           <PrimaryButton loading={loading} label="Send Reset Link" />
         </form>
       ) : (
-        <form className="grid gap-4" onSubmit={handleOtpSubmit}>
-          <Field icon={<Mail className="h-5 w-5" />} label="Account email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required disabled={otpStep === 'code'} />
+        <>
+          <a
+            href={connectUrl}
+            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-md bg-[#d4a843] px-5 py-3 text-sm font-black text-black transition hover:bg-[#f0c74b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0c74b] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111]"
+          >
+            Login with eZWay Connect
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
 
-          {otpStep === 'code' ? (
-            <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          ) : null}
+          <div className="my-5 flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-white/38">
+            <span className="h-px flex-1 bg-white/10" />
+            Or use an email code
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
 
-          <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={!email.trim() || (otpStep === 'code' && otp.length !== 4)} />
+          <form className="grid gap-4" onSubmit={handleOtpSubmit}>
+            <Field icon={<Mail className="h-5 w-5" />} label="Account email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required disabled={otpStep === 'code'} />
 
-          {otpStep === 'code' ? (
-            <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
-              <button type="button" disabled={loading} onClick={() => { setOtp(''); setOtpStep('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-[#f0c74b] transition hover:text-white disabled:opacity-60">
-                <RefreshCw className="h-4 w-4" />
-                Use a different email or resend code
-              </button>
-            </div>
-          ) : null}
-        </form>
+            {otpStep === 'code' ? (
+              <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
+            ) : null}
+
+            <PrimaryButton loading={loading} label={otpStep === 'email' ? 'Send Login Code' : 'Verify and Sign In'} disabled={blockedSeconds > 0 || !email.trim() || (otpStep === 'code' && otp.length !== 4)} />
+
+            {otpStep === 'code' ? (
+              <div className="grid gap-2 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-sm font-semibold text-white/58">
+                <button type="button" disabled={loading} onClick={() => { setOtp(''); setOtpStep('email'); setMessage(null) }} className="inline-flex items-center justify-center gap-2 text-[#f0c74b] transition hover:text-white disabled:opacity-60">
+                  <RefreshCw className="h-4 w-4" />
+                  Use a different email or resend code
+                </button>
+              </div>
+            ) : null}
+          </form>
+        </>
       )}
 
       <div className="mt-6 rounded-md border border-white/10 bg-black/22 px-4 py-4 text-center text-sm font-semibold text-white/58">
@@ -181,7 +223,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
 
 function RegisterPanel() {
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ tone: 'success' | 'error'; text: string; actionHref?: string; actionLabel?: string } | null>(null)
   const [step, setStep] = useState<RegisterStep>('account')
   const [inviteCode, setInviteCode] = useState('')
   const [firstName, setFirstName] = useState('')
@@ -189,11 +231,16 @@ function RegisterPanel() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
   const [otp, setOtp] = useState('')
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const blockedSeconds = useCountdown(blockedUntil)
 
+  const inviteCheck = useAvailability('/auth/check-invite-code', 'invite_code', inviteCode)
   const usernameCheck = useAvailability('/auth/check-username', 'username', username)
   const emailCheck = useAvailability('/auth/check-email', 'email', email)
-  const canCreate = firstName.trim() && lastName.trim() && usernameCheck.state === 'available' && emailCheck.state === 'available'
+  const canCreate = inviteCheck.state === 'available' && firstName.trim() && lastName.trim() && usernameCheck.state === 'available' && emailCheck.state === 'available' && password.length >= 8 && password === passwordConfirmation
 
   async function handleRegisterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -208,11 +255,13 @@ function RegisterPanel() {
       formData.set('username', username.trim())
       formData.set('email', email.trim())
       formData.set('phone_number', phone.trim())
+      formData.set('password', password)
+      formData.set('password_confirmation', passwordConfirmation)
 
       const response = await postAuth('/auth/spa-register', formData)
-      ensureApiSuccess(response, 'Your account is ready. We sent a login code to your email.')
+      ensureApiSuccess(response, 'We sent a 6-digit email verification code to your email.')
       setStep('code')
-      setMessage({ tone: 'success', text: getApiMessage(response, 'Your account is ready. We sent a login code to your email.') })
+      setMessage({ tone: 'success', text: getApiMessage(response, 'We sent a 6-digit email verification code to your email.') })
     } catch (error) {
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'Something went wrong. Please try again.' })
     } finally {
@@ -228,12 +277,16 @@ function RegisterPanel() {
     try {
       const formData = new FormData()
       formData.set('email', email.trim())
-      formData.set('otp', otp.replace(/\D/g, '').slice(0, 4))
+      formData.set('otp', otp.replace(/\D/g, '').slice(0, 6))
+      formData.set('password', password)
+      formData.set('password_confirmation', passwordConfirmation)
       const response = await postAuth('/auth/spa-otp/verify', formData)
       ensureApiSuccess(response, 'You are signed in.')
       window.location.href = '/subscription-plan'
     } catch (error) {
       const text = error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+      const retryAfter = retryAfterSecondsFromError(error)
+      if (retryAfter > 0) setBlockedUntil(Date.now() + retryAfter * 1000)
       const shouldRegister = /could not find|not find|not registered|no active/i.test(text)
       setMessage({
         tone: 'error',
@@ -252,30 +305,36 @@ function RegisterPanel() {
         <p className="text-xs font-black uppercase tracking-[0.24em] text-[#d4a843]">Create Account</p>
         <h2 className="mt-2 text-3xl font-black">Start watching with eZWay TV</h2>
         <p className="mt-2 text-sm leading-6 text-white/58">
-          {step === 'account' ? 'Create your eZWay account first. We will verify it with an email code before checkout.' : `Enter the 4-digit code sent to ${email}.`}
+          {step === 'account' ? 'Create your eZWay account first. We will verify it with an email code before checkout.' : `Enter the 6-digit verification code sent to ${email}.`}
         </p>
       </div>
 
       {message ? <StatusMessage tone={message.tone} text={message.text} /> : null}
+      {blockedSeconds > 0 ? <BlockedCountdown seconds={blockedSeconds} /> : null}
 
       {step === 'account' ? (
         <form className="grid gap-4" onSubmit={handleRegisterSubmit}>
-          <Field icon={<AtSign className="h-5 w-5" />} label="Invite code" name="invite_code" value={inviteCode} onChange={setInviteCode} autoComplete="off" />
+          <Field icon={<AtSign className="h-5 w-5" />} label="Invite code" name="invite_code" value={inviteCode} onChange={(value) => setInviteCode(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="off" required />
+          <AvailabilityText check={inviteCheck} idleText="Enter the username of the member who invited you." />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field icon={<UserRound className="h-5 w-5" />} label="First name" name="first_name" value={firstName} onChange={setFirstName} autoComplete="given-name" required />
             <Field icon={<UserRound className="h-5 w-5" />} label="Last name" name="last_name" value={lastName} onChange={setLastName} autoComplete="family-name" required />
           </div>
           <Field icon={<AtSign className="h-5 w-5" />} label="Username" name="username" value={username} onChange={(value) => setUsername(value.replace(/\s+/g, '').slice(0, 32))} autoComplete="username" required />
-          <AvailabilityText check={usernameCheck} idleText="Use 3-32 letters, numbers, dot, dash, or underscore." />
+          <AvailabilityText check={usernameCheck} idleText="Use 3-32 characters with at least 3 letters. Numbers, dot, dash, and underscore are allowed." />
           <Field icon={<Mail className="h-5 w-5" />} label="Email" name="email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
-          <AvailabilityText check={emailCheck} idleText="We will send your login code here." />
+          <AvailabilityText check={emailCheck} idleText="We will send your verification code here." />
           <Field icon={<Phone className="h-5 w-5" />} label="Phone" name="phone_number" type="tel" value={phone} onChange={setPhone} autoComplete="tel" />
+          <p className="-mt-2 text-xs font-semibold text-white/42">Enter your phone number with country code, for example +1 555 123 4567.</p>
+          <Field icon={<KeyRound className="h-5 w-5" />} label="Password" name="password" type="password" value={password} onChange={setPassword} autoComplete="new-password" required />
+          <Field icon={<KeyRound className="h-5 w-5" />} label="Confirm password" name="password_confirmation" type="password" value={passwordConfirmation} onChange={setPasswordConfirmation} autoComplete="new-password" required />
+          {password && passwordConfirmation && password !== passwordConfirmation ? <p className="-mt-2 text-xs font-semibold text-red-200">Passwords do not match.</p> : null}
           <PrimaryButton loading={loading} label="Create Account" disabled={!canCreate} />
         </form>
       ) : (
         <form className="grid gap-4" onSubmit={handleVerifySubmit}>
-          <Field icon={<KeyRound className="h-5 w-5" />} label="Login code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="one-time-code" maxLength={4} required />
-          <PrimaryButton loading={loading} label="Verify and Continue" disabled={otp.length !== 4} />
+          <Field icon={<KeyRound className="h-5 w-5" />} label="Email verification code" name="otp" value={otp} onChange={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" maxLength={6} required />
+          <PrimaryButton loading={loading} label="Verify and Continue" disabled={otp.length !== 6} />
           <button type="button" disabled={loading} onClick={() => { setStep('account'); setOtp(''); setMessage(null) }} className="text-sm font-black text-[#f0c74b] transition hover:text-white disabled:opacity-60">
             Edit account details
           </button>
@@ -299,6 +358,14 @@ function StatusMessage({ tone, text, actionHref, actionLabel }: { tone: 'success
           {actionLabel}
         </a>
       ) : null}
+    </div>
+  )
+}
+
+function BlockedCountdown({ seconds }: { seconds: number }) {
+  return (
+    <div className="mb-5 rounded-md border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm font-semibold leading-6 text-red-100">
+      You are temporarily blocked. Try again in <span className="font-black text-white">{formatCountdown(seconds)}</span>.
     </div>
   )
 }
@@ -368,9 +435,9 @@ function useAvailability(path: string, key: string, value: string) {
       return
     }
 
-    if (key === 'username' && !/^[A-Za-z0-9_.-]{3,32}$/.test(normalized)) {
+    if ((key === 'username' || key === 'invite_code') && !/^[A-Za-z0-9_.-]{3,32}$/.test(normalized)) {
       setState('invalid')
-      setMessage('Use 3-32 letters, numbers, dot, dash, or underscore.')
+      setMessage('Use 3-32 characters with at least 3 letters.')
       return
     }
 
@@ -389,7 +456,8 @@ function useAvailability(path: string, key: string, value: string) {
         const payload = await getAuth(`${path}?${new URLSearchParams({ [key]: normalized })}`, controller.signal)
         const available = payload.available === true
         setState(available ? 'available' : 'taken')
-        setMessage(available ? `${key === 'email' ? 'Email' : 'Username'} is valid` : getApiMessage(payload, 'Already taken.'))
+        const label = key === 'email' ? 'Email' : key === 'invite_code' ? 'Invite code' : 'Username'
+        setMessage(available ? `${label} is valid` : getApiMessage(payload, key === 'invite_code' ? 'Invite code was not found.' : 'Already taken.'))
       } catch (error) {
         if (controller.signal.aborted) return
         setState('invalid')
@@ -418,7 +486,7 @@ async function postAuth(path: string, body: FormData): Promise<ApiEnvelope> {
 
   const payload = await parseJson(response)
 
-  if (!response.ok) throw new Error(getApiMessage(payload, response.statusText || 'Request failed.'))
+  if (!response.ok) throw new AuthRequestError(getApiMessage(payload, response.statusText || 'Request failed.'), payload)
 
   return payload
 }
@@ -471,6 +539,37 @@ function getApiMessage(payload: ApiEnvelope, fallback: string) {
   return fallback
 }
 
+function retryAfterSecondsFromError(error: unknown) {
+  if (!(error instanceof AuthRequestError)) return 0
+  const seconds = Number(error.payload.retry_after_seconds)
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 0
+}
+
+function useCountdown(until: number | null) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!until) {
+      setSeconds(0)
+      return
+    }
+
+    const tick = () => setSeconds(Math.max(0, Math.ceil((until - Date.now()) / 1000)))
+    tick()
+    const interval = window.setInterval(tick, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [until])
+
+  return seconds
+}
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function getCsrfFromPayload(payload: ApiEnvelope) {
   if (payload && typeof payload === 'object') {
     const record = payload as Record<string, unknown>
@@ -489,6 +588,20 @@ function getRedirectUrl(payload: ApiEnvelope) {
   if (!payload.data || typeof payload.data !== 'object') return ''
   const data = payload.data as Record<string, unknown>
   return typeof data.redirect_url === 'string' ? data.redirect_url : ''
+}
+
+function getRequestedRedirectUrl() {
+  const requested = new URLSearchParams(window.location.search).get('redirect')
+  if (!requested) return ''
+
+  try {
+    const destination = new URL(requested, window.location.origin)
+    if (destination.origin !== window.location.origin || destination.pathname.startsWith('/login')) return ''
+
+    return `${destination.pathname}${destination.search}${destination.hash}`
+  } catch {
+    return ''
+  }
 }
 
 function inferAuthMode(): AuthMode {

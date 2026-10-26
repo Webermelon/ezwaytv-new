@@ -89,10 +89,10 @@ class SettingsController extends Controller
             'show_stream_music_menu',
             'show_subscribe_button',
             'show_login_button',
+            'ios_app_restrictions_enabled',
             'demo_login',
             'enable_tmdb_api',
             'tmdb_api_key',
-            'show_login_button',
         ];
         $settings = $this->fieldsData($fields);
 
@@ -258,11 +258,7 @@ class SettingsController extends Controller
             'aws_region',
             'aws_bucket',
             'aws_path_style',
-            'media_compress_enable',
-            'media_compress_image_quality',
-            'media_compress_video_crf',
-            'media_compress_video_preset',
-            'media_compress_audio_bitrate',
+            'media_compressor_api_enabled',
             'do_spaces_key',
             'do_spaces_secret',
             'do_spaces_region',
@@ -460,7 +456,7 @@ class SettingsController extends Controller
             }
             $timeFormatList = $data;
 
-        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled'];
+        $fields = ['google_analytics', 'default_language', 'default_time_zone', 'data_table_limit', 'homepage_rail_item_limit', 'default_currency','default_date_format', 'default_time_format', 'forward_seconds', 'backward_seconds', 'live_tv_chat_enabled', 'live_tv_chat_link_allowed_emails'];
         $settings = $this->fieldsData($fields);
         return view('setting::backend.setting.section-pages.misc-settings', compact('settings', 'languages', 'timezones','dateFormat','timeFormatList'));
     }
@@ -529,6 +525,14 @@ class SettingsController extends Controller
             }
         }
         
+        if ($request->input('setting_tab') === 'storage' && ! $request->has('media_compressor_api_enabled')) {
+            $request->merge(['media_compressor_api_enabled' => '0']);
+        }
+
+        if ($request->input('setting_tab') === 'storage') {
+            $request->merge(['media_compress_enable' => '0']);
+        }
+
         $rules = Setting::getSelectedValidationRules(array_keys($request->all()));
      
         // Override validation rules for media fields that come from media modal (URLs, not file uploads)
@@ -583,6 +587,19 @@ class SettingsController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error("Validation failed: ".json_encode($e->errors()));
             throw $e; // Re-throw to maintain normal validation behavior
+        }
+
+        if (array_key_exists('live_tv_chat_link_allowed_emails', $data)) {
+            $emails = preg_split('/[\s,;]+/', strtolower((string) $data['live_tv_chat_link_allowed_emails']), -1, PREG_SPLIT_NO_EMPTY);
+            $invalidEmails = array_filter($emails, fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL) === false);
+
+            if ($invalidEmails !== []) {
+                return redirect()->back()
+                    ->withErrors(['live_tv_chat_link_allowed_emails' => 'Enter valid email addresses separated by a new line or comma.'])
+                    ->withInput();
+            }
+
+            $data['live_tv_chat_link_allowed_emails'] = implode("\n", array_values(array_unique($emails)));
         }
         $validSettings = array_keys($rules);
 
@@ -714,12 +731,21 @@ class SettingsController extends Controller
             Cache::forget('footer_data');
         }
 
+        if ($tab === 'misc') {
+            Cache::forget('settings:all_by_name');
+            if (function_exists('clearDashboardCache')) {
+                clearDashboardCache();
+            }
+        }
+
         if ($tab === 'module') {
             Cache::forget('api:v3:navigation-menu:v5');
         }
 
         if ($tab === 'storage') {
             $this->syncStorageEnv($request);
+            Cache::forget('settings.all');
+            Cache::forget('settings:all_by_name');
         }
 
         $tabNames = [
@@ -835,6 +861,12 @@ class SettingsController extends Controller
         }
 
         $this->setEnvValue('ACTIVE_STORAGE', $activeStorage);
+        $compressorApiEnabled = (int) $request->input('media_compressor_api_enabled', 0) === 1;
+        $this->setEnvValue(
+            'MEDIA_COMPRESSOR_API_ENABLED',
+            $compressorApiEnabled ? 'true' : 'false'
+        );
+        $this->syncMediaCompressorApiSetting($compressorApiEnabled);
 
         if ((int) $request->input('s3', 0) === 1) {
             $this->setEnvValue('AWS_ACCESS_KEY_ID', (string) $request->input('aws_access_key', ''));
@@ -872,6 +904,27 @@ class SettingsController extends Controller
             $this->setEnvValue('DO_SPACES_ENDPOINT', $doEndpoint);
             $this->setEnvValue('DO_SPACES_URL', $doUrl);
             $this->setEnvValue('DO_SPACES_USE_PATH_STYLE_ENDPOINT', (string) $request->input('do_spaces_path_style', 'false'));
+        }
+    }
+
+    private function syncMediaCompressorApiSetting(bool $enabled): void
+    {
+        $payload = [
+            'val' => $enabled ? '1' : '0',
+            'type' => Setting::getDataType('media_compressor_api_enabled'),
+            'datatype' => Setting::getType('media_compressor_api_enabled'),
+            'updated_at' => now(),
+        ];
+
+        $updated = DB::table('settings')
+            ->where('name', 'media_compressor_api_enabled')
+            ->update($payload);
+
+        if ($updated === 0) {
+            DB::table('settings')->insert($payload + [
+                'name' => 'media_compressor_api_enabled',
+                'created_at' => now(),
+            ]);
         }
     }
 

@@ -264,10 +264,16 @@
                                             </div>
                                         </td>
                                         <td class="text-end">
-                                            <form method="POST" action="{{ route('backend.permission-role.user-access.update', $adminUser->id) }}" id="admin-user-access-{{ $adminUser->id }}">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm btn-primary">Update Access</button>
-                                            </form>
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a class="btn btn-sm btn-warning-subtle" href="{{ route('backend.users.edit', $adminUser->id) }}">
+                                                    <i class="ph ph-pencil-simple-line align-middle"></i>
+                                                    Edit Profile
+                                                </a>
+                                                <form method="POST" action="{{ route('backend.permission-role.user-access.update', $adminUser->id) }}" id="admin-user-access-{{ $adminUser->id }}">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-primary">Update Access</button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

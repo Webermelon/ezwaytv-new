@@ -17,14 +17,20 @@ export function CastCrewDetailPage() {
     staleTime: 5 * 60_000,
   })
   const detail = detailQuery.data
+  const hasProfileStats = detail
+    ? [detail.total_movies, detail.total_tv_show, detail.rating, detail.birth_date].some(hasDisplayValue)
+    : false
+  const hasProfileInfo = detail
+    ? [detail.birth_place, detail.top_genres].some(hasDisplayValue)
+    : false
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="castcrew" />
 
       {detailQuery.isLoading ? (
-        <section className="grid min-h-[72vh] items-center gap-8 px-4 py-16 sm:px-8 lg:grid-cols-[320px_1fr] lg:px-12">
-          <div className="aspect-square animate-pulse rounded-full bg-white/[0.06]" />
+        <section className="grid min-h-[72vh] items-center gap-8 px-4 py-16 sm:px-8 lg:grid-cols-[300px_1fr] lg:px-12">
+          <div className="aspect-[4/5] animate-pulse rounded-md bg-white/[0.06]" />
           <div>
             <div className="h-14 max-w-xl animate-pulse rounded-md bg-white/[0.08]" />
             <div className="mt-5 h-32 max-w-3xl animate-pulse rounded-md bg-white/[0.05]" />
@@ -41,27 +47,31 @@ export function CastCrewDetailPage() {
               Personalities
             </a>
 
-            <div className="grid items-center gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
-              <div className="mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-full border border-white/10 bg-white/[0.06] shadow-2xl">
-                <MediaThumbnail src={detail.profile_image} alt={detail.name} className="aspect-square rounded-full" />
+            <div className="grid items-start gap-8 lg:grid-cols-[300px_minmax(0,1fr)]">
+              <div className="mx-auto aspect-[4/5] w-full max-w-[300px] overflow-hidden rounded-md border border-white/10 bg-white/[0.06] shadow-2xl">
+                <MediaThumbnail src={detail.profile_image} alt={detail.name} className="aspect-[4/5] rounded-md" />
               </div>
 
               <div className="min-w-0">
                 <Badge className="rounded-sm bg-primary text-white">{detail.role ?? 'Personality'}</Badge>
                 <h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">{detail.name}</h1>
-                {detail.bio ? <p className="mt-5 max-w-4xl text-sm leading-7 text-white/66 sm:text-base">{stripHtml(detail.bio)}</p> : null}
+                {hasDisplayValue(detail.bio) ? <p className="mt-5 max-w-4xl text-sm leading-7 text-white/66 sm:text-base">{stripHtml(detail.bio)}</p> : null}
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <Stat icon={<Film className="h-4 w-4" />} label="Movies" value={String(detail.total_movies ?? 0)} />
-                  <Stat icon={<Tv className="h-4 w-4" />} label="TV Shows" value={String(detail.total_tv_show ?? 0)} />
-                  <Stat icon={<Star className="h-4 w-4" />} label="Rating" value={String(detail.rating ?? 0)} />
-                  <Stat icon={<Calendar className="h-4 w-4" />} label="Birth Date" value={detail.birth_date ?? 'N/A'} />
-                </div>
+                {hasProfileStats ? (
+                  <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {hasDisplayValue(detail.total_movies) ? <Stat icon={<Film className="h-4 w-4" />} label="Movies" value={String(detail.total_movies)} /> : null}
+                    {hasDisplayValue(detail.total_tv_show) ? <Stat icon={<Tv className="h-4 w-4" />} label="TV Shows" value={String(detail.total_tv_show)} /> : null}
+                    {hasDisplayValue(detail.rating) ? <Stat icon={<Star className="h-4 w-4" />} label="Rating" value={String(detail.rating)} /> : null}
+                    {hasDisplayValue(detail.birth_date) ? <Stat icon={<Calendar className="h-4 w-4" />} label="Birth Date" value={String(detail.birth_date)} /> : null}
+                  </div>
+                ) : null}
 
-                <div className="mt-5 grid gap-3 lg:grid-cols-2">
-                  {detail.birth_place ? <InfoRow icon={<MapPin className="h-4 w-4" />} label="Birth Place" value={detail.birth_place} /> : null}
-                  {detail.top_genres ? <InfoRow icon={<Film className="h-4 w-4" />} label="Top Genres" value={detail.top_genres} /> : null}
-                </div>
+                {hasProfileInfo ? (
+                  <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                    {hasDisplayValue(detail.birth_place) ? <InfoRow icon={<MapPin className="h-4 w-4" />} label="Birth Place" value={String(detail.birth_place)} /> : null}
+                    {hasDisplayValue(detail.top_genres) ? <InfoRow icon={<Film className="h-4 w-4" />} label="Top Genres" value={String(detail.top_genres)} /> : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -106,4 +116,20 @@ function getIdFromPath() {
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function hasDisplayValue(value?: string | number | null) {
+  if (value === null || typeof value === 'undefined') {
+    return false
+  }
+
+  const normalized = String(value).trim().toLowerCase()
+
+  if (!normalized || ['0', 'n/a', 'na', '0000-00-00', '0000-00-00 00:00:00'].includes(normalized)) {
+    return false
+  }
+
+  const numericValue = Number(normalized)
+
+  return Number.isNaN(numericValue) || numericValue !== 0
 }

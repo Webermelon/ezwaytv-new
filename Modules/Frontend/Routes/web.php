@@ -20,6 +20,7 @@ use Modules\Frontend\Http\Controllers\Auth\UserController;
 use Modules\Frontend\Http\Controllers\PerviewPaymentController;
 use Modules\Entertainment\Http\Controllers\Backend\EntertainmentsController;
 use Modules\NotificationTemplate\Http\Controllers\Backend\NotificationTemplatesController;
+use App\Http\Controllers\TribecaOneDistributionSubmissionController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -48,10 +49,11 @@ Route::view('/login', 'react-modernization')->name('login');
 
 Route::view('/otp-login', 'react-modernization')->name('otp-login');
 Route::get('/auth/check-username', [OTPController::class, 'checkSpaUsername'])->middleware('throttle:30,1')->name('auth.check-username');
+Route::get('/auth/check-invite-code', [OTPController::class, 'checkSpaInviteCode'])->middleware('throttle:30,1')->name('auth.check-invite-code');
 Route::get('/auth/check-email', [OTPController::class, 'checkSpaEmail'])->middleware('throttle:30,1')->name('auth.check-email');
 Route::post('/auth/spa-register', [OTPController::class, 'registerSpa'])->middleware('throttle:5,1')->name('auth.spa-register');
-Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:5,1')->name('auth.spa-otp.send');
-Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:10,1')->name('auth.spa-otp.verify');
+Route::post('/auth/spa-otp/send', [OTPController::class, 'sendSpaOtp'])->middleware('throttle:tv-otp-send')->name('auth.spa-otp.send');
+Route::post('/auth/spa-otp/verify', [OTPController::class, 'verifySpaOtp'])->middleware('throttle:tv-otp-verify')->name('auth.spa-otp.verify');
 Route::post('/auth/otp-login-store', [OTPController::class, 'otpLoginStore'])->name('auth.otp-login-store');
 Route::get('/auth/check-user-exists', [OTPController::class, 'checkUserExists'])->name('check.user.exists');
 Route::post('/auth/check-mobile-exists', [OTPController::class, 'checkMobileExists'])->name('check.mobile.exists');
@@ -89,6 +91,9 @@ Route::post('/core/checkouts', function (Request $request) {
     }
 
     $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
+    $checkoutReturnUrl = rtrim((string) config('services.core_api.checkout_return_url', config('app.url')), '/');
+    $checkoutReturnPath = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
+    $checkoutStatusUrl = fn (string $status) => $checkoutReturnUrl.$checkoutReturnPath.'?'.http_build_query(['checkout_status' => $status]);
 
     try {
         $response = $client->post($baseUrl.'/api/checkouts', [
@@ -102,9 +107,9 @@ Route::post('/core/checkouts', function (Request $request) {
             'platform' => ['slug' => 'ezway-tv'],
             'subject_type' => 'tv_subscription',
             'subject_id' => (string) ($user->network_user_id ?: $user->id),
-            'success_url' => url('/subscription-plan?checkout_status=success'),
-            'cancel_url' => url('/subscription-plan?checkout_status=cancelled'),
-            'failed_url' => url('/subscription-plan?checkout_status=failed'),
+            'success_url' => $checkoutStatusUrl('success'),
+            'cancel_url' => $checkoutStatusUrl('cancelled'),
+            'failed_url' => $checkoutStatusUrl('failed'),
             'checkout_mode' => 'auto',
             'metadata' => [
                 'source_app' => 'ezway_tv',
@@ -159,10 +164,13 @@ Route::post('/disable-security', function(Request $request) {
 Route::view('movies/genre/{genre_id}', 'react-modernization')->middleware('checkModule')->name('movies.genre');
 Route::view('movies/{language}', 'react-modernization')->middleware('checkModule')->name('movies.language');
 Route::view('/movies', 'react-modernization')->middleware('checkModule')->name('movies');
+Route::get('/watch-movie/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-watch');
 Route::get('/movie-details/{id}', [ReactMetaController::class, 'movieDetails'])->middleware('checkModule')->name('movie-details');
 Route::view('/tv-shows', 'react-modernization')->middleware('checkModule')->name('tv-shows');
-Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tvshow-details');
-Route::get('/episode-details/{id}', [ReactMetaController::class, 'episodeDetails'])->middleware('checkModule')->name('episode-details');
+Route::get('/tv-shows/{show}/episodes/{episode}', [ReactMetaController::class, 'tvshowEpisodeDetails'])->middleware('checkModule')->name('tv-shows.episode');
+Route::get('/tv-shows/{show}', [ReactMetaController::class, 'tvshowDetails'])->middleware('checkModule')->name('tv-shows.show');
+Route::get('/tvshow-details/{id}', [ReactMetaController::class, 'legacyTvshowDetails'])->middleware('checkModule')->name('tvshow-details');
+Route::get('/episode-details/{id}', [ReactMetaController::class, 'legacyEpisodeDetails'])->middleware('checkModule')->name('episode-details');
 Route::view('/videos', 'react-modernization')->middleware('checkModule')->name('videos');
 Route::view('/videos/category/{slug}', 'react-modernization')->middleware('checkModule')->name('videos.by-category');
 Route::get('/video-details/{id}', [ReactMetaController::class, 'videoDetails'])->middleware('checkModule')->name('video-detail');
@@ -249,6 +257,7 @@ Route::group(['middleware' => ['user']], function () {
     Route::get('/account/watchlist-data', [UserController::class, 'watchlistData'])->name('account.watchlist.data');
     Route::post('/account/watchlist/save', [UserController::class, 'saveWatchlistItem'])->name('account.watchlist.save');
     Route::post('/account/watchlist/delete', [UserController::class, 'deleteWatchlistItem'])->name('account.watchlist.delete');
+    Route::post('/account/profile/sync', [UserController::class, 'syncProfileData'])->name('account.profile.sync');
     Route::post('/account/profile/update', [UserController::class, 'updateProfileData'])->name('account.profile.update');
     Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');
@@ -308,6 +317,10 @@ Route::view('/change-password', 'react-modernization')->name('change-password');
 
 // Distribution page route (static view)
 Route::view('/distribution', 'react-modernization')->name('distribution');
+Route::view('/tribeka-one-distribution', 'react-modernization')->name('tribeka-one-distribution');
+Route::post('/tribeka-one-distribution/submissions', [TribecaOneDistributionSubmissionController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('tribeka-one-distribution.submissions.store');
 
 // API: distribution data
 Route::get('/api/distribution', function () {
@@ -315,6 +328,6 @@ Route::get('/api/distribution', function () {
     if (!file_exists($path)) {
         return response()->json(['error' => 'Data not found'], 404);
     }
-    $json = Cache::remember('spa:distribution:json', 3600, fn () => file_get_contents($path));
+    $json = Cache::remember('spa:distribution:json:' . filemtime($path), 3600, fn () => file_get_contents($path));
     return response($json, 200)->header('Content-Type', 'application/json');
 })->name('api.distribution');

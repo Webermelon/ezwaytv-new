@@ -7,6 +7,7 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvi
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class RouteServiceProvider extends ServiceProvider
 {
@@ -54,6 +55,19 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(100)->by($request->user()?->id ?: $request->ip());
         });
+        RateLimiter::for('tv-otp-send', function (Request $request) {
+            return Limit::perMinute(5)->by($this->tvOtpThrottleKey($request, 'send'));
+        });
+        RateLimiter::for('tv-otp-verify', function (Request $request) {
+            return Limit::perMinute(10)->by($this->tvOtpThrottleKey($request, 'verify'));
+        });
+    }
+
+    private function tvOtpThrottleKey(Request $request, string $action): string
+    {
+        $email = Str::lower(trim((string) $request->input('email')));
+
+        return "tv-otp:{$action}:" . sha1($email . '|' . $request->ip());
     }
 
     public function map()

@@ -17,7 +17,7 @@ class EpisodeRequest extends FormRequest
         $rules = [
             'name' => ['required', Rule::unique('episodes', 'name')->ignore($id)],
             'entertainment_id'=> ['required'],
-            'content_rating'=>'required|string',
+            'content_rating'=>'nullable|string',
             'description' => 'required|string',
             'access' => 'required',
             'IMDb_rating' => 'nullable|numeric|min:1|max:10',
@@ -30,9 +30,9 @@ class EpisodeRequest extends FormRequest
                     ->where('season_id', $seasonId)
                     ->ignore($id)
             ],
-            'duration'=> ['required'],
+            'duration'=> ['nullable'],
             'video_upload_type' => ['required'],
-            'trailer_url_type' => ['required'],
+            'trailer_url_type' => ['nullable'],
         ];
         $movieAccess = $this->input('access');
 
@@ -41,21 +41,21 @@ class EpisodeRequest extends FormRequest
         if ($trailerUrlType == 'Embedded') {
             if ($id === null) {
                 $rules['trailer_embedded'] = [
-                    'required','regex:/<iframe\b[^>]*\bsrc\s*=\s*["\'“”‘’](.*?)["\'“”‘’][^>]*>[\s\S]*?<\/iframe>/i'
+                    'nullable','regex:/<iframe\b[^>]*\bsrc\s*=\s*["\'“”‘’](.*?)["\'“”‘’][^>]*>[\s\S]*?<\/iframe>/i'
                 ];
             } else {
                 $rules['trailer_url_embedded'] = [
-                    'required','regex:/<iframe\b[^>]*\bsrc\s*=\s*["\'“”‘’](.*?)["\'“”‘’][^>]*>[\s\S]*?<\/iframe>/i'
+                    'nullable','regex:/<iframe\b[^>]*\bsrc\s*=\s*["\'“”‘’](.*?)["\'“”‘’][^>]*>[\s\S]*?<\/iframe>/i'
                 ];
             }
         } else if ($trailerUrlType == 'Local') {
-            $rules['trailer_video'] = ['required'];
+            $rules['trailer_video'] = ['nullable'];
         } else if ($trailerUrlType == 'URL' || $trailerUrlType == 'HLS' || $trailerUrlType == 'x265') {
-            $rules['trailer_url'] = ['required','regex:/^https?:\/\/.+$/'];
+            $rules['trailer_url'] = ['nullable','regex:/^https?:\/\/.+$/'];
         } else if ($trailerUrlType == 'YouTube') {
-            $rules['trailer_url'] = ['required','regex:/^(https?:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/'];
+            $rules['trailer_url'] = ['nullable','regex:/^(https?:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/'];
         } else if ($trailerUrlType == 'Vimeo') {
-            $rules['trailer_url'] = ['required','regex:/^(https?:\/\/)?(www\.)?(vimeo\.com\/(channels\/[a-zA-Z0-9]+\/|groups\/[^\/]+\/videos\/)?\d+)(\/.*)?$/'];
+            $rules['trailer_url'] = ['nullable','regex:/^(https?:\/\/)?(www\.)?(vimeo\.com\/(channels\/[a-zA-Z0-9]+\/|groups\/[^\/]+\/videos\/)?\d+)(\/.*)?$/'];
         }
 
         $videoUrlType = $this->input('video_upload_type');
@@ -147,13 +147,9 @@ class EpisodeRequest extends FormRequest
 
         if ($movieAccess == 'paid') {
             $rules['plan_id'] = 'required';
-            $rules['release_date'] = 'required';
         } elseif ($movieAccess == 'pay-per-view') {
             $rules['price'] = 'required|numeric';
             $rules['available_for'] = 'required|integer|min:1';
-        } else {
-            // For 'free' access
-            $rules['release_date'] = 'required';
         }
 
         if ($this->has('enable_seo') && $this->enable_seo == 1) {
@@ -492,7 +488,7 @@ class EpisodeRequest extends FormRequest
                 // 1. A new file upload, OR
                 // 2. An existing valid local file path (not a URL)
 
-                if (!$hasFileUpload && !$isValidLocalFile) {
+                if ($hasValue && !$hasFileUpload && !$isValidLocalFile) {
                     // No valid file - show error
                     $isUpdate = $this->has('id') && !empty($this->input('id'));
                     if (!$hasValue) {

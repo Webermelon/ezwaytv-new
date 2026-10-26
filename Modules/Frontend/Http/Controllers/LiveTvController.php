@@ -64,7 +64,7 @@ class LiveTvController extends Controller
         }
 
         $livetv = LiveTvChannel::where('id', $livetvGuard->id)
-            ->with('TvCategory', 'plan', 'TvChannelStreamContentMappings')
+            ->with('TvCategory', 'plan', 'TvChannelStreamContentMappings', 'vodChannel')
             ->first();
 
         $suggestions = LiveTvChannel::where('category_id', $livetv->category_id)

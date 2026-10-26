@@ -4,6 +4,7 @@ namespace Modules\Frontend\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuthorChannel;
+use App\Models\AuthorChannelPlaylist;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Modules\Entertainment\Models\Entertainment;
@@ -88,7 +89,21 @@ class ReactMetaController extends Controller
     {
         $video = $this->findBySlugOrId(Video::query(), $id);
 
-        return $this->renderContent($video, 'video', '/video-details/');
+        if (! $video) {
+            return $this->render();
+        }
+
+        $meta = $this->contentMeta($video, 'video', '/video-details/');
+
+        if (request()->filled('playlist')) {
+            $playlist = $this->playlistForVideo($video);
+            $playlistImage = $playlist ? $this->playlistImage($playlist) : null;
+
+            $meta['seo_image'] = $meta['seo_image'] ?: $playlistImage;
+            $meta['canonical_url'] = request()->fullUrl();
+        }
+
+        return $this->render($meta);
     }
 
     public function movieDetails(string $id)
@@ -108,7 +123,16 @@ class ReactMetaController extends Controller
             $id
         );
 
-        return $this->renderContent($tvshow, 'tvshow', '/tvshow-details/');
+        return $this->renderContent($tvshow, 'tvshow', '/tv-shows/');
+    }
+
+    public function legacyTvshowDetails(string $id)
+    {
+        $tvshow = $this->findBySlugOrId(Entertainment::query()->where('type', 'tvshow'), $id);
+
+        return $tvshow
+            ? redirect('/tv-shows/' . ($tvshow->slug ?: $tvshow->id), 301)
+            : $this->render();
     }
 
     public function episodeDetails(string $id)
@@ -118,15 +142,41 @@ class ReactMetaController extends Controller
         return $this->renderContent($episode, 'episode', '/episode-details/');
     }
 
+    public function tvshowEpisodeDetails(string $show, string $episode)
+    {
+        $episodeModel = $this->findBySlugOrId(Episode::query(), $episode);
+
+        return $this->renderContent($episodeModel, 'episode', '/tv-shows/' . $show . '/episodes/');
+    }
+
+    public function legacyEpisodeDetails(string $id)
+    {
+        $episode = $this->findBySlugOrId(Episode::query()->with('entertainmentdata'), $id);
+
+        if (! $episode) {
+            return $this->render();
+        }
+
+        $show = $episode->entertainmentdata;
+        $showId = $show?->slug ?: $show?->id ?: $episode->entertainment_id;
+
+        return redirect('/tv-shows/' . $showId . '/episodes/' . $episode->id, 301);
+    }
+
     private function renderContent(?Model $content, string $pageType, string $pathPrefix)
     {
         if (! $content) {
             return $this->render();
         }
 
+        return $this->render($this->contentMeta($content, $pageType, $pathPrefix));
+    }
+
+    private function contentMeta(Model $content, string $pageType, string $pathPrefix): array
+    {
         $slugOrId = $content->slug ?: $content->id;
 
-        return $this->render([
+        return [
             'meta_title' => $content->meta_title ?: $content->name,
             'meta_keywords' => $content->meta_keywords ?? null,
             'short_description' => $this->description(
@@ -139,7 +189,7 @@ class ReactMetaController extends Controller
             'seo_image' => $this->typedImage($content, $pageType),
             'google_site_verification' => $content->google_site_verification ?? null,
             'canonical_url' => $content->canonical_url ?: url($pathPrefix . $slugOrId),
-        ]);
+        ];
     }
 
     private function render(array $meta = [])
@@ -165,7 +215,7 @@ class ReactMetaController extends Controller
 
     private function typedImage(Model $model, string $pageType): ?string
     {
-        foreach (['seo_image', 'poster_tv_url', 'poster_url', 'thumbnail_url', 'thumb_url'] as $field) {
+        foreach (['seo_image', 'thumbnail_url', 'poster_tv_url', 'poster_url', 'thumb_url'] as $field) {
             $value = $model->{$field} ?? null;
 
             if (! empty($value)) {
@@ -174,6 +224,39 @@ class ReactMetaController extends Controller
                 }
 
                 return setBaseUrlWithFileName($value, 'image', $pageType);
+            }
+        }
+
+        return null;
+    }
+
+    private function playlistForVideo(Video $video): ?AuthorChannelPlaylist
+    {
+        $playlistId = (int) request()->query('playlist', 0);
+        $ondemandChannelId = (int) request()->query('ondemand_channel', 0);
+
+        if ($playlistId <= 0) {
+            return null;
+        }
+
+        return AuthorChannelPlaylist::query()
+            ->where('id', $playlistId)
+            ->where('is_active', 1)
+            ->whereHas('videos', fn ($query) => $query->where('videos.id', $video->id))
+            ->when($ondemandChannelId > 0, fn ($query) => $query->where('author_channel_id', $ondemandChannelId))
+            ->with(['videos' => fn ($query) => $query
+                ->where('videos.status', 1)
+                ->select('videos.id', 'videos.thumbnail_url', 'videos.poster_url', 'videos.poster_tv_url')])
+            ->first();
+    }
+
+    private function playlistImage(AuthorChannelPlaylist $playlist): ?string
+    {
+        $firstVideo = $playlist->videos->first();
+
+        foreach ([$playlist->thumbnail, $firstVideo?->poster_tv_url, $firstVideo?->poster_url, $firstVideo?->thumbnail_url] as $image) {
+            if (! empty($image)) {
+                return setBaseUrlWithFileNameV2($image);
             }
         }
 

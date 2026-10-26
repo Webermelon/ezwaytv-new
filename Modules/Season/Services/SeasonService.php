@@ -31,7 +31,9 @@ class SeasonService
     {
         $cacheKey = 'season_list';
         Cache::forget($cacheKey);
-        $data['trailer_url'] = ($data['trailer_url_type'] == 'Local') ? $data['trailer_video'] : $data['trailer_url'];
+        $data['trailer_url'] = ($data['trailer_url_type'] ?? null) === 'Local'
+            ? ($data['trailer_video'] ?? null)
+            : ($data['trailer_url'] ?? null);
 
        $season = $this->seasonRepository->create($data);
 
@@ -44,7 +46,9 @@ class SeasonService
     {
         $cacheKey = 'season_list';
         Cache::forget($cacheKey);
-        $data['trailer_url'] = ($data['trailer_url_type'] == 'Local') ? $data['trailer_video'] : $data['trailer_url'];
+        $data['trailer_url'] = ($data['trailer_url_type'] ?? null) === 'Local'
+            ? ($data['trailer_video'] ?? null)
+            : ($data['trailer_url'] ?? null);
         return $this->seasonRepository->update($id, $data);
     }
 

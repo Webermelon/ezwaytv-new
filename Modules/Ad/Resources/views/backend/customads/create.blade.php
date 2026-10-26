@@ -74,8 +74,24 @@
                 </div>
                 {{ html()->hidden('file_url')->id('file_url_image')->value(old('file_url', isset($data) ? $data->file_url : '')) }}
 
+                <div class="col-md-6 col-lg-4 position-relative" id="local_mobile_image_upload_section">
+                    {{ html()->label(__('Mobile Image'), 'Mobile Image')->class('form-label') }}
+                    <div class="input-group btn-file-upload">
+                        {{ html()->button(__('<i class="ph ph-device-mobile"></i>' . __('messages.lbl_choose_image')))->class('input-group-text form-control')->type('button')->attribute('data-bs-toggle', 'modal')->attribute('data-bs-target', '#exampleModal')->attribute('data-image-container', 'selectedMobileImageContainer')->attribute('data-hidden-input', 'file_url_mobile') }}
+
+                        {{ html()->text('mobile_image_input')->class('form-control')->placeholder(__('Optional mobile image'))->attribute('aria-label', 'Mobile Image')->attribute('data-bs-toggle', 'modal')->attribute('data-bs-target', '#exampleModal')->attribute('data-image-container', 'selectedMobileImageContainer')->attribute('data-hidden-input', 'file_url_mobile') }}
+                    </div>
+                    <div class="uploaded-image" id="selectedMobileImageContainer">
+                        @if (old('file_url_mobile'))
+                            <img src="{{ old('file_url_mobile') }}" class="img-fluid mb-2"
+                                style="max-width: 100px; max-height: 100px;">
+                        @endif
+                    </div>
+                </div>
+                {{ html()->hidden('file_url_mobile')->id('file_url_mobile')->value(old('file_url_mobile')) }}
+
                 <div id="image-size-note" class="form-text text-warning" style="display:none;">
-                    {{ __('Please upload a 1000x600 size Image.') }}
+                    {{ __('Please upload a 1000x600 size Image for desktop. Mobile image is optional.') }}
                 </div>
 
                 <div class="col-mb-6 col-lg-4 d-none" id="video_file_input_section">
@@ -105,6 +121,11 @@
                     <label for="media_url">{{ __('messages.lbl_url') }} <span class="text-danger">*</span></label>
                     <input type="text" name="media_url" class="form-control"
                         placeholder="https://example.com/video.mp4" />
+                    <div id="mobile_url_input_group">
+                        <label for="mobile_media_url" class="form-label mt-2">{{ __('Mobile URL') }}</label>
+                        <input type="text" name="mobile_media_url" class="form-control"
+                            placeholder="https://example.com/mobile-image.jpg" />
+                    </div>
 
                     <div class="invalid-feedback" id="media-url-error">{{ __('messages.invalid_url') }}</div>
                 </div>
@@ -638,6 +659,8 @@
             const fileSection = $('#video_file_input_section');
             const urlSection = $('#url_input_section');
             const localImageSection = $('#local_image_upload_section');
+            const localMobileImageSection = $('#local_mobile_image_upload_section');
+            const mobileUrlInputGroup = $('#mobile_url_input_group');
             const urlTypeSelect = $('select[name="url_type"]');
             const typeSelect = $('select[name="type"]');
             const mediaUrlInput = $('input[name="media_url"]');
@@ -656,6 +679,8 @@
                 fileSection.addClass('d-none');
                 urlSection.addClass('d-none');
                 localImageSection.addClass('d-none');
+                localMobileImageSection.addClass('d-none');
+                mobileUrlInputGroup.addClass('d-none');
 
                 if (type === 'video') {
                     if (urlType === 'local') {
@@ -666,8 +691,10 @@
                 } else if (type === 'image') {
                     if (urlType === 'local') {
                         localImageSection.removeClass('d-none');
+                        localMobileImageSection.removeClass('d-none');
                     } else if (urlType === 'url') {
                         urlSection.removeClass('d-none');
+                        mobileUrlInputGroup.removeClass('d-none');
                     }
                 }
             }
@@ -689,14 +716,14 @@
             typeSelect.on('change', toggleFields);
         });
 
-        function removeThumbnail(hiddenInputId, removedFlagId) {
-            var container = document.getElementById('selectedImageContainer1');
+        function removeThumbnail(hiddenInputId, removedFlagId, containerId = 'selectedImageContainer1') {
+            var container = document.getElementById(containerId);
             var hiddenInput = document.getElementById(hiddenInputId);
             var removedFlag = document.getElementById(removedFlagId);
 
-            container.innerHTML = '';
-            hiddenInput.value = '';
-            removedFlag.value = 1;
+            if (container) container.innerHTML = '';
+            if (hiddenInput) hiddenInput.value = '';
+            if (removedFlag) removedFlag.value = 1;
         }
         $('#target_categories').on('select2:opening', function(e) {
             const targetType = $('#target_content_type').val();

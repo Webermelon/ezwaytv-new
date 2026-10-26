@@ -7,6 +7,7 @@ import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
 import { OrdersPage } from '@/modules/account/OrdersPage'
 import { WatchlistPage } from '@/modules/account/WatchlistPage'
 import { DistributionPage } from '@/modules/distribution/DistributionPage'
+import { TribecaOneDistributionFormPage } from '@/modules/distribution/TribecaOneDistributionFormPage'
 import { HomePage } from '@/modules/home/HomePage'
 import { LiveTvPage } from '@/modules/live-tv/LiveTvPage'
 import { MusicPage } from '@/modules/music/MusicPage'
@@ -17,11 +18,18 @@ import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
 import { VideoDetailPage, VideoEmbedPage } from '@/modules/video-detail/VideoDetailPage'
+import { MoviePlayerPage } from '@/modules/movies/MoviePlayerPage'
 import { VideosPage } from '@/modules/videos/VideosPage'
+import { MoviesPage } from '@/modules/movies/MoviesPage'
+import { EpisodePlayerPage } from '@/modules/tvshows/EpisodePlayerPage'
+import { TvShowDetailPage } from '@/modules/tvshows/TvShowDetailPage'
+import { TvShowsPage } from '@/modules/tvshows/TvShowsPage'
 import { useSpaPath } from '@/lib/spa-router'
 import { AppFooter } from '@/components/AppFooter'
+import { OpenInAppPrompt } from '@/components/OpenInAppPrompt'
 import { AuthPage } from '@/modules/auth/AuthPage'
 import { useAnalyticsPageView } from '@/lib/analytics'
+import { isIosRestrictedPath, isNativeIosApp } from '@/lib/native-platform'
 
 export default function App() {
   const path = useSpaPath()
@@ -29,7 +37,9 @@ export default function App() {
   useAnalyticsPageView(path)
   let page
 
-  if (pathname === '/' || pathname === '/spa' || pathname === '/spa/' || pathname === '/react-home') {
+  if (isNativeIosApp() && isIosRestrictedPath(pathname)) {
+    page = <HomePage />
+  } else if (pathname === '/' || pathname === '/spa' || pathname === '/spa/' || pathname === '/react-home') {
     page = <HomePage />
   } else if (pathname.startsWith('/on-demand') || pathname.startsWith('/spa/ondemand') || pathname.startsWith('/react-ondemand')) {
     page = <OnDemandPage />
@@ -37,12 +47,26 @@ export default function App() {
     page = <LiveTvPage />
   } else if (pathname === '/videos' || pathname.startsWith('/videos/category') || pathname.startsWith('/spa/videos') || pathname.startsWith('/react-videos')) {
     page = <VideosPage />
+  } else if (pathname === '/movies' || pathname.startsWith('/movies/')) {
+    page = <MoviesPage />
+  } else if (pathname === '/tv-shows') {
+    page = <TvShowsPage />
+  } else if (/^\/tv-shows\/[^/]+\/episodes\/[^/]+$/.test(pathname)) {
+    page = <EpisodePlayerPage />
+  } else if (/^\/tv-shows\/[^/]+$/.test(pathname)) {
+    page = <TvShowDetailPage />
+  } else if (pathname.startsWith('/tvshow-details/')) {
+    page = <TvShowDetailPage />
+  } else if (pathname.startsWith('/episode-details/')) {
+    page = <EpisodePlayerPage />
   } else if (pathname === '/search') {
     page = <SearchPage />
   } else if (pathname === '/login' || pathname === '/register' || pathname === '/forget-password') {
     page = <AuthPage />
   } else if (pathname === '/distribution') {
     page = <DistributionPage />
+  } else if (pathname === '/tribeka-one-distribution') {
+    page = <TribecaOneDistributionFormPage />
   } else if (pathname === '/subscription-plan') {
     page = <SubscriptionPlanPage />
   } else if (pathname === '/payment-history') {
@@ -67,6 +91,8 @@ export default function App() {
     page = <VideoEmbedPage />
   } else if (pathname.startsWith('/video-details')) {
     page = <VideoDetailPage />
+  } else if (pathname.startsWith('/watch-movie')) {
+    page = <MoviePlayerPage />
   } else if (pathname.startsWith('/castcrew-detail')) {
     page = <CastCrewDetailPage />
   } else if (pathname === '/castcrew-list' || pathname.startsWith('/castcrew-list/')) {
@@ -78,6 +104,7 @@ export default function App() {
   return (
     <>
       {page}
+      {pathname.startsWith('/video-embed') ? null : <OpenInAppPrompt />}
       {pathname.startsWith('/video-embed') ? null : <AppFooter />}
     </>
   )

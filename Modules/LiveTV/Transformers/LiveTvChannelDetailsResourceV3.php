@@ -9,6 +9,7 @@ use Modules\LiveTV\Models\LiveTvChannel;
 use Modules\LiveTV\Transformers\LiveTvChannelResource;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Modules\Statistics\Models\StatSetting;
 
 class LiveTvChannelDetailsResourceV3 extends JsonResource
 {
@@ -17,19 +18,32 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
      */
     public function toArray($request): array
     {
-        $schedulesUrl = $this->resolveSchedulesUrl(optional($this->TvChannelStreamContentMappings)->api_key ?? null);
+        $scheduleEnabled = StatSetting::get("schedule_enabled:livetv:{$this->id}", '1') === '1';
+        $schedulesUrl = $scheduleEnabled
+            ? $this->resolveSchedulesUrl(optional($this->TvChannelStreamContentMappings)->api_key ?? null)
+            : null;
         $nowPlaying   = null;
         $nextPlaying  = null;
         $fullSchedule = [];
 
-        if ($schedulesUrl) {
+        if ($scheduleEnabled && $schedulesUrl) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveScheduleData($schedulesUrl);
-        } elseif ($this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
+        } elseif ($scheduleEnabled && $this->relationLoaded('schedules') && $this->schedules->isNotEmpty()) {
             [$nowPlaying, $nextPlaying, $fullSchedule] = $this->resolveStoredScheduleData($this->schedules);
         }
+        $vodChannel = $this->vodChannel;
+        $vodChannelData = $vodChannel && (bool) $vodChannel->is_active ? [
+            'id' => $vodChannel->id,
+            'name' => $vodChannel->name,
+            'username' => $vodChannel->username,
+            'url' => url('/on-demand/' . $vodChannel->username),
+            'button_name' => $this->vod_channel_button_name ?: 'View On Demand',
+        ] : null;
 
         return [
             'id' => $this->id,
+            'slug' => $this->slug,
+            'channel_number' => $this->channel_number !== null ? (int) $this->channel_number : null,
             'details' => [
                 'name' => $this->name,
                 'type' => 'livetv',
@@ -42,6 +56,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
                 'description' => strip_tags($this->description),
                 "thumbnail_image" => setBaseUrlWithFileName($this->poster_url,'image','livetv'),
                 'category' => $this->TvCategory->name ?? null,
+                'vod_channel' => $vodChannelData,
                 'stats' => [
                     'real_views' => (int) ($this->real_views ?? 0),
                     'boost_views' => (int) ($this->boost_views ?? 0),
@@ -59,6 +74,7 @@ class LiveTvChannelDetailsResourceV3 extends JsonResource
             ],
             'video_qualities'  => $this->video_qualities,
             'schedules_url'    => $schedulesUrl,
+            'schedule_enabled'  => $scheduleEnabled,
             'now_playing'      => $nowPlaying,
             'next_playing'     => $nextPlaying,
             'full_schedule'    => $fullSchedule,

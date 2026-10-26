@@ -1,15 +1,41 @@
 @php
     $seo = Modules\SEO\Models\Seo::first();
+    $siteName = config('app.name', 'eZWay TV');
+    $homeShareImage = 'https://ezwayott.sfo3.digitaloceanspaces.com/livetv/image/caa4d6ec_3f9c_4f51_8e9c_95153c5d2b98_(1)_6a16d2697b16e_6a21ca461f0e2.jpg';
     // Route-specific Open Graph image overrides
     if(request()->is('topchannel-list')){
         // Use absolute URL so social validators can reach the image
         $ogImage = rtrim(config('app.url'), '/') . '/images/topchannel-og.png';
     } else {
-        $ogImage = $entertainment->seo_image ?? $seo->seo_image ?? asset('img/logo/favicon.png');
+        $ogImage = $entertainment->seo_image ?? $seo->seo_image ?? $homeShareImage;
     }
-    $ogTitle = (isset($entertainment) && !empty($entertainment->meta_title)) ? $entertainment->meta_title : ($seo->meta_title ?? config('app.name'));
+    if (empty($ogImage)) {
+        $ogImage = $homeShareImage;
+    }
+    if (! filter_var($ogImage, FILTER_VALIDATE_URL)) {
+        $seoPath = 'storage/uploads/seo/' . basename((string) $ogImage);
+        $ogImage = file_exists(public_path($seoPath))
+            ? asset($seoPath)
+            : asset(ltrim($ogImage, '/'));
+    }
+    $ogImageHost = parse_url((string) $ogImage, PHP_URL_HOST);
+    $appHost = parse_url(config('app.url'), PHP_URL_HOST) ?: request()->getHost();
+    $ogImagePath = parse_url((string) $ogImage, PHP_URL_PATH) ?: '';
+    if ($ogImageHost === $appHost && ! file_exists(public_path(ltrim($ogImagePath, '/')))) {
+        $ogImage = $homeShareImage;
+    }
+    $ogImagePath = parse_url((string) $ogImage, PHP_URL_PATH) ?: '';
+    $ogImageExtension = strtolower(pathinfo($ogImagePath, PATHINFO_EXTENSION));
+    $ogImageType = match ($ogImageExtension) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        default => 'image/jpeg',
+    };
+    $ogTitle = (isset($entertainment) && !empty($entertainment->meta_title)) ? $entertainment->meta_title : ($seo->meta_title ?? $siteName);
     $ogDescription = (isset($entertainment) && !empty($entertainment->short_description)) ? $entertainment->short_description : ($seo->short_description ?? '');
     $ogUrl = (isset($entertainment) && !empty($entertainment->canonical_url)) ? $entertainment->canonical_url : ($seo->canonical_url ?? url()->current());
+    $ogType = request()->is('video-details/*') ? 'video.other' : 'website';
 @endphp
 
 
@@ -23,15 +49,24 @@
     <link rel="canonical" id="dynamicCanonicalUrl" href="{{ $ogUrl }}">
 
     <!-- Open Graph Meta Tags -->
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{{ $ogType }}">
     <meta property="og:title" content="{{ $ogTitle }}">
     <meta property="og:description" content="{{ $ogDescription }}">
     <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:image:url" content="{{ $ogImage }}">
+    <meta property="og:image:secure_url" content="{{ $ogImage }}">
+    <meta property="og:image:type" content="{{ $ogImageType }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ $ogTitle }}">
     <meta property="og:url" content="{{ $ogUrl }}">
-    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:site_name" content="{{ $siteName }}">
+    <meta itemprop="image" content="{{ $ogImage }}">
 
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="{{ $ogUrl }}">
     <meta name="twitter:title" content="{{ $ogTitle }}">
     <meta name="twitter:description" content="{{ $ogDescription }}">
     <meta name="twitter:image" content="{{ $ogImage }}">
+    <meta name="twitter:image:alt" content="{{ $ogTitle }}">

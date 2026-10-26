@@ -389,6 +389,9 @@
                     } catch (error) {
                         // Error handling
                     }
+                    if (!form.checkValidity()) {
+                        isValid = false;
+                    }
 
                     if (seoCheckbox && seoCheckbox.checked) {
                         try {
@@ -458,6 +461,10 @@
 
                     if (!isValid) {
                         event.preventDefault();
+                        showFormValidationSummary(form);
+                        if (typeof form.reportValidity === 'function') {
+                            form.reportValidity();
+                        }
                         submitButton.disabled = false;
                         submitButton.innerHTML = originalButtonHTML;
                         formSubmitted = false; // Reset the flag
@@ -576,8 +583,31 @@
                     isValid = false;
                     showValidationError(inquiryemailInput, 'Enter a valid Inquiry email address.');
                 }
-                console.log(isValid)
                 return isValid;
+            }
+
+            function showFormValidationSummary(form) {
+                const summary = document.getElementById('form-validation-summary');
+                if (!summary) {
+                    return;
+                }
+
+                const invalidFields = Array.from(form.querySelectorAll(':invalid'));
+                if (!invalidFields.length) {
+                    summary.classList.add('d-none');
+                    summary.innerHTML = '';
+                    return;
+                }
+
+                const messages = invalidFields.map(function(field) {
+                    const label = form.querySelector(`label[for="${field.id}"]`);
+                    const labelText = label ? label.textContent.replace('*', '').trim() : (field.name || 'Field');
+                    return `<li>${labelText}: ${field.validationMessage || 'Please enter a valid value.'}</li>`;
+                });
+
+                summary.innerHTML = `<div class="fw-semibold mb-2">Please fix these fields:</div><ul class="mb-0 ps-3">${messages.join('')}</ul>`;
+                summary.classList.remove('d-none');
+                summary.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // function validateTrailerUrlInput() {

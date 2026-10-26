@@ -1,11 +1,32 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { RadioTower } from 'lucide-react'
+import { ArrowRight, RadioTower } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { loadDistribution, type DistributionNetwork } from './distributionApi'
 
-const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
+const signalUrl = 'https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen='
+const broadcastPartners: DistributionNetwork[] = [
+  {
+    name: 'eZWay Channel 27.3',
+    slug: 'ezway-channel-27-3',
+    image: '/img/distribution/ezway_27.3.jpg',
+    description: 'Entertainment, inspiring interviews, live events, sports, music videos, movies, faith and family, education, and original programming for Greater Los Angeles. With a reported reach of 1.5 million potential viewers, eZWay connects audiences with entrepreneurs, celebrities, creators, and community leaders through purpose-driven television. eZWay is a KTTV subchannel; KTTV is the Fox-owned station identified with Channel 11.',
+    tag: 'Los Angeles - OTA',
+  },
+  {
+    name: 'RAG TV',
+    slug: 'rag-tv',
+    image: '/img/distribution/ragttv.jpg',
+    description: 'RAG TV, the official Recording Artist Guild Channel, celebrates music, creativity, and the artists behind the sound. Available on eZWay.TV, the channel provides a platform to spotlight talent, share artists’ stories, and connect music lovers with the independent recording artist community.',
+    tag: 'Recording Artist Guild Channel',
+  },
+]
+
+function isRemovedNetwork(network: DistributionNetwork) {
+  const value = `${network.name} ${network.slug ?? ''}`.toLowerCase()
+  return value.includes('flm tv') || value.includes('flm-tv') || value.includes('las vegas television') || value.includes('las-vegas-television')
+}
 
 export function DistributionPage() {
   const distributionQuery = useQuery({
@@ -13,9 +34,26 @@ export function DistributionPage() {
     queryFn: loadDistribution,
     staleTime: 5 * 60_000,
   })
-  const networks = distributionQuery.data?.networks ?? []
+  const networks = (distributionQuery.data?.networks ?? []).filter((network) => !isRemovedNetwork(network))
+  const partnerNetworks = useMemo(() => {
+    const promotedSlugs = ['be-spire-tv', 'las-vegas-television-network']
+    const newBroadcastPartners = broadcastPartners.filter(
+      (partner) => !networks.some((network) => network.slug === partner.slug || network.name === partner.name),
+    )
+    const promotedNetworks = promotedSlugs
+      .map((slug) => networks.find((network) => network.slug === slug))
+      .filter((network): network is DistributionNetwork => Boolean(network))
+    const remainingNetworks = networks.filter((network) => !promotedSlugs.includes(network.slug ?? ''))
 
-  const platformNames = useMemo(() => networks.slice(0, 13).map((item) => item.name), [networks])
+    return [
+      ...remainingNetworks.slice(0, 4),
+      ...newBroadcastPartners,
+      ...promotedNetworks,
+      ...remainingNetworks.slice(4),
+    ]
+  }, [networks])
+
+  const platformNames = useMemo(() => partnerNetworks.slice(0, 13).map((item) => item.name), [partnerNetworks])
 
   return (
     <main className="min-h-screen bg-[#0d0d0d] text-[#e8e2d9]">
@@ -46,10 +84,6 @@ export function DistributionPage() {
         </div>
       </section>
 
-      <div className="bg-[#d4a843] px-6 py-3 text-center text-xs font-black uppercase tracking-[0.06em] text-[#0d0d0d]">
-        Potential reach: 100,000,000 - Organic viewers: tens of thousands
-      </div>
-
       <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
         <SectionHead title="Los Angeles Station" />
 
@@ -68,7 +102,7 @@ export function DistributionPage() {
               eZWay Network is now broadcasting over-the-air in the Los Angeles metro area on <strong className="text-[#e8e2d9]">Channel 27.3</strong>. The station reaches millions of households across Greater LA, delivering purpose-driven content, live events, interviews, and original series.
             </p>
             <p className="mt-4 max-w-md text-sm leading-7 text-[#7a7468]">
-              View the full FCC contour map for signal coverage, propagation details, and licensing information for K21AC-D.
+              View the full FCC contour map for signal coverage, propagation details, and licensing information for K27AE.
             </p>
             <a
               href={signalUrl}
@@ -83,7 +117,7 @@ export function DistributionPage() {
           <div className="relative min-h-[360px] bg-[#1e1e1e]">
             <iframe
               src={signalUrl}
-              title="eZWay LA Station Signal Coverage - Channel 27.3 K21AC-D"
+              title="eZWay LA Station Signal Coverage - Channel 27.3 K27AE"
               loading="lazy"
               className="h-full min-h-[360px] w-full border-0 opacity-85 saturate-[0.6] contrast-110"
             />
@@ -93,13 +127,13 @@ export function DistributionPage() {
       </section>
 
       <section className="mx-auto max-w-[1800px] px-4 sm:px-8">
-        <SectionHead title="Network Partners" />
+        <SectionHead title="Network Distribution" />
 
         {distributionQuery.isLoading ? (
           <NetworkSkeleton />
-        ) : networks.length > 0 ? (
+        ) : partnerNetworks.length > 0 ? (
           <div className="mb-20 grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
-            {networks.map((network) => (
+            {partnerNetworks.map((network) => (
               <NetworkCard key={network.slug ?? network.name} network={network} />
             ))}
           </div>
@@ -136,8 +170,8 @@ function NetworkCard({ network }: { network: DistributionNetwork }) {
     <article className="group relative flex min-h-[300px] flex-col gap-4 overflow-hidden rounded-md border border-[#d4a843]/14 bg-[#161616] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-1 hover:border-[#d4a843]/50 hover:bg-[#1b1b1b] sm:p-7">
       <div className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-[#d4a843] transition duration-300 group-hover:scale-x-100" />
       <div className="flex items-center gap-4">
-        <div className="flex h-[58px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded border border-white/8 bg-[#242424]">
-          {network.image ? <img src={network.image} alt={network.name} className="max-h-10 max-w-16 object-contain" loading="lazy" /> : null}
+        <div className="flex h-[72px] w-[112px] shrink-0 items-center justify-center overflow-hidden rounded border border-white/8 bg-[#242424] p-1.5 sm:h-[80px] sm:w-[128px]">
+          {network.image ? <img src={network.image} alt={network.name} className="h-full w-full object-contain" loading="lazy" /> : null}
         </div>
         <h3 className="min-w-0 break-words text-lg font-black uppercase leading-tight tracking-normal text-white sm:text-2xl sm:leading-none sm:tracking-[0.05em]">{network.name}</h3>
       </div>
@@ -146,6 +180,15 @@ function NetworkCard({ network }: { network: DistributionNetwork }) {
         <span className="w-fit rounded-sm border border-[#d4a843]/24 bg-[#d4a843]/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#f0c96a]">
           {network.tag}
         </span>
+      ) : null}
+      {network.href && network.showOnboardingCta ? (
+        <a
+          href={network.href}
+          className="mt-auto inline-flex w-fit items-center gap-2 rounded-sm border border-[#d4a843]/35 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-[#f0c96a] transition hover:bg-[#d4a843] hover:text-[#0d0d0d]"
+        >
+          Start Onboarding
+          <ArrowRight className="h-3.5 w-3.5" />
+        </a>
       ) : null}
     </article>
   )

@@ -34,14 +34,12 @@ class RoleBasedRouteAccess
             return $next($request);
         }
 
-        // Admin trying to access user routes (non /app/ routes)
-        // Allow `super-admin` to access frontend routes; only redirect regular admins.
-        if ($user->hasRole(['admin', 'demo_admin']) && !$isAdminRoute) {
-            return redirect()->route('backend.home');
-        }
+        $hasBackendRole = $user->roles()
+            ->where('name', '!=', 'user')
+            ->exists();
 
-        // User trying to access admin routes (/app/ routes)
-        if ($user->hasRole('user') && $isAdminRoute) {
+        // User-only accounts should stay on the frontend; mixed-role users can use backend permissions.
+        if ($user->hasRole('user') && !$hasBackendRole && $isAdminRoute) {
             return redirect()->route('user.login');
         }
 

@@ -10,6 +10,7 @@
     {{ html()->form('PUT', route('backend.entertainments.update', $data->id))->attribute('enctype', 'multipart/form-data')->attribute('data-toggle', 'validator')->attribute('id', 'form-submit')->class('requires-validation')->attribute('novalidate', 'novalidate')->open() }}
 
     @csrf
+    {{ html()->hidden('type', 'movie')->id('type') }}
 
 
     <ul class="nav nav-pills mb-3 movie-tab" id="pills-tab" role="tablist">
@@ -393,7 +394,7 @@
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', $data->duration)->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->attribute('required', 'required')->id('duration') }}
+                            {{ html()->time('duration')->attribute('value', $data->duration)->attribute('step', '1')->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->attribute('required', 'required')->id('duration') }}
                             @error('duration')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -414,8 +415,8 @@
                             @enderror
                         </div>
                         <div class="col-md-6 col-lg-4 {{ $data->movie_access == 'pay-per-view' ? 'd-none' : '' }}" id="releaseDateWrapper">
-                            {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required')->id('release_date') }}
+                            {{ html()->label('Release Year <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
+                            {{ html()->number('release_date')->attribute('value', old('release_date') ? substr((string) old('release_date'), 0, 4) : ($data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y') : ''))->placeholder('Release Year')->class('form-control')->attribute('min', '1888')->attribute('max', date('Y') + 10)->attribute('step', '1')->attribute('required', 'required')->id('release_date') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -458,8 +459,8 @@
                 <div class="card-body">
                     <div class="row gy-3">
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_actors') . '<span class="text-danger">*</span>', 'actors')->class('form-label') }}
-                            {{ html()->select('actors[]', $actors->pluck('name', 'id'), $data->actors)->class('form-control select2')->id('actors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_actors'), 'actors')->class('form-label') }}
+                            {{ html()->text('actors', old('actors', $actors->whereIn('id', $data->actors ?? [])->pluck('name')->implode(', ')))->class('form-control')->id('actors')->placeholder('Enter actor names separated by commas') }}
                             @error('actors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -467,8 +468,8 @@
                         </div>
 
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_directors') . '<span class="text-danger">*</span>', 'directors')->class('form-label') }}
-                            {{ html()->select('directors[]', $directors->pluck('name', 'id'), $data->directors)->class('form-control select2')->id('directors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_directors'), 'directors')->class('form-label') }}
+                            {{ html()->text('directors', old('directors', $directors->whereIn('id', $data->directors ?? [])->pluck('name')->implode(', ')))->class('form-control')->id('directors')->placeholder('Enter director names separated by commas') }}
                             @error('directors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
@@ -3263,3 +3264,5 @@
         }
     </style>
 @endonce
+
+@include('entertainment::backend.entertainment.partials.detect-video-duration')

@@ -424,6 +424,151 @@
         // Override global Select2 initialization for mobile setting page
         $(document).ready(function() {
 
+            const orderedMobileSettingSelector = '#optionvalue, #optionvalueSection, select[id^="dashboard_select_"]';
+
+            function getSelectValues($select) {
+                const value = $select.val();
+                return Array.isArray(value) ? value.map(String) : (value ? [String(value)] : []);
+            }
+
+            function captureMobileSettingOrder($select) {
+                const order = $select.find('option:selected').map(function() {
+                    return String(this.value);
+                }).get();
+
+                $select.data('mobile-setting-order', order);
+                return order;
+            }
+
+            function getMobileSettingOrder($select) {
+                const selectedValues = getSelectValues($select);
+                let order = $select.data('mobile-setting-order');
+
+                if (!Array.isArray(order)) {
+                    order = captureMobileSettingOrder($select);
+                }
+
+                order = order.map(String).filter(function(value) {
+                    return selectedValues.includes(value);
+                });
+
+                selectedValues.forEach(function(value) {
+                    if (!order.includes(value)) {
+                        order.push(value);
+                    }
+                });
+
+                $select.data('mobile-setting-order', order);
+                return order;
+            }
+
+            function applyMobileSettingOrder($select, order) {
+                const selectedOrder = (order || getMobileSettingOrder($select)).map(String);
+                const selectedSet = new Set(selectedOrder);
+                const selectedOptions = [];
+                const remainingOptions = [];
+
+                selectedOrder.forEach(function(value) {
+                    const option = $select.find('option').filter(function() {
+                        return String(this.value) === value;
+                    }).first()[0];
+
+                    if (option) {
+                        selectedOptions.push(option);
+                    }
+                });
+
+                $select.find('option').each(function() {
+                    if (!selectedSet.has(String(this.value))) {
+                        remainingOptions.push(this);
+                    }
+                });
+
+                $select.empty();
+                selectedOptions.forEach(function(option) {
+                    option.selected = true;
+                    $select.append(option);
+                });
+                remainingOptions.forEach(function(option) {
+                    option.selected = false;
+                    $select.append(option);
+                });
+
+                $select.data('mobile-setting-order', selectedOrder);
+                $select.val(selectedOrder);
+                $select.trigger('change.select2');
+            }
+
+            $(document)
+                .off('select2:select.mobileSettingOrder')
+                .on('select2:select.mobileSettingOrder', orderedMobileSettingSelector, function(e) {
+                    const $select = $(this);
+                    let order = getMobileSettingOrder($select);
+                    const selectedValue = e.params && e.params.data ? String(e.params.data.id) : null;
+
+                    if (selectedValue) {
+                        order = order.filter(function(value) {
+                            return value !== selectedValue;
+                        });
+                        order.push(selectedValue);
+                    }
+
+                    applyMobileSettingOrder($select, order);
+                })
+                .off('select2:unselect.mobileSettingOrder')
+                .on('select2:unselect.mobileSettingOrder', orderedMobileSettingSelector, function(e) {
+                    const $select = $(this);
+                    const removedValue = e.params && e.params.data ? String(e.params.data.id) : null;
+                    let order = getMobileSettingOrder($select);
+
+                    if (removedValue) {
+                        order = order.filter(function(value) {
+                            return value !== removedValue;
+                        });
+                    }
+
+                    if (order.length === 0) {
+                        $select.data('mobile-setting-order', []);
+                        $select.val(null).trigger('change.select2');
+                        return;
+                    }
+
+                    applyMobileSettingOrder($select, order);
+                })
+                .off('select2:clear.mobileSettingOrder')
+                .on('select2:clear.mobileSettingOrder', orderedMobileSettingSelector, function() {
+                    $(this).data('mobile-setting-order', []);
+                })
+                .off('change.mobileSettingOrder')
+                .on('change.mobileSettingOrder', orderedMobileSettingSelector, function() {
+                    const $select = $(this);
+                    const selectedValues = getSelectValues($select);
+                    const storedOrder = $select.data('mobile-setting-order');
+
+                    if (!Array.isArray(storedOrder)) {
+                        captureMobileSettingOrder($select);
+                        return;
+                    }
+
+                    const storedSelected = storedOrder.filter(function(value) {
+                        return selectedValues.includes(String(value));
+                    });
+                    const hasDifferentSelection = storedSelected.length !== selectedValues.length
+                        || selectedValues.some(function(value) {
+                            return !storedSelected.includes(String(value));
+                        });
+
+                    if (hasDifferentSelection) {
+                        captureMobileSettingOrder($select);
+                    }
+                })
+                .off('submit.mobileSettingOrder')
+                .on('submit.mobileSettingOrder', 'form', function() {
+                    $(this).find(orderedMobileSettingSelector).each(function() {
+                        applyMobileSettingOrder($(this));
+                    });
+                });
+
 
             // Wait for global Select2 to initialize, then fix all elements
             setTimeout(function() {

@@ -151,18 +151,7 @@ class DashboardController extends Controller
 
            $castIds = MobileSetting::getValueBySlug('your-favorite-personality');
            $castIdsArray = json_decode($castIds, true);
-           $personality = [];
-            if (!empty($castIdsArray)) {
-               $casts = CastCrew::whereIn('id', $castIdsArray)->where('status', 1)->where('deleted_at', null)->get();
-               foreach ($casts as $value) {
-                   $personality[] = [
-                       'id' => $value->id,
-                       'name' => $value->name,
-                       'type' => $value->type,
-                       'profile_image' => setBaseUrlWithFileName($value->file_url, 'image', 'castcrew'),
-                   ];
-               }
-            }
+           $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(is_array($castIdsArray) ? $castIdsArray : []);
 
            $movieIds = MobileSetting::getValueBySlug('500-free-movies');
            $movieIdsArray = json_decode($movieIds, true);
@@ -849,22 +838,7 @@ public function getTrandingData(Request $request){
            $setting_castIds = $mobileSettings['your-favorite-personality'] ?? null;
             $castIds = ($setting_castIds && empty($setting_castIds['type'])) ? $setting_castIds['value'] : null;
            $castIdsArray = !empty($castIds) ? json_decode($castIds, true) : null;
-           $personality = [];
-            if (!empty($castIdsArray)) {
-               $casts = CastCrew::whereIn('id', $castIdsArray)
-                   ->where('deleted_at',null)
-                   ->where('status',1)
-                   ->select('id', 'name', 'type', 'file_url')
-                   ->get();
-               foreach ($casts as $value) {
-                   $personality[] = [
-                       'id' => $value->id,
-                       'name' => $value->name,
-                       'type' => $value->type,
-                       'profile_image' => setBaseUrlWithFileName($value->file_url,'image','castcrew'),
-                   ];
-               }
-            }
+           $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(is_array($castIdsArray) ? $castIdsArray : []);
 
            // OPTIMIZATION: Use batched MobileSetting values
            $setting_movieIds = $mobileSettings['500-free-movies'] ?? null;
@@ -1359,7 +1333,7 @@ public function getTrandingData(Request $request){
                         'TvCategory:id,name'
                     ])
                     ->whereIn('id', $ids)
-                    ->select(['id', 'name', 'slug', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'trailer_url', 'access', 'category_id'])
+                    ->select(['id', 'name', 'slug', 'channel_number', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
                         ->where('status', 1)
                         ->whereNull('deleted_at')
                         ->featuredFirst()
@@ -1705,6 +1679,41 @@ public function getTrandingData(Request $request){
                 $popular_movie = [];
             }
 
+            $settingPopularVideoIds = MobileSetting::getNameAndValueBySlug('most-watched-videos')
+                ?? MobileSetting::getNameAndValueBySlug('popular-videos');
+            $popularVideoIds = $settingPopularVideoIds['value'] ?? null;
+            $popularVideoIdsArray = json_decode($popularVideoIds, true);
+
+            if (!empty($popularVideoIdsArray) && is_array($popularVideoIdsArray)) {
+                $popularVideoIdsArray = array_slice($popularVideoIdsArray, 0, 100);
+                $popular_video = Video::get_popular_videos($popularVideoIdsArray);
+
+                if ($popular_video->isNotEmpty()) {
+                    if ($request->has('user_id')) {
+                        $popular_video->each(function ($video) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                            $video->user_id = $user_id;
+                            $video->type = 'video';
+                            $video->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                            $video = setContentAccess($video, $user_id, $userPlanId, $purchasedIds ?? []);
+                            $video->poster_image = $device_type == 'tv' ? $video->poster_tv_url : $video->poster_url ?? null;
+                        });
+                    } else {
+                        $popular_video->each(function ($video) use ($device_type) {
+                            $video->type = 'video';
+                            $video->isDeviceSupported = 0;
+                            $video = setContentAccess($video, null, null, []);
+                            $video->poster_image = $device_type == 'tv' ? $video->poster_tv_url : $video->poster_url ?? null;
+                        });
+                    }
+
+                    $popular_video = VideoResourceV3::collection($popular_video)->toArray(request());
+                } else {
+                    $popular_video = [];
+                }
+            } else {
+                $popular_video = [];
+            }
+
             // Show PayPerView even when user_id is null
             $payPerViewRequest = new Request(['user_id' => $user_id, 'per_page' => 20]); // Limit to 20 items
             $payPerViewContent = $this->getPayPerViewUnlockedContentV3($payPerViewRequest);
@@ -1712,9 +1721,36 @@ public function getTrandingData(Request $request){
             $settingPersonalityIds = MobileSetting::getNameAndValueBySlug('your-favorite-personality');
             $personalityIds = ($settingPersonalityIds && empty($settingPersonalityIds['type'])) ? $settingPersonalityIds['value'] : null;
             $personalityIdsArray = json_decode($personalityIds, true);
-            $personality = !empty($personalityIdsArray) && is_array($personalityIdsArray)
-                ? CastCrew::getFrontendCardsByIds(array_slice($personalityIdsArray, 0, 100))
-                : [];
+            $personality = CastCrew::getFrontendPersonalityCardsSortedWithAll(
+                is_array($personalityIdsArray) ? array_slice($personalityIdsArray, 0, 100) : []
+            );
+
+            $heroLiveTvSetting = MobileSetting::getNameAndValueBySlug('hero-banner-slider-live-tv');
+            $heroLiveTvIds = json_decode($heroLiveTvSetting['value'] ?? null, true);
+            $heroLiveTvChannels = [];
+            if (!empty($heroLiveTvIds) && is_array($heroLiveTvIds)) {
+                $heroLiveTvIds = array_values(array_filter(array_map('intval', $heroLiveTvIds)));
+                $heroLiveTvOrder = array_flip($heroLiveTvIds);
+                $heroLiveTvChannelsCollection = LiveTvChannel::with(['plan:id,level', 'TvCategory:id,name'])
+                    ->whereIn('id', $heroLiveTvIds)
+                    ->select(['id', 'name', 'slug', 'channel_number', 'plan_id', 'poster_url', 'thumb_url', 'poster_tv_url', 'access', 'category_id'])
+                    ->where('status', 1)
+                    ->whereNull('deleted_at')
+                    ->get()
+                    ->sortBy(fn ($channel) => $heroLiveTvOrder[(int) $channel->id] ?? PHP_INT_MAX)
+                    ->values();
+
+                $heroLiveTvChannelsCollection->each(function ($channel) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                    $channel->user_id = $user_id;
+                    $channel->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                    $channel->poster_image = $device_type == 'tv'
+                        ? setBaseUrlWithFileName($channel->poster_tv_url, 'image', 'livetv')
+                        : setBaseUrlWithFileName($channel->poster_url, 'image', 'livetv');
+                    setContentAccess($channel, $user_id, $userPlanId, $purchasedIds ?? []);
+                });
+
+                $heroLiveTvChannels = LiveTvChannelResourceV3::collection($heroLiveTvChannelsCollection)->toArray(request());
+            }
 
             $today = Carbon::now()->toDateString();
             // $is_advertisement_enabled = MobileSetting::where('slug', 'advertisement')->first();
@@ -1723,10 +1759,19 @@ public function getTrandingData(Request $request){
                         ->where('placement', 'home_page')
                         ->whereDate('start_date', '<=', $today)
                         ->whereDate('end_date', '>=', $today)
-                        ->get(['type','media','redirect_url'])->map(function($ad) {
+                        ->get(['id','type','url_type','media','mobile_media','redirect_url'])->map(function($ad) {
+                            $desktopUrl = $ad->media
+                                ? ($ad->url_type === 'local' ? setBaseUrlWithFileName($ad->media, $ad->type, 'ads') : $ad->media)
+                                : null;
+                            $mobileUrl = $ad->mobile_media
+                                ? ($ad->url_type === 'local' ? setBaseUrlWithFileName($ad->mobile_media, $ad->type, 'ads') : $ad->mobile_media)
+                                : null;
+
                             return [
+                                'id' => $ad->id,
                                 'type' => $ad->type,
-                                'url' => $ad->media ? setBaseUrlWithFileName($ad->media,$ad->type,'ads') : null,
+                                'url' => $desktopUrl,
+                                'mobile_url' => $mobileUrl,
                                 'redirect_url' => $ad->redirect_url,
                             ];
                         });
@@ -1740,6 +1785,42 @@ public function getTrandingData(Request $request){
             $sectionNamesAdditional = [];
             foreach ($slugsWithDefaultsAdditional as $slug => $default) {
                 $sectionNamesAdditional[$slug] = $settingsAdditional[$slug] ?? $default;
+            }
+
+            $dynamicData = [];
+            $dynamicMovieSettings = MobileSetting::where('type', 'movie')
+                ->whereNotNull('value')
+                ->orderBy('position')
+                ->get(['name', 'slug', 'value']);
+
+            foreach ($dynamicMovieSettings as $dynamicSetting) {
+                $dynamicMovieIds = json_decode($dynamicSetting->value, true);
+                if (!is_array($dynamicMovieIds) || empty($dynamicMovieIds)) {
+                    continue;
+                }
+
+                $dynamicMovieIds = array_slice(array_values(array_filter(array_map('intval', $dynamicMovieIds))), 0, 100);
+                $dynamicMovieOrder = array_flip($dynamicMovieIds);
+                $dynamicMovies = Entertainment::get_latest_movieV3($dynamicMovieIds)
+                    ->sortBy(fn ($movie) => $dynamicMovieOrder[(int) $movie->id] ?? PHP_INT_MAX)
+                    ->values();
+
+                $dynamicMovies->each(function ($movie) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                    $movie->user_id = $user_id;
+                    $movie->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                    $posterPath = $device_type == 'tv' && $movie->poster_tv_url
+                        ? $movie->poster_tv_url
+                        : $movie->poster_url;
+                    $movie->poster_image = setBaseUrlWithFileName($posterPath, 'image', $movie->type);
+                    $movie->access = $movie->movie_access;
+                    setContentAccess($movie, $user_id, $userPlanId, $purchasedIds ?? []);
+                });
+
+                $dynamicData[$dynamicSetting->slug] = [
+                    'name' => $dynamicSetting->name,
+                    'type' => 'movie',
+                    'data' => CommonContentResourceV3::collection($dynamicMovies)->toArray($request),
+                ];
             }
 
                         $slugsWithDefaults = [
@@ -1773,10 +1854,19 @@ public function getTrandingData(Request $request){
                             'name' => $sectionNamesAdditional['popular-movies'] ?? 'Popular Movies',
                             'data' => $popular_movie,
                         ],
+                        'popular_video' => [
+                            'name' => $settingPopularVideoIds['name'] ?? 'Most Watched Videos',
+                            'data' => $popular_video,
+                        ],
+                        'hero_banner_slider_livetv' => [
+                            'name' => $heroLiveTvSetting['name'] ?? 'Hero Banner Slider Live Tv',
+                            'data' => $heroLiveTvChannels,
+                        ],
                         'personality' => [
                             'name' => $sectionNamesAdditional['your-favorite-personality'] ?? 'Popular Personalities',
                             'data' => $personality,
                         ],
+                        'dynamic_data' => $dynamicData,
                         'pay_per_view' => $payPerViewContent,
                     ];
         });

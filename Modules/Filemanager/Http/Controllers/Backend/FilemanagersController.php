@@ -9,6 +9,7 @@ use Yajra\DataTables\DataTables;
 use Modules\Filemanager\Http\Requests\FilemanagerRequest;
 use App\Traits\ModuleTrait;
 use App\Models\Setting;
+use App\Models\MediaCompressorJob;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Support\Facades\Storage;
 use App\Jobs\ProcessFileUpload;
@@ -16,6 +17,7 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Modules\Entertainment\Models\Entertainment;
 use Illuminate\Support\Facades\Log;
 
@@ -100,6 +102,7 @@ class FilemanagersController extends Controller
     $jobs = [];
         $syncProcessedCount = 0;
         $redirectFolder = null;
+        $uploadedFilesForResponse = [];
 
     // Mode A: direct file post (fallback)
     if ($request->hasFile('file_url')) {
@@ -108,7 +111,7 @@ class FilemanagersController extends Controller
             $extension = $file->getClientOriginalExtension();
             $fileType = $this->getFileType($extension);
             $baseName = pathinfo($originalName, PATHINFO_FILENAME);
-            $sanitizedBaseName = str_replace([' ', '-', '.','%20'], '_', $baseName);
+            $sanitizedBaseName = $this->sanitizeUploadBaseName($baseName);
             $uniqueFileName = $sanitizedBaseName . '_' . uniqid() . '.' . $extension;
             $temporaryPath = $file->storeAs('temp/uploads', $uniqueFileName);
             // If chunk-assembled temp (original name) exists, remove to avoid duplicate
@@ -116,12 +119,14 @@ class FilemanagersController extends Controller
             if (file_exists($assembledTempPath)) {
                 @unlink($assembledTempPath);
             }
-            $filemanager = Filemanager::create([
+            $filemanagerData = [
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
-                // mark as processing for immediate handling, avoid leaving video in pending queue
-                'status' => $fileType === 'video' ? 'processing' : 'ready',
-            ]);
+            ];
+            if (Schema::hasColumn('filemanagers', 'status')) {
+                $filemanagerData['status'] = $fileType === 'video' ? 'processing' : 'ready';
+            }
+            $filemanager = Filemanager::create($filemanagerData);
             $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
@@ -137,6 +142,15 @@ class FilemanagersController extends Controller
                 $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $jobs[] = $job;
             }
+
+            $filemanager->refresh();
+            $uploadedFilesForResponse[] = [
+                'original_name' => $originalName,
+                'file_name' => $filemanager->file_name,
+                'file_type' => $fileType,
+                'status' => $filemanager->status ?? 'ready',
+                'remote_job_id' => $filemanager->remote_job_id ?? null,
+            ];
         }
     }
     // Mode B: chunk upload already assembled; receive only file names
@@ -145,16 +159,18 @@ class FilemanagersController extends Controller
             $extension = pathinfo($originalName, PATHINFO_EXTENSION);
             $fileType = $this->getFileType($extension);
             $baseName = pathinfo($originalName, PATHINFO_FILENAME);
-            $sanitizedBaseName = str_replace([' ', '-', '.','%20'], '_', $baseName);
+            $sanitizedBaseName = $this->sanitizeUploadBaseName($baseName);
             $uniqueFileName = $sanitizedBaseName . '_' . uniqid() . '.' . $extension;
             // Source path is the assembled temp file produced by /upload
             $temporaryPath = 'temp/uploads/' . $originalName;
-            $filemanager = Filemanager::create([
+            $filemanagerData = [
                 'file_url' => $temporaryPath,
                 'file_name' => $uniqueFileName,
-                // mark as processing for immediate handling, avoid leaving video in pending queue
-                'status' => $fileType === 'video' ? 'processing' : 'ready',
-            ]);
+            ];
+            if (Schema::hasColumn('filemanagers', 'status')) {
+                $filemanagerData['status'] = $fileType === 'video' ? 'processing' : 'ready';
+            }
+            $filemanager = Filemanager::create($filemanagerData);
             $lastUploadedFileName = $uniqueFileName;
             if ($redirectFolder === null) {
                 $targetType = in_array($fileType, ['image', 'video'], true) ? $fileType : 'other';
@@ -170,6 +186,15 @@ class FilemanagersController extends Controller
                 $job = new ProcessFileUpload($filemanager, $temporaryPath, $diskType, $originalName, $page_type, $fileType);
                 $jobs[] = $job;
             }
+
+            $filemanager->refresh();
+            $uploadedFilesForResponse[] = [
+                'original_name' => $originalName,
+                'file_name' => $filemanager->file_name,
+                'file_type' => $fileType,
+                'status' => $filemanager->status ?? 'ready',
+                'remote_job_id' => $filemanager->remote_job_id ?? null,
+            ];
         }
     }
 
@@ -224,7 +249,9 @@ class FilemanagersController extends Controller
             'success' => true,
             'message' => $message,
             'file_name' => $lastUploadedFileName,
+            'files' => $uploadedFilesForResponse,
             'redirect_folder' => $redirectFolder,
+            'processing_count' => count($jobs),
         ]);
     }
 
@@ -246,6 +273,14 @@ private function getFileType($extension)
     } else {
         return 'other';
     }
+}
+
+private function sanitizeUploadBaseName(string $baseName): string
+{
+    $sanitized = preg_replace('/[^A-Za-z0-9_]+/', '_', rawurldecode($baseName)) ?: '';
+    $sanitized = trim($sanitized, '_');
+
+    return $sanitized !== '' ? $sanitized : 'media';
 }
 
 
@@ -333,51 +368,34 @@ private function getFileType($extension)
     {
 
 
-        $url = $request->input('url');
-        $requestPath = $request->input('path');
+        $url = (string) $request->input('url', '');
+        $requestPath = (string) $request->input('path', '');
 
-        $activeDisk = env('ACTIVE_STORAGE', 'local');
-
-        $parsedUrl = parse_url($url);
-        $urlPath = ltrim($requestPath ?: ($parsedUrl['path'] ?? ''), '/');
-
-
-
-        $relativePath = null;
-
-        if ($activeDisk === 'local') {
-
-            $storagePos = strpos($urlPath, 'storage/');
-            if ($storagePos !== false) {
-                $afterStorage = substr($urlPath, $storagePos + strlen('storage/'));
-                $relativePath = 'public/' . ltrim($afterStorage, '/');
-            } else if (strpos($urlPath, 'public/') === 0) {
-                $relativePath = $urlPath;
-            } else {
-                $relativePath = 'public/' . $urlPath;
-            }
-        } else {
-            // For S3/Spaces, use the key without leading public/storage
-            $relativePath = ltrim($urlPath, '/');
-            if (strpos($relativePath, 'storage/') === 0) {
-                $relativePath = substr($relativePath, strlen('storage/'));
-            }
-            if (strpos($relativePath, 'public/') === 0) {
-                $relativePath = substr($relativePath, strlen('public/'));
-            }
-        }
-
-        $fileName = basename($relativePath);
+        $activeDisk = config('filesystems.active', env('ACTIVE_STORAGE', 'local'));
+        $pathsToDelete = $this->storageDeleteCandidates($requestPath, $url, $activeDisk);
+        $relativePath = $pathsToDelete[0] ?? '';
+        $fileName = basename($relativePath ?: mediaStoragePathFromUrl($url));
 
         deleteBunnyStreamVideoByFile($fileName);
 
         $disk = Storage::disk($activeDisk);
-        $pathsToDelete = [$relativePath];
+        $matchingFilemanagers = $this->matchingFilemanagersForDelete($fileName, $pathsToDelete);
 
-        if ($activeDisk !== 'local' && !pathinfo($relativePath, PATHINFO_EXTENSION)) {
-            foreach ($disk->files(dirname($relativePath) === '.' ? '' : dirname($relativePath)) as $candidatePath) {
-                if (str_starts_with(basename($candidatePath), $fileName)) {
-                    $pathsToDelete[] = $candidatePath;
+        foreach ($matchingFilemanagers as $filemanager) {
+            $storedPath = $this->normalizeDeletePath((string) $filemanager->getRawOriginal('file_url'), $activeDisk);
+            if ($storedPath !== '') {
+                $pathsToDelete[] = $storedPath;
+            }
+        }
+
+        if ($activeDisk !== 'local') {
+            foreach ($pathsToDelete as $candidate) {
+                if (!pathinfo($candidate, PATHINFO_EXTENSION)) {
+                    foreach ($disk->files(dirname($candidate) === '.' ? '' : dirname($candidate)) as $candidatePath) {
+                        if (str_starts_with(basename($candidatePath), $fileName)) {
+                            $pathsToDelete[] = $candidatePath;
+                        }
+                    }
                 }
             }
         }
@@ -393,18 +411,20 @@ private function getFileType($extension)
 
         $deleted = count($deletedPaths) > 0;
 
-        if ($deleted) {
-            Filemanager::query()
-                ->where(function ($query) use ($fileName, $deletedPaths) {
-                    $query->where('file_name', $fileName)
-                        ->orWhereIn('file_url', $deletedPaths);
+        if ($deleted || $matchingFilemanagers->isNotEmpty()) {
+            if ($matchingFilemanagers->isEmpty()) {
+                $matchingFilemanagers = $this->matchingFilemanagersForDelete($fileName, $deletedPaths);
+            }
 
-                    foreach ($deletedPaths as $deletedPath) {
-                        $query->orWhere('file_name', basename($deletedPath));
-                    }
-                })
-                ->get()
-                ->each(fn ($filemanager) => $filemanager->forceDelete());
+            $filemanagerIds = $matchingFilemanagers->pluck('id')->all();
+            if (!empty($filemanagerIds)) {
+                MediaCompressorJob::query()
+                    ->where('owner_type', Filemanager::class)
+                    ->whereIn('owner_id', $filemanagerIds)
+                    ->delete();
+            }
+
+            $matchingFilemanagers->each(fn ($filemanager) => $filemanager->forceDelete());
 
             return response()->json(['success' => true, 'deleted_paths' => $deletedPaths]);
         }
@@ -414,6 +434,111 @@ private function getFileType($extension)
             'path' => $relativePath,
             'message' => 'File was not found on the active storage disk.',
         ], 404);
+    }
+
+    private function storageDeleteCandidates(string $requestPath, string $url, string $activeDisk): array
+    {
+        $candidates = [];
+
+        foreach ([$requestPath, $url] as $source) {
+            $path = $this->normalizeDeletePath($source, $activeDisk);
+            if ($path !== '') {
+                $candidates[] = $path;
+                $candidates = array_merge($candidates, $this->mediaTypePathVariants($path));
+            }
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    private function mediaTypePathVariants(string $path): array
+    {
+        $type = $this->getFileType(pathinfo($path, PATHINFO_EXTENSION));
+        if (! in_array($type, ['image', 'video'], true)) {
+            return [];
+        }
+
+        $segments = explode('/', trim($path, '/'));
+        $fileName = array_pop($segments);
+        $mediaSegmentIndex = array_search('image', $segments, true);
+
+        if ($mediaSegmentIndex === false) {
+            $mediaSegmentIndex = array_search('video', $segments, true);
+        }
+
+        if ($mediaSegmentIndex !== false) {
+            $segments[$mediaSegmentIndex] = $type;
+            return [implode('/', array_merge($segments, [$fileName]))];
+        }
+
+        if (!empty($segments)) {
+            $segments[] = $type;
+            $segments[] = $fileName;
+            return [implode('/', $segments)];
+        }
+
+        return [];
+    }
+
+    private function normalizeDeletePath(string $pathOrUrl, string $activeDisk): string
+    {
+        if ($pathOrUrl === '') {
+            return '';
+        }
+
+        $path = mediaStoragePathFromUrl($pathOrUrl);
+        $path = ltrim($path, '/');
+
+        $bucket = (string) config("filesystems.disks.{$activeDisk}.bucket");
+        if ($bucket !== '' && str_starts_with($path, $bucket.'/')) {
+            $path = substr($path, strlen($bucket) + 1);
+        }
+
+        if ($activeDisk === 'local') {
+            $storagePos = strpos($path, 'storage/');
+            if ($storagePos !== false) {
+                $path = 'public/'.ltrim(substr($path, $storagePos + strlen('storage/')), '/');
+            } elseif (! str_starts_with($path, 'public/')) {
+                $path = 'public/'.$path;
+            }
+
+            return $path;
+        }
+
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return str_starts_with($path, 'public/') ? substr($path, strlen('public/')) : $path;
+    }
+
+    private function matchingFilemanagersForDelete(string $fileName, array $paths)
+    {
+        $paths = collect($paths)
+            ->filter()
+            ->flatMap(fn ($path) => [$path, $this->normalizeFilemanagerPath((string) $path), 'public/'.$this->normalizeFilemanagerPath((string) $path)])
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($fileName === '' && empty($paths)) {
+            return collect();
+        }
+
+        return Filemanager::query()
+            ->where(function ($query) use ($fileName, $paths) {
+                if ($fileName !== '') {
+                    $query->where('file_name', $fileName);
+                }
+
+                if (!empty($paths)) {
+                    $query->orWhereIn('file_url', $paths);
+                    foreach ($paths as $path) {
+                        $query->orWhere('file_name', basename($path));
+                    }
+                }
+            })
+            ->get();
     }
 
    public function SearchMedia(Request $request){
@@ -567,6 +692,7 @@ private function getFileType($extension)
                                 'modified' => $modified,
                                 'uploaded_at' => null,
                                 'media_url' => $mediaUrl,
+                                'preview_url' => $this->previewUrl($relativePath, $isImage),
                                 'is_video' => $isVideo,
                                 'is_image' => $isImage,
                             ];
@@ -580,6 +706,8 @@ private function getFileType($extension)
                     }
                 }
             }
+
+            $allItems = $this->appendPendingFilemanagerItems($allItems, $folder);
 
             // Sorting: support sort param from frontend
             $sort = $request->get('sort', 'modified_desc');
@@ -719,10 +847,150 @@ private function getFileType($extension)
             'size' => $size,
             'modified' => $modified,
             'uploaded_at' => null,
+            'status' => 'ready',
+            'remote_job_id' => null,
             'media_url' => $mediaUrl,
+            'preview_url' => $this->previewUrl($relativePath !== null ? $relativePath : $absolutePath, (bool) $isImage),
             'is_video' => $isVideo,
             'is_image' => $isImage,
         ];
+    }
+
+    private function appendPendingFilemanagerItems(array $items, string $folder): array
+    {
+        if (! Schema::hasColumn('filemanagers', 'status')) {
+            return $items;
+        }
+
+        $existingPaths = collect($items)
+            ->filter(fn ($item) => !($item['is_dir'] ?? false))
+            ->pluck('path')
+            ->map(fn ($path) => $this->normalizeFilemanagerPath((string) $path))
+            ->all();
+
+        $query = Filemanager::query()
+            ->whereIn('status', ['queued', 'processing', 'failed']);
+
+        $normalizedFolder = trim($folder, '/');
+
+        if ($normalizedFolder !== '') {
+            $query->where(function ($builder) use ($normalizedFolder) {
+                $builder->where('file_url', 'like', 'public/'.$normalizedFolder.'/%')
+                    ->orWhere('file_url', 'like', $normalizedFolder.'/%');
+            });
+        }
+
+        foreach ($query->latest('created_at')->limit(100)->get() as $filemanager) {
+            $path = $this->normalizeFilemanagerPath((string) $filemanager->getRawOriginal('file_url'));
+            if ($path === '' || in_array($path, $existingPaths, true)) {
+                continue;
+            }
+
+            if ($normalizedFolder !== '') {
+                if (! str_starts_with($path, $normalizedFolder.'/')) {
+                    continue;
+                }
+
+                $folderRelativePath = substr($path, strlen($normalizedFolder) + 1);
+                if ($folderRelativePath === '' || str_contains($folderRelativePath, '/')) {
+                    continue;
+                }
+            } elseif (str_contains($path, '/')) {
+                continue;
+            }
+
+            $name = $filemanager->file_name ?: basename($path);
+            $isVideo = (bool) preg_match('/\.(mp4|webm|avi|mov|wmv|flv|mkv|3gp|m4v|mpg|mpeg)$/i', $name);
+            $isImage = (bool) preg_match('/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)$/i', $name);
+            $type = $isVideo ? 'video' : ($isImage ? 'image' : 'file');
+            $pageType = $this->pageTypeFromPath($path);
+
+            $items[] = [
+                'name' => $name,
+                'path' => $path,
+                'is_dir' => false,
+                'size' => 0,
+                'modified' => optional($filemanager->created_at)->timestamp ?? time(),
+                'uploaded_at' => optional($filemanager->created_at)->timestamp,
+                'status' => $filemanager->status,
+                'remote_job_id' => $filemanager->remote_job_id ?? null,
+                'media_url' => ($isVideo || $isImage) ? setBaseUrlWithFileName($path, $type, $pageType) : '',
+                'preview_url' => null,
+                'is_video' => $isVideo,
+                'is_image' => $isImage,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function normalizeFilemanagerPath(string $path): string
+    {
+        $path = ltrim($path, '/');
+
+        return str_starts_with($path, 'public/') ? substr($path, strlen('public/')) : $path;
+    }
+
+    private function pageTypeFromPath(string $path): string
+    {
+        $segments = explode('/', trim($path, '/'));
+        $imageIndex = array_search('image', $segments, true);
+        $videoIndex = array_search('video', $segments, true);
+
+        if ($imageIndex !== false && $imageIndex > 0) {
+            return $segments[$imageIndex - 1];
+        }
+
+        if ($videoIndex !== false && $videoIndex > 0) {
+            return $segments[$videoIndex - 1];
+        }
+
+        return $segments[0] ?? 'default';
+    }
+
+    private function previewUrl(?string $path, bool $isImage): ?string
+    {
+        $path = ltrim((string) $path, '/');
+
+        if (!$isImage || $path === '' || !str_starts_with($path, 'ads/image/')) {
+            return null;
+        }
+
+        $key = rtrim(strtr(base64_encode($path), '+/', '-_'), '=');
+
+        return route('backend.media-library.preview', ['key' => $key]);
+    }
+
+    public function preview(Request $request)
+    {
+        $key = (string) $request->query('key');
+        $path = $key !== ''
+            ? (string) base64_decode(strtr($key, '-_', '+/'), true)
+            : (string) $request->query('path');
+        $path = ltrim($path, '/');
+        abort_if($path === '' || str_contains($path, '..') || !str_starts_with($path, 'ads/image/'), 404);
+
+        $activeDisk = env('ACTIVE_STORAGE', 'local');
+
+        if ($activeDisk !== 'local' && Storage::disk($activeDisk)->exists($path)) {
+            $stream = Storage::disk($activeDisk)->readStream($path);
+            abort_if($stream === false, 404);
+
+            return response()->stream(function () use ($stream) {
+                fpassthru($stream);
+                fclose($stream);
+            }, 200, [
+                'Content-Type' => Storage::disk($activeDisk)->mimeType($path) ?: 'image/jpeg',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+
+        $localPath = storage_path('app/public/' . $path);
+        abort_unless(is_file($localPath), 404);
+
+        return response()->file($localPath, [
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     private function attachUploadTimestamps(array $items): array
@@ -737,21 +1005,22 @@ private function getFileType($extension)
             return $items;
         }
 
-        $uploadedAtByName = Filemanager::query()
+        $filemanagerByName = Filemanager::query()
             ->whereIn('file_name', $fileNames)
             ->latest('created_at')
-            ->get(['file_name', 'created_at'])
+            ->get(['file_name', 'created_at', 'status', 'remote_job_id'])
             ->unique('file_name')
-            ->mapWithKeys(function ($filemanager) {
-                return [$filemanager->file_name => optional($filemanager->created_at)->timestamp];
-            });
+            ->keyBy('file_name');
 
         foreach ($items as &$item) {
             if ($item['is_dir'] ?? false) {
                 continue;
             }
 
-            $item['uploaded_at'] = $uploadedAtByName[$item['name']] ?? ($item['modified'] ?? null);
+            $filemanager = $filemanagerByName[$item['name']] ?? null;
+            $item['uploaded_at'] = $filemanager ? optional($filemanager->created_at)->timestamp : ($item['modified'] ?? null);
+            $item['status'] = $filemanager->status ?? ($item['status'] ?? 'ready');
+            $item['remote_job_id'] = $filemanager->remote_job_id ?? ($item['remote_job_id'] ?? null);
         }
 
         unset($item);
@@ -796,9 +1065,29 @@ private function getFileType($extension)
             return response()->json(['status' => 'ready']);
         }
 
+        $rawPath = (string) $record->getRawOriginal('file_url');
+        $path = $this->normalizeFilemanagerPath($rawPath);
+        $name = (string) ($record->file_name ?: basename($path));
+        $isVideo = (bool) preg_match('/\.(mp4|webm|avi|mov|wmv|flv|mkv|3gp|m4v|mpg|mpeg)$/i', $name);
+        $isImage = (bool) preg_match('/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)$/i', $name);
+        $type = $isVideo ? 'video' : ($isImage ? 'image' : 'file');
+        $pageType = $this->pageTypeFromPath($path);
+        $status = $record->status ?? 'ready';
+        $job = null;
+
+        if (!empty($record->remote_job_id)) {
+            $job = MediaCompressorJob::where('remote_job_id', $record->remote_job_id)->latest()->first();
+        }
+
         return response()->json([
-            'status' => $record->status ?? 'ready',
+            'status' => $status,
             'file_name' => $record->file_name,
+            'remote_job_id' => $record->remote_job_id ?? null,
+            'error_message' => $job?->error_message,
+            'media_url' => $status === 'ready' && ($isVideo || $isImage)
+                ? setBaseUrlWithFileName($path, $type, $pageType)
+                : null,
+            'updated_at' => optional($record->updated_at)->timestamp,
         ]);
     }
 

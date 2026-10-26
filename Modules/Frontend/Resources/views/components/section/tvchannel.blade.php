@@ -25,9 +25,12 @@
             @foreach ($top_channel as $data)
                 <div class="slick-item">
                     <a href="{{ route('livetv-details', ['id' => $data['slug']]) }}"
-                        class="channel-card d-flex align-content-center align-items-center justify-content-center rounded">
+                        class="channel-card d-flex align-content-center align-items-center justify-content-center rounded position-relative overflow-hidden">
                         <img src="{{ $data['poster_image'] }}" alt="channel icon"
                             class="img-fluid object-cover rounded channel-img">
+                        <span class="live-card-badge">
+                            <span class="live-badge fw-semibold text-uppercase">{{ __('frontend.live') }}</span>
+                        </span>
                     </a>
                 </div>
             @endforeach

@@ -6,6 +6,7 @@ use Modules\Entertainment\Repositories\EntertainmentRepositoryInterface;
 use  Modules\Genres\Repositories\GenreRepositoryInterface;
 use Yajra\DataTables\DataTables;
 use \Modules\Season\Models\Season;
+use Modules\CastCrew\Models\CastCrew;
 
 class TvShowService
 {
@@ -30,6 +31,8 @@ class TvShowService
 
     public function create(array $data)
     {
+        $data['actors'] = $this->resolveTalentInput($data['actors'] ?? null, 'actor');
+        $data['directors'] = $this->resolveTalentInput($data['directors'] ?? null, 'director');
 
         $cacheKey1 = 'movie_';
         $cacheKey2 = 'tvshow_';
@@ -86,6 +89,8 @@ class TvShowService
 
     public function update(int $id, array $data)
     {
+        $data['actors'] = $this->resolveTalentInput($data['actors'] ?? null, 'actor');
+        $data['directors'] = $this->resolveTalentInput($data['directors'] ?? null, 'director');
         $entertainment = $this->entertainmentRepository->find($id);
 
         if($entertainment->type=='movie'){
@@ -113,6 +118,32 @@ class TvShowService
         }
 
         return $result;
+    }
+
+    private function resolveTalentInput(mixed $talents, string $type): array
+    {
+        if (is_array($talents)) {
+            return array_values(array_filter($talents, fn ($id) => is_numeric($id)));
+        }
+
+        if (!is_string($talents) || trim($talents) === '') {
+            return [];
+        }
+
+        $names = preg_split('/[\r\n,]+/', $talents) ?: [];
+
+        return collect($names)
+            ->map(fn ($name) => trim($name))
+            ->filter()
+            ->unique(fn ($name) => mb_strtolower($name))
+            ->map(function ($name) use ($type) {
+                return CastCrew::firstOrCreate(
+                    ['name' => $name, 'type' => $type],
+                    ['status' => 1]
+                )->id;
+            })
+            ->values()
+            ->all();
     }
 
     /**

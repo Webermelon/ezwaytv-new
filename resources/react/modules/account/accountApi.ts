@@ -90,6 +90,12 @@ export async function updateAccountProfile(input: {
   return response
 }
 
+export async function syncAccountProfile() {
+  const response = await api.post<ApiEnvelope<AccountProfile>>('/account/profile/sync')
+
+  return response
+}
+
 export async function updateAccountPassword(input: {
   old_password: string
   new_password: string

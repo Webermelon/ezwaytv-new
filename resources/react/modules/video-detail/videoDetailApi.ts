@@ -9,8 +9,14 @@ export type VideoAd = {
   url?: string
   vast_url?: string
   redirect_url?: string
+  media?: string
+  mobile_media?: string | null
   image?: string
   image_url?: string
+  placement?: string
+  status?: number | string | boolean
+  type?: string | null
+  url_type?: string | null
   enable_skip?: boolean | number | string
   skip_after?: string | number | null
 }
@@ -38,6 +44,13 @@ export async function loadVideoDetail(slug: string, ondemandChannel?: string | n
   }
 
   const response = await api.get<ApiEnvelope<MediaItem>>(`/api/video-details?${params.toString()}`)
+
+  return response.data
+}
+
+export async function loadMovieDetail(movieId: string) {
+  const params = new URLSearchParams({ movie_id: movieId })
+  const response = await api.get<ApiEnvelope<MediaItem>>(`/api/movie-details?${params.toString()}`)
 
   return response.data
 }
@@ -75,7 +88,7 @@ export async function loadVideoAds(videoId: string | number) {
 
 export async function trackVideoView(video: MediaItem, channelId?: string | number | null) {
   return trackView({
-    content_type: channelId ? 'ondemand_video' : 'video',
+    content_type: 'video',
     content_id: video.id,
     channel_id: channelId,
     page_name: video.name,
@@ -85,7 +98,7 @@ export async function trackVideoView(video: MediaItem, channelId?: string | numb
 
 export async function trackVideoPlay(video: MediaItem, channelId?: string | number | null) {
   return trackPlay({
-    content_type: channelId ? 'ondemand_video' : 'video',
+    content_type: 'video',
     content_id: video.id,
     channel_id: channelId,
     quality: 'auto',

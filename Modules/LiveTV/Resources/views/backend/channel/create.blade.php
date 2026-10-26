@@ -214,15 +214,21 @@
                                 @enderror
                             </div>
                             <div class="col-md-6 col-lg-4">
-                                {{ html()->label('Live Chat', 'enable_live_chat')->class('form-label') }}
-                                <div class="d-flex justify-content-between align-items-center form-control">
-                                    {{ html()->label('Enable live chat beside player', 'enable_live_chat')->class('form-label mb-0 text-body') }}
-                                    <div class="form-check form-switch">
-                                        {{ html()->hidden('enable_live_chat', 0) }}
-                                        {{ html()->checkbox('enable_live_chat', old('enable_live_chat', false), 1)->class('form-check-input')->id('enable_live_chat') }}
-                                    </div>
-                                </div>
-                                <small class="text-muted d-block mt-1">Viewers can chat on this specific channel when enabled.</small>
+                                {{ html()->label('VOD Channel', 'vod_channel_id')->class('form-label') }}
+                                {{ html()->select('vod_channel_id', $vodChannels->prepend('No linked VOD channel', ''), old('vod_channel_id'))->class('form-control select2')->id('vod_channel_id') }}
+                                <small class="text-muted d-block mt-1">Optional. Select the On-Demand channel this Live TV page should link to.</small>
+                                @error('vod_channel_id')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            @include('livetv::backend.channel._chat-settings')
+                            <div class="col-md-6 col-lg-4">
+                                {{ html()->label('Button Name', 'vod_channel_button_name')->class('form-label') }}
+                                {{ html()->text('vod_channel_button_name', old('vod_channel_button_name'))->placeholder('View On Demand')->class('form-control')->id('vod_channel_button_name') }}
+                                <small class="text-muted d-block mt-1">Shown on the Live TV channel page when a VOD channel is selected.</small>
+                                @error('vod_channel_button_name')
+                                    <span class="text-danger">{{ $message }}</span>
+                                @enderror
                             </div>
                         </div>
                     </div>

@@ -1,10 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/manrope/Manrope-Variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @source "./**/*.{ts,tsx}";
 @source "../views/**/*.blade.php";
 @source "../../Modules/**/*.blade.php";
 
 :root {
+  --ezway-font-family: "Manrope", Arial, Helvetica, sans-serif;
   --background: 0 0% 4%;
   --foreground: 0 0% 96%;
   --card: 0 0% 8%;
@@ -77,6 +86,14 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  font-family: var(--ezway-font-family);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 a[href],
@@ -88,6 +105,29 @@ select:not(:disabled),
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled) {
   cursor: pointer;
+}
+
+.ez-home-rail-scroller {
+  cursor: grab;
+  user-select: none;
+}
+
+.ez-home-rail-scroller.ez-home-rail-dragging {
+  cursor: grabbing;
+}
+
+body.ez-home-rail-drag-lock {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.ez-home-rail-scroller a {
+  cursor: inherit;
+}
+
+.ez-home-rail-scroller img {
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 button:disabled,
@@ -161,8 +201,71 @@ body {
 }
 
 .ez-home-hero-image {
-  animation: ez-home-hero-drift 18s ease-in-out infinite alternate;
-  transform-origin: center;
+  object-position: center 47%;
+  transform-origin: center center;
+  animation: ez-home-hero-drift 24s ease-in-out infinite alternate;
+}
+
+.ez-home-hero-shade {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.82) 27%, rgba(0, 0, 0, 0.28) 56%, rgba(0, 0, 0, 0.18) 100%),
+    linear-gradient(0deg, #050505 0%, rgba(5, 5, 5, 0.28) 25%, rgba(5, 5, 5, 0.08) 72%, rgba(5, 5, 5, 0.46) 100%);
+}
+
+.ez-home-hero-player {
+  backdrop-filter: blur(2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 222, 115, 0.18),
+    0 0 22px rgba(235, 183, 42, 0.24),
+    0 22px 60px rgba(0, 0, 0, 0.72);
+}
+
+.ez-home-hero-title {
+  font-family: "Lato", sans-serif;
+  font-size: clamp(3.25rem, 5.5vw, 5.65rem);
+  font-weight: 900;
+  line-height: 0.88;
+  letter-spacing: 0;
+  text-wrap: balance;
+  text-shadow:
+    0 3px 0 rgba(255, 255, 255, 0.08),
+    0 7px 22px rgba(0, 0, 0, 0.9);
+}
+
+.ez-home-hero-title-accent {
+  color: #f5bd25;
+  text-shadow:
+    0 2px 0 #b97900,
+    0 7px 22px rgba(0, 0, 0, 0.9);
+}
+
+.ez-home-hero-description {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+}
+
+.ez-home-hero-topics span[aria-hidden="true"] {
+  color: #f4c238;
+}
+
+.ez-home-hero-script {
+  font-family: "Brush Script MT", "Segoe Script", cursive;
+  font-size: 2.15rem;
+  line-height: 0.86;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.9);
+}
+
+.ez-home-hero-script span {
+  display: block;
+}
+
+.ez-home-slider-arrow {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.ez-home-slider-arrow:focus-visible,
+.ez-home-slider-nav button:focus-visible {
+  outline: 2px solid #f4c238;
+  outline-offset: 3px;
 }
 
 .ez-home-hero-copy {
@@ -174,8 +277,14 @@ body {
 }
 
 .ez-home-cta-primary {
-  box-shadow: 0 0 0 rgba(212, 168, 67, 0);
+  border: 1px solid #ffd75d;
+  background: linear-gradient(180deg, #ffd85b 0%, #efad19 100%);
+  box-shadow: 0 8px 24px rgba(226, 166, 22, 0.2);
   animation: ez-home-cta-pulse 2.6s ease-in-out infinite;
+}
+
+.ez-home-cta-primary:hover {
+  background: linear-gradient(180deg, #ffe47d 0%, #f7ba28 100%);
 }
 
 .ez-home-cta-secondary {
@@ -207,11 +316,48 @@ body {
 
 @keyframes ez-home-hero-drift {
   from {
-    transform: scale(1.02) translate3d(-0.6%, -0.4%, 0);
+    transform: scale(1.01) translate3d(-0.25%, 0, 0);
   }
 
   to {
-    transform: scale(1.07) translate3d(0.8%, 0.5%, 0);
+    transform: scale(1.045) translate3d(0.45%, 0.2%, 0);
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .ez-home-hero {
+    min-height: 0;
+  }
+
+  .ez-home-hero-image {
+    object-position: 38% center;
+  }
+
+  .ez-home-hero-shade {
+    background:
+      linear-gradient(180deg, rgba(5, 5, 5, 0.32) 0%, rgba(5, 5, 5, 0.74) 43%, #050505 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.18) 100%);
+  }
+}
+
+@media (max-width: 639.98px) {
+  .ez-home-slider-nav {
+    max-width: 100%;
+  }
+
+  .ez-home-hero-title {
+    font-size: 2.75rem;
+    line-height: 0.94;
+  }
+
+  .ez-home-hero-image {
+    height: 58%;
+    opacity: 0.72;
+    object-position: 43% center;
+  }
+
+  .ez-home-hero-shade {
+    background: linear-gradient(180deg, rgba(5, 5, 5, 0.25) 0%, rgba(5, 5, 5, 0.85) 37%, #050505 64%);
   }
 }
 
@@ -474,19 +620,26 @@ body {
 
 .vjs-theme-ezway .vjs-volume-bar {
   height: 0.22rem !important;
-  margin: 1.28rem 0.45rem !important;
+  margin: 1.19rem 0.45rem !important;
   border-radius: 999px !important;
   background: rgba(255, 255, 255, 0.35) !important;
 }
 
 .vjs-theme-ezway .vjs-volume-level {
+  height: 100% !important;
   border-radius: inherit !important;
   background: #fff !important;
 }
 
 .vjs-theme-ezway .vjs-volume-level::before {
-  top: -0.28rem !important;
+  top: 50% !important;
+  right: -0.34rem !important;
+  width: 0.68rem !important;
+  height: 0.68rem !important;
+  margin-top: -0.34rem !important;
   color: #fff !important;
+  font-size: 0.68rem !important;
+  line-height: 0.68rem !important;
 }
 
 .vjs-theme-ezway .vjs-remaining-time,
@@ -517,6 +670,14 @@ body {
 
 .vjs-theme-ezway .vjs-fullscreen-control {
   margin-left: auto !important;
+}
+
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-control-bar,
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-progress-control,
+.vjs-theme-ezway.vjs-ezway-ad-playing .vjs-control.vjs-progress-control {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .vjs-theme-ezway .vjs-menu-button-popup .vjs-menu {
@@ -609,9 +770,33 @@ body {
     line-height: 2.6rem !important;
   }
 
-  .vjs-theme-ezway .vjs-volume-panel,
   .vjs-theme-ezway .vjs-picture-in-picture-control {
     display: none !important;
+  }
+
+  .vjs-theme-ezway .vjs-volume-panel,
+  .vjs-theme-ezway .vjs-volume-panel:hover,
+  .vjs-theme-ezway .vjs-volume-panel:focus-within,
+  .vjs-theme-ezway .vjs-volume-panel.vjs-volume-panel-horizontal:hover,
+  .vjs-theme-ezway .vjs-volume-panel.vjs-volume-panel-horizontal:focus-within {
+    display: flex !important;
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    flex: 0 0 2.35rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-volume-panel .vjs-mute-control {
+    display: block !important;
+    width: 2.35rem !important;
+    height: 2.6rem !important;
+  }
+
+  .vjs-theme-ezway .vjs-volume-panel .vjs-volume-control,
+  .vjs-theme-ezway .vjs-volume-panel:hover .vjs-volume-control,
+  .vjs-theme-ezway .vjs-volume-panel:focus-within .vjs-volume-control {
+    display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
   }
 }
 .public-content {
@@ -699,5 +884,108 @@ body {
 @keyframes pricing-shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+.livetv-hero-marquee-window {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.livetv-hero-marquee-window.is-moving {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 82%, transparent 100%);
+}
+
+.livetv-hero-marquee-track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  gap: 2rem;
+  white-space: nowrap;
+  animation: livetv-hero-marquee 14s linear infinite;
+  will-change: transform;
+}
+
+.livetv-hero-marquee-track > span {
+  flex: 0 0 auto;
+}
+
+@keyframes livetv-hero-marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+
+  88%,
+  100% {
+    transform: translateX(calc(-50% - 1rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .livetv-hero-marquee-track {
+    animation: none;
+    transform: none;
+  }
+}
+
+.livetv-hero-player .vjs-control-bar {
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding-inline: 0.8rem;
+}
+
+.livetv-hero-player .vjs-progress-control,
+.livetv-hero-player .vjs-current-time,
+.livetv-hero-player .vjs-time-divider,
+.livetv-hero-player .vjs-duration,
+.livetv-hero-player .vjs-remaining-time,
+.livetv-hero-player .vjs-live-control,
+.livetv-hero-player .vjs-picture-in-picture-control {
+  display: none !important;
+}
+
+.livetv-hero-player .vjs-volume-panel {
+  flex: 0 0 auto !important;
+  width: 3rem !important;
+}
+
+.livetv-hero-player .vjs-volume-control {
+  display: none !important;
+}
+
+.livetv-hero-player .vjs-fullscreen-control {
+  flex: 0 0 auto;
+}
+
+/* Keep the SPA navigation motion equivalent to the original animated theme. */
+::view-transition-old(root) {
+  animation: 140ms ease-in both ez-route-exit;
+}
+
+::view-transition-new(root) {
+  animation: 220ms cubic-bezier(0.22, 1, 0.36, 1) both ez-route-enter;
+}
+
+@keyframes ez-route-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes ez-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }

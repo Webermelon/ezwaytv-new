@@ -124,7 +124,7 @@
                             </div>
 
                             <div class="col-md-4 col-lg-4 mb-3">
-                                {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
+                                {{ html()->label(__('movie.lbl_trailer_url_type'), 'type')->class('form-label') }}
                                 {{ html()->select(
                                         'trailer_url_type',
                                         array_merge($upload_url_type->pluck('name', 'value')->toArray(), ['Embedded' => 'Embedded']),
@@ -210,7 +210,7 @@
                                         <input class="form-check-input" type="radio" name="movie_access"
                                             id="paid" value="paid"
                                             onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ $data->movie_access == 'paid' ? 'checked' : '' }} checked>
+                                            {{ old('movie_access', $data->movie_access ?? 'free') == 'paid' ? 'checked' : '' }}>
                                         <span class="form-check-label" for="paid">{{ __('movie.lbl_paid') }}</span>
                                     </div>
                                 </label>
@@ -219,7 +219,7 @@
                                         <input class="form-check-input" type="radio" name="movie_access"
                                             id="free" value="free"
                                             onchange="showPlanSelection(this.value === 'paid')"
-                                            {{ $data->movie_access == 'free' ? 'checked' : '' }}>
+                                            {{ old('movie_access', $data->movie_access ?? 'free') == 'free' ? 'checked' : '' }}>
                                         <span class="form-check-label" for="free">{{ __('movie.lbl_free') }}</span>
                                     </div>
                                 </label>
@@ -287,7 +287,7 @@
                             </div>
 
                         </div>
-                        <div class="col-md-6 col-lg-4 {{ old('movie_access', 'paid') == 'free' ? 'd-none' : '' }}"
+                        <div class="col-md-6 col-lg-4 {{ old('movie_access', $data->movie_access ?? 'free') == 'free' ? 'd-none' : '' }}"
                             id="planSelection">
                             {{ html()->label(__('movie.lbl_select_plan') . '<span class="text-danger"> *</span>', 'type')->class('form-label') }}
                             {{ html()->select('plan_id', $plan->pluck('name', 'id')->prepend(__('placeholder.lbl_select_plan'), ''), $data->plan_id)->class('form-control select2')->id('plan_id') }}
@@ -375,8 +375,8 @@
                         </div>
 
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_release_date') . '<span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required')->id('release_date') }}
+                            {{ html()->label('Release Year<span class="text-danger">*</span>', 'release_date')->class('form-label') }}
+                            {{ html()->number('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y') : '')->placeholder('Release Year')->class('form-control')->attribute('min', '1888')->attribute('max', date('Y'))->attribute('required', 'required')->id('release_date') }}
                             @error('release_date')
                                 <span class="release_date-danger">{{ $message }}</span>
                             @enderror
@@ -407,20 +407,18 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_actors') . '<span class="text-danger">*</span>', 'actors')->class('form-label') }}
-                            {{ html()->select('actors[]', $actors->pluck('name', 'id'), $data->actors)->class('form-control select2')->id('actors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_actors'), 'actors')->class('form-label') }}
+                            {{ html()->text('actors', old('actors', $data->actors))->class('form-control')->id('actors')->placeholder(__('movie.lbl_actors')) }}
                             @error('actors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.actors_field_required') }}</div>
                         </div>
                         <div class="col-md-6">
-                            {{ html()->label(__('movie.lbl_directors') . '<span class="text-danger">*</span>', 'directors')->class('form-label') }}
-                            {{ html()->select('directors[]', $directors->pluck('name', 'id'), $data->directors)->class('form-control select2')->id('directors')->multiple()->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_directors'), 'directors')->class('form-label') }}
+                            {{ html()->text('directors', old('directors', $data->directors))->class('form-control')->id('directors')->placeholder(__('movie.lbl_directors')) }}
                             @error('directors')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.directors_field_required') }}</div>
                         </div>
                     </div>
                 </div>
@@ -979,17 +977,6 @@
                 allowClear: true
             });
 
-            $('#actors').select2({
-                width: '100%',
-                placeholder: "{{ __('movie.lbl_actors') }}",
-                allowClear: true
-            });
-
-            $('#directors').select2({
-                width: '100%',
-                placeholder: "{{ __('movie.lbl_directors') }}",
-                allowClear: true
-            });
         });
     </script>
 
@@ -1668,9 +1655,7 @@
         }
         /* Ensure Select2 placeholder matches form-control placeholder style */
         #genres + .select2-container .select2-selection__placeholder,
-        #countries + .select2-container .select2-selection__placeholder,
-        #actors + .select2-container .select2-selection__placeholder,
-        #directors + .select2-container .select2-selection__placeholder {
+        #countries + .select2-container .select2-selection__placeholder {
             font-weight: 400 !important;
             font-size: 1rem !important;
             line-height: 1.5 !important;

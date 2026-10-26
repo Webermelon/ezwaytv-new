@@ -177,101 +177,6 @@
                         </a>
                     </div>
                     <div class="col-md-4 col-sm-6">
-                        <a href="{{ route('backend.subscriptions.index') }}">
-                            <div class="card card-stats">
-                                <div class="card-body">
-                                    <div class="d-flex flex-wrap justify-content-between gap-3">
-                                        <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-users-three fs-1"></i>
-                                        </div>
-                                        <div id="chart-02"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between gap-3 mt-3">
-                                        <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('dashboard.lbl_total_subscribers') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalSubscribers }}</h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $subsChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $subsChangeUp ? '+' : '-' }}{{ $subsChangePercent }}%</b>
-                                            <i class="ph {{ $subsChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-4 col-sm-6">
-                        <a href="{{ route('backend.users.index', ['type' => 'soon-to-expire']) }}">
-                            <div class="card card-stats">
-                                <div class="card-body">
-                                    <div class="d-flex flex-wrap justify-content-between gap-3">
-                                        <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-hourglass fs-1"></i>
-                                        </div>
-                                        <div id="chart-03"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between gap-3 mt-3">
-                                        <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('dashboard.lbl_soon_to_expire') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalsoontoexpire }}</h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $soonExpireChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $soonExpireChangeUp ? '+' : '-' }}{{ $soonExpireChangePercent }}%</b>
-                                            <i class="ph {{ $soonExpireChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-4 col-sm-6">
-                        <a href="{{ route('backend.reviews.index') }}">
-                            <div class="card card-stats">
-                                <div class="card-body">
-                                    <div class="d-flex flex-wrap justify-content-between gap-3">
-                                        <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <svg viewBox="0 0 46 35" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg">
-                                                <g clip-path="url(#clip0_10479_23096)">
-                                                    <path
-                                                        d="M29.5977 22.7916L35.8872 26.5762C36.0481 26.6755 36.2348 26.725 36.4238 26.7185C36.6128 26.7121 36.7957 26.6499 36.9495 26.5399C37.1033 26.4298 37.2212 26.2768 37.2883 26.1C37.3554 25.9232 37.3688 25.7305 37.3268 25.5461L35.6165 18.4815L41.2134 13.7565C41.3572 13.6353 41.4616 13.4739 41.5133 13.293C41.5649 13.1122 41.5615 12.92 41.5033 12.7411C41.4452 12.5622 41.3351 12.4047 41.187 12.2887C41.0389 12.1728 40.8596 12.1036 40.6719 12.0901L33.3261 11.5082L30.496 4.80394C30.4211 4.63018 30.2969 4.48216 30.1389 4.37817C29.9808 4.27417 29.7957 4.21875 29.6065 4.21875C29.4173 4.21875 29.2322 4.27417 29.0742 4.37817C28.9161 4.48216 28.792 4.63018 28.7171 4.80394L25.887 11.5082L18.5411 12.0901C18.3527 12.102 18.1723 12.17 18.0229 12.2854C17.8736 12.4008 17.7621 12.5582 17.703 12.7374C17.6438 12.9166 17.6396 13.1094 17.6909 13.291C17.7422 13.4726 17.8467 13.6347 17.9909 13.7565L23.5878 18.4815L21.8634 25.5461C21.8213 25.7305 21.8347 25.9232 21.9019 26.1C21.969 26.2768 22.0869 26.4298 22.2407 26.5399C22.3945 26.6499 22.5773 26.7121 22.7663 26.7185C22.9553 26.725 23.142 26.6755 23.303 26.5762L29.5977 22.7916Z"
-                                                        stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"
-                                                        stroke-linejoin="round" />
-                                                    <path d="M15.2627 20.6631L4.98828 30.9375" stroke="#ffffff"
-                                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                                    <path d="M17.1629 31.4189L7.80078 40.7811" stroke="#ffffff"
-                                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                                    <path d="M29.9984 31.2397L20.457 40.7812" stroke="#ffffff"
-                                                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                                </g>
-                                                <defs>
-                                                    <clipPath id="clip0_10479_23096">
-                                                        <rect width="45" height="45" fill="white"
-                                                            transform="translate(0.769531)" />
-                                                    </clipPath>
-                                                </defs>
-                                            </svg>
-                                        </div>
-                                        <div id="chart-04"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between gap-3 mt-3">
-                                        <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('dashboard.lbl_review') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalreview }}</h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $reviewsChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $reviewsChangeUp ? '+' : '-' }}{{ $reviewsChangePercent }}%</b>
-                                            <i class="ph {{ $reviewsChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-4 col-sm-6">
                         <a>
                             <div class="card card-stats">
                                 <div class="card-body">
@@ -298,52 +203,18 @@
                         </a>
                     </div>
                     <div class="col-md-4 col-sm-6">
+                        <a href="{{ route('backend.author_channels.index') }}">
                             <div class="card card-stats">
                                 <div class="card-body">
                                     <div class="d-flex flex-wrap justify-content-between gap-3">
                                         <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-film-slate fs-1"></i>
+                                            <i class="ph ph-television fs-1"></i>
                                         </div>
-                                        <div id="chart-06"></div>
                                     </div>
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('dashboard.lbl_rent_content') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">
-                                                {{ $count_of_rent_movie + $count_of_rent_episode + $count_of_rent_video }}
-                                            </h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $rentContentChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $rentContentChangeUp ? '+' : '-' }}{{ $rentContentChangePercent }}%</b>
-                                            <i
-                                                class="ph {{ $rentContentChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                    </div>
-                    <div class="col-md-4 col-sm-6">
-                        <a href="{{ route('backend.subscriptions.index') }}">
-                            <div class="card card-stats">
-                                <div class="card-body">
-                                    <div class="d-flex flex-wrap justify-content-between gap-3">
-                                        <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-user-check fs-1"></i>
-                                        </div>
-                                        <div id="chart-07"></div>
-                                    </div>
-                                    <div class="d-flex justify-content-between gap-3 mt-3">
-                                        <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('messages.lbl_total_subscription_revenue') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">
-                                                {{ Currency::format($subscription_revenue) }}</h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $subscriptionRevenueChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $subscriptionRevenueChangeUp ? '+' : '-' }}{{ $subscriptionRevenueChangePercent }}%</b>
-                                            <i
-                                                class="ph {{ $subscriptionRevenueChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
+                                            <p class="mb-2 fs-6">On Demand Channels</p>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalOnDemandChannels) }}</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -351,26 +222,18 @@
                         </a>
                     </div>
                     <div class="col-md-4 col-sm-6">
-                        <a href="{{ route('backend.pay-per-view-history') }}">
+                        <a href="{{ route('backend.videos.index') }}">
                             <div class="card card-stats">
                                 <div class="card-body">
                                     <div class="d-flex flex-wrap justify-content-between gap-3">
                                         <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-tip-jar fs-1"></i>
+                                            <i class="ph ph-video fs-1"></i>
                                         </div>
-                                        <div id="chart-08"></div>
                                     </div>
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('messages.lbl_total_rent_revenue') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ Currency::format($rent_revenue) }}
-                                            </h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $rentRevenueChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $rentRevenueChangeUp ? '+' : '-' }}{{ $rentRevenueChangePercent }}%</b>
-                                            <i
-                                                class="ph {{ $rentRevenueChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
+                                            <p class="mb-2 fs-6">On Demand Videos</p>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalOnDemandVideos) }}</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -378,29 +241,23 @@
                         </a>
                     </div>
                     <div class="col-md-4 col-sm-6">
+                        <a href="{{ route('backend.tv-channel.index') }}">
                             <div class="card card-stats">
                                 <div class="card-body">
                                     <div class="d-flex flex-wrap justify-content-between gap-3">
                                         <div class="card-icon avatar-50 d-flex align-items-center justify-content-center">
-                                            <i class="ph ph-money fs-1"></i>
+                                            <i class="ph ph-broadcast fs-1"></i>
                                         </div>
-                                        <div id="chart-09"></div>
                                     </div>
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
-                                            <p class="mb-2 fs-6">{{ __('dashboard.lbl_total_revenue') }}</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ Currency::format($total_revenue) }}
-                                            </h1>
-                                        </div>
-                                        <div
-                                            class=" d-flex align-items-center {{ $totalRevenueChangeUp ? 'text-success' : 'text-danger' }}">
-                                            <b>{{ $totalRevenueChangeUp ? '+' : '-' }}{{ $totalRevenueChangePercent }}%</b>
-                                            <i
-                                                class="ph {{ $totalRevenueChangeUp ? 'ph-arrow-up' : 'ph-arrow-down' }}"></i>
+                                            <p class="mb-2 fs-6">TV Channels</p>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalTvChannels) }}</h1>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -732,11 +589,21 @@
                     if (content) {
                         content.classList.add('loaded');
                     }
+                },
+
+                markMissingChartsLoaded: function() {
+                    Object.keys(this.charts).forEach((chartId) => {
+                        if (!document.getElementById(chartId)) {
+                            this.charts[chartId] = true;
+                        }
+                    });
+                    this.checkAllLoaded();
                 }
             };
 
             // Make tracker globally accessible
             window.chartLoadTracker = chartLoadTracker;
+            chartLoadTracker.markMissingChartsLoaded();
 
             // Fallback timeout (hide loader after 10 seconds max)
             setTimeout(function() {

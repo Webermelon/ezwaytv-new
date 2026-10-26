@@ -410,11 +410,17 @@
 @endpush
 
 @push('ezstats-meta')
+@php($distributionOgImage = asset('img/distribution/distribution-og.jpg'))
 <meta property="og:title" content="eZWay TV Distribution" />
 <meta property="og:description" content="Global TV distribution across major platforms — reach and organic viewership." />
-<meta property="og:image" content="/public/img/distribution/distribution-og.jpg" />
+<meta property="og:image" content="{{ $distributionOgImage }}" />
+<meta property="og:image:url" content="{{ $distributionOgImage }}" />
+<meta property="og:image:secure_url" content="{{ $distributionOgImage }}" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:image" content="/public/img/distribution/distribution-og.jpg" />
+<meta name="twitter:image" content="{{ $distributionOgImage }}" />
 @endpush
 
 @section('content')
@@ -460,10 +466,10 @@
         eZWay Network is now broadcasting over-the-air in the Los Angeles metro area on <strong style="color:var(--text)">Channel 27.3</strong>. The station reaches millions of households across Greater LA, delivering purpose-driven content, live events, interviews, and original series — completely free over the air.
       </p>
       <p style="margin-top:14px;">
-        View the full FCC contour map for signal coverage, propagation details, and licensing information for K21AC-D, the station powering this broadcast.
+        View the full FCC contour map for signal coverage, propagation details, and licensing information for K27AE, the station powering this broadcast.
       </p>
       <a
-        href="https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
+        href="https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
         target="_blank"
         rel="noopener"
         class="signal-link"
@@ -479,8 +485,8 @@
     </div>
     <div class="la-station-map">
       <iframe
-        src="https://www.rabbitears.info/contour.php?appid=25076f917915d2290179276a691b1937&site=1&dma=N&map=N&contour=Y&lppc=N&int=N&pop=Y&incpop=k21ac-d&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
-        title="eZWay LA Station Signal Coverage — Channel 27.3 K21AC-D"
+        src="https://www.rabbitears.info/contour.php?appid=25076f9178f169f2017909783a1024df&site=1&dma=N&map=Y&contour=Y&lppc=N&int=N&pop=Y&incpop=k27AE&excpop=&z1=N&nrqz=N&lprw=N&head=Y&asrn=&extras=&cir=&circen="
+        title="eZWay LA Station Signal Coverage — Channel 27.3 K27AE"
         loading="lazy"
       ></iframe>
       <div class="map-overlay"></div>
@@ -488,10 +494,10 @@
   </div>
 </div>
  
-{{-- ── NETWORK PARTNERS ────────────────────────────── --}}
+{{-- ── NETWORK DISTRIBUTION ────────────────────────── --}}
 <div class="dist-section">
   <div class="section-head" data-reveal>
-    <h2>Network Partners</h2>
+    <h2>Network Distribution</h2>
     <div class="rule"></div>
   </div>
  
@@ -535,7 +541,7 @@
   <div class="platforms-list">
     @foreach([
       'EZWAY.TV', 'XOTV', 'BVC TV', 'NATIONAL BIZ TV', 'EZWAY MUSIC',
-      'THE WOMEN\'S CHANNEL', 'BE SPIRE TV', 'XPN TV', 'FAN TV GLOBAL', 'EZWAY MOVIES',
+      'BE SPIRE TV', 'XPN TV', 'FAN TV GLOBAL', 'EZWAY MOVIES',
       'KATE LINDER TV', 'POWER TV NETWORK', 'I&C TV'
     ] as $platform)
       <span class="plat-chip">{{ $platform }}</span>

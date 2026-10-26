@@ -13,7 +13,7 @@ class CastDetailResourceV3 extends JsonResource
 
         return [
             'name' => $this->name,
-            'birth_date' => $this->dob ? formatDate($this->dob) : null,
+            'birth_date' => $this->birthDate(),
             'birth_place' => $this->place_of_birth,
             'total_movies' => $this->movie_count,
             'total_tv_show' => $this->tvshow_count,
@@ -23,5 +23,16 @@ class CastDetailResourceV3 extends JsonResource
             'profile_image' => $this->profile_image,
             'bio' => $this->bio,
         ];
+    }
+
+    private function birthDate(): ?string
+    {
+        $dob = trim((string) $this->dob);
+
+        if ($dob === '' || in_array($dob, ['0', '0000-00-00', '0000-00-00 00:00:00'], true)) {
+            return null;
+        }
+
+        return formatDate($this->dob);
     }
 }

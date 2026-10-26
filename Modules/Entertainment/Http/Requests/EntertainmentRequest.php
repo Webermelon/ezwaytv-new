@@ -7,6 +7,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\Validator as LaravelValidator;
 use Illuminate\Validation\ValidationException;
+use Modules\Entertainment\Models\Entertainment;
 
 class EntertainmentRequest extends FormRequest
 {
@@ -18,6 +19,12 @@ class EntertainmentRequest extends FormRequest
     protected function prepareForValidation()
     {
         $merge = [];
+
+        // Movies and TV shows collect only a release year; retain the date column contract internally.
+        $releaseDate = trim((string) $this->input('release_date', ''));
+        if (preg_match('/^\d{4}$/', $releaseDate)) {
+            $merge['release_date'] = $releaseDate . '-01-01';
+        }
 
         // Decode trailer_embedded
         $trailerEmbedded = $this->input('trailer_embedded');
@@ -75,16 +82,20 @@ class EntertainmentRequest extends FormRequest
 
     public function rules()
     {
-        $id = request()->id;
+        $routeEntertainment = $this->route('entertainment');
+        $id = $routeEntertainment instanceof Entertainment
+            ? $routeEntertainment->id
+            : ($routeEntertainment ?? request()->id);
+        $talentRules = ['nullable', 'string', 'max:2000'];
         $rules = [
             'name' => ['required',Rule::unique('entertainments', 'name')->ignore($id)],
-            'trailer_url_type' => ['required'],
+            'trailer_url_type' => ['nullable'],
             'movie_access' => 'required',
             'language' => ['required'],
             'genres' => ['required'],
             'content_rating' => 'required|string',
-            'actors' => ['required'],
-            'directors' => ['required'],
+            'actors' => $talentRules,
+            'directors' => $talentRules,
             'IMDb_rating' => 'nullable|numeric|min:1|max:10',
             'description' => ['required', 'string'],
         ];
@@ -93,7 +104,7 @@ class EntertainmentRequest extends FormRequest
         
         // Release date is only required when NOT pay-per-view
         if ($movieAccess !== 'pay-per-view') {
-            $rules['release_date'] = ['required'];
+            $rules['release_date'] = ['required', 'date_format:Y-m-d'];
         }
         $trailerUrlType = $this->input('trailer_url_type');
 
@@ -243,6 +254,21 @@ class EntertainmentRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    private function isMovieRequest(): bool
+    {
+        if ($this->input('type')) {
+            return $this->input('type') === 'movie';
+        }
+
+        $routeEntertainment = $this->route('entertainment');
+        if ($routeEntertainment instanceof Entertainment) {
+            return $routeEntertainment->type === 'movie';
+        }
+
+        return is_numeric($routeEntertainment)
+            && Entertainment::whereKey($routeEntertainment)->value('type') === 'movie';
     }
 
     public function messages()

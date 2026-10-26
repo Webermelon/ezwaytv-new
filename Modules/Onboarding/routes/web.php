@@ -47,8 +47,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth']], 
       Route::delete('force-delete/{id}', [OnboardingsController::class, 'forceDelete'])->name('force_delete');
       Route::post('update-status/{id}', [OnboardingsController::class, 'update_status'])->name('update_status');
     });
-    Route::resource("onboardings", OnboardingsController::class);
+    Route::resource("onboardings", OnboardingsController::class)->except(['edit']);
 });
-
 
 

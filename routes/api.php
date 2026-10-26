@@ -22,6 +22,7 @@ use Modules\Frontend\Http\Controllers\API\DistributionController;
 use Modules\Frontend\Http\Controllers\API\FooterController;
 use Modules\Frontend\Http\Controllers\API\NavigationMenuController;
 use App\Http\Controllers\Api\Private\CoreTvAccessController;
+use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -42,6 +43,24 @@ Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivat
     Route::post('subscriptions/activate', [CoreTvAccessController::class, 'activate']);
     Route::post('subscriptions/cancel', [CoreTvAccessController::class, 'cancel']);
     Route::get('users/{coreUserId}/access', [CoreTvAccessController::class, 'status'])->whereNumber('coreUserId');
+    Route::get('on-demand/channels', [CoreOnDemandPublishingController::class, 'channels']);
+    Route::post('on-demand/channels', [CoreOnDemandPublishingController::class, 'storeChannel']);
+    Route::put('on-demand/channels/{channel}', [CoreOnDemandPublishingController::class, 'updateChannel'])->whereNumber('channel');
+    Route::get('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'videos'])->whereNumber('channel');
+    Route::get('on-demand/channels/{channel}/videos/available', [CoreOnDemandPublishingController::class, 'availableVideos'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/videos', [CoreOnDemandPublishingController::class, 'storeVideo'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/videos/assign', [CoreOnDemandPublishingController::class, 'assignVideo'])->whereNumber('channel');
+    Route::put('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'updateVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::delete('on-demand/channels/{channel}/videos/{video}', [CoreOnDemandPublishingController::class, 'deleteVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::delete('on-demand/channels/{channel}/videos/{video}/unassign', [CoreOnDemandPublishingController::class, 'unassignVideo'])->whereNumber('channel')->whereNumber('video');
+    Route::get('on-demand/channels/{channel}/playlists', [CoreOnDemandPublishingController::class, 'playlists'])->whereNumber('channel');
+    Route::post('on-demand/channels/{channel}/playlists', [CoreOnDemandPublishingController::class, 'storePlaylist'])->whereNumber('channel');
+    Route::put('on-demand/channels/{channel}/playlists/{playlist}', [CoreOnDemandPublishingController::class, 'updatePlaylist'])->whereNumber('channel')->whereNumber('playlist');
+    Route::delete('on-demand/channels/{channel}/playlists/{playlist}', [CoreOnDemandPublishingController::class, 'deletePlaylist'])->whereNumber('channel')->whereNumber('playlist');
+    Route::post('on-demand/channels/{channel}/playlists/{playlist}/videos', [CoreOnDemandPublishingController::class, 'addPlaylistVideo'])->whereNumber('channel')->whereNumber('playlist');
+    Route::delete('on-demand/channels/{channel}/playlists/{playlist}/videos/{video}', [CoreOnDemandPublishingController::class, 'removePlaylistVideo'])->whereNumber('channel')->whereNumber('playlist')->whereNumber('video');
+    Route::post('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
+    Route::patch('on-demand/channels/{channel}/playlists/{playlist}/videos/reorder', [CoreOnDemandPublishingController::class, 'reorderPlaylistVideos'])->whereNumber('channel')->whereNumber('playlist');
 });
 
 Route::get('/optimize', [QueryOptimizeController::class, 'optimize'])->name('optimize');
@@ -166,8 +185,14 @@ Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
     Route::get('banner-data', [DashboardController::class, 'getEntertainmentDataV3']);
     Route::get('footer-data', [FooterController::class, 'show'])->name('api.v3.footer-data');
     Route::get('navigation-menu', [NavigationMenuController::class, 'show'])->name('api.v3.navigation-menu');
-    // Ad banner sliders (public)
+    // Ad banner sliders (public). Keep legacy ad/promo routes, but expose
+    // neutral aliases so browser content blockers do not hide these images.
+    Route::get('showcase-media', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.showcase-media');
+    Route::get('showcase-media/{slide}/image', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'image'])->name('api.v3.showcase-media.image');
     Route::get('ad-banner-sliders', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.ad-banner-sliders');
+    Route::get('promo-slides', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'index'])->name('api.v3.promo-slides');
+    Route::get('promo-slides/{slide}/image', [\Modules\Ad\Http\Controllers\API\AdBannerSlideApiController::class, 'image'])->name('api.v3.promo-slides.image');
+    Route::get('promo-media/{customAd}/image', [\Modules\Ad\Http\Controllers\API\CustomAdsSettingController::class, 'media'])->name('api.v3.promo-media.image');
     Route::get('cast-details', [CastCrewController::class, 'castCrewDetailsV3'])->name('api.cast_crew_details_v3');
 
 });
@@ -251,9 +276,11 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
 
     [$client, $baseUrl] = $core;
     $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
-    $successUrl = url('/subscription-plan?checkout_status=success');
-    $cancelUrl = url('/subscription-plan?checkout_status=cancelled');
+    $checkoutReturnUrl = rtrim((string) config('services.core_api.checkout_return_url', config('app.url')), '/');
+    $checkoutReturnPath = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
+    $checkoutStatusUrl = fn (string $status) => $checkoutReturnUrl.$checkoutReturnPath.'?'.http_build_query(['checkout_status' => $status]);
     $coreUser = (int) ($user->network_user_id ?: $user->id);
+    $platformSlug = (string) config('services.core_api.platform_slug', 'tv');
 
     try {
         $response = $client->post($baseUrl.'/api/checkouts', [
@@ -264,12 +291,12 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
                 'email' => $user->email,
                 'phone' => $user->mobile ?? null,
             ],
-            'platform' => ['slug' => 'ezway-tv'],
+            'platform' => ['slug' => $platformSlug],
             'subject_type' => 'tv_subscription',
             'subject_id' => (string) $coreUser,
-            'success_url' => $successUrl,
-            'cancel_url' => $cancelUrl,
-            'failed_url' => url('/subscription-plan?checkout_status=failed'),
+            'success_url' => $checkoutStatusUrl('success'),
+            'cancel_url' => $checkoutStatusUrl('cancelled'),
+            'failed_url' => $checkoutStatusUrl('failed'),
             'checkout_mode' => 'auto',
             'payment_method_id' => trim((string) ($data['payment_method_id'] ?? '')) ?: null,
             'metadata' => [

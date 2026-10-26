@@ -94,7 +94,6 @@ function CastCrewCard({ item }: { item: CastCrewItem }) {
         <MediaThumbnail src={item.profile_image} alt={item.name} className="aspect-square rounded-full" />
       </div>
       <h3 className="mt-3 line-clamp-2 text-sm font-bold leading-snug text-white">{item.name}</h3>
-      {item.designation ?? item.type ? <p className="mt-1 line-clamp-1 text-xs capitalize text-white/50">{item.designation ?? item.type}</p> : null}
     </a>
   )
 }

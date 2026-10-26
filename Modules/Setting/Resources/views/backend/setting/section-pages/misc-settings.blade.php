@@ -49,6 +49,13 @@
                             ])->class('form-control select2')->value(old('data_table_limit', $settings['data_table_limit'] ?? 10)) }}
                     </div>
                     <div class="col-md-4">
+                        {{ html()->label('Homepage Rail Item Limit')->class('form-label') }}
+                        {{ html()->number('homepage_rail_item_limit')->class('form-control')->attribute('min', '1')->attribute('max', '100')->value(old('homepage_rail_item_limit', $settings['homepage_rail_item_limit'] ?? 15)) }}
+                        @error('homepage_rail_item_limit')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div class="col-md-4">
                         {{ html()->label(__('messages.lbl_date_format'))->class('form-label') }}
                         {{ html()->select('default_date_format')->options(array_column($dateFormat, 'text', 'id'))->class('form-control select2')->value(old('default_date_format', $settings['default_date_format'] ?? '')) }}
                         @error('default_date_format')
@@ -92,6 +99,14 @@
                                 </a>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12">
+                        {{ html()->label('Users Allowed to Post Links in Live Chat', 'live_tv_chat_link_allowed_emails')->class('form-label') }}
+                        {{ html()->textarea('live_tv_chat_link_allowed_emails', old('live_tv_chat_link_allowed_emails', $settings['live_tv_chat_link_allowed_emails'] ?? ''))->class('form-control')->attribute('rows', 5)->placeholder("creator@example.com\nmoderator@example.com") }}
+                        <small class="text-muted d-block mt-1">Enter one account email per line. Commas are also accepted. Everyone else can use chat and emojis, but links will be blocked.</small>
+                        @error('live_tv_chat_link_allowed_emails')
+                            <span class="text-danger">{{ $message }}</span>
+                        @enderror
                     </div>
                 </div>
 

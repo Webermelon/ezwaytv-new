@@ -389,7 +389,7 @@ class Entertainment extends BaseModel
         }
 
         $query = Entertainment::select([
-            'id','name','type','release_date','trailer_url',
+            'id','name','slug','type','release_date','trailer_url',
             'trailer_url_type','is_restricted','imdb_rating','poster_url','thumbnail_url','poster_tv_url','movie_access','plan_id'
         ])
         ->with([

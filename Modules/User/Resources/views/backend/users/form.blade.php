@@ -10,6 +10,17 @@
     @if (isset($data))
         @method('PUT')
     @endif
+    @if ($errors->any())
+        <div class="alert alert-danger" role="alert">
+            <div class="fw-semibold mb-2">Please fix the highlighted fields.</div>
+            <ul class="mb-0 ps-3">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    <div class="alert alert-danger d-none" id="form-validation-summary" role="alert"></div>
 
     <div class="card">
         <div class="card-body">
@@ -30,6 +41,10 @@
                                 onclick="removeImage('file_url_image', 'remove_image_flag')">×</span>
                         @endif
                     </div>
+                    @error('file_url')
+                        <span class="text-danger">{{ $message }}</span>
+                    @enderror
+                    <div class="invalid-feedback d-block" id="file_url_image-error" style="display: none !important;">Please choose a profile image.</div>
                 </div>
                 {{ html()->hidden('file_url')->id('file_url_image')->value(old('file_url', isset($data) ? $data->file_url : '')) }}
                 {{ html()->hidden('remove_image')->id('remove_image_flag')->value(0) }}
@@ -141,6 +156,9 @@
                                 @error('password')
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
+                                <div class="form-text text-muted">
+                                    Use 8-14 characters with uppercase, lowercase, number, and special character. Example: Joeboy@123
+                                </div>
                                 <div class="invalid-feedback" id="password-error">{{ __('messages.password_field_required') }}</div>
 
                             </div>
@@ -155,6 +173,7 @@
                                 @error('password_confirmation')
                                     <span class="text-danger">{{ $message }}</span>
                                 @enderror
+                                <div class="form-text text-muted">Must match the password.</div>
                                 <div class="invalid-feedback" id="password_confirmation-error">{{ __('messages.confirm_password_field_required') }}</div>
                             </div>
                         @else
@@ -267,6 +286,20 @@
                         @enderror
                     </div>
                 @endif
+                <div class="col-md-6 col-lg-4">
+                    <label for="access_role" class="form-label">Access Role <span class="text-danger">*</span></label>
+                    <select class="form-control" name="access_role" id="access_role" required>
+                        @foreach (($assignableRoles ?? collect()) as $role)
+                            <option value="{{ $role->name }}" {{ old('access_role', $selectedRole ?? 'user') === $role->name ? 'selected' : '' }}>
+                                {{ $role->title ?: ucwords(str_replace('_', ' ', $role->name)) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('access_role')
+                        <span class="text-danger">{{ $message }}</span>
+                    @enderror
+                    <div class="invalid-feedback" id="access-role-error">Access Role field is required</div>
+                </div>
                 <div class="col-md-12">
                     <label for="address" class="form-label">{{ __('users.lbl_address') }}</label>
                     <textarea class="form-control" name="address" id="address" rows="6"
@@ -422,29 +455,159 @@
         // Password validation - must run before global form handler
         const passwordInput = document.getElementById('password');
         const passwordError = document.getElementById('password-error');
+        const confirmPasswordInput = document.getElementById('password_confirmation');
+        const confirmPasswordError = document.getElementById('password_confirmation-error');
+        const userForm = document.getElementById('form-submit');
+        const submitButton = document.getElementById('submit-button');
+        const validationSummary = document.getElementById('form-validation-summary');
+        const passwordRegex =
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/])[A-Za-z\d@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]{8,14}$/;
 
-        if (passwordInput) {
-            const passwordRegex =
-                /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/])[A-Za-z\d@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>\/]{8,14}$/;
+        function getPasswordErrorMessage(password) {
+            if (!password || password.length === 0) return '{{ __('messages.password_field_required') }}';
+            if (password.length < 8) return '{{ __('messages.password_min') }}';
+            if (password.length > 14) return '{{ __('messages.password_max') }}';
+            if (!passwordRegex.test(password)) return '{{ __('messages.password_requirements') }}';
+            return '';
+        }
 
-            function getPasswordErrorMessage(password) {
-                if (!password || password.length === 0) return '{{ __('messages.password_field_required') }}';
-                if (password.length < 8) return '{{ __('messages.password_min') }}';
-                if (password.length > 14) return '{{ __('messages.password_max') }}';
-                if (!passwordRegex.test(password)) return '{{ __('messages.password_requirements') }}';
-                return '';
+        function fieldLabel(field) {
+            const label = field.id ? document.querySelector(`label[for="${field.id}"]`) : null;
+            return label ? label.textContent.replace('*', '').trim() : (field.name || 'Field');
+        }
+
+        function setFieldError(field, message) {
+            if (!field) return;
+            field.setCustomValidity(message || '');
+            field.classList.toggle('is-invalid', Boolean(message));
+            field.classList.toggle('is-valid', Boolean(!message && field.value));
+
+            const error = document.getElementById(`${field.id}-error`);
+            if (error) {
+                error.textContent = message;
+                error.style.setProperty('display', message ? 'block' : 'none', 'important');
+            }
+        }
+
+        function showUserFormSummary(messages) {
+            if (!validationSummary) return;
+            if (!messages.length) {
+                validationSummary.classList.add('d-none');
+                validationSummary.innerHTML = '';
+                return;
             }
 
-            // Make password participate in normal HTML5 validation so all field errors show together.
+            validationSummary.innerHTML = `<div class="fw-semibold mb-2">Please fix these fields:</div><ul class="mb-0 ps-3">${messages.map(message => `<li>${message}</li>`).join('')}</ul>`;
+            validationSummary.classList.remove('d-none');
+        }
+
+        function validateBasicField(field, validator) {
+            if (!field) return [];
+            const message = validator(field);
+            setFieldError(field, message);
+            return message ? [`${fieldLabel(field)}: ${message}`] : [];
+        }
+
+        function validateUserForm() {
+            const messages = [];
+            const imageField = document.getElementById('file_url_image');
+            const firstName = document.getElementById('first_name');
+            const lastName = document.getElementById('last_name');
+            const email = document.getElementById('email');
+            const mobile = document.getElementById('mobile');
+            const dateOfBirth = document.getElementById('date_of_birth');
+            const accessRole = document.getElementById('access_role');
+
+            messages.push(...validateBasicField(imageField, field => field.value.trim() ? '' : 'Please choose a profile image.'));
+            messages.push(...validateBasicField(firstName, field => field.value.trim() ? '' : 'First Name field is required.'));
+            messages.push(...validateBasicField(lastName, field => field.value.trim() ? '' : 'Last Name field is required.'));
+            messages.push(...validateBasicField(email, field => {
+                if (!field) return '';
+                if (!field.value.trim()) return 'Email field is required.';
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value.trim()) ? '' : 'Enter a valid email address.';
+            }));
+            messages.push(...validateBasicField(mobile, field => {
+                if (!field.value.trim()) return 'Contact Number field is required.';
+                return /^\+?[0-9]{7,15}$/.test(field.value.replace(/\s+/g, '')) ? '' : 'Enter a valid contact number.';
+            }));
+            messages.push(...validateBasicField(dateOfBirth, field => {
+                if (!field.value.trim()) return 'Date Of Birth field is required.';
+                return field.value <= new Date().toISOString().slice(0, 10) ? '' : 'Date of birth cannot be in the future.';
+            }));
+            messages.push(...validateBasicField(accessRole, field => field.value ? '' : 'Please select an access role.'));
+
+            if (passwordInput) {
+                const passwordMessage = getPasswordErrorMessage(passwordInput.value);
+                setFieldError(passwordInput, passwordMessage);
+                if (passwordMessage) messages.push(`Password: ${passwordMessage}`);
+            }
+
+            if (confirmPasswordInput) {
+                let confirmMessage = '';
+                if (!confirmPasswordInput.value) {
+                    confirmMessage = '{{ __('messages.confirm_password_field_required') }}';
+                } else if (passwordInput && confirmPasswordInput.value !== passwordInput.value) {
+                    confirmMessage = '{{ __('messages.passwords_do_not_match') }}';
+                }
+                setFieldError(confirmPasswordInput, confirmMessage);
+                if (confirmMessage) messages.push(`Confirm Password: ${confirmMessage}`);
+            }
+
+            showUserFormSummary(messages);
+            return messages.length === 0;
+        }
+
+        if (passwordInput) {
+            function validatePasswords() {
+                const passwordMessage = getPasswordErrorMessage(passwordInput.value);
+                passwordInput.setCustomValidity(passwordMessage);
+                if (passwordError) {
+                    passwordError.textContent = passwordMessage || '{{ __('messages.password_field_required') }}';
+                    passwordError.style.display = passwordMessage && passwordInput.value ? 'block' : '';
+                }
+                passwordInput.classList.toggle('is-invalid', Boolean(passwordMessage && passwordInput.value));
+                passwordInput.classList.toggle('is-valid', Boolean(!passwordMessage && passwordInput.value));
+
+                if (confirmPasswordInput) {
+                    let confirmMessage = '';
+                    if (!confirmPasswordInput.value) {
+                        confirmMessage = '{{ __('messages.confirm_password_field_required') }}';
+                    } else if (confirmPasswordInput.value !== passwordInput.value) {
+                        confirmMessage = '{{ __('messages.passwords_do_not_match') }}';
+                    }
+                    confirmPasswordInput.setCustomValidity(confirmMessage);
+                    if (confirmPasswordError) {
+                        confirmPasswordError.textContent = confirmMessage || '{{ __('messages.confirm_password_field_required') }}';
+                        confirmPasswordError.style.display = confirmMessage && confirmPasswordInput.value ? 'block' : '';
+                    }
+                    confirmPasswordInput.classList.toggle('is-invalid', Boolean(confirmMessage && confirmPasswordInput.value));
+                    confirmPasswordInput.classList.toggle('is-valid', Boolean(!confirmMessage && confirmPasswordInput.value));
+                }
+            }
+
+            // Show password guidance while Laravel remains the source of truth on submit.
             passwordInput.addEventListener('input', function() {
-                const msg = getPasswordErrorMessage(passwordInput.value);
-                passwordInput.setCustomValidity(msg);
-                if (passwordError) passwordError.textContent = msg || '{{ __('messages.password_field_required') }}';
+                validatePasswords();
             });
 
-            // Initialize custom validity once
-            const initMsg = getPasswordErrorMessage(passwordInput.value);
-            passwordInput.setCustomValidity(initMsg);
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', validatePasswords);
+            }
         }
+
+        userForm?.addEventListener('submit', function(event) {
+            if (!validateUserForm()) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                submitButton.disabled = false;
+                submitButton.innerHTML = '{{ __('messages.save') }}';
+                validationSummary?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, true);
+
+        ['file_url_image', 'first_name', 'last_name', 'email', 'mobile', 'date_of_birth', 'access_role', 'password', 'password_confirmation'].forEach(function(id) {
+            document.getElementById(id)?.addEventListener('input', validateUserForm);
+            document.getElementById(id)?.addEventListener('change', validateUserForm);
+        });
     </script>
 @endpush

@@ -16,5 +16,7 @@ export async function loadOnDemandProfile(username: string) {
   return {
     profile: profile.data ?? null,
     videos: videos.data?.data ?? [],
+    movies: profile.data?.movies ?? [],
+    playlists: profile.data?.playlists ?? [],
   }
 }

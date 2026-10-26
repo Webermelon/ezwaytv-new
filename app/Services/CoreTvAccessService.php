@@ -5,24 +5,30 @@ namespace App\Services;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Subscriptions\Models\Plan;
 use Modules\Subscriptions\Models\Subscription;
+use Illuminate\Support\Facades\Log;
 
 class CoreTvAccessService
 {
-    public function syncUser(array $data): User
+    public function syncUser(array $data, Request $request = null): User
     {
         $coreUserId = (int) ($data['core_user_id'] ?? 0);
         $connectUserId = (int) ($data['connect_user_id'] ?? 0);
-        $email = trim((string) ($data['email'] ?? ''));
+        
         $username = trim((string) ($data['username'] ?? ''));
-
-        $user = User::query()->where('network_user_id', $coreUserId)->first();
+        
+        $user = User::withTrashed()->where('network_user_id', $coreUserId)->first();
+        
+        $email = strtolower(trim((string) ($user?->email ?? $data['email'] ?? $request?->input('email') ?? '')));
 
         if (! $user && $email !== '') {
-            $user = User::query()->where('email', $email)->first();
+            $user = User::withTrashed()
+                        ->where('email', $email)
+                        ->first();
         }
 
         $values = [
@@ -30,22 +36,26 @@ class CoreTvAccessService
             'is_network_user' => $coreUserId > 0 ? 1 : 0,
             'first_name' => (string) ($data['first_name'] ?? $user?->first_name ?? ''),
             'last_name' => (string) ($data['last_name'] ?? $user?->last_name ?? ''),
-            'email' => $email !== '' ? $email : ($user?->email ?? ('network-'.$coreUserId.'@ezway.local')),
             'username' => $username !== '' ? $username : ($user?->username ?? ('network_'.$coreUserId)),
             'mobile' => (string) ($data['phone'] ?? $user?->mobile ?? ''),
             'status' => 1,
+            'email' => $email,
             'user_type' => $user?->user_type ?? 'user',
             'login_type' => $user?->login_type ?? 'otp',
             'email_verified_at' => $user?->email_verified_at ?? now(),
         ];
 
         if ($user) {
+            if ($user->trashed()) {
+                $user->restore();
+            }
+
             $user->forceFill($values)->save();
             return $user->refresh();
         }
 
-        $values['password'] = Hash::make(Str::password(32));
 
+        $values['password'] = Hash::make(Str::password(32));
         return User::query()->create($values);
     }
 

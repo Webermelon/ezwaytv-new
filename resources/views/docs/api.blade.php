@@ -43,6 +43,7 @@
             <a class="card" href="#cancel"><strong>Cancel Subscription</strong><span>Revoke TV plan access when subscription ends.</span></a>
             <a class="card" href="#status"><strong>Check Access</strong><span>Read active TV access status by Core user ID.</span></a>
             <a class="card" href="#checkout-bridge"><strong>TV Checkout Bridge</strong><span>Authenticated TV web endpoints for saved cards, checkout, and payment history.</span></a>
+            <a class="card" href="#on-demand-core"><strong>On Demand Core</strong><span>Private channel, video, and playlist publishing endpoints.</span></a>
         </div>
     </div>
 
@@ -233,6 +234,82 @@ Content-Type: application/json</code></pre>
     "transactions": []
   }
 }</code></pre>
+    </div>
+
+
+    <div class="panel" id="on-demand-core">
+        <h2>Private Core On Demand Publishing</h2>
+        <p>All endpoints use the private Core authentication headers above and run through <code>VerifyCorePrivateApi</code>. Requests must include <code>core_user_id</code>; optional sync fields include <code>connect_user_id</code>, <code>email</code>, <code>username</code>, <code>first_name</code>, <code>last_name</code>, <code>avatar</code>, and <code>phone</code>. TV syncs the Core user first, then only allows access to channels owned by that TV user.</p>
+
+        <h3>Endpoint List</h3>
+        <pre><code>GET    /api/private/core/on-demand/channels/{channel}/playlists
+POST   /api/private/core/on-demand/channels/{channel}/playlists
+PUT    /api/private/core/on-demand/channels/{channel}/playlists/{playlist}
+DELETE /api/private/core/on-demand/channels/{channel}/playlists/{playlist}
+POST   /api/private/core/on-demand/channels/{channel}/playlists/{playlist}/videos
+DELETE /api/private/core/on-demand/channels/{channel}/playlists/{playlist}/videos/{video}
+POST   /api/private/core/on-demand/channels/{channel}/playlists/{playlist}/videos/reorder
+PATCH  /api/private/core/on-demand/channels/{channel}/playlists/{playlist}/videos/reorder
+GET    /api/private/core/on-demand/channels/{channel}/videos/available?q=search
+POST   /api/private/core/on-demand/channels/{channel}/videos/assign
+DELETE /api/private/core/on-demand/channels/{channel}/videos/{video}/unassign</code></pre>
+
+        <h3>Create Or Update Playlist</h3>
+        <p><code>name</code> is required on create and optional on update. Validation: <code>name</code> string max 255, <code>description</code> nullable string max 1000, <code>thumbnail</code> nullable string max 1000, <code>is_active</code> nullable boolean.</p>
+        <pre><code>{
+  "core_user_id": 2014,
+  "name": "Featured Episodes",
+  "description": "Optional description",
+  "thumbnail": "https://cdn.example.com/thumb.webp",
+  "is_active": true
+}</code></pre>
+        <pre><code>{
+  "success": true,
+  "message": "Playlist created.",
+  "data": {
+    "id": 1,
+    "name": "Featured Episodes",
+    "description": "Optional description",
+    "thumbnail": "https://cdn.example.com/thumb.webp",
+    "thumbnail_url": "https://cdn.example.com/thumb.webp",
+    "is_active": true,
+    "sort_order": 1,
+    "video_count": 1,
+    "videos": [
+      {
+        "id": 123,
+        "title": "Video title",
+        "name": "Video title",
+        "thumbnail_url": "https://cdn.example.com/video-thumb.webp",
+        "poster_url": "https://cdn.example.com/poster.webp",
+        "duration": "10:20",
+        "status": "published",
+        "public_url": "https://tv.example.com/video-details/video-title"
+      }
+    ]
+  }
+}</code></pre>
+
+        <h3>Playlist Videos</h3>
+        <p>Add requires <code>video_id</code>. The video must already be assigned to the channel. Duplicate adds return success with <code>data.added</code> set to <code>false</code>. Reorder requires <code>video_ids</code> as an array of integers and safely ignores IDs that are not already attached to the playlist.</p>
+        <pre><code>{
+  "core_user_id": 2014,
+  "video_id": 123
+}</code></pre>
+        <pre><code>{
+  "core_user_id": 2014,
+  "video_ids": [123, 124, 125]
+}</code></pre>
+
+        <h3>Available And Assigned Videos</h3>
+        <p><code>GET /api/private/core/on-demand/channels/{channel}/videos/available?q=pilot</code> returns up to 50 videos already assigned to the channel, filtered by video name. The assign endpoint accepts <code>video_id</code>; the unassign endpoint removes the video from the channel and from every playlist under that channel.</p>
+
+        <h3>Common Errors</h3>
+        <ul>
+            <li><code>401</code>: missing bearer token, invalid token, disallowed IP, or invalid HMAC signature.</li>
+            <li><code>404</code>: channel is not owned by the synced Core user, playlist is not under the channel, or video is not assignable.</li>
+            <li><code>422</code>: validation failed, such as missing <code>core_user_id</code>, missing <code>name</code>, or invalid <code>video_ids</code>.</li>
+        </ul>
     </div>
 
 

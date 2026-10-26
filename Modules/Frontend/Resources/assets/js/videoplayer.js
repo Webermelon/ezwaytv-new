@@ -3097,6 +3097,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var currentAd = null;
   var skipButton = null;
   var skipTimeout = null;
+  let adSeekLocked = false;
+  let adSeekRestoreTime = 0;
+  let adSeekRestoreInProgress = false;
+  let adSeekLockInterval = null;
   let customAdPlayed = false;
   let blockPlay = false;
   let customAdShowing = false;
@@ -3159,6 +3163,180 @@ document.addEventListener('DOMContentLoaded', function () {
     };
   }
 
+  function syncImaAdSize() {
+    try {
+      const playerEl = player && player.el ? player.el() : null;
+      if (!playerEl) return;
+
+      const rect = playerEl.getBoundingClientRect();
+      const width = Math.round(rect.width || playerEl.offsetWidth || 0);
+      const height = Math.round(rect.height || playerEl.offsetHeight || 0);
+      if (!width || !height) return;
+
+      const ima = safeIma(player);
+      const adsManager = ima.getAdsManager && ima.getAdsManager();
+      if (adsManager && typeof adsManager.resize === 'function' && window.google && window.google.ima) {
+        adsManager.resize(width, height, google.ima.ViewMode.NORMAL);
+      }
+
+      playerEl.querySelectorAll('.vjs-ima-ad-container, .ima-ad-container, .bumpable-ima-ad-container').forEach((container) => {
+        container.style.width = '100%';
+        container.style.height = '100%';
+      });
+    } catch (e) {
+      debugLog('Unable to sync IMA ad size', e);
+    }
+  }
+
+  function isAdSeekLockNeeded() {
+    try {
+      const root = player && player.el ? player.el() : null;
+      if (!root) return false;
+
+      if (isVideoJsInAdMode()) return true;
+
+      const adClassNames = [
+        'vjs-ad-playing',
+        'vjs-ad-loading',
+        'vjs-ad-showing',
+        'vjs-ad-content-resuming',
+        'vjs-ima-ad-playing'
+      ];
+      if (adClassNames.some((className) => root.classList.contains(className))) return true;
+
+      const visibleAdContainer = root.querySelector('.vjs-ima-ad-container, .ima-ad-container, .bumpable-ima-ad-container');
+      if (visibleAdContainer) {
+        const style = window.getComputedStyle(visibleAdContainer);
+        const rect = visibleAdContainer.getBoundingClientRect();
+        if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
+          return true;
+        }
+      }
+
+      const adLabel = root.querySelector('.vjs-control-bar');
+      return !!(adLabel && /advertisement/i.test(adLabel.textContent || ''));
+    } catch (e) {
+      debugLog('Unable to detect ad seek lock state', e);
+      return false;
+    }
+  }
+
+  function lockAdSeeking() {
+    adSeekLocked = true;
+    adSeekRestoreInProgress = false;
+    try {
+      const current = player.currentTime() || 0;
+      if (!Number.isFinite(adSeekRestoreTime) || adSeekRestoreTime <= 0) {
+        adSeekRestoreTime = current;
+      }
+      player.addClass('vjs-ad-seek-disabled');
+    } catch (e) {
+      debugLog('Unable to lock ad seeking', e);
+    }
+  }
+
+  function unlockAdSeeking(force = false) {
+    if (!force && isAdSeekLockNeeded()) return;
+
+    adSeekLocked = false;
+    adSeekRestoreInProgress = false;
+    adSeekRestoreTime = 0;
+    try {
+      player.removeClass('vjs-ad-seek-disabled');
+    } catch (e) {
+      debugLog('Unable to unlock ad seeking', e);
+    }
+  }
+
+  function maintainAdSeekLock() {
+    if (isAdSeekLockNeeded()) {
+      lockAdSeeking();
+      return;
+    }
+
+    if (adSeekLocked) {
+      unlockAdSeeking(true);
+    }
+  }
+
+  function blockAdSeekEvent(event) {
+    maintainAdSeekLock();
+    if (!adSeekLocked) return;
+
+    const target = event.target;
+    const isSkipButton = target && target.closest && target.closest('.vjs-skip-ad-button');
+    if (isSkipButton) return;
+
+    const isSeekSurface = target && target.closest && target.closest(
+      '.vjs-progress-control, .vjs-progress-holder, .vjs-play-progress, .vjs-load-progress, .ima-seek-bar-div, .ima-progress-div, .ima-progress-bar-div'
+    );
+
+    if (!isSeekSurface) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function restoreAdSeekPosition() {
+    maintainAdSeekLock();
+    if (!adSeekLocked || adSeekRestoreInProgress) return;
+
+    try {
+      const current = player.currentTime();
+      if (!Number.isFinite(current) || Math.abs(current - adSeekRestoreTime) < 0.5) return;
+
+      adSeekRestoreInProgress = true;
+      player.currentTime(adSeekRestoreTime);
+      setTimeout(() => {
+        adSeekRestoreInProgress = false;
+      }, 0);
+    } catch (e) {
+      adSeekRestoreInProgress = false;
+      debugLog('Unable to restore ad seek position', e);
+    }
+  }
+
+  function rememberAdPlaybackPosition() {
+    maintainAdSeekLock();
+    if (!adSeekLocked || adSeekRestoreInProgress) return;
+
+    try {
+      const current = player.currentTime();
+      if (!Number.isFinite(current)) return;
+
+      if (!Number.isFinite(adSeekRestoreTime) || adSeekRestoreTime <= 0) {
+        adSeekRestoreTime = current;
+        return;
+      }
+
+      const delta = current - adSeekRestoreTime;
+      if (delta >= 0 && delta <= 1.5) {
+        adSeekRestoreTime = current;
+      } else if (Math.abs(delta) > 1.5) {
+        restoreAdSeekPosition();
+      }
+    } catch (e) {
+      debugLog('Unable to remember ad playback position', e);
+    }
+  }
+
+  ['pointerdown', 'mousedown', 'touchstart', 'click'].forEach((eventName) => {
+    player.el().addEventListener(eventName, blockAdSeekEvent, true);
+  });
+
+  player.on('keydown', function (event) {
+    if (!adSeekLocked) return;
+    const seekKeys = ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'];
+    if (seekKeys.includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  });
+
+  player.on('seeking', restoreAdSeekPosition);
+  player.on('seeked', restoreAdSeekPosition);
+  player.on('timeupdate', rememberAdPlaybackPosition);
+  adSeekLockInterval = setInterval(maintainAdSeekLock, 250);
+
   function isVideoJsInAdMode() {
     try {
       return !!(player.ads && typeof player.ads.isInAdMode === 'function' && player.ads.isInAdMode());
@@ -3188,7 +3366,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const root = player.el && player.el();
         videoEl = root && root.querySelector('video');
         const posterEl = root && root.querySelector('.vjs-poster');
-        const adContainer = root && root.querySelector('.ima-ad-container, .vjs-ima-ad-container');
+      const adContainer = root && root.querySelector('.ima-ad-container, .vjs-ima-ad-container');
         const bigPlay = root && root.querySelector('.vjs-big-play-button');
 
         if (videoEl) {
@@ -3257,6 +3435,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const finish = () => {
       hideAdLoader();
       hideSkipButton();
+      unlockAdSeeking();
       try { player.el().style.pointerEvents = ''; } catch (e) {}
       if (typeof onComplete === 'function') onComplete();
       forceContentPlaybackAfterAd();
@@ -3397,6 +3576,7 @@ document.addEventListener('DOMContentLoaded', function () {
     debugLog('Custom skip button clicked');
     const skippedAd = currentAd;
     hideSkipButton();
+    unlockAdSeeking();
 
     try {
       const ima = safeIma(player);
@@ -3485,6 +3665,7 @@ document.addEventListener('DOMContentLoaded', function () {
         player.one('adstart', () => {
           debugLog(`${type} ad #${index + 1} started`);
           hideAdLoader();
+          lockAdSeeking();
           observeAndRemoveIMASkipButton();
 
           if (ad.enable_skip && ad.skip_after) {
@@ -3493,11 +3674,20 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         });
 
-        player.one('adend', (e) => completeCurrentAd('ended', e));
+        player.one('adend', (e) => {
+          unlockAdSeeking();
+          completeCurrentAd('ended', e);
+        });
 
-        player.one('adserror', (e) => completeCurrentAd('error', e));
+        player.one('adserror', (e) => {
+          unlockAdSeeking();
+          completeCurrentAd('error', e);
+        });
 
-        player.one('adskip', (e) => completeCurrentAd('skipped', e));
+        player.one('adskip', (e) => {
+          unlockAdSeeking();
+          completeCurrentAd('skipped', e);
+        });
 
       } catch (e) {
         debugLog(`Error playing ${type} ad`, e);
@@ -4032,6 +4222,7 @@ document.addEventListener('DOMContentLoaded', function () {
             disablePlayContentBehindAd: true
           }
         });
+        setTimeout(syncImaAdSize, 0);
       } catch (e) {
         console.warn('Failed to initialize videojs-ima plugin:', e);
       }
@@ -4040,6 +4231,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     let customAdChecked = false;
+    ['adstart', 'ads-ad-started', 'ads-manager', 'fullscreenchange'].forEach((eventName) => {
+      player.on(eventName, () => setTimeout(syncImaAdSize, 0));
+    });
+    ['adstart', 'ads-ad-started'].forEach((eventName) => {
+      player.on(eventName, lockAdSeeking);
+    });
+    ['contentresumed', 'adend', 'adskip', 'adserror', 'adtimeout', 'nopreroll'].forEach((eventName) => {
+      player.on(eventName, unlockAdSeeking);
+    });
+    window.addEventListener('resize', syncImaAdSize);
+
     player.one('play', function () {
       if (!customAdPlayed && !customAdChecked) {
         customAdChecked = true;

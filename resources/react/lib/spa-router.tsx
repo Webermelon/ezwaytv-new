@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { flushSync } from 'react-dom'
 
 type SpaRouterContextValue = {
   path: string
@@ -9,6 +10,53 @@ const SpaRouterContext = React.createContext<SpaRouterContextValue | null>(null)
 
 export function SpaRouter({ children }: { children: React.ReactNode }) {
   const [path, setPath] = React.useState(() => getCurrentPath())
+  const pathRef = React.useRef(path)
+
+  const commitPath = React.useCallback((nextPath: string) => {
+    const currentPath = pathRef.current
+    const changePage = () => {
+      pathRef.current = nextPath
+      flushSync(() => setPath(nextPath))
+      window.scrollTo({ top: 0, behavior: 'instant' })
+    }
+
+    if (!shouldAnimateNavigation(currentPath, nextPath)) {
+      changePage()
+      return
+    }
+
+    if (document.startViewTransition) {
+      document.startViewTransition(changePage)
+      return
+    }
+
+    const root = document.getElementById('react-modernization-root')
+    if (!root?.animate) {
+      changePage()
+      return
+    }
+
+    root.getAnimations().forEach((animation) => animation.cancel())
+    const exit = root.animate(
+      [
+        { opacity: 1, transform: 'translateY(0)' },
+        { opacity: 0, transform: 'translateY(-6px)' },
+      ],
+      { duration: 140, easing: 'ease-in', fill: 'forwards' },
+    )
+
+    void exit.finished.then(() => {
+      changePage()
+      root.getAnimations().forEach((animation) => animation.cancel())
+      root.animate(
+        [
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'translateY(0)' },
+        ],
+        { duration: 220, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      )
+    }).catch(() => undefined)
+  }, [])
 
   const navigate = React.useCallback((to: string, options: { replace?: boolean } = {}) => {
     const nextUrl = new URL(to, window.location.origin)
@@ -31,12 +79,11 @@ export function SpaRouter({ children }: { children: React.ReactNode }) {
       window.history.pushState(null, '', nextPath)
     }
 
-    setPath(nextPath)
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [])
+    commitPath(nextPath)
+  }, [commitPath])
 
   React.useEffect(() => {
-    const handlePopState = () => setPath(getCurrentPath())
+    const handlePopState = () => commitPath(getCurrentPath())
 
     const handleDocumentClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
@@ -73,7 +120,7 @@ export function SpaRouter({ children }: { children: React.ReactNode }) {
       window.removeEventListener('popstate', handlePopState)
       document.removeEventListener('click', handleDocumentClick)
     }
-  }, [navigate])
+  }, [commitPath, navigate])
 
   const value = React.useMemo(() => ({ path, navigate }), [navigate, path])
 
@@ -92,6 +139,19 @@ export function useSpaNavigate() {
 
 function getCurrentPath() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`
+}
+
+function shouldAnimateNavigation(currentPath: string, nextPath: string) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return false
+  }
+
+  const currentPathname = currentPath.split(/[?#]/)[0]
+  const nextPathname = nextPath.split(/[?#]/)[0]
+
+  return currentPathname !== nextPathname
+    && !currentPathname.startsWith('/video-embed')
+    && !nextPathname.startsWith('/video-embed')
 }
 
 function isReactFrontendPath(pathname: string) {

@@ -37,7 +37,7 @@ class MobileSettingResource extends JsonResource
                     break;
                 case 'top-10':
                     $topMovieIds = json_decode($this->value);
-                    $topMovies = Entertainment::whereIn('id',$topMovieIds)->get();
+                    $topMovies = $this->sortBySelectedIds(Entertainment::whereIn('id',$topMovieIds)->get(), $topMovieIds);
                     $data = MoviesResource::collection($topMovies);
                     break;
                 case 'advertisement':
@@ -45,22 +45,22 @@ class MobileSettingResource extends JsonResource
                     break;
                 case 'latest-movies':
                     $latestMovieIds = json_decode($this->value);
-                    $latestMovies = Entertainment::whereIn('id',$latestMovieIds)->get();
+                    $latestMovies = $this->sortBySelectedIds(Entertainment::whereIn('id',$latestMovieIds)->get(), $latestMovieIds);
                     $data = MoviesResource::collection($latestMovies);
                     break;
                 case 'enjoy-in-your-native-tongue':
                     $languageIds = json_decode($this->value);
-                    $languages = Constant::whereIn('id',$languageIds)->get();
+                    $languages = $this->sortBySelectedIds(Constant::whereIn('id',$languageIds)->get(), $languageIds);
                     $data = $languages;
                     break;
                 case 'popular-movies':
                     $popularMovieIds = json_decode($this->value);
-                    $popularMovies = Entertainment::whereIn('id',$popularMovieIds)->get();
+                    $popularMovies = $this->sortBySelectedIds(Entertainment::whereIn('id',$popularMovieIds)->get(), $popularMovieIds);
                     $data = MoviesResource::collection($popularMovies);
                     break;
                 case 'popular-tvshows':
                     $popularTVshowIds = json_decode($this->value);
-                    $popularTVshows = Entertainment::whereIn('id',$popularTVshowIds)->get();
+                    $popularTVshows = $this->sortBySelectedIds(Entertainment::whereIn('id',$popularTVshowIds)->get(), $popularTVshowIds);
                     $data = TvshowResource::collection($popularTVshows);
                     break;
                 // case 'popular-tvcategories':
@@ -70,27 +70,27 @@ class MobileSettingResource extends JsonResource
                 //     break;
                 case 'popular-videos':
                     $popularVideoIds = json_decode($this->value);
-                    $popularVideos = Video::whereIn('id',$popularVideoIds)->get();
+                    $popularVideos = $this->sortBySelectedIds(Video::whereIn('id',$popularVideoIds)->get(), $popularVideoIds);
                     $data = VideoResource::collection($popularVideos);
                     break;
                 case 'top-channels':
                     $channelIds = json_decode($this->value);
-                    $channels = LiveTvChannel::whereIn('id',$channelIds)->get();
+                    $channels = $this->sortBySelectedIds(LiveTvChannel::whereIn('id',$channelIds)->get(), $channelIds);
                     $data = LiveTvChannelResource::collection($channels);
                     break;
                 case 'your-favorite-personality':
                     $castIds = json_decode($this->value);
-                    $casts = CastCrew::whereIn('id',$castIds)->get();
+                    $casts = $this->sortBySelectedIds(CastCrew::whereIn('id',$castIds)->get(), $castIds);
                     $data = CastCrewListResource::collection($casts);
                     break;
                 case '500-free-movies':
                     $movieIds = json_decode($this->value);
-                    $movies = Entertainment::whereIn('id',$movieIds)->get();
+                    $movies = $this->sortBySelectedIds(Entertainment::whereIn('id',$movieIds)->get(), $movieIds);
                     $data = MoviesResource::collection($movies);
                     break;
                 case 'genre':
                     $genreIds = json_decode($this->value);
-                    $genres = Genres::whereIn('id',$genreIds)->get();
+                    $genres = $this->sortBySelectedIds(Genres::whereIn('id',$genreIds)->get(), $genreIds);
                     $data = GenresResource::collection($genres);
                     break;
                 case 'rate-our-app':
@@ -99,9 +99,9 @@ class MobileSettingResource extends JsonResource
                 default:
                     if ($this->type === 'ondemand') {
                         $channelIds = json_decode($this->value);
-                        $channels = AuthorChannel::whereIn('id', $channelIds)
+                        $channels = $this->sortBySelectedIds(AuthorChannel::whereIn('id', $channelIds)
                             ->where('is_active', 1)
-                            ->get();
+                            ->get(), $channelIds);
                         $data = $channels->map(function ($channel) {
                             return [
                                 'id' => $channel->id,
@@ -124,5 +124,18 @@ class MobileSettingResource extends JsonResource
             'section_type' => $this->slug,
             'data' => $data
         ];
+    }
+
+    private function sortBySelectedIds($collection, $selectedIds)
+    {
+        if (!is_iterable($selectedIds)) {
+            return $collection;
+        }
+
+        $selectedOrder = array_flip(array_map('strval', array_values((array) $selectedIds)));
+
+        return $collection
+            ->sortBy(fn ($item) => $selectedOrder[(string) $item->id] ?? PHP_INT_MAX)
+            ->values();
     }
 }

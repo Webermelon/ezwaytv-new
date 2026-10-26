@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Calendar, Check, Clock, Code2, Copy, Eye, Lock, MessageCircle, Play, Share2, Star, Tv } from 'lucide-react'
+import { Calendar, Check, Clock, Code2, Copy, Eye, ListVideo, Lock, MessageCircle, Play, Share2, Star, Tv, UsersRound } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AdBannerSlider } from '@/components/AdBannerSlider'
 import { MediaThumbnail } from '@/components/MediaThumbnail'
+import { PlayerBackButton } from '@/components/PlayerBackButton'
 import { useBranding } from '@/lib/branding'
+import { isNativeIosApp } from '@/lib/native-platform'
 import type { MediaItem } from '@/modules/home/types'
+import { loadOnDemandProfile } from '@/modules/ondemand/ondemandApi'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
 import { loadContentStats, loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type ContentStats, type VideoAd } from './videoDetailApi'
@@ -60,16 +63,23 @@ type VideoDetail = MediaItem & {
     username?: string
     url?: string
   }
+  playlist_context?: {
+    id?: number | string
+    name?: string
+    author_channel_id?: number | string
+  } | null
 }
 
 export function VideoDetailPage() {
   const slug = getSlugFromPath()
   const ondemandChannel = getQueryValue('ondemand_channel')
+  const playlistId = getQueryValue('playlist')
   const autoplay = getQueryValue('autoplay') === '1'
   const [playId, setPlayId] = useState<number | null>(null)
   const [playTrigger, setPlayTrigger] = useState(0)
   const [copiedShareUrl, setCopiedShareUrl] = useState(false)
   const [copiedEmbedCode, setCopiedEmbedCode] = useState(false)
+  const [copiedPlaylistEmbedCode, setCopiedPlaylistEmbedCode] = useState(false)
   const playIdRef = useRef<number | null>(null)
   const lastWatchUpdateRef = useRef(0)
   const trackedViewKeyRef = useRef<string | null>(null)
@@ -86,7 +96,50 @@ export function VideoDetailPage() {
   const video = videoQuery.data as VideoDetail | null | undefined
   const videoId = video?.id
   const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
-  const statsContentType = channelId ? 'ondemand_video' : 'video'
+  const channelUsername = video?.ondemand_channel_context?.username
+  const detectedPlaylistId = video?.playlist_context?.id ? String(video.playlist_context.id) : null
+  const effectivePlaylistId = playlistId || detectedPlaylistId
+  const shouldLoadPlaylistContext = Boolean(channelUsername && (effectivePlaylistId || channelId))
+  const statsContentType = 'video'
+  const playlistQuery = useQuery({
+    queryKey: ['ondemand-playlist-context', channelUsername, effectivePlaylistId],
+    queryFn: () => loadOnDemandProfile(channelUsername as string),
+    enabled: shouldLoadPlaylistContext,
+    staleTime: 60_000,
+  })
+  const playlistVideos = useMemo(() => {
+    const playlists = playlistQuery.data?.playlists ?? []
+    const playlist = effectivePlaylistId
+      ? playlists.find((item) => String(item.id) === String(effectivePlaylistId))
+      : null
+
+    return playlist?.videos ?? playlistQuery.data?.videos ?? []
+  }, [effectivePlaylistId, playlistQuery.data?.playlists, playlistQuery.data?.videos])
+  const activePlaylist = useMemo(() => {
+    const playlists = playlistQuery.data?.playlists ?? []
+
+    if (effectivePlaylistId) {
+      return playlists.find((item) => String(item.id) === String(effectivePlaylistId)) ?? null
+    }
+
+    if (!playlistQuery.data?.videos.length) return null
+
+    return {
+      id: `channel:${channelId ?? channelUsername ?? 'ondemand'}`,
+      name: video?.ondemand_channel_context?.name ? `${video.ondemand_channel_context.name} Playlist` : 'On Demand Playlist',
+      videos: playlistQuery.data.videos,
+    }
+  }, [channelId, channelUsername, effectivePlaylistId, playlistQuery.data?.playlists, playlistQuery.data?.videos, video?.ondemand_channel_context?.name])
+  const currentPlaylistIndex = useMemo(() => {
+    if (!video?.id || playlistVideos.length === 0) return -1
+
+    return playlistVideos.findIndex((item) => String(item.id) === String(video.id) || item.slug === video.slug)
+  }, [playlistVideos, video?.id, video?.slug])
+  const nextPlaylistVideo = useMemo(() => {
+    if (currentPlaylistIndex < 0 || currentPlaylistIndex >= playlistVideos.length - 1) return null
+
+    return playlistVideos[currentPlaylistIndex + 1] ?? null
+  }, [currentPlaylistIndex, playlistVideos])
   const adsQuery = useQuery({
     queryKey: ['video-ads', videoId],
     queryFn: () => loadVideoAds(videoId as string | number),
@@ -132,11 +185,74 @@ export function VideoDetailPage() {
   }, [channelId, trackViewMutation, video])
 
   const related = video?.more_items ?? []
+  const railItems = related.filter((item) => String(item.id) !== String(video?.id) && item.slug !== video?.slug)
+  const railTitle = video?.ondemand_channel_context?.name
+    ? `More from ${video.ondemand_channel_context.name}`
+    : 'More Like This'
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
   const isLocked = isPayPerViewLocked || isSubscriptionLocked
   const playerUrl = video ? resolvePlayerUrl(video) : null
   const playerPoster = video ? resolvePreviewImage(video) : null
+  const hasPlaylistPanel = Boolean(activePlaylist && playlistVideos.length > 0)
+  const playerBackFallback = video?.ondemand_channel_context?.slug ? `/on-demand/${video.ondemand_channel_context.slug}` : '/videos'
+  const playerStage = video ? (
+    <div className="video-detail-player aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
+      {isSubscriptionLocked ? (
+        <PremiumPlayerLock video={video} />
+      ) : isPayPerViewLocked ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
+          <Lock className="h-10 w-10 text-primary" />
+          <h2 className="text-2xl font-bold">Purchase required</h2>
+          <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
+        </div>
+      ) : playerUrl && !isLocked ? (
+        adsQuery.isLoading ? (
+          <PlayerPreparing poster={playerPoster} />
+        ) : (
+          <VideoJsPlayer
+            source={playerUrl}
+            poster={playerPoster}
+            autoplay={autoplay}
+            playTrigger={playTrigger}
+            vastAds={ads.vast}
+            customAds={ads.custom}
+            onPlay={() => {
+              if (playIdRef.current) return
+              trackPlayMutation.mutate({ nextVideo: video, nextChannelId: channelId })
+            }}
+            onTimeUpdate={(seconds) => {
+              if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
+                lastWatchUpdateRef.current = seconds
+                updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+              }
+            }}
+            onPause={(seconds) => {
+              if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
+
+              lastWatchUpdateRef.current = seconds
+              updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+            }}
+            onEnded={(seconds) => {
+              if (playIdRef.current) {
+                const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                lastWatchUpdateRef.current = finalSeconds
+                updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+              }
+
+              if (nextPlaylistVideo?.slug && (effectivePlaylistId || channelId)) {
+                window.location.href = buildPlaylistWatchUrl(nextPlaylistVideo, channelId, effectivePlaylistId)
+              }
+            }}
+          />
+        )
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
+          No playable source was returned for this video.
+        </div>
+      )}
+    </div>
+  ) : null
 
   if (!slug) {
     return <PublicPage />
@@ -156,73 +272,47 @@ export function VideoDetailPage() {
         </section>
       ) : (
         <>
-          <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
-            <div className="w-screen">
-              <div className="video-detail-player aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[80svh] sm:min-h-[420px]">
-                {isSubscriptionLocked ? (
-                  <PremiumPlayerLock video={video} />
-                ) : isPayPerViewLocked ? (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-black p-8 text-center">
-                    <Lock className="h-10 w-10 text-primary" />
-                    <h2 className="text-2xl font-bold">Purchase required</h2>
-                    <p className="max-w-md text-sm text-white/58">This video is protected by the existing pay-per-view access rules.</p>
-                  </div>
-                ) : playerUrl && !isLocked ? (
-                  adsQuery.isLoading ? (
-                    <PlayerPreparing poster={playerPoster} />
-                  ) : (
-                    <VideoJsPlayer
-                      source={playerUrl}
-                      poster={playerPoster}
-                      autoplay={autoplay}
-                      playTrigger={playTrigger}
-                      vastAds={ads.vast}
-                      onPlay={() => {
-                        if (playIdRef.current) return
-                        trackPlayMutation.mutate({ nextVideo: video, nextChannelId: channelId })
-                      }}
-                      onTimeUpdate={(seconds) => {
-                        if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
-                          lastWatchUpdateRef.current = seconds
-                          updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                        }
-                      }}
-                      onPause={(seconds) => {
-                        if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
-
-                        lastWatchUpdateRef.current = seconds
-                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                      }}
-                      onEnded={(seconds) => {
-                        if (!playIdRef.current) return
-
-                        const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
-                        lastWatchUpdateRef.current = finalSeconds
-                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
-                      }}
-                    />
-                  )
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-black p-8 text-center text-white/56">
-                    No playable source was returned for this video.
-                  </div>
-                )}
+          {hasPlaylistPanel ? (
+            <section className="bg-[#050505] px-3 pt-3 sm:px-6 lg:px-8 lg:pt-5">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_520px] xl:items-start">
+                <div className="overflow-hidden rounded-md bg-black ring-1 ring-white/10">
+                  <PlayerHeader fallbackHref={playerBackFallback} />
+                  {playerStage}
+                </div>
+                <PlaylistWatchPanel
+                  playlist={activePlaylist}
+                  videos={playlistVideos}
+                  currentVideo={video}
+                  currentIndex={currentPlaylistIndex}
+                  channelId={channelId}
+                  playlistId={effectivePlaylistId}
+                  channelName={video.ondemand_channel_context?.name}
+                />
               </div>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
+              <div className="w-screen">
+                <PlayerHeader fallbackHref={playerBackFallback} />
+                {playerStage}
+              </div>
+            </section>
+          )}
 
           <section className="border-b border-white/10 bg-[#050505] px-3 py-5 sm:px-6 lg:px-8">
             <div className="w-full">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0 flex-1">
                   <h1 className="line-clamp-2 text-xl font-black leading-snug text-white sm:text-2xl lg:text-[1.8rem]">
-                    {video.name}
+                    {cleanDisplayText(video.name, 'Video')}
                   </h1>
                   <div className="mt-3">
                     <ChannelIdentity video={video} />
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/52">
-                    <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    {!(isNativeIosApp() && video.access?.toLowerCase() === 'free') ? (
+                      <Badge className="rounded-sm bg-primary text-black">{video.access ?? 'video'}</Badge>
+                    ) : null}
                     {isSubscriptionLocked ? <Badge variant="outline" className="border-primary/50 bg-primary/10 text-primary">Premium</Badge> : null}
                     {video.is_restricted ? <Badge variant="outline" className="border-white/16 text-white/76">Age restricted</Badge> : null}
                     {channelId ? <Badge variant="outline" className="border-white/16 text-white/76">On Demand</Badge> : null}
@@ -264,10 +354,12 @@ export function VideoDetailPage() {
                     <PremiumActionButton video={video} />
                   ) : null}
                   <ShareMenu
-                    title={video.name}
+                    title={cleanDisplayText(video.name, 'Video')}
                     embedCode={buildEmbedCode(video, ondemandChannel)}
+                    playlistEmbedCode={effectivePlaylistId ? buildEmbedCode(video, ondemandChannel, effectivePlaylistId) : null}
                     copied={copiedShareUrl}
                     embedCopied={copiedEmbedCode}
+                    playlistEmbedCopied={copiedPlaylistEmbedCode}
                     onCopy={() => {
                       copyText(currentShareUrl()).then(() => {
                         setCopiedShareUrl(true)
@@ -280,7 +372,21 @@ export function VideoDetailPage() {
                         window.setTimeout(() => setCopiedEmbedCode(false), 1800)
                       }).catch(() => undefined)
                     }}
+                    onCopyPlaylistEmbed={() => {
+                      if (!effectivePlaylistId) return
+
+                      copyText(buildEmbedCode(video, ondemandChannel, effectivePlaylistId)).then(() => {
+                        setCopiedPlaylistEmbedCode(true)
+                        window.setTimeout(() => setCopiedPlaylistEmbedCode(false), 1800)
+                      }).catch(() => undefined)
+                    }}
                   />
+                  <Button asChild variant="secondary" className="bg-white/14 text-white hover:bg-white/24">
+                    <a href="https://ezwayconnect.com" target="_blank" rel="noreferrer">
+                      <UsersRound className="h-5 w-5" />
+                      Connect
+                    </a>
+                  </Button>
                   </div>
                 </div>
               </div>
@@ -295,15 +401,13 @@ export function VideoDetailPage() {
             </div>
           </section>
 
-          <AdStrip ads={ads.custom} />
+          <AdStrip ads={ads.custom.filter((ad) => String(ad.placement ?? '').toLowerCase() !== 'player')} />
 
-          {related.length > 0 ? (
+          {railItems.length > 0 ? (
             <section className="px-3 pb-16 sm:px-6 lg:px-8">
-              <h2 className="mb-4 text-2xl font-bold">
-                {video.ondemand_channel_context?.name ? `More from ${video.ondemand_channel_context.name}` : 'More Like This'}
-              </h2>
+              <h2 className="mb-4 text-2xl font-bold">{railTitle}</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6">
-                {related.map((item) => (
+                {railItems.map((item) => (
                   <RelatedCard key={item.id} item={item} channelId={channelId} />
                 ))}
               </div>
@@ -319,6 +423,10 @@ export function VideoDetailPage() {
 export function VideoEmbedPage() {
   const slug = getEmbedSlugFromPath()
   const ondemandChannel = getQueryValue('ondemand_channel')
+  const playlistId = getQueryValue('playlist')
+  const autoplay = getQueryValue('autoplay') === '1'
+  const muted = autoplay || getQueryValue('muted') === '1'
+  const isHeroPromo = getQueryValue('hero') === '1'
   const [isPlaying, setIsPlaying] = useState(false)
   const videoQuery = useQuery({
     queryKey: ['video-embed', slug, ondemandChannel],
@@ -327,10 +435,28 @@ export function VideoEmbedPage() {
   })
   const video = videoQuery.data as VideoDetail | null | undefined
   const videoId = video?.id
+  const channelId = video?.ondemand_channel_context?.id ?? ondemandChannel
+  const channelUsername = video?.ondemand_channel_context?.username ?? video?.author_channels?.[0]?.username
+  const effectivePlaylistId = playlistId
+  const playlistQuery = useQuery({
+    queryKey: ['video-embed-playlist', channelUsername, effectivePlaylistId],
+    queryFn: () => loadOnDemandProfile(channelUsername as string),
+    enabled: Boolean(channelUsername && effectivePlaylistId),
+    staleTime: 60_000,
+  })
+  const activePlaylist = useMemo(() => {
+    if (!effectivePlaylistId) return null
+
+    return (playlistQuery.data?.playlists ?? [])
+      .find((item) => String(item.id) === String(effectivePlaylistId)) ?? null
+  }, [effectivePlaylistId, playlistQuery.data?.playlists])
+  const playlistVideos = activePlaylist?.videos ?? []
+  const currentPlaylistIndex = playlistVideos.findIndex((item) => String(item.id) === String(video?.id) || item.slug === video?.slug)
+  const nextPlaylistVideo = currentPlaylistIndex >= 0 ? playlistVideos[currentPlaylistIndex + 1] ?? null : null
   const adsQuery = useQuery({
     queryKey: ['video-embed-ads', videoId],
     queryFn: () => loadVideoAds(videoId as string | number),
-    enabled: Boolean(videoId),
+    enabled: Boolean(videoId && !isHeroPromo),
     staleTime: 30_000,
   })
   const playerUrl = video ? resolvePlayerUrl(video) : null
@@ -339,8 +465,15 @@ export function VideoEmbedPage() {
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
 
   return (
-    <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-black text-white">
-      <div className="relative aspect-video max-h-screen w-full max-w-[calc(100vh*16/9)] overflow-hidden bg-black">
+    <main className="h-screen w-screen overflow-hidden bg-black text-white">
+      <div className={[
+        'mx-auto h-full w-full overflow-hidden bg-black',
+        activePlaylist && playlistVideos.length > 0 ? 'flex flex-col md:grid md:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_420px]' : 'relative aspect-video max-h-screen max-w-[calc(100vh*16/9)]',
+      ].join(' ')}>
+        <div className={[
+          'relative min-h-0 min-w-0 overflow-hidden bg-black',
+          activePlaylist && playlistVideos.length > 0 ? 'aspect-video h-auto w-full shrink-0 md:aspect-auto md:h-full' : 'h-full',
+        ].join(' ')}>
         {videoQuery.isLoading ? (
           <PlayerPreparing />
         ) : videoQuery.isError || !video ? (
@@ -350,25 +483,135 @@ export function VideoEmbedPage() {
         ) : isPayPerViewLocked ? (
           <EmbedState icon={<Lock className="h-8 w-8 text-primary" />} title="Purchase required" message="Open eZWay TV to unlock this video." />
         ) : playerUrl ? (
-          adsQuery.isLoading ? (
+          adsQuery.isLoading && !isHeroPromo ? (
             <PlayerPreparing poster={playerPoster} />
           ) : (
             <VideoJsPlayer
               source={playerUrl}
               poster={playerPoster}
-              autoplay={false}
-              vastAds={adsQuery.data?.vast ?? []}
+              autoplay={autoplay}
+              muted={muted}
+              pausedOverlay={<EmbedPausedIdentity video={video} />}
+              vastAds={isHeroPromo ? [] : (adsQuery.data?.vast ?? [])}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
-              onEnded={() => setIsPlaying(false)}
+              onEnded={() => {
+                setIsPlaying(false)
+                if (nextPlaylistVideo?.slug && effectivePlaylistId) {
+                  window.location.href = buildPlaylistEmbedUrl(nextPlaylistVideo, channelId, effectivePlaylistId, true)
+                }
+              }}
             />
           )
         ) : (
           <EmbedState message="No playable source was returned for this video." />
         )}
         {video ? <EmbedBrandBadge compact={isPlaying} video={video} ondemandChannel={ondemandChannel} /> : null}
+        </div>
+        {video && activePlaylist && playlistVideos.length > 0 ? (
+          <EmbedPlaylistPanel
+            playlist={activePlaylist}
+            videos={playlistVideos}
+            currentVideo={video}
+            currentIndex={currentPlaylistIndex}
+            channelId={channelId}
+            playlistId={effectivePlaylistId}
+            channelName={video.ondemand_channel_context?.name ?? video.author_channels?.[0]?.name}
+          />
+        ) : null}
       </div>
     </main>
+  )
+}
+
+function EmbedPlaylistPanel({
+  playlist,
+  videos,
+  currentVideo,
+  currentIndex,
+  channelId,
+  playlistId,
+  channelName,
+}: {
+  playlist: NonNullable<MediaItem['playlists']>[number]
+  videos: MediaItem[]
+  currentVideo: MediaItem
+  currentIndex: number
+  channelId?: string | number | null
+  playlistId: string
+  channelName?: string | null
+}) {
+  return (
+    <aside className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-white/12 bg-[#151515] md:border-l md:border-t-0">
+      <div className="border-b border-white/10 bg-white/[0.045] px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="line-clamp-2 text-base font-black leading-tight text-white">{cleanDisplayText(playlist.name, 'Playlist')}</h1>
+            <p className="mt-1 truncate text-xs font-semibold text-white/52">
+              {[channelName, `${Math.max(0, currentIndex) + 1} / ${videos.length}`].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-black/55 px-2 py-1 text-xs font-black text-white">
+            <ListVideo className="h-3.5 w-3.5" />
+            {videos.length}
+          </span>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+        {videos.map((item, index) => {
+          const active = String(item.id) === String(currentVideo.id) || item.slug === currentVideo.slug
+          const image = resolvePreviewImage(item)
+
+          return (
+            <a
+              key={`${playlist.id}-${item.id}`}
+              href={buildPlaylistEmbedUrl(item, channelId, playlistId, true)}
+              className={[
+                'grid grid-cols-[22px_108px_minmax(0,1fr)] gap-2.5 border-b border-white/8 px-3 py-2.5 transition last:border-b-0',
+                active ? 'bg-primary/14 text-white' : 'text-white/82 hover:bg-white/[0.06] hover:text-white',
+              ].join(' ')}
+            >
+              <span className="flex items-center justify-center text-xs font-bold text-white/58">
+                {active ? <Play className="h-3.5 w-3.5 fill-primary text-primary" /> : index + 1}
+              </span>
+              <span className="relative aspect-video overflow-hidden rounded-sm bg-black">
+                {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                {item.duration ? <span className="absolute bottom-1 right-1 bg-black/78 px-1 py-0.5 text-[9px] font-black text-white">{item.duration}</span> : null}
+              </span>
+              <span className="min-w-0 py-0.5">
+                <span className="line-clamp-2 text-xs font-black leading-snug">{cleanDisplayText(item.name, 'Video')}</span>
+                {channelName ? <span className="mt-1 block truncate text-[11px] font-semibold text-white/46">{channelName}</span> : null}
+              </span>
+            </a>
+          )
+        })}
+      </div>
+    </aside>
+  )
+}
+
+function EmbedPausedIdentity({ video }: { video: VideoDetail }) {
+  const channel = video.author_channels?.[0]
+  const title = cleanDisplayText(video.name, 'Video')
+  const author = cleanDisplayText(
+    channel?.name ?? video.ondemand_channel_context?.name ?? video.channel_name,
+    'eZWay TV',
+  )
+  const image = channel?.avatar_image_url ?? channel?.avatar ?? video.avatar_image_url ?? video.profile_image ?? null
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-gradient-to-b from-black/88 via-black/56 to-transparent px-4 pb-14 pt-4 sm:px-6 sm:pb-20 sm:pt-5">
+      <div className="flex min-w-0 max-w-[82%] items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-black/60 text-xs font-black text-white sm:h-11 sm:w-11">
+          {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : initials(author)}
+        </span>
+        <span className="min-w-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
+          <span className="block truncate text-sm font-black leading-tight text-white sm:text-lg">{title}</span>
+          <span className="mt-1 block truncate text-xs font-semibold text-white/78 sm:text-sm">{author}</span>
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -480,6 +723,8 @@ function PremiumAccessNotice({ video }: { video: VideoDetail }) {
 }
 
 function PremiumActionButton({ video }: { video: VideoDetail }) {
+  if (isNativeIosApp()) return null
+
   if (!isAuthenticated()) {
     return (
       <Button asChild size="lg" className="bg-white text-black hover:bg-white/85">
@@ -498,6 +743,14 @@ function PremiumActionButton({ video }: { video: VideoDetail }) {
         Upgrade Plan
       </a>
     </Button>
+  )
+}
+
+function PlayerHeader({ fallbackHref }: { fallbackHref: string }) {
+  return (
+    <div className="flex min-h-12 items-center border-b border-white/10 bg-[#050505] px-3 py-2 sm:min-h-14 sm:px-5">
+      <PlayerBackButton fallbackHref={fallbackHref} />
+    </div>
   )
 }
 
@@ -530,7 +783,7 @@ function PremiumPlayerLock({ video }: { video: VideoDetail }) {
 
 function ChannelIdentity({ video }: { video: VideoDetail }) {
   const channel = video.author_channels?.[0]
-  const name = channel?.name ?? video.ondemand_channel_context?.name ?? 'eZWay TV'
+  const name = cleanDisplayText(channel?.name ?? video.ondemand_channel_context?.name, 'eZWay TV')
   const username = channel?.username ?? video.ondemand_channel_context?.username
   const image = channel?.avatar_image_url ?? channel?.avatar ?? video.avatar_image_url ?? video.profile_image ?? null
   const href = username ? `/on-demand/${username}` : video.ondemand_channel_context?.url ?? '/on-demand'
@@ -564,7 +817,7 @@ function ChannelBadges({ channels }: { channels: AuthorChannel[] }) {
 
 function ChannelBadge({ channel }: { channel: AuthorChannel }) {
   const image = channel.avatar_image_url ?? channel.avatar ?? null
-  const name = channel.name ?? 'On Demand Channel'
+  const name = cleanDisplayText(channel.name, 'On Demand Channel')
 
   return (
     <a
@@ -587,8 +840,84 @@ function ChannelBadge({ channel }: { channel: AuthorChannel }) {
   )
 }
 
-function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string | number | null }) {
-  const href = buildVideoHref(item, channelId)
+function PlaylistWatchPanel({
+  playlist,
+  videos,
+  currentVideo,
+  currentIndex,
+  channelId,
+  playlistId,
+  channelName,
+}: {
+  playlist: NonNullable<MediaItem['playlists']>[number]
+  videos: MediaItem[]
+  currentVideo: MediaItem
+  currentIndex: number
+  channelId?: string | number | null
+  playlistId?: string | null
+  channelName?: string | null
+}) {
+  const safeIndex = currentIndex >= 0 ? currentIndex : 0
+
+  return (
+    <aside className="flex flex-col overflow-hidden rounded-md border border-white/12 bg-[#151515] shadow-2xl shadow-black/35 sm:h-[80svh] sm:min-h-[420px] xl:max-h-[80svh]">
+      <div className="border-b border-white/10 bg-white/[0.045] px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="line-clamp-2 text-lg font-black leading-tight text-white">{cleanDisplayText(playlist.name, 'Playlist')}</h2>
+            <p className="mt-1 text-xs font-semibold text-white/52">
+              {[channelName, `${safeIndex + 1} / ${videos.length}`].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <Badge className="shrink-0 rounded-sm bg-black/55 text-white">
+            <ListVideo className="mr-1 h-3.5 w-3.5" />
+            {videos.length}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+        {videos.map((item, index) => {
+          const active = String(item.id) === String(currentVideo.id) || item.slug === currentVideo.slug
+          const image = item.poster_image ?? item.poster_tv_image ?? item.thumbnail_url ?? item.cover_image_url ?? item.details?.thumbnail_image
+          const href = buildPlaylistWatchUrl(item, channelId, playlistId)
+
+          return (
+            <a
+              key={`${playlist.id}-${item.id}`}
+              href={href}
+              className={[
+                'grid grid-cols-[22px_112px_minmax(0,1fr)] gap-2.5 border-b border-white/8 px-3 py-2.5 transition last:border-b-0 sm:grid-cols-[26px_132px_minmax(0,1fr)]',
+                active ? 'bg-primary/14 text-white' : 'text-white/82 hover:bg-white/[0.06] hover:text-white',
+              ].join(' ')}
+            >
+              <span className="flex items-center justify-center text-xs font-bold text-white/58">
+                {active ? <Play className="h-3.5 w-3.5 fill-primary text-primary" /> : index + 1}
+              </span>
+              <span className="relative block overflow-hidden rounded bg-black">
+                <MediaThumbnail
+                  src={image}
+                  alt={cleanDisplayText(item.name)}
+                  previewSrc={active ? null : previewHref(item)}
+                  className="aspect-video"
+                  imageClassName="object-cover"
+                />
+                {item.duration ? <span className="absolute bottom-1 right-1 rounded-sm bg-black/78 px-1.5 py-0.5 text-[10px] font-black text-white">{item.duration}</span> : null}
+              </span>
+              <span className="min-w-0 py-0.5">
+                <span className="line-clamp-2 text-sm font-black leading-snug">{cleanDisplayText(item.name, 'Video')}</span>
+                {channelName ? <span className="mt-1 block truncate text-xs font-semibold text-white/46">{channelName}</span> : null}
+              </span>
+            </a>
+          )
+        })}
+      </div>
+    </aside>
+  )
+}
+
+function RelatedCard({ item, channelId, playlistId }: { item: MediaItem; channelId?: string | number | null; playlistId?: string | null }) {
+  const href = playlistId ? buildPlaylistWatchUrl(item, channelId, playlistId) : buildVideoHref(item, channelId)
   const image = item.poster_image ?? item.poster_tv_image ?? item.thumbnail_url ?? item.cover_image_url ?? item.details?.thumbnail_image
 
   return (
@@ -596,7 +925,7 @@ function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string 
       <div className="relative overflow-hidden rounded-md border border-white/10 bg-black transition group-hover:scale-[1.025] group-hover:border-primary/60">
         <MediaThumbnail
           src={image}
-          alt={item.name}
+          alt={cleanDisplayText(item.name)}
           previewSrc={previewHref(item)}
           className="aspect-video"
           imageClassName="object-cover"
@@ -607,7 +936,7 @@ function RelatedCard({ item, channelId }: { item: MediaItem; channelId?: string 
         </div>
         {item.duration ? <Badge className="absolute bottom-3 right-3 rounded-sm bg-black/70 text-white">{item.duration}</Badge> : null}
       </div>
-      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug">{item.name}</h3>
+      <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug">{cleanDisplayText(item.name, 'Video')}</h3>
     </a>
   )
 }
@@ -636,7 +965,7 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
             href={ad.redirect_url ?? ad.url ?? ad.vast_url ?? '#'}
             className="rounded-md border border-white/10 bg-white/[0.045] p-4 text-sm font-semibold text-white/78 hover:bg-white/[0.08]"
           >
-            {ad.title ?? ad.name ?? `Ad ${index + 1}`}
+            {cleanDisplayText(ad.title ?? ad.name, `Ad ${index + 1}`)}
           </a>
         ))}
       </div>
@@ -647,20 +976,29 @@ function AdStrip({ ads, label = 'Custom ads available' }: { ads: VideoAd[]; labe
 function ShareMenu({
   title,
   embedCode,
+  playlistEmbedCode,
   copied,
   embedCopied,
+  playlistEmbedCopied,
   onCopy,
   onCopyEmbed,
+  onCopyPlaylistEmbed,
 }: {
   title: string
   embedCode: string
+  playlistEmbedCode?: string | null
   copied: boolean
   embedCopied: boolean
+  playlistEmbedCopied: boolean
   onCopy: () => void
   onCopyEmbed: () => void
+  onCopyPlaylistEmbed: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [embedMode, setEmbedMode] = useState<'video' | 'playlist'>('video')
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const selectedEmbedCode = embedMode === 'playlist' && playlistEmbedCode ? playlistEmbedCode : embedCode
+  const selectedEmbedCopied = embedMode === 'playlist' ? playlistEmbedCopied : embedCopied
   const shareUrl = currentShareUrl()
   const shareText = `Watch ${title} on EZWay TV`
   const shareTargets = [
@@ -776,24 +1114,52 @@ function ShareMenu({
           </button>
         </div>
         <div className="mt-3 rounded-md border border-white/10 bg-black/38 p-3">
+          {playlistEmbedCode ? (
+            <div className="mb-3 grid grid-cols-2 rounded-md bg-white/[0.06] p-1" role="group" aria-label="Embed type">
+              <button
+                type="button"
+                onClick={() => setEmbedMode('video')}
+                className={[
+                  'rounded-sm px-3 py-2 text-xs font-black transition',
+                  embedMode === 'video' ? 'bg-white text-black' : 'text-white/64 hover:text-white',
+                ].join(' ')}
+              >
+                Video only
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmbedMode('playlist')}
+                className={[
+                  'rounded-sm px-3 py-2 text-xs font-black transition',
+                  embedMode === 'playlist' ? 'bg-primary text-black' : 'text-white/64 hover:text-white',
+                ].join(' ')}
+              >
+                With playlist
+              </button>
+            </div>
+          ) : null}
           <div className="mb-2 flex items-center justify-between gap-3">
             <div className="inline-flex min-w-0 items-center gap-2 text-sm font-black text-white">
               <Code2 className="h-4 w-4 shrink-0 text-primary" />
-              Embed
+              {embedMode === 'playlist' && playlistEmbedCode ? 'Embed with playlist' : 'Embed video only'}
             </div>
             <button
               type="button"
               onClick={() => {
-                onCopyEmbed()
+                if (embedMode === 'playlist' && playlistEmbedCode) {
+                  onCopyPlaylistEmbed()
+                } else {
+                  onCopyEmbed()
+                }
               }}
               className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-black text-black transition hover:bg-white/86"
             >
-              {embedCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {embedCopied ? 'Copied' : 'Copy'}
+              {selectedEmbedCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {selectedEmbedCopied ? 'Copied' : 'Copy'}
             </button>
           </div>
           <textarea
-            value={embedCode}
+            value={selectedEmbedCode}
             readOnly
             aria-label="Embed code"
             className="h-24 w-full resize-none rounded-md border border-white/10 bg-black/55 p-2 font-mono text-[11px] leading-4 text-white/70 outline-none focus:border-primary/50"
@@ -912,14 +1278,29 @@ function getQueryValue(key: string) {
 }
 
 function resolvePlayerUrl(video: VideoDetail) {
-  const qualitySource = Array.isArray(video.video_links)
-    ? video.video_links.find((item) => {
-      const url = item.url ?? item.server_url
-      return Boolean(url && item.url_type !== 'Embedded')
-    })
-    : null
+  const mappedSources = Array.isArray(video.video_links)
+    ? video.video_links
+      .filter((item) => item.url_type !== 'Embedded')
+      .map((item) => item.url ?? item.server_url)
+    : []
+  const sources = [video.video_url_input, ...mappedSources, video.trailer_url]
+    .filter((source): source is string => Boolean(source))
 
-  return video.video_url_input ?? qualitySource?.url ?? qualitySource?.server_url ?? video.trailer_url ?? null
+  return sources
+    .map((source, index) => ({ source, index, score: mobilePlaybackScore(source) }))
+    .sort((left, right) => right.score - left.score || left.index - right.index)[0]?.source ?? null
+}
+
+function mobilePlaybackScore(source: string) {
+  const path = source.split(/[?#]/)[0].toLowerCase()
+
+  if (path.endsWith('.mp4') || path.endsWith('.m4v')) return 5
+  if (path.endsWith('.m3u8')) return 4
+  if (!/\.[a-z0-9]{2,5}$/.test(path)) return 3
+  if (path.endsWith('.webm')) return 2
+  if (path.endsWith('.mov')) return 1
+
+  return 0
 }
 
 function hasVideoAccess(video: VideoDetail) {
@@ -970,6 +1351,20 @@ function buildVideoHref(video: MediaItem, channelId?: string | number | null) {
   return `/video-details/${video.slug}?${params.toString()}`
 }
 
+function buildPlaylistWatchUrl(video: MediaItem, channelId?: string | number | null, playlistId?: string | null) {
+  if (!video.slug) return '/videos'
+
+  const params = new URLSearchParams({ autoplay: '1' })
+  if (video.ondemand_channel_id ?? channelId) {
+    params.set('ondemand_channel', String(video.ondemand_channel_id ?? channelId))
+  }
+  if (playlistId) {
+    params.set('playlist', playlistId)
+  }
+
+  return `/video-details/${video.slug}?${params.toString()}`
+}
+
 function previewHref(video: MediaItem) {
   return video.video_url_input ?? video.video_url ?? video.trailer_url ?? null
 }
@@ -1005,21 +1400,45 @@ async function copyText(value: string) {
   document.body.removeChild(input)
 }
 
-function buildEmbedCode(video: VideoDetail, ondemandChannel?: string | null) {
-  const src = buildEmbedUrl(video, ondemandChannel)
+function buildEmbedCode(video: VideoDetail, ondemandChannel?: string | null, playlistId?: string | null) {
+  const src = buildEmbedUrl(video, ondemandChannel, playlistId)
+
+  if (playlistId) {
+    return `<div style="position:relative;width:100%;max-width:1600px;height:clamp(520px,70vw,900px);background:#000;overflow:hidden;"><iframe src="${escapeHtmlAttribute(src)}" title="eZWay TV playlist player" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+  }
 
   return `<div style="position:relative;width:100%;max-width:1200px;aspect-ratio:16/9;background:#000;overflow:hidden;"><iframe src="${escapeHtmlAttribute(src)}" title="eZWay TV video player" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
 }
 
-function buildEmbedUrl(video: VideoDetail, ondemandChannel?: string | null) {
+function buildEmbedUrl(video: VideoDetail, ondemandChannel?: string | null, playlistId?: string | null) {
   const slug = video.slug ?? String(video.id)
   const url = new URL(`/video-embed/${encodeURIComponent(slug)}`, window.location.origin)
 
   if (ondemandChannel) {
     url.searchParams.set('ondemand_channel', ondemandChannel)
   }
+  if (playlistId) {
+    url.searchParams.set('playlist', playlistId)
+  }
 
   return url.toString()
+}
+
+function buildPlaylistEmbedUrl(video: MediaItem, channelId?: string | number | null, playlistId?: string | null, autoplay = false) {
+  if (!video.slug) return '#'
+
+  const params = new URLSearchParams()
+  if (video.ondemand_channel_id ?? channelId) {
+    params.set('ondemand_channel', String(video.ondemand_channel_id ?? channelId))
+  }
+  if (playlistId) {
+    params.set('playlist', playlistId)
+  }
+  if (autoplay) {
+    params.set('autoplay', '1')
+  }
+
+  return `/video-embed/${encodeURIComponent(video.slug)}?${params.toString()}`
 }
 
 function buildWatchUrl(video: VideoDetail, ondemandChannel?: string | null) {
@@ -1038,6 +1457,29 @@ function escapeHtmlAttribute(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 }
 
+function cleanDisplayText(value?: string | null, fallback = '') {
+  const text = stripHtml(value ?? '')
+
+  return text || fallback
+}
+
 function stripHtml(value: string) {
-  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return decodeHtmlEntities(value.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()
+}
+
+function decodeHtmlEntities(value: string) {
+  if (!value) return ''
+
+  if (typeof document !== 'undefined') {
+    const textarea = document.createElement('textarea')
+    textarea.innerHTML = value
+    return textarea.value
+  }
+
+  return value
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
 }

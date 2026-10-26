@@ -128,6 +128,16 @@ return [
                 'datatype' => 'misc',
             ],
             [
+                'type' => 'textarea',
+                'data' => 'string',
+                'name' => 'live_tv_chat_link_allowed_emails',
+                'label' => 'Live Chat Link Allowed Emails',
+                'rules' => 'nullable|string|max:5000',
+                'class' => '',
+                'value' => '',
+                'datatype' => 'misc',
+            ],
+            [
                 'type' => 'file', // input fields type
                 'data' => 'string', // data type, string, int, boolean
                 'name' => 'logo', // unique name for field
@@ -427,6 +437,17 @@ return [
             [
                 'type' => 'checkbox',
                 'data' => 'module_settings',
+                'name' => 'ios_app_restrictions_enabled',
+                'label' => 'Enable iOS App Store Restrictions',
+                'rules' => 'boolean',
+                'class' => '',
+                'value' => '1',
+                'help' => 'Hide login, subscription, pricing, payment, and external purchase features inside the Capacitor iOS app.',
+            ],
+
+            [
+                'type' => 'checkbox',
+                'data' => 'module_settings',
                 'name' => 'enable_tmdb_api',
                 'label' => 'Import Data From TMDB',
                 'rules' => 'boolean',
@@ -554,6 +575,16 @@ return [
                 'rules' => '', // validation rule of laravel
                 'class' => '', // any class for input
                 'value' => '10', // default value if you want
+                'datatype' => 'misc',
+            ],
+            [
+                'type' => 'number',
+                'data' => 'misc',
+                'name' => 'homepage_rail_item_limit',
+                'label' => 'Homepage Rail Item Limit',
+                'rules' => 'nullable|integer|min:1|max:100',
+                'class' => '',
+                'value' => '15',
                 'datatype' => 'misc',
             ],
             [
@@ -1869,6 +1900,16 @@ return [
             'class' => '', // any class for input
             'value' => 'false', // default value
             'options' => ['false' => 'False', 'true' => 'True'], // select options
+            'datatype' => 'storageconfig',
+        ],
+        [
+            'type' => 'checkbox',
+            'data' => 'storage_settings',
+            'name' => 'media_compressor_api_enabled',
+            'label' => 'Enable Media Compressor API',
+            'rules' => 'boolean',
+            'class' => '',
+            'value' => filter_var(env('MEDIA_COMPRESSOR_API_ENABLED', false), FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
             'datatype' => 'storageconfig',
         ],
         [

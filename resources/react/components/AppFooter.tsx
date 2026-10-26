@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Film, Globe2, Home, Mail, Phone, Search, Send, Tv, X } from 'lucide-react'
+import { Film, Globe2, Home, Mail, Phone, Search, Send, Tv, UsersRound, X } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { isNativeIosApp } from '@/lib/native-platform'
 import { BrandLogo } from '@/components/BrandLogo'
 import type { ApiEnvelope } from '@/modules/home/types'
 
@@ -69,7 +70,7 @@ export function AppFooter() {
 
   return (
     <>
-      <SubscriberFooterSection onSubscribe={() => setSubscriberFormOpen(true)} />
+      {!isNativeIosApp() ? <SubscriberFooterSection onSubscribe={() => setSubscriberFormOpen(true)} /> : null}
       <footer className="border-t border-white/10 bg-[#050505] px-4 pb-24 pt-12 text-white sm:px-8 lg:px-12 lg:pb-0">
         <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,0.9fr)_1px_minmax(0,2fr)]">
           <section className="min-w-0">
@@ -141,7 +142,7 @@ export function AppFooter() {
       </footer>
 
       <MobileFooterMenu />
-      {subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
+      {!isNativeIosApp() && subscriberFormOpen ? <SubscriberFormModal onClose={() => setSubscriberFormOpen(false)} /> : null}
     </>
   )
 }
@@ -291,7 +292,7 @@ function MobileFooterMenu() {
     { label: 'Search', href: '/search', icon: Search },
     { label: 'On Demand', href: '/on-demand', icon: Film },
     { label: 'Live TV', href: '/livetv', icon: Tv },
-    { label: 'Distribution', href: '/distribution', icon: Globe2 },
+    { label: 'Connect', href: 'https://ezwayconnect.com', icon: UsersRound, external: true },
   ]
 
   return (
@@ -302,7 +303,12 @@ function MobileFooterMenu() {
 
           return (
             <li key={item.label} className="min-w-0 overflow-hidden">
-              <a href={item.href} className="flex min-h-14 min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 text-[9px] font-bold text-white/62 hover:bg-white/[0.06] hover:text-white">
+              <a
+                href={item.href}
+                target={'external' in item && item.external ? '_blank' : undefined}
+                rel={'external' in item && item.external ? 'noreferrer' : undefined}
+                className="flex min-h-14 min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 text-[9px] font-bold text-white/62 hover:bg-white/[0.06] hover:text-white"
+              >
                 <Icon className="h-4 w-4" />
                 <span className="block max-w-full truncate leading-none">{item.label}</span>
               </a>

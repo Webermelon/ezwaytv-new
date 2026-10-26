@@ -3,6 +3,7 @@
 namespace Modules\LiveTV\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuthorChannel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Traits\ModuleTrait;
@@ -214,7 +215,8 @@ class LiveTvChannelController extends Controller
         $module_title = __('livetv.add_tvchannel');
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
-        return view('livetv::backend.channel.create', compact('plan', 'assets','tvcategory', 'embedded', 'url', 'streamMapping', 'module_title', 'mediaUrls','page_type'));
+        $vodChannels = $this->vodChannelOptions();
+        return view('livetv::backend.channel.create', compact('plan', 'assets','tvcategory', 'embedded', 'url', 'streamMapping', 'module_title', 'mediaUrls','page_type', 'vodChannels'));
     }
 
     /**
@@ -226,9 +228,11 @@ class LiveTvChannelController extends Controller
         $data = $request->all();
         if ($this->supportsLiveChatSetting()) {
             $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+            $this->normalizeChatSettings($data, $request);
         } else {
             unset($data['enable_live_chat']);
         }
+        $this->normalizeVodChannelButtonData($data);
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
@@ -272,11 +276,13 @@ class LiveTvChannelController extends Controller
         $module_title = __('livetv.edit_tvchannel');
         $page_type='livetv';
         $mediaUrls = getMediaUrls();
+        $vodChannels = $this->vodChannelOptions();
         $playerViewSettings = [
             'show_player_views' => StatSetting::get("show_player_views:livetv:{$data->id}", '0'),
+            'schedule_enabled' => StatSetting::get("schedule_enabled:livetv:{$data->id}", '1'),
         ];
 
-        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings'));
+        return view('livetv::backend.channel.edit', compact('data','assets', 'plan', 'tvcategory', 'embedded', 'url', 'module_title', 'mediaUrls','page_type', 'playerViewSettings', 'vodChannels'));
     }
 
     /**
@@ -298,9 +304,11 @@ class LiveTvChannelController extends Controller
         $data = $request->all();
         if ($this->supportsLiveChatSetting()) {
             $data['enable_live_chat'] = $request->boolean('enable_live_chat');
+            $this->normalizeChatSettings($data, $request);
         } else {
             unset($data['enable_live_chat']);
         }
+        $this->normalizeVodChannelButtonData($data);
         $data['poster_url'] = extractFileNameFromUrl($data['poster_url'],'livetv');
         $data['poster_tv_url'] = extractFileNameFromUrl($data['poster_tv_url'],'livetv');
         $data['thumb_url'] = extractFileNameFromUrl($data['thumbnail_url'],'livetv');
@@ -323,17 +331,23 @@ class LiveTvChannelController extends Controller
         $liveTvChannel->update($data);
 
 
-        $mappingstream = TvChannelStreamContentMapping::where('tv_channel_id', $id)->first();
-
-        if (!empty($mappingstream) && !empty($data['stream_type'])) {
-            $mappingstream->update([
+        if (!empty($data['stream_type'])) {
+            $streamMappingData = [
                 'type' => $data['type'],
                 'stream_type' => $data['stream_type'],
                 'embedded' => $data['embedded'],
                 'server_url' => $data['server_url'],
                 'server_url1' => $data['server_url1'] ?? null,
-                'api_key' => $data['api_key'] ?? null,
-            ]);
+                'api_key' => filled($request->input('api_key')) ? trim($request->input('api_key')) : null,
+            ];
+
+            $updatedMappings = TvChannelStreamContentMapping::where('tv_channel_id', $id)->update($streamMappingData);
+
+            if ($updatedMappings === 0) {
+                TvChannelStreamContentMapping::create(array_merge($streamMappingData, [
+                    'tv_channel_id' => $id,
+                ]));
+            }
         }
 
         $this->savePlayerViewSettings($request, (int) $id);
@@ -344,7 +358,7 @@ class LiveTvChannelController extends Controller
         }
 
         $message = trans('messages.update_form_livetv', ['form' => 'Tv Channel']);
-        return redirect()->route('backend.tv-channel.index')->with('success', $message);
+        return redirect()->route('backend.tv-channel.edit', $id)->with('success', $message);
     }
 
     private function supportsLiveChatSetting(): bool
@@ -355,6 +369,41 @@ class LiveTvChannelController extends Controller
     private function savePlayerViewSettings(Request $request, int $channelId): void
     {
         StatSetting::set("show_player_views:livetv:{$channelId}", $request->boolean('show_player_views') ? '1' : '0');
+        StatSetting::set("schedule_enabled:livetv:{$channelId}", $request->boolean('schedule_enabled') ? '1' : '0');
+    }
+
+    private function vodChannelOptions()
+    {
+        return AuthorChannel::query()
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+    }
+
+    private function normalizeVodChannelButtonData(array &$data): void
+    {
+        $vodChannelId = $data['vod_channel_id'] ?? null;
+        $data['vod_channel_id'] = filled($vodChannelId) ? (int) $vodChannelId : null;
+        $data['vod_channel_button_name'] = $data['vod_channel_id']
+            ? trim((string) ($data['vod_channel_button_name'] ?? '')) ?: 'View On Demand'
+            : null;
+    }
+
+    private function normalizeChatSettings(array &$data, Request $request): void
+    {
+        $data['chat_title'] = trim((string) $request->input('chat_title', '')) ?: 'Live Chat';
+        $data['chat_ads_enabled'] = $request->boolean('chat_ads_enabled');
+        $data['chat_ad_rotation_seconds'] = 3;
+        $data['chat_ad_banners'] = collect($request->input('chat_ad_banners', []))
+            ->map(fn ($banner) => [
+                'image_url' => trim((string) ($banner['image_url'] ?? '')),
+                'link_url' => trim((string) ($banner['link_url'] ?? '')) ?: null,
+                'label' => trim((string) ($banner['label'] ?? '')) ?: null,
+            ])
+            ->filter(fn ($banner) => $banner['image_url'] !== '')
+            ->take(10)
+            ->values()
+            ->all();
     }
 
     /**

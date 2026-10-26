@@ -291,7 +291,7 @@
 
 
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_trailer_url_type') . ' <span class="text-danger">*</span>', 'type')->class('form-label') }}
+                            {{ html()->label(__('movie.lbl_trailer_url_type'), 'type')->class('form-label') }}
                             {{ html()->select(
                                     'trailer_url_type',
                                     $upload_url_type->pluck('name', 'value')->prepend(__('placeholder.lbl_select_type'), ''),
@@ -300,11 +300,10 @@
                             @error('trailer_url_type')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.trailer_type_field_required') }}</div>
 
                         </div>
                         <div class="col-md-6 col-lg-4 d-none" id="url_input">
-                            {{ html()->label(__('movie.lbl_trailer_url') . ' <span class="text-danger">*</span>', 'trailer_url')->class('form-label') }}
+                            {{ html()->label(__('movie.lbl_trailer_url'), 'trailer_url')->class('form-label') }}
 
                             <!-- Regular input for URLs -->
                             <div id="regular_input">
@@ -364,12 +363,11 @@
                 <div class="card-body">
                     <div class="row gy-3">
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_duration') . ' <span class="text-danger">*</span>', 'duration')->class('form-label') }}
-                            {{ html()->time('duration')->attribute('value', $data->duration)->placeholder(__('movie.lbl_duration'))->class('form-control  min-datetimepicker-time')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_duration'), 'duration')->class('form-label') }}
+                            {{ html()->time('duration')->attribute('value', $data->duration)->placeholder(__('movie.lbl_duration'))->class('form-control min-datetimepicker-time')->id('duration') }}
                             @error('time')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="duration-error">{{ __('messages.duration_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('messages.lbl_skip_intro_start_time'), 'start_time')->class('form-label') }}
@@ -396,21 +394,19 @@
                             <div class="invalid-feedback" id="imdb-error">{{ __('messages.imdb_rating_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_release_date') . ' <span class="text-danger">*</span>', 'release_date')->class('form-label') }}
-                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_release_date'), 'release_date')->class('form-label') }}
+                            {{ html()->date('release_date')->attribute('value', $data->release_date ? \Carbon\Carbon::parse($data->release_date)->format('Y-m-d') : '')->placeholder(__('movie.lbl_release_date'))->class('form-control datetimepicker') }}
                             @error('release_date')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="release_date-error">{{ __('messages.release_date_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
-                            {{ html()->label(__('movie.lbl_content_rating') . '<span class="text-danger">*</span>', 'content_rating')->class('form-label') }}
-                            {{ html()->text('content_rating')->attribute('value', $data->content_rating)->placeholder(__('placeholder.lbl_content_rating'))->class('form-control')->attribute('required', 'required') }}
+                            {{ html()->label(__('movie.lbl_content_rating'), 'content_rating')->class('form-label') }}
+                            {{ html()->text('content_rating')->attribute('value', $data->content_rating)->placeholder(__('placeholder.lbl_content_rating'))->class('form-control') }}
 
                             @error('content_rating')
                                 <span class="text-danger">{{ $message }}</span>
                             @enderror
-                            <div class="invalid-feedback" id="name-error">{{ __('messages.content_rating_field_required') }}</div>
                         </div>
                         <div class="col-md-6 col-lg-4">
                             {{ html()->label(__('movie.lbl_download_status'), 'download_status')->class('form-label') }}
@@ -1371,14 +1367,14 @@
 
                 if (selectedValue === 'Local') {
                     if (FileInput) FileInput.classList.remove('d-none');
-                    if (trailerfile) trailerfile.setAttribute('required', 'required');
+                    if (trailerfile) trailerfile.removeAttribute('required');
                 } else if (selectedValue === 'Embedded') {
                     if (EmbedInput) EmbedInput.classList.remove('d-none');
-                    if (IframeField) IframeField.setAttribute('required', 'required');
+                    if (IframeField) IframeField.removeAttribute('required');
                 } else if (selectedValue === 'URL' || selectedValue === 'YouTube' || selectedValue === 'HLS' ||
                     selectedValue === 'x265' || selectedValue === 'Vimeo') {
                     if (URLInput) URLInput.classList.remove('d-none');
-                    if (URLInputField) URLInputField.setAttribute('required', 'required');
+                    if (URLInputField) URLInputField.removeAttribute('required');
                 }
             }
 
@@ -1738,20 +1734,20 @@
 
                 if (selectedValue === 'Local') {
                     if (FileInput) FileInput.classList.remove('d-none');
-                    if (trailerfile) trailerfile.setAttribute('required', 'required');
+                    if (trailerfile) trailerfile.removeAttribute('required');
                     if (URLInputField) URLInputField.removeAttribute('required');
                     if (embeddedField) embeddedField.removeAttribute('required');
                 } else if (selectedValue === 'Embedded') {
                     if (URLInput) URLInput.classList.remove('d-none');
                     if (embeddedInput) embeddedInput.classList.remove('d-none');
-                    if (embeddedField) { embeddedField.setAttribute('required', 'required'); embeddedField.value = existingTrailerUrl; }
+                    if (embeddedField) { embeddedField.removeAttribute('required'); embeddedField.value = existingTrailerUrl; }
                     if (URLInputField) URLInputField.removeAttribute('required');
                     if (trailerfile) trailerfile.removeAttribute('required');
                 } else if (selectedValue === 'URL' || selectedValue === 'YouTube' ||
                     selectedValue === 'HLS' || selectedValue === 'Vimeo' || selectedValue === 'x265') {
                     if (URLInput) URLInput.classList.remove('d-none');
                     if (regularInput) regularInput.classList.remove('d-none');
-                    if (URLInputField) { URLInputField.setAttribute('required', 'required'); URLInputField.value = existingTrailerUrl; }
+                    if (URLInputField) { URLInputField.removeAttribute('required'); URLInputField.value = existingTrailerUrl; }
                     if (embeddedField) embeddedField.removeAttribute('required');
                     if (trailerfile) trailerfile.removeAttribute('required');
                 }
@@ -1962,7 +1958,7 @@
                 accessDurationInput.required = false;
                 availableForInput.required = false;
                 releaseDateField.classList.remove('d-none');
-                releaseDateInput.setAttribute('required', 'required');
+                releaseDateInput.removeAttribute('required');
                 downlaodstatusDataFeild.classList.remove('d-none');
             } else if (value === 'pay-per-view') {
                 planSelection.classList.add('d-none');
@@ -1984,7 +1980,7 @@
                 accessDurationInput.required = false;
                 availableForInput.required = false;
                 releaseDateField.classList.remove('d-none');
-                releaseDateInput.setAttribute('required', 'required');
+                releaseDateInput.removeAttribute('required');
                 downlaodstatusDataFeild.classList.remove('d-none');
             }
         }
