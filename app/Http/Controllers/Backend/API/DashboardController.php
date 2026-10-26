@@ -1785,7 +1785,7 @@ public function getTrandingData(Request $request){
                         ->where('placement', 'home_page')
                         ->whereDate('start_date', '<=', $today)
                         ->whereDate('end_date', '>=', $today)
-                        ->get(['id','type','url_type','media','mobile_media','redirect_url','redirect_target'])->map(function($ad) {
+                        ->get(['id','type','url_type','media','mobile_media','redirect_url','redirect_target','updated_at'])->map(function($ad) {
                             $desktopUrl = $ad->media
                                 ? ($ad->url_type === 'local' ? setBaseUrlWithFileName($ad->media, $ad->type, 'ads') : $ad->media)
                                 : null;
@@ -1800,6 +1800,7 @@ public function getTrandingData(Request $request){
                                 'mobile_url' => $mobileUrl,
                                 'redirect_url' => $ad->redirect_url,
                                 'redirect_target' => $ad->redirect_target,
+                                'media_version' => $ad->updated_at?->timestamp,
                             ];
                         });
 

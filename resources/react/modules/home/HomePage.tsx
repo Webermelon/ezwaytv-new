@@ -286,7 +286,7 @@ function PromoPanel({ promo, eager }: { promo: CustomPromo; eager: boolean }) {
 
 function resolvePromoUrl(promo: CustomPromo) {
   if (promo.type !== 'video' && promo.id) {
-    return `/api/v3/promo-media/${promo.id}/image`
+    return `/api/v3/promo-media/${promo.id}/image${promo.media_version ? `?v=${encodeURIComponent(String(promo.media_version))}` : ''}`
   }
 
   return promo.url ?? promo.media ?? ''
@@ -294,7 +294,8 @@ function resolvePromoUrl(promo: CustomPromo) {
 
 function resolvePromoMobileUrl(promo: CustomPromo) {
   if (promo.type !== 'video' && promo.id) {
-    return `/api/v3/promo-media/${promo.id}/image?device=mobile`
+    const version = promo.media_version ? `&v=${encodeURIComponent(String(promo.media_version))}` : ''
+    return `/api/v3/promo-media/${promo.id}/image?device=mobile${version}`
   }
 
   return promo.mobile_url ?? promo.mobile_media ?? promo.url ?? promo.media ?? ''
@@ -408,7 +409,7 @@ function Hero({
               <p className="text-sm font-extrabold uppercase tracking-normal text-[#f7d65b]">
                 Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movies Channel
               </p>
-              <Button asChild size="sm" className="min-h-9 rounded-md font-black text-black">
+              <Button asChild size="sm" className="hidden min-h-9 rounded-md font-black text-black sm:inline-flex">
                 <a href={contentHref(activeChannel)}>
                   <Play className="h-4 w-4 fill-current" />
                   Watch Live
