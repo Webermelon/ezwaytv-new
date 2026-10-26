@@ -30,6 +30,7 @@ const emptyState: HomeState = {
 }
 
 const homeHeroBackground = '/img/home/ezway-studio-hero.png'
+const homeHeroSlideDurationMs = 11000
 const homeHeroPromos = [
   {
     title: 'eZWay TV AI promo',
@@ -40,6 +41,9 @@ const homeHeroPromos = [
     embedUrl: 'https://www.youtube.com/embed/8GbQHtytQAE?autoplay=1&mute=1&playsinline=1&rel=0',
   },
 ]
+const homeHeroChannelVideos: Record<string, string> = {
+  'ezway-movies': 'https://ezwaynetwork.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_4_13_39_am-360p.mp4',
+}
 export function HomePage() {
   const homeQuery = useQuery({
     queryKey: ['home-module'],
@@ -318,7 +322,7 @@ function Hero({
 
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % channelSlides.length)
-    }, 6500)
+    }, homeHeroSlideDurationMs)
 
     return () => window.clearInterval(timer)
   }, [channelSlides.length])
@@ -406,7 +410,7 @@ function Hero({
         </div>
 
         <div className="w-full self-center lg:max-w-[760px] lg:justify-self-end lg:pt-4">
-          <HomeHeroPromoEmbed />
+          <HomeHeroPromoEmbed channel={activeChannel} />
         </div>
       </div>
     </section>
@@ -436,24 +440,59 @@ function HeroTitle({ title }: { title: string }) {
   )
 }
 
-function HomeHeroPromoEmbed() {
+function HomeHeroPromoEmbed({ channel }: { channel?: MediaItem }) {
   const [activePromoIndex, setActivePromoIndex] = useState(0)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const activePromo = homeHeroPromos[activePromoIndex]
+  const channelSlug = channel?.details?.slug ?? channel?.slug
+  const channelVideo = channelSlug ? homeHeroChannelVideos[channelSlug] : undefined
+  const channelPoster = channel?.thumbnail_url ?? channel?.details?.thumbnail_image ?? channel?.poster_tv_image ?? channel?.poster_image
+
+  useEffect(() => {
+    if (!channelVideo || !videoRef.current) return
+
+    const video = videoRef.current
+    const startPlayback = () => {
+      video.muted = true
+      video.play().catch(() => undefined)
+    }
+
+    video.addEventListener('canplay', startPlayback)
+    startPlayback()
+
+    return () => video.removeEventListener('canplay', startPlayback)
+  }, [channelVideo])
 
   return (
     <div className="ez-home-hero-player relative w-full overflow-hidden rounded-lg border-2 border-[#f3c74d] bg-black">
       <div className="aspect-video">
-        <iframe
-          src={activePromo.embedUrl}
-          title={activePromo.title}
-          className="h-full w-full border-0"
-          allow="autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-          loading="eager"
-        />
+        {channelVideo ? (
+          <video
+            key={channelVideo}
+            ref={videoRef}
+            src={channelVideo}
+            poster={channelPoster}
+            className="h-full w-full object-contain"
+            autoPlay
+            muted
+            defaultMuted
+            loop
+            playsInline
+            preload="auto"
+          />
+        ) : (
+          <iframe
+            src={activePromo.embedUrl}
+            title={activePromo.title}
+            className="h-full w-full border-0"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            loading="eager"
+          />
+        )}
       </div>
 
-      {homeHeroPromos.length > 1 ? (
+      {!channelVideo && homeHeroPromos.length > 1 ? (
         <div className="flex h-8 items-center justify-center gap-2 border-t border-white/10 bg-[#080808]">
           {homeHeroPromos.map((promo, index) => (
             <button
