@@ -125,7 +125,7 @@ export function AppHeader({ active }: AppHeaderProps) {
         <div className="flex h-16 w-full items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-6">
             <BrandLogo imageClassName="max-h-11 max-w-[190px]" textClassName="text-2xl" placeholderClassName="h-10 w-[170px]" />
-            <nav className="hidden items-center gap-1 text-sm font-semibold text-white/62 md:flex">
+            <nav className="hidden items-center gap-1 text-sm font-semibold text-white/62 min-[1900px]:flex">
               {visibleNavItems.map((item) => {
                 const items = item.dropdown ? dropdowns[item.dropdown] : []
 
@@ -134,7 +134,7 @@ export function AppHeader({ active }: AppHeaderProps) {
                     <a
                       href={item.href}
                       className={[
-                        'relative inline-flex h-16 items-center gap-1.5 border-b-2 px-3 text-sm transition',
+                        'relative inline-flex h-16 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm transition',
                         activeKey === item.key
                           ? 'border-[#d4a843] text-white'
                           : 'border-transparent text-white/62 hover:border-white/20 hover:text-white',
@@ -161,7 +161,7 @@ export function AppHeader({ active }: AppHeaderProps) {
             <a
               href="/search"
               aria-label="Search"
-              className="ez-header-search-desktop hidden h-10 min-w-[112px] items-center justify-start gap-2 rounded-md border border-white/10 bg-white/[0.08] px-4 text-sm font-bold text-white transition hover:bg-white/[0.14] md:inline-flex lg:min-w-[144px] xl:min-w-[168px]"
+              className="ez-header-search-desktop hidden h-10 min-w-[144px] items-center justify-start gap-2 rounded-md border border-white/10 bg-white/[0.08] px-4 text-sm font-bold text-white transition hover:bg-white/[0.14] min-[1900px]:inline-flex min-[2200px]:min-w-[168px]"
             >
               <Search className="ez-header-search-icon h-5 w-5 shrink-0" />
               <span className="ez-header-search-label">Search</span>
@@ -170,7 +170,7 @@ export function AppHeader({ active }: AppHeaderProps) {
               href="https://ezwayconnect.com"
               target="_blank"
               rel="noreferrer"
-              className="hidden h-10 items-center gap-2 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-sm font-black text-[#f0c24d] transition hover:border-[#d4a843] hover:bg-[#d4a843]/20 lg:inline-flex"
+              className="hidden h-10 items-center gap-2 rounded-md border border-[#d4a843]/45 bg-[#d4a843]/12 px-3 text-sm font-black text-[#f0c24d] transition hover:border-[#d4a843] hover:bg-[#d4a843]/20 min-[1900px]:inline-flex"
             >
               <UsersRound className="h-4 w-4" />
               Connect
@@ -179,7 +179,7 @@ export function AppHeader({ active }: AppHeaderProps) {
             {!nativeIos && (!authUser || !authUser.is_subscribe) ? (
               <a
                 href="/subscription-plan"
-                className="hidden h-9 items-center gap-2 rounded-md bg-[#d4a843] px-3 text-sm font-black text-black transition hover:bg-[#efc955] lg:inline-flex"
+                className="hidden h-9 items-center gap-2 rounded-md bg-[#d4a843] px-3 text-sm font-black text-black transition hover:bg-[#efc955] min-[1900px]:inline-flex"
               >
                 Subscribe
               </a>
@@ -188,7 +188,7 @@ export function AppHeader({ active }: AppHeaderProps) {
             {authUser ? <ProfileMenu user={authUser} nativeIos={nativeIos} /> : !nativeIos ? (
               <a
                 href="/login"
-                className="hidden h-9 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-black text-white transition hover:bg-white/[0.14] lg:inline-flex"
+                className="hidden h-9 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] px-3 text-sm font-black text-white transition hover:bg-white/[0.14] min-[1900px]:inline-flex"
               >
                 <UserCircle className="h-4 w-4" />
                 <span>Login</span>
@@ -196,7 +196,7 @@ export function AppHeader({ active }: AppHeaderProps) {
             ) : null}
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/[0.08] text-white transition hover:bg-white/[0.14] min-[1900px]:hidden"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen((open) => !open)}
@@ -258,7 +258,7 @@ function MobileMenu({
   })
 
   return (
-    <div className="fixed inset-0 z-[9999] h-dvh w-screen max-w-[100dvw] overflow-y-auto overflow-x-hidden bg-black/72 backdrop-blur-sm [overscroll-behavior:contain] [-webkit-overflow-scrolling:touch] md:hidden">
+    <div className="fixed inset-0 z-[9999] h-dvh w-screen max-w-[100dvw] overflow-y-auto overflow-x-hidden bg-black/72 backdrop-blur-sm [overscroll-behavior:contain] [-webkit-overflow-scrolling:touch] min-[1900px]:hidden">
       <nav className="min-h-dvh w-full max-w-full bg-[radial-gradient(circle_at_78%_12%,rgba(212,168,67,0.16),transparent_28%),radial-gradient(circle_at_10%_76%,rgba(255,255,255,0.07),transparent_24%),linear-gradient(135deg,#050807_0%,#091011_48%,#050505_100%)] text-white shadow-2xl shadow-black">
         <div className="sticky top-0 z-10 flex w-full min-w-0 max-w-full items-center justify-between gap-4 bg-[#050807]/92 px-5 pb-4 pt-5 backdrop-blur-xl">
           <BrandLogo imageClassName="max-h-12 max-w-[200px]" textClassName="text-2xl" placeholderClassName="h-10 w-[180px]" />
@@ -473,7 +473,7 @@ function ProfileMenu({ user, nativeIos }: { user: AuthUser; nativeIos: boolean }
   const menuItems = profileMenuItems(user, nativeIos)
 
   return (
-    <div className="group relative hidden lg:block">
+    <div className="group relative hidden min-[1900px]:block">
       <button
         type="button"
         className="flex h-10 items-center gap-2 rounded-md border border-white/10 bg-white/[0.08] pl-2 pr-3 text-left text-sm font-bold text-white transition hover:bg-white/[0.14]"
