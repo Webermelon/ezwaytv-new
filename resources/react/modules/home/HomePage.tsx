@@ -256,16 +256,23 @@ function PromoPanel({ promo, eager }: { promo: CustomPromo; eager: boolean }) {
       {promo.type === 'video' ? (
         <video src={mediaUrl} className="h-full w-full object-contain" autoPlay muted loop playsInline />
       ) : (
-        <picture className="block h-full w-full">
-          <source media="(max-width: 767px)" srcSet={mobileMediaUrl} />
-          <img
-            src={mediaUrl}
-            alt={promo.name ?? 'Promotion'}
-            className="block h-full w-full object-contain"
-            loading={eager ? 'eager' : 'lazy'}
-            referrerPolicy="no-referrer"
-          />
-        </picture>
+        <>
+          <picture className="pointer-events-none absolute -inset-[8%] block h-[116%] w-[116%] scale-110 opacity-55 blur-2xl">
+            <source media="(max-width: 767px)" srcSet={mobileMediaUrl} />
+            <img src={mediaUrl} alt="" className="h-full w-full object-cover" aria-hidden="true" />
+          </picture>
+          <div className="pointer-events-none absolute inset-0 bg-black/30" />
+          <picture className="relative block h-full w-full">
+            <source media="(max-width: 767px)" srcSet={mobileMediaUrl} />
+            <img
+              src={mediaUrl}
+              alt={promo.name ?? 'Promotion'}
+              className="block h-full w-full object-contain"
+              loading={eager ? 'eager' : 'lazy'}
+              referrerPolicy="no-referrer"
+            />
+          </picture>
+        </>
       )}
     </div>
   )
