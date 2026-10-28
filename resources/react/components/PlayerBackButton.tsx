@@ -9,11 +9,6 @@ type PlayerBackButtonProps = {
 
 export function PlayerBackButton({ fallbackHref, className = '', label = 'Back', variant = 'player' }: PlayerBackButtonProps) {
   function handleBack() {
-    if (window.history.length > 1) {
-      window.history.back()
-      return
-    }
-
     window.location.href = fallbackHref
   }
 

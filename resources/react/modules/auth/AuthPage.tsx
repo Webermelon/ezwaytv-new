@@ -33,6 +33,7 @@ class AuthRequestError extends Error {
 export function AuthPage() {
   const mode = inferAuthMode()
   const copy = authCopy(mode)
+  const requestedRedirect = getRequestedRedirectUrl()
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
@@ -46,10 +47,10 @@ export function AuthPage() {
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#050505] to-transparent" />
 
         <div className="relative z-10 mx-auto grid min-h-[calc(100vh-64px)] max-w-[1800px] items-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,500px)] lg:px-12">
-          <div className="max-w-2xl">
-            <a href="/" className="mb-8 inline-flex w-fit items-center gap-2 text-sm font-bold text-white/62 transition hover:text-white">
+          <div className="hidden max-w-2xl lg:block">
+            <a href={requestedRedirect || '/'} className="mb-8 inline-flex w-fit items-center gap-2 text-sm font-bold text-white/62 transition hover:text-white">
               <ArrowLeft className="h-4 w-4" />
-              Back to eZWay TV
+              {requestedRedirect ? 'Back to player' : 'Back to eZWay TV'}
             </a>
             <div className="mb-8">
               <BrandLogo imageClassName="max-h-16 max-w-[260px]" textClassName="text-4xl" placeholderClassName="h-14 w-[230px]" />

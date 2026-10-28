@@ -288,6 +288,7 @@ function LiveTvDetailPage({
   suggestions: MediaItem[]
 }) {
   const title = channel?.details?.name ?? channel?.name ?? 'Live channel'
+  const isEzwayMoviesChannel = (channel?.details?.slug ?? channel?.slug) === 'ezway-movies'
   const image = channel?.poster_tv_image ?? channel?.poster_image ?? channel?.details?.thumbnail_image
   const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
   const channelBadge = channelNumber ? channelLabel(channelNumber) : null
@@ -405,7 +406,7 @@ function LiveTvDetailPage({
       <AppHeader active="livetv" />
       <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
         <div className="w-screen">
-          <PlayerHeader fallbackHref="/livetv" />
+          <PlayerHeader fallbackHref={isEzwayMoviesChannel ? '/' : '/livetv'} />
           <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'bg-black'}>
             <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
               {isSubscriptionLocked ? (
@@ -778,10 +779,10 @@ function LiveTvPlayerStats({ stats, compact = false }: { stats?: ContentStats | 
   const views = Number(stats.display_views ?? stats.total_views ?? 0)
 
   return (
-    <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-white/50" : "mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-white/62"}>
+    <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-bold text-white/90" : "mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold text-white/85"}>
       <span className="inline-flex items-center gap-2">
-        <Eye className="h-4 w-4" />
-        {formatCompactCount(views)} views
+        <Eye className="h-4 w-4 shrink-0 text-[#edc342]" />
+        <span>{formatCompactCount(views)} views</span>
       </span>
     </div>
   )
