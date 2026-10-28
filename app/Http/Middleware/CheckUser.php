@@ -19,6 +19,9 @@ class CheckUser
     public function handle($request, Closure $next)
     {
         if (!Auth::check()) {
+            if ($request->expectsJson()) {
+                return response()->json(['status' => false, 'message' => 'Please sign in again to save changes.'], 401);
+            }
             // Check if there's logout info in cache for this IP (from logoutAll)
             $currentIp = $request->getClientIp();
             $logoutInfo = Cache::get('logout_info_' . $currentIp);
@@ -51,6 +54,9 @@ class CheckUser
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => false, 'message' => __('messages.user_account_inactive')], 403);
+            }
             return redirect()->route('login-page')->with('error', __('messages.user_account_inactive'));
         }
 

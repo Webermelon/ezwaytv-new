@@ -53,6 +53,7 @@ export async function addToWatchlist(entertainmentId?: string | number, type?: s
     entertainment_id: entertainmentId,
     type,
   })
+  if (response.status === false) throw new Error(response.message || 'Could not save this item. Please try again.')
 
   return response.message
 }
@@ -62,6 +63,7 @@ export async function removeFromWatchlist(entertainmentId?: string | number, typ
     entertainment_id: entertainmentId,
     type,
   })
+  if (response.status === false) throw new Error(response.message || 'Could not remove this item. Please try again.')
 
   return response.message
 }

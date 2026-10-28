@@ -38,6 +38,11 @@ use Illuminate\Http\Request;
 // Auth Routes
 require __DIR__ . '/auth.php';
 
+Route::get('/auth/csrf-token', function (Request $request) {
+    return response()->json(['csrf_token' => $request->session()->token()])
+        ->header('Cache-Control', 'private, no-store');
+})->name('auth.csrf-token');
+
 Route::get('/auth/connect/start', [ConnectSsoController::class, 'start'])
     ->middleware('throttle:20,1')->name('connect-sso.start');
 Route::get('/auth/connect/callback', [ConnectSsoController::class, 'callback'])

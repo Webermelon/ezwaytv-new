@@ -22,6 +22,7 @@ export class ApiError extends Error {
 export class ApiClient {
   private baseUrl: string
   private token?: string
+  private csrfRefresh: Promise<string | null> | null = null
 
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? ''
@@ -59,20 +60,77 @@ export class ApiClient {
       headers.set('Authorization', `Bearer ${token}`)
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const send = () => fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers,
       credentials: 'same-origin',
     })
+    let response = await send()
+    if (response.status === 419 && !['GET', 'HEAD'].includes(options.method ?? 'GET')) {
+      const freshToken = await this.refreshCsrfToken()
+      if (freshToken) {
+        headers.set('X-CSRF-TOKEN', freshToken)
+        response = await send()
+      }
+    }
 
     const payload = await parseResponse(response)
 
+    if (response.redirected && /\/(?:login|login-page|admin\/login)\/?$/.test(new URL(response.url).pathname)) {
+      throw new ApiError('Please sign in again to save changes.', 401, null)
+    }
     if (!response.ok) {
-      throw new ApiError(response.statusText || 'API request failed', response.status, payload)
+      throw new ApiError(errorMessage(payload, response.status), response.status, payload)
     }
 
     return payload as T
   }
+
+  private async refreshCsrfToken(): Promise<string | null> {
+    if (!this.csrfRefresh) {
+      this.csrfRefresh = (async () => {
+        try {
+          const response = await fetch('/auth/csrf-token', {
+            headers: { Accept: 'application/json' }, credentials: 'same-origin', cache: 'no-store',
+          })
+          const payload = await parseResponse(response)
+          if (!response.ok || !payload || typeof payload !== 'object'
+            || typeof payload.csrf_token !== 'string' || !payload.csrf_token) return null
+
+          let meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+          if (!meta) {
+            meta = document.createElement('meta')
+            meta.name = 'csrf-token'
+            document.head.appendChild(meta)
+          }
+          meta.content = payload.csrf_token
+          return payload.csrf_token as string
+        } catch {
+          return null
+        }
+      })()
+    }
+    try {
+      return await this.csrfRefresh
+    } finally {
+      this.csrfRefresh = null
+    }
+  }
+}
+
+function errorMessage(payload: unknown, status: number): string {
+  if (payload && typeof payload === 'object') {
+    const data = payload as { message?: unknown; error?: unknown; errors?: Record<string, unknown> }
+    if (typeof data.message === 'string' && data.message.trim()) return data.message
+    if (typeof data.error === 'string' && data.error.trim()) return data.error
+    if (data.errors && typeof data.errors === 'object') {
+      const first = Object.values(data.errors).flat().find((value) => typeof value === 'string' && value.trim())
+      if (typeof first === 'string') return first
+    }
+  }
+  if (status === 419) return 'Your session has expired. Please refresh the page and try again.'
+  if (status === 401) return 'Please sign in again to save changes.'
+  return 'The request could not be completed. Please try again.'
 }
 
 async function parseResponse(response: Response) {

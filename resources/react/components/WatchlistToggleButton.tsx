@@ -4,6 +4,7 @@ import { Check, Loader2, Plus } from 'lucide-react'
 
 import { addToWatchlist, removeFromWatchlist } from '@/modules/account/watchlistApi'
 import { isNativeIosApp } from '@/lib/native-platform'
+import { ApiError } from '@/lib/api'
 
 type WatchlistToggleButtonProps = {
   entertainmentId?: string | number | null
@@ -24,11 +25,6 @@ export function WatchlistToggleButton({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!window.isAuthenticated) {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
-        return ''
-      }
-
       if (!entertainmentId || !type) {
         throw new Error('This item cannot be added to your watchlist.')
       }
@@ -43,6 +39,10 @@ export function WatchlistToggleButton({
       queryClient.invalidateQueries({ queryKey: ['watchlist'] })
     },
     onError: (mutationError) => {
+      if (mutationError instanceof ApiError && mutationError.status === 401) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+        return
+      }
       setError(mutationError instanceof Error ? mutationError.message : 'Watchlist update failed.')
       window.setTimeout(() => setError(''), 2400)
     },
@@ -51,6 +51,10 @@ export function WatchlistToggleButton({
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
     event.stopPropagation()
+    if (!window.isAuthenticated) {
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+      return
+    }
     mutation.mutate()
   }
 
