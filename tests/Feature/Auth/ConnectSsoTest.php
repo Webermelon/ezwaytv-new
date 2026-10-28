@@ -144,6 +144,77 @@ class ConnectSsoTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_android_browser_returns_callback_to_original_tv_session_before_login(): void
+    {
+        $user = $this->user(['connect_user_id' => 42]);
+        $webview = 'Mozilla/5.0 (Linux; Android 16; Device; wv) AppleWebKit/537.36 Version/4.0 Chrome/155.0.0.0 Mobile Safari/537.36';
+        $chrome = 'Mozilla/5.0 (Linux; Android 16; Device) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36';
+        $this->withHeader('User-Agent', $webview)->get('/auth/connect/start?redirect_to=%2Fvideos')->assertRedirect();
+        $intent = session('connect_sso');
+
+        // Connect returns to Chrome, which does not have the TV WebView's session.
+        session()->forget('connect_sso');
+        $response = $this->withHeader('User-Agent', $chrome)->get($this->callbackUrl($intent['state']))
+            ->assertOk()->assertSee('Return to eZWay TV');
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
+        $this->assertGuest();
+        Http::assertNothingSent();
+        preg_match('/id="return-to-tv"[^>]*href="([^"]+)"/', $response->getContent(), $matches);
+        $link = html_entity_decode($matches[1]);
+        $this->assertStringStartsWith('intent://open?url=', $link);
+        $this->assertStringEndsWith('#Intent;scheme=ezwaytv;package=tv.ezway.apps;end', $link);
+        $callback = rawurldecode(explode('#Intent;', substr($link, strlen('intent://open?url=')))[0]);
+        parse_str(parse_url($callback, PHP_URL_QUERY), $query);
+        $this->assertSame($intent['state'], $query['state']);
+        $this->assertSame(self::CODE, $query['code']);
+        $this->assertSame('1', $query['app_return']);
+
+        // Existing deep-link handling loads the callback in the original TV WebView.
+        Http::fake(['*' => Http::response(['data' => ['user_id' => 42]])]);
+        $this->withSession(['connect_sso' => $intent])->withHeader('User-Agent', $webview)
+            ->get(parse_url($callback, PHP_URL_PATH).'?'.parse_url($callback, PHP_URL_QUERY))
+            ->assertRedirect('/videos')->assertSessionMissing('connect_sso');
+        $this->assertAuthenticatedAs($user);
+        Http::assertSentCount(1);
+    }
+
+    public function test_ios_browser_handoff_does_not_exchange_or_authenticate(): void
+    {
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile Safari/604.1')
+            ->get($this->callbackUrl(str_repeat('b', 64)))
+            ->assertOk()->assertSee('ezwaytv://open?url=', false);
+        $this->assertGuest();
+        Http::assertNothingSent();
+    }
+
+    public function test_missing_session_after_app_return_does_not_loop_or_login(): void
+    {
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (Linux; Android 16) Chrome/155 Mobile Safari/537.36')
+            ->get($this->callbackUrl(str_repeat('b', 64)).'&app_return=1')
+            ->assertRedirect('/login?connect_status=failed');
+        $this->assertGuest();
+        Http::assertNothingSent();
+    }
+
+    public function test_tv_webview_without_saved_state_is_not_given_a_handoff_or_login(): void
+    {
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (Linux; Android 16; Device; wv) Chrome/155 Mobile Safari/537.36')
+            ->get($this->callbackUrl(str_repeat('b', 64)))
+            ->assertRedirect('/login?connect_status=failed');
+        $this->assertGuest();
+        Http::assertNothingSent();
+    }
+
+    public function test_app_return_cannot_bypass_original_state_validation(): void
+    {
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (Linux; Android 16; Device; wv) Chrome/155 Mobile Safari/537.36')
+            ->intent()->get($this->callbackUrl(str_repeat('c', 64)).'&app_return=1')
+            ->assertRedirect('/login?connect_status=failed');
+        $this->assertGuest();
+        Http::assertNothingSent();
+    }
+
     /** @dataProvider invalidCallbacks */
     public function test_invalid_callback_never_exchanges(array $query, bool $expired = false): void
     {

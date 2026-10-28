@@ -15,6 +15,20 @@ This temporary page is not linked from site navigation and sends `noindex`
 and `no-store` headers. Its button returns successful sign-ins to the same page.
 It uses the regular SSO routes and is available independently of `CONNECT_SSO_SHOW_LOGIN`.
 
+## Mobile app return
+
+Android/iOS can open Connect in an external browser while TV's login state
+remains in the TV app's WebView. A mobile callback with no initiating TV session
+now returns a small **Return to eZWay TV** page using the TV app's existing
+`ezwaytv://open?url=...` deep link (Android package `tv.ezway.apps`). It forwards
+the callback to the app instead of consuming the code in the external browser.
+
+The original TV session must still match the saved state before any exchange
+or login. The return page neither authenticates the external browser nor
+relaxes state validation. It disables caching, indexing, and referrer sharing.
+The `app_return=1` marker prevents a repeated app-return loop. If the original
+app session was cleared, start a new sign-in; the callback remains rejected.
+
 ## Deployment
 
 1. Apply the dedicated migration before configuring the secret:

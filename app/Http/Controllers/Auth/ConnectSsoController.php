@@ -8,6 +8,7 @@ use App\Services\ConnectSsoAccountService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -42,10 +43,14 @@ class ConnectSsoController extends Controller
         return redirect()->away($url.'/portal/authorize?'.http_build_query($query));
     }
 
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request): RedirectResponse|Response
     {
         $intent = $request->session()->pull('connect_sso');
         $state = $request->query('state');
+
+        if (! is_array($intent) && ($handoff = $this->returnToTvApp($request)) !== null) {
+            return $handoff;
+        }
 
         if (! is_array($intent)
             || (int) ($intent['expires_at'] ?? 0) <= now()->timestamp
@@ -135,6 +140,46 @@ class ConnectSsoController extends Controller
     private function failure(string $status = 'failed'): RedirectResponse
     {
         return redirect('/login?'.http_build_query(['connect_status' => $status]));
+    }
+
+    private function returnToTvApp(Request $request): ?Response
+    {
+        // An external browser must not exchange the code or log in without the
+        // initiating TV session. Send it back to the app's existing WebView instead.
+        $agent = $request->userAgent() ?? '';
+        $state = $request->query('state');
+        $code = $request->query('code');
+        $cancelled = $request->query('error') === 'access_denied';
+        if (! preg_match('/Android|iPhone|iPad|iPod/i', $agent)
+            || preg_match('/; wv\)|Capacitor/i', $agent)
+            || $request->boolean('app_return')
+            || ! is_string($state) || preg_match('/^[a-f0-9]{64}$/D', $state) !== 1
+            || (! $cancelled && (! is_string($code) || preg_match('/^[a-f0-9]{64}$/D', $code) !== 1))) {
+            return null;
+        }
+
+        $query = ['state' => $state, 'app_return' => '1'];
+        if ($cancelled) {
+            $query['error'] = 'access_denied';
+        } else {
+            $query['code'] = $code;
+        }
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        $callbackUrl = $baseUrl.route('connect-sso.callback', [], false).'?'.http_build_query($query);
+        $appLink = str_contains($agent, 'Android')
+            ? 'intent://open?url='.rawurlencode($callbackUrl).'#Intent;scheme=ezwaytv;package=tv.ezway.apps;end'
+            : 'ezwaytv://open?url='.rawurlencode($callbackUrl);
+
+        Log::info('Connect SSO callback returning to the initiating TV app session.');
+
+        return response()->view('auth.connect-sso-return', [
+            'appLink' => $appLink,
+            'restartUrl' => $baseUrl.route('connect-sso.start', [], false),
+        ])->withHeaders([
+            'Cache-Control' => 'private, no-store',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            'Referrer-Policy' => 'no-referrer',
+        ]);
     }
 
     private function connectUrl(): ?string
