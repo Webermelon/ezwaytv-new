@@ -3,6 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Statistics\Http\Controllers\Backend\StatisticsController;
 use Modules\Statistics\Http\Controllers\Backend\ContentBoostController;
+use Modules\Statistics\Http\Controllers\AppAnalyticsController;
+
+Route::post('/api/app-analytics/events', [AppAnalyticsController::class, 'store'])
+    ->middleware(['auth', 'throttle:120,1'])
+    ->name('app-analytics.events');
+
+Route::get('/api/admin/app-analytics', [AppAnalyticsController::class, 'report'])
+    ->middleware(\App\Http\Middleware\AuthorizeAppAnalyticsReport::class)
+    ->name('admin.app-analytics.report');
 
 Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth', 'admin']], function () {
 
@@ -27,6 +36,7 @@ Route::group(['prefix' => 'app', 'as' => 'backend.', 'middleware' => ['auth', 'a
         Route::post('/live-tv-view-automation/run/{channelId}', [StatisticsController::class, 'runLiveTvViewAutomation'])->name('live_tv_view_automation.run');
         Route::redirect('/ezway-movies-view-automation', '/app/statistics/live-tv-view-automation')
             ->name('ezway_movies_view_automation');
+        Route::view('/app-analytics', 'statistics::backend.statistics.app_analytics')->name('app_analytics');
 
         // Content Booster (admin only)
         Route::get('/booster',          [ContentBoostController::class, 'index'])->name('booster');

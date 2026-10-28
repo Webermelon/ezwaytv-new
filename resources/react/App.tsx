@@ -28,11 +28,13 @@ import { OpenInAppPrompt } from '@/components/OpenInAppPrompt'
 import { AuthPage } from '@/modules/auth/AuthPage'
 import { useAnalyticsPageView } from '@/lib/analytics'
 import { isIosRestrictedPath, isNativeIosApp } from '@/lib/native-platform'
+import { useAppAnalyticsTelemetry } from '@/lib/app-analytics'
 
 export default function App() {
   const path = useSpaPath()
   const pathname = path.split(/[?#]/)[0] || '/'
   useAnalyticsPageView(path)
+  useAppAnalyticsTelemetry()
   let page
 
   if (isNativeIosApp() && isIosRestrictedPath(pathname)) {

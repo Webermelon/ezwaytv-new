@@ -67,6 +67,10 @@ return [
         'secret' => env('SUBSCRIPTION_WEBHOOK_SECRET'),
     ],
 
+    'tv_analytics' => [
+        'service_token' => env('TV_ANALYTICS_SERVICE_TOKEN'),
+    ],
+
 
 
     'core_private_api' => [
