@@ -1,7 +1,6 @@
 import { CastCrewPage } from '@/modules/castcrew/CastCrewPage'
 import { CastCrewDetailPage } from '@/modules/castcrew/CastCrewDetailPage'
 import { AccountSettingPage } from '@/modules/account/AccountSettingPage'
-import { ChangePasswordPage } from '@/modules/account/ChangePasswordPage'
 import { ProfileDetailsPage } from '@/modules/account/ProfileDetailsPage'
 import { PaymentHistoryPage } from '@/modules/account/PaymentHistoryPage'
 import { OrdersPage } from '@/modules/account/OrdersPage'
@@ -79,8 +78,6 @@ export default function App() {
     page = <WatchlistPage />
   } else if (pathname === '/update-profile') {
     page = <ProfileDetailsPage />
-  } else if (pathname === '/change-password') {
-    page = <ChangePasswordPage />
   } else if (pathname === '/manage-profile') {
     page = <ManageProfilePage />
   } else if (pathname === '/music') {

@@ -96,14 +96,6 @@ export async function syncAccountProfile() {
   return response
 }
 
-export async function updateAccountPassword(input: {
-  old_password: string
-  new_password: string
-  new_password_confirmation: string
-}) {
-  return api.post<{ success?: boolean; message?: string; errors?: Record<string, string[] | string> }>('/account/password/update', input)
-}
-
 export async function logoutDevice(input: { id?: number; deviceId?: string | null }) {
   const params = new URLSearchParams()
 

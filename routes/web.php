@@ -45,6 +45,9 @@ Route::get('/auth/csrf-token', function (Request $request) {
 
 Route::get('/auth/connect/start', [ConnectSsoController::class, 'start'])
     ->middleware('throttle:20,1')->name('connect-sso.start');
+Route::get('/auth/connect/profile-editor', [ConnectSsoController::class, 'start'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('connect-sso.profile-editor');
 Route::get('/auth/connect/callback', [ConnectSsoController::class, 'callback'])
     ->middleware('throttle:20,1')->name('connect-sso.callback');
 Route::get('/auth/connect/test', function () {

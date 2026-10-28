@@ -259,7 +259,6 @@ Route::group(['middleware' => ['user']], function () {
     Route::post('/account/watchlist/delete', [UserController::class, 'deleteWatchlistItem'])->name('account.watchlist.delete');
     Route::post('/account/profile/sync', [UserController::class, 'syncProfileData'])->name('account.profile.sync');
     Route::post('/account/profile/update', [UserController::class, 'updateProfileData'])->name('account.profile.update');
-    Route::post('/account/password/update', [UserController::class, 'updatePassword'])->name('account.password.update');
     Route::get('/logout', [AuthController::class, 'Logout'])->name('user-logout');
     Route::view('/account-setting', 'react-modernization')->name('accountSetting');
     // Profile management removed per request. Route disabled.
@@ -313,7 +312,7 @@ Route::delete('/notifications/delete-selected', [\Modules\Frontend\Http\Controll
 
 Route::post('/pay-per-view/start-date', [PerviewPaymentController::class, 'setStartDate'])->name('pay-per-view.start-date');
 Route::view('/update-profile', 'react-modernization')->name('update-profile');
-Route::view('/change-password', 'react-modernization')->name('change-password');
+Route::redirect('/change-password', '/account-setting')->name('change-password');
 
 // Distribution page route (static view)
 Route::view('/distribution', 'react-modernization')->name('distribution');

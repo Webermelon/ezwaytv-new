@@ -26,6 +26,8 @@ class ConnectSsoController extends Controller
         $request->session()->put('connect_sso', [
             'state' => $state,
             'destination' => $this->safeDestination($request->query('redirect_to')),
+            'open_profile_editor' => $request->routeIs('connect-sso.profile-editor'),
+            'expected_tv_user_id' => $request->routeIs('connect-sso.profile-editor') ? Auth::id() : null,
             'expires_at' => now()->addMinutes(30)->timestamp,
         ]);
 
@@ -109,12 +111,23 @@ class ConnectSsoController extends Controller
             return $this->failure();
         }
 
+        $expectedTvUserId = filter_var($intent['expected_tv_user_id'] ?? null, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1],
+        ]);
+        if ($expectedTvUserId !== false && (int) $user->id !== $expectedTvUserId) {
+            return redirect('/update-profile?'.http_build_query(['connect_status' => 'identity_conflict']));
+        }
+
         $request->session()->forget([
             'tv_pending_registration', 'tv_pending_core_login', 'tv_login_otp_email', 'tv_login_otp_expires_at',
         ]);
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $this->setDevice($user, $request);
+
+        if (($intent['open_profile_editor'] ?? false) === true) {
+            return redirect()->away($this->profileEditorUrl());
+        }
 
         return redirect()->to($this->safeDestination($intent['destination'] ?? null));
     }
@@ -146,5 +159,10 @@ class ConnectSsoController extends Controller
         }
 
         return $value;
+    }
+
+    private function profileEditorUrl(): string
+    {
+        return rtrim((string) config('connect_sso.url'), '/').'/profile/edit';
     }
 }

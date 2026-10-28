@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, CreditCard, Edit3, ExternalLink, KeyRound, Loader2, PackageCheck, RefreshCw, UserCircle, X } from 'lucide-react'
+import { Bookmark, CreditCard, Edit3, ExternalLink, Loader2, PackageCheck, RefreshCw, UserCircle, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { Button } from '@/components/ui/button'
@@ -115,7 +115,7 @@ export function ProfileDetailsPage() {
   return (
     <main className="min-h-screen bg-[#050505] text-white">
       <AppHeader active="home" />
-      <AccountHero title="Profile Details" description="Your TV profile is read-only here. Update your profile from eZWay Connect to keep all connected apps in sync." actionLabel="Update on eZWay Connect" actionHref="https://ezwayconnect.com/profile/edit" />
+      <AccountHero title="Profile Details" description="Your TV profile is read-only here. Update your profile from eZWay Connect to keep all connected apps in sync." actionLabel="Update on eZWay Connect" actionHref="/auth/connect/profile-editor" />
 
       <section className="px-4 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto grid max-w-[1800px] gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -140,7 +140,7 @@ export function ProfileDetailsPage() {
                         {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         Sync Profile
                       </Button>
-                      <a href="https://ezwayconnect.com/profile/edit" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
+                      <a href="/auth/connect/profile-editor" className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white transition hover:bg-white/[0.1]">
                         <ExternalLink className="h-4 w-4" />
                         Update on eZWay Connect
                       </a>
@@ -187,7 +187,7 @@ export function ProfileDetailsPage() {
                     Sync Profile
                   </Button>
                   <Button asChild className="bg-[#edc342] font-black text-black hover:bg-[#f4ce4d]">
-                    <a href="https://ezwayconnect.com/profile/edit">
+                    <a href="/auth/connect/profile-editor">
                       <ExternalLink className="h-4 w-4" />
                       Update on eZWay Connect
                     </a>
@@ -228,7 +228,6 @@ export function AccountSidebar({ activeHref }: { activeHref: string }) {
       { label: 'Orders', href: '/orders', icon: PackageCheck },
     ] : []),
     { label: 'Profile Details', href: '/update-profile', icon: UserCircle },
-    { label: 'Change Password', href: '/change-password', icon: KeyRound },
   ]
 
   return (
