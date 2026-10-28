@@ -88,6 +88,11 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
         return array_map('intval', $this->roles->pluck('id')->toArray());
     }
 
+    public function hasBackendAccess(): bool
+    {
+        return $this->roles()->where('name', '!=', 'user')->exists();
+    }
+
     /**
      * Route notifications for the Slack channel.
      *

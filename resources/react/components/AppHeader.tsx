@@ -610,6 +610,7 @@ function profileMenuItems(user: AuthUser, nativeIos = false) {
 
   const items = [
     { label: 'My Dashboard', href: user.dashboard_url || '/account-setting', icon: HomeIcon },
+    { label: 'My Profile', href: '/update-profile', icon: UserCircle },
     { label: 'Account Settings', href: '/account-setting', icon: Settings },
     { label: 'Watchlist', href: '/watch-list', icon: Film },
     ...(!nativeIos ? [
@@ -620,7 +621,7 @@ function profileMenuItems(user: AuthUser, nativeIos = false) {
   ]
 
   if (!nativeIos && !user.is_subscribe) {
-    items.splice(3, 0, { label: 'Subscription', href: '/subscription-plan', icon: Radio })
+    items.splice(4, 0, { label: 'Subscription', href: '/subscription-plan', icon: Radio })
   }
 
   return items

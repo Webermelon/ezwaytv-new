@@ -3,7 +3,6 @@
 namespace App\Models\Presenters;
 
 use App\Models\Permission;
-use App\Models\Role;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -58,19 +57,5 @@ trait UserPresenter
         });
 
         return $permissions->where('model_id', $this->id);
-    }
-
-    /**
-     * Cache Roles Query.
-     */
-    public function getRolesAttribute()
-    {
-        $roles = Cache::rememberForever('roles_cache', function () {
-            return Role::select('roles.*', 'model_has_roles.*')
-                ->join('model_has_roles', 'roles.id', '=', 'model_has_roles.role_id')
-                ->get();
-        });
-
-        return $roles->where('model_id', $this->id);
     }
 }

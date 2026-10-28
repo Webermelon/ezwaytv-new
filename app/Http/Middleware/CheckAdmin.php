@@ -19,11 +19,7 @@ class CheckAdmin
 
        if (Auth::check()) {
             $user = Auth::user();
-            $hasBackendRole = $user->roles()
-                ->where('name', '!=', 'user')
-                ->exists();
-
-            if ($user->hasRole('user') && !$hasBackendRole) {
+            if (! $user->hasBackendAccess()) {
                 return redirect()->route('user.login');
             }
         }

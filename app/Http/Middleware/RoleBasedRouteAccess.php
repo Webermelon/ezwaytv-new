@@ -34,12 +34,8 @@ class RoleBasedRouteAccess
             return $next($request);
         }
 
-        $hasBackendRole = $user->roles()
-            ->where('name', '!=', 'user')
-            ->exists();
-
-        // User-only accounts should stay on the frontend; mixed-role users can use backend permissions.
-        if ($user->hasRole('user') && !$hasBackendRole && $isAdminRoute) {
+        // Backend access follows assigned roles, including accounts with no roles.
+        if ($isAdminRoute && ! $user->hasBackendAccess()) {
             return redirect()->route('user.login');
         }
 

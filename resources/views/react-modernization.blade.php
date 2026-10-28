@@ -83,8 +83,7 @@
 
         if ($authUser) {
             $authRoles = method_exists($authUser, 'getRoleNames') ? $authUser->getRoleNames()->values()->all() : [];
-            $authIsAdmin = (method_exists($authUser, 'hasRole') && $authUser->hasRole(['admin', 'super-admin', 'demo_admin']))
-                || in_array($authUser->user_type, ['admin', 'super-admin', 'super_admin', 'demo_admin'], true);
+            $authIsAdmin = $authUser->hasBackendAccess();
             $authAvatar = $authUser->file_url
                 ? (filter_var($authUser->file_url, FILTER_VALIDATE_URL) ? $authUser->file_url : setBaseUrlWithFileName($authUser->file_url, 'image', 'users'))
                 : asset('dummy-images/avatars/icon1.png');
