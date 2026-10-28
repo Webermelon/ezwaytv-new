@@ -12,7 +12,6 @@ import { LiveTvPage } from '@/modules/live-tv/LiveTvPage'
 import { MusicPage } from '@/modules/music/MusicPage'
 import { MusicUploadPage } from '@/modules/music/MusicUploadPage'
 import { OnDemandPage } from '@/modules/ondemand/OnDemandPage'
-import { ManageProfilePage } from '@/modules/profile/ManageProfilePage'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { SearchPage } from '@/modules/search/SearchPage'
 import { SubscriptionPlanPage } from '@/modules/subscription/SubscriptionPlanPage'
@@ -78,8 +77,6 @@ export default function App() {
     page = <WatchlistPage />
   } else if (pathname === '/update-profile') {
     page = <ProfileDetailsPage />
-  } else if (pathname === '/manage-profile') {
-    page = <ManageProfilePage />
   } else if (pathname === '/music') {
     page = <MusicPage />
   } else if (pathname.startsWith('/upload-your-videoes')) {

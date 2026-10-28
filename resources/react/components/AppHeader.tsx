@@ -617,7 +617,6 @@ function profileMenuItems(user: AuthUser, nativeIos = false) {
       { label: 'Payment History', href: '/payment-history', icon: Share2 },
       { label: 'Orders', href: '/orders', icon: PackageCheck },
     ] : []),
-    { label: 'Manage Profiles', href: '/manage-profile', icon: UsersRound },
   ]
 
   if (!nativeIos && !user.is_subscribe) {

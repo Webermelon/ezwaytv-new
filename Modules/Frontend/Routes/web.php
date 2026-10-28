@@ -275,7 +275,7 @@ Route::group(['middleware' => ['user']], function () {
     Route::post('/select-plan', [PaymentController::class, 'selectPlan'])->name('select.plan');
     Route::view('/payment/success', 'react-modernization')->name('payment.success');
     Route::view('/security-control', 'react-modernization')->name('security-control');
-    Route::view('/manage-profile', 'react-modernization')->name('manage-profile');
+    Route::redirect('/manage-profile', '/update-profile')->name('manage-profile');
 
 
 
