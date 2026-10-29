@@ -222,7 +222,7 @@ body {
 
 .ez-home-hero-title {
   font-family: "Lato", sans-serif;
-  font-size: clamp(3.25rem, 5.5vw, 5.65rem);
+  font-size: clamp(3.6rem, 6vw, 6.25rem);
   font-weight: 900;
   line-height: 0.88;
   letter-spacing: 0;
@@ -346,7 +346,7 @@ body {
   }
 
   .ez-home-hero-title {
-    font-size: 2.75rem;
+    font-size: 3.1rem;
     line-height: 0.94;
   }
 

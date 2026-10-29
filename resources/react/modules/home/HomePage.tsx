@@ -413,9 +413,12 @@ function Hero({
           />
           {isEzwayMovies ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[#f3c74d] bg-black/55 px-3 py-3">
-              <p className="text-sm font-extrabold uppercase tracking-normal text-[#f7d65b]">
-                Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movies Channel
-              </p>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-white/75">Featured Live Event</p>
+                <p className="mt-1 text-base font-extrabold uppercase tracking-normal text-[#f7d65b]">
+                  Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movie Channel
+                </p>
+              </div>
               <Button asChild size="sm" className="hidden min-h-9 rounded-md font-black text-black sm:inline-flex">
                 <a href={contentHref(activeChannel)}>
                   <Play className="h-4 w-4 fill-current" />
