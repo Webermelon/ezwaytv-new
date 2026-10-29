@@ -87,7 +87,7 @@ export function LiveTvPage() {
       return [name, category].filter(Boolean).some((value) => String(value).toLowerCase().includes(term))
     }))
   }, [activeCategory, allChannels, categories, query])
-  const featuredDashboardChannel = dashboard.slider?.[0] ?? channels[0]
+  const featuredDashboardChannel = channels[0] ?? dashboard.slider?.[0]
   const featuredGuideQuery = useQuery({
     queryKey: ['livetv-guide-channel-detail-schedule-v3', featuredDashboardChannel?.id],
     queryFn: () => loadLiveTvGuideChannel(featuredDashboardChannel as MediaItem),
@@ -2259,11 +2259,22 @@ function uniqueMediaItems(channels: MediaItem[]) {
 
 function sortByDashboardOrder(channels: MediaItem[]) {
   return [...channels].sort((a, b) => {
+    if (isEzwayMovieChannel(a) !== isEzwayMovieChannel(b)) {
+      return isEzwayMovieChannel(a) ? -1 : 1
+    }
+
     const aOrder = channelDashboardOrder(a)
     const bOrder = channelDashboardOrder(b)
 
     return aOrder - bOrder
   })
+}
+
+function isEzwayMovieChannel(channel: MediaItem) {
+  return [channel.slug, channel.details?.slug, channelName(channel)]
+    .filter(Boolean)
+    .map((value) => normalizeLiveTvSlug(String(value)))
+    .includes('ezway-movie-channel')
 }
 
 function channelDashboardOrder(channel: MediaItem) {

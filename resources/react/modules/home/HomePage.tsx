@@ -43,6 +43,7 @@ const homeHeroPromos = [
 ]
 const homeHeroChannelVideos: Record<string, string> = {
   'ezway-movies': 'https://ezwayott.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_11_36_20_pm-360p.mp4',
+  'ezway-movie-channel': 'https://ezwayott.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_11_36_20_pm-360p.mp4',
 }
 export function HomePage() {
   const homeQuery = useQuery({
@@ -58,7 +59,10 @@ export function HomePage() {
     [railLimit, state.liveTv],
   )
   const heroLiveChannels = useMemo(
-    () => (state.dashboard.hero_banner_slider_livetv?.data?.length ? state.dashboard.hero_banner_slider_livetv.data : liveChannels),
+    () => ensureEzwayMovieChannel(
+      state.dashboard.hero_banner_slider_livetv?.data?.length ? state.dashboard.hero_banner_slider_livetv.data : liveChannels,
+      liveChannels,
+    ),
     [liveChannels, state.dashboard.hero_banner_slider_livetv?.data],
   )
   const ondemandChannels = useMemo(() => state.ondemandChannels.slice(0, railLimit), [railLimit, state.ondemandChannels])
@@ -347,9 +351,11 @@ function Hero({
   const hasActiveChannel = Boolean(activeChannel)
   const title = activeChannel?.details?.name ?? activeChannel?.name ?? 'eZWay TV Live'
   const category = activeChannel?.details?.category ?? 'Live TV'
-  const channelDescription = activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
   const heroBackground = backgroundUrl ?? activeChannel?.hero_background_url ?? defaultHomeHeroBackground
-  const isEzwayMovies = (activeChannel?.details?.slug ?? activeChannel?.slug) === 'ezway-movies'
+  const isEzwayMovies = isEzwayMovieChannel(activeChannel)
+  const channelDescription = isEzwayMovies
+    ? 'Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movie Channel.'
+    : activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
 
   useEffect(() => {
     setActiveSlideDurationMs(isEzwayMovies ? null : homeHeroSlideDurationMs)
@@ -877,6 +883,20 @@ function liveTvChannelsFromDashboard(liveTv: LiveTvDashboard) {
   return sortByDashboardOrder(channels)
 }
 
+function isEzwayMovieChannel(channel?: MediaItem) {
+  const slug = (channel?.details?.slug ?? channel?.slug ?? '').toLowerCase()
+
+  return slug === 'ezway-movies' || slug === 'ezway-movie-channel'
+}
+
+function ensureEzwayMovieChannel(channels: MediaItem[], availableChannels: MediaItem[]) {
+  const movieChannel = availableChannels.find(isEzwayMovieChannel)
+
+  if (!movieChannel) return channels
+
+  return [movieChannel, ...channels.filter((channel) => String(channel.id) !== String(movieChannel.id))]
+}
+
 function resolveMostWatchedRail(dashboard: DashboardData) {
   const dynamicRails = Object.entries(dashboard.dynamic_data ?? {})
   const selectedRail = dynamicRails.find(([slug, rail]) => {
@@ -891,6 +911,10 @@ function resolveMostWatchedRail(dashboard: DashboardData) {
 
 function sortByDashboardOrder(channels: MediaItem[]) {
   return [...channels].sort((a, b) => {
+    if (isEzwayMovieChannel(a) !== isEzwayMovieChannel(b)) {
+      return isEzwayMovieChannel(a) ? -1 : 1
+    }
+
     const aOrder = typeof a.dashboard_order === 'number' ? a.dashboard_order : Number.MAX_SAFE_INTEGER
     const bOrder = typeof b.dashboard_order === 'number' ? b.dashboard_order : Number.MAX_SAFE_INTEGER
 
