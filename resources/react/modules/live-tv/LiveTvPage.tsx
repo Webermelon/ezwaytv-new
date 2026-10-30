@@ -288,7 +288,7 @@ function LiveTvDetailPage({
   suggestions: MediaItem[]
 }) {
   const title = channel?.details?.name ?? channel?.name ?? 'Live channel'
-  const isEzwayMoviesChannel = (channel?.details?.slug ?? channel?.slug) === 'ezway-movies'
+  const isEzwayMoviesChannel = ['ezway-movies', 'ezway-movie-channel'].includes(String(channel?.details?.slug ?? channel?.slug ?? '').toLowerCase())
   const image = channel?.poster_tv_image ?? channel?.poster_image ?? channel?.details?.thumbnail_image
   const heroBackgroundImage = channel && isEzWayTvChannel(channel) ? liveTvHeroImage : (image ?? liveTvHeroImage)
   const channelBadge = channelNumber ? channelLabel(channelNumber) : null
