@@ -339,6 +339,9 @@ function LiveTvDetailPage({
     queryFn: () => loadLiveTvChat(channelId as string | number),
     enabled: Boolean(channelId),
     staleTime: 10_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   })
   const chatAdsLookup = channel?.slug ?? channelId
   const chatAdsQuery = useQuery({
