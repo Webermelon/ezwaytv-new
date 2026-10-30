@@ -402,13 +402,13 @@ function LiveTvDetailPage({
   }, [channel, trackViewMutation])
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
+    <main className="min-h-screen max-w-full overflow-x-hidden bg-[#050505] text-white">
       <AppHeader active="livetv" />
-      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-black">
-        <div className="w-screen">
+      <section className="w-full max-w-full overflow-x-hidden bg-black">
+        <div className="w-full max-w-full">
           <PlayerHeader fallbackHref={isEzwayMoviesChannel ? '/' : '/livetv'} />
-          <div className={showPlayerChat ? 'grid bg-black xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'bg-black'}>
-            <div className="livetv-player relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
+          <div className={showPlayerChat ? 'grid min-w-0 max-w-full bg-black xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]' : 'min-w-0 max-w-full bg-black'}>
+            <div className="livetv-player relative mx-auto aspect-video h-auto min-h-0 w-full max-w-full min-w-0 overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
               {isSubscriptionLocked ? (
                 <PremiumPlayerLock
                   image={image}
@@ -462,7 +462,7 @@ function LiveTvDetailPage({
               )}
             </div>
             {showPlayerChat ? (
-              <aside className="h-[520px] border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
+              <aside className="h-[520px] min-w-0 max-w-full overflow-hidden border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
                 <LiveTvChat
                   channelId={channelId as string | number}
                   chat={chat}
@@ -1639,7 +1639,7 @@ function LiveTvChat({
   }, [showEmojiPicker])
 
   return (
-    <section className="flex h-full min-h-0 flex-col border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
+    <section className="flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden border-t-[6px] border-[#1a1a1a] bg-[#0a0a0a] lg:border-t-0">
       {ads?.enabled && ads.banners.length ? (
         <LiveTvChatAdSlider
           banners={ads.banners}
@@ -1817,8 +1817,8 @@ function LiveTvChatAdSlider({
   )
 
   return (
-    <div className="shrink-0 border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
-      <div className="relative aspect-[16/5] min-h-[82px] overflow-hidden">
+    <div className="w-full max-w-full shrink-0 overflow-hidden border-b border-[#d4a843]/25 bg-black lg:border-b-white/10">
+      <div className="relative aspect-[16/5] min-h-[82px] max-w-full overflow-hidden">
         {banner.link_url ? (
           <a href={banner.link_url} target="_blank" rel="noreferrer" className="block h-full w-full">
             {image}

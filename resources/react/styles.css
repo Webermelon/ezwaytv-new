@@ -139,19 +139,23 @@ textarea:disabled {
 
 html {
   color-scheme: dark;
+  width: 100%;
   max-width: 100%;
   overflow-x: clip;
 }
 
 body {
   min-width: 320px;
+  width: 100%;
   max-width: 100%;
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 #root {
+  width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 .ez-header-search-desktop {

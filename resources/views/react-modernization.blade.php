@@ -42,7 +42,7 @@
         $ogType = request()->is('video-details/*') ? 'video.other' : 'website';
     @endphp
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @if(!empty($meta->google_site_verification ?? optional($seo)->google_site_verification ?? null))
         <meta name="google-site-verification" content="{{ $meta->google_site_verification ?? optional($seo)->google_site_verification }}">

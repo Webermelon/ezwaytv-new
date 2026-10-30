@@ -535,7 +535,8 @@ function HomeHeroPromoEmbed({
         ].join(' ')}
         aria-label={`Watch ${channel?.details?.name ?? channel?.name ?? 'live channel'}`}
       >
-        <span className="inline-flex items-center gap-2 rounded-md border border-[#ffe18a] bg-[#d9a90f] px-4 py-2.5 text-sm font-black text-black shadow-lg shadow-black/45 transition-transform duration-200 group-hover:scale-105 group-focus-visible:scale-105 sm:text-base">
+        <span className="inline-flex items-center gap-2 rounded-md border border-white/70 bg-black/35 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-black/45 backdrop-blur-sm transition-all duration-200 group-hover:scale-105 group-hover:border-white group-hover:bg-black/55 group-focus-visible:scale-105 group-focus-visible:border-white group-focus-visible:bg-black/55 sm:text-base">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.95)]" aria-hidden="true" />
           <Play className="h-4 w-4 fill-current" aria-hidden="true" />
           Watch Live
         </span>
