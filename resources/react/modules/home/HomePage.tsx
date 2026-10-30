@@ -415,6 +415,7 @@ function Hero({
         <div className="w-full self-center lg:max-w-[760px] lg:justify-self-end lg:pt-4">
           <HomeHeroPromoEmbed
             channel={activeChannel}
+            watchHref={contentHref(activeChannel)}
             onVideoDurationChange={isEzwayMovies ? (duration) => setActiveSlideDurationMs(duration * 1000) : undefined}
           />
           {isEzwayMovies ? (
@@ -464,9 +465,11 @@ function HeroTitle({ title }: { title: string }) {
 
 function HomeHeroPromoEmbed({
   channel,
+  watchHref,
   onVideoDurationChange,
 }: {
   channel?: MediaItem
+  watchHref: string
   onVideoDurationChange?: (duration: number) => void
 }) {
   const [activePromoIndex, setActivePromoIndex] = useState(0)
@@ -523,6 +526,20 @@ function HomeHeroPromoEmbed({
           />
         )}
       </div>
+
+      <a
+        href={watchHref}
+        className={[
+          'group absolute inset-x-0 top-0 z-10 flex items-center justify-center bg-black/0 transition-colors duration-200 hover:bg-black/30 focus-visible:bg-black/30 focus-visible:outline-none',
+          !channelVideo && homeHeroPromos.length > 1 ? 'bottom-8' : 'bottom-0',
+        ].join(' ')}
+        aria-label={`Watch ${channel?.details?.name ?? channel?.name ?? 'live channel'}`}
+      >
+        <span className="inline-flex items-center gap-2 rounded-md border border-[#ffe18a] bg-[#d9a90f] px-4 py-2.5 text-sm font-black text-black shadow-lg shadow-black/45 transition-transform duration-200 group-hover:scale-105 group-focus-visible:scale-105 sm:text-base">
+          <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+          Watch Live
+        </span>
+      </a>
 
       {!channelVideo && homeHeroPromos.length > 1 ? (
         <div className="flex h-8 items-center justify-center gap-2 border-t border-white/10 bg-[#080808]">
