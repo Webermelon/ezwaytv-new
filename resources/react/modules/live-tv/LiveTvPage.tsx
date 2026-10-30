@@ -462,7 +462,7 @@ function LiveTvDetailPage({
               )}
             </div>
             {showPlayerChat ? (
-              <aside className="h-[520px] min-w-0 max-w-full overflow-hidden border-t border-white/10 bg-[#0a0a0a] xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0">
+              <aside className="mt-3 h-[520px] min-w-0 max-w-full overflow-hidden border-t-2 border-[#d4a843]/70 bg-[#0a0a0a] shadow-[0_-10px_24px_rgba(0,0,0,0.32)] xl:mt-0 xl:h-[76svh] xl:min-h-[430px] xl:border-l xl:border-t-0 xl:border-l-white/10 xl:shadow-none">
                 <LiveTvChat
                   channelId={channelId as string | number}
                   chat={chat}
