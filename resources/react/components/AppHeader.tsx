@@ -273,6 +273,8 @@ function MobileMenu({
         </div>
 
         <div className="w-full min-w-0 max-w-full overflow-visible px-5 pb-8 pt-1">
+          {authUser ? <MobileProfileMenu user={authUser} nativeIos={nativeIos} onNavigate={onNavigate} /> : null}
+
           <form
             className="mb-4 grid w-full min-w-0 max-w-full grid-cols-[minmax(0,1fr)_56px] gap-3"
             action="/search"
@@ -411,9 +413,7 @@ function MobileMenu({
             </a>
           ) : null}
 
-          {authUser ? (
-            <MobileProfileMenu user={authUser} nativeIos={nativeIos} onNavigate={onNavigate} />
-          ) : !nativeIos ? (
+          {!authUser && !nativeIos ? (
             <div className="mt-3 grid gap-3">
               <a
                 href="/login"
@@ -531,16 +531,24 @@ function ProfileMenu({ user, nativeIos }: { user: AuthUser; nativeIos: boolean }
 
 function MobileProfileMenu({ user, nativeIos, onNavigate }: { user: AuthUser; nativeIos: boolean; onNavigate: () => void }) {
   const menuItems = profileMenuItems(user, nativeIos)
+  const [open, setOpen] = useState(false)
 
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 shadow-[0_0_28px_rgba(212,168,67,0.10)]">
-      <div className="grid min-h-20 grid-cols-[48px_minmax(0,1fr)] items-center gap-3 px-4 py-3">
+    <div className="mb-4 overflow-hidden rounded-xl border border-[#d4a843]/24 bg-[#d4a843]/8 shadow-[0_0_28px_rgba(212,168,67,0.10)]">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className="grid min-h-20 w-full grid-cols-[48px_minmax(0,1fr)_32px] items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.045]"
+      >
         <UserAvatar user={user} sizeClassName="h-11 w-11" />
         <span className="min-w-0">
           <span className="block truncate text-sm font-black uppercase text-white">{displayUserName(user)}</span>
           <span className="mt-1 block truncate text-xs font-semibold leading-4 text-white/54">{user.email ?? (user.is_admin ? 'Admin account' : 'Member account')}</span>
         </span>
-      </div>
+        <ChevronDown className={['h-5 w-5 justify-self-end text-[#edc342] transition-transform', open ? 'rotate-180' : ''].join(' ')} />
+      </button>
+      {open ? (
       <div className="grid border-t border-white/8 p-2">
         {menuItems.map(({ label, href, icon: Icon }) => (
           <a
@@ -565,6 +573,7 @@ function MobileProfileMenu({ user, nativeIos, onNavigate }: { user: AuthUser; na
           Logout
         </button>
       </div>
+      ) : null}
     </div>
   )
 }
