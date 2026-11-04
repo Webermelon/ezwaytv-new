@@ -878,8 +878,8 @@ function contentHref(item?: MediaItem) {
     return `/watch-movie/${item.id}?autoplay=1`
   }
 
-  if (type === 'tvshow' && item.slug) {
-    return `/tv-shows/${item.slug}`
+  if (type === 'tvshow' && item.id) {
+    return `/tv-shows/${item.slug ?? item.id}`
   }
 
   if (type === 'ondemand' || item.profile_url) {
