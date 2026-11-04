@@ -83,6 +83,12 @@ export function HomePage() {
       .map(([slug, rail]) => ({ slug, ...rail, data: (rail.data ?? []).slice(0, railLimit) })),
     [railLimit, state.dashboard.dynamic_data],
   )
+  const configuredTvShowRails = useMemo(
+    () => Object.entries(state.dashboard.dynamic_data ?? {})
+      .filter(([, rail]) => rail.type === 'tvshow' && (rail.data?.length ?? 0) > 0)
+      .map(([slug, rail]) => ({ slug, ...rail, data: (rail.data ?? []).slice(0, railLimit) })),
+    [railLimit, state.dashboard.dynamic_data],
+  )
   const featured = heroLiveChannels[0] ?? state.liveTv.slider?.[0] ?? liveChannels[0] ?? state.videos[0]
 
   return (
@@ -123,12 +129,22 @@ export function HomePage() {
                 index={5 + railIndex}
               />
             ))}
+            {configuredTvShowRails.map((rail, railIndex) => (
+              <Rail
+                key={rail.slug}
+                title={rail.name ?? 'TV Series'}
+                items={rail.data}
+                href="/tv-shows"
+                shape="vertical-poster"
+                index={5 + configuredMovieRails.length + railIndex}
+              />
+            ))}
             <Rail
               title={state.dashboard.personality?.name ?? state.dashboard.popular_personality?.name ?? 'Popular Personalities'}
               items={personalities}
               href="/castcrew-list"
               shape="personality"
-              index={5 + configuredMovieRails.length}
+              index={5 + configuredMovieRails.length + configuredTvShowRails.length}
             />
             <AdBannerSlider placement="home" className="-mx-4 sm:-mx-8 lg:-mx-12" />
           </>

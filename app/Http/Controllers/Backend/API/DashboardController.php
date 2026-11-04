@@ -1851,6 +1851,41 @@ public function getTrandingData(Request $request){
                 ];
             }
 
+            $dynamicTvShowSettings = MobileSetting::where('type', 'tvshow')
+                ->whereNotNull('value')
+                ->orderBy('position')
+                ->get(['name', 'slug', 'value']);
+
+            foreach ($dynamicTvShowSettings as $dynamicSetting) {
+                $dynamicTvShowIds = json_decode($dynamicSetting->value, true);
+                if (!is_array($dynamicTvShowIds) || empty($dynamicTvShowIds)) {
+                    continue;
+                }
+
+                $dynamicTvShowIds = array_slice(array_values(array_filter(array_map('intval', $dynamicTvShowIds))), 0, 100);
+                $dynamicTvShowOrder = array_flip($dynamicTvShowIds);
+                $dynamicTvShows = Entertainment::get_popular_tvshowV3($dynamicTvShowIds)
+                    ->sortBy(fn ($tvshow) => $dynamicTvShowOrder[(int) $tvshow->id] ?? PHP_INT_MAX)
+                    ->values();
+
+                $dynamicTvShows->each(function ($tvshow) use ($user_id, $userPlanId, $deviceTypeResponse, $device_type, $purchasedIds) {
+                    $tvshow->user_id = $user_id;
+                    $tvshow->isDeviceSupported = $deviceTypeResponse['isDeviceSupported'] == true ? 1 : 0;
+                    $posterPath = $device_type == 'tv' && $tvshow->poster_tv_url
+                        ? $tvshow->poster_tv_url
+                        : $tvshow->poster_url;
+                    $tvshow->poster_image = setBaseUrlWithFileName($posterPath, 'image', $tvshow->type);
+                    $tvshow->access = $tvshow->movie_access;
+                    setContentAccess($tvshow, $user_id, $userPlanId, $purchasedIds ?? []);
+                });
+
+                $dynamicData[$dynamicSetting->slug] = [
+                    'name' => $dynamicSetting->name,
+                    'type' => 'tvshow',
+                    'data' => TvshowResourceV3::collection($dynamicTvShows)->toArray($request),
+                ];
+            }
+
                         $slugsWithDefaults = [
                             'latest-movies' => 'Latest Movies',
                             'top-10' => 'Top 10',
