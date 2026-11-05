@@ -424,7 +424,7 @@ function PlanCard({
   const purchaseUrl = purchaseUrlForPlan(plan)
 
   return (
-    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+    <article className={['flex h-full flex-col rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
       <div className="flex min-h-12 items-start justify-between gap-3">
         <div>
           <h2 className="mt-2 text-2xl font-black">{plan.name}</h2>
@@ -447,7 +447,7 @@ function PlanCard({
       </div>
 
       {plan.description ? (
-        <p className="mt-5 text-sm leading-6 text-white/58">{plan.description}</p>
+        <p className="mt-5 whitespace-pre-line text-sm leading-6 text-white/58">{plan.description}</p>
       ) : null}
 
       {limitations.length > 0 ? (
@@ -878,33 +878,35 @@ function ChannelServiceCard({
       </div>
 
       <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{plan.name}</h3>
-      {plan.description ? <p className="mt-3 min-h-12 text-sm leading-6 text-white/58">{plan.description}</p> : null}
+      {plan.description ? <p className="mt-3 min-h-12 whitespace-pre-line text-sm leading-6 text-white/58">{plan.description}</p> : null}
 
-      <div className="mt-6 flex items-end gap-2">
-        <span className="text-4xl font-black">${formatMoney(price)}</span>
-        <span className="pb-1 text-sm font-bold text-white/48">/ {durationLabel(plan)}</span>
+      <div className="mt-auto pt-6">
+        <div className="flex items-end gap-2">
+          <span className="text-4xl font-black">${formatMoney(price)}</span>
+          <span className="pb-1 text-sm font-bold text-white/48">/ {durationLabel(plan)}</span>
+        </div>
+
+        {limitations.length > 0 ? (
+          <ul className="mt-6 grid gap-3">
+            {limitations.map((item, index) => (
+              <li key={String(item.id ?? item.slug ?? item.message ?? index)} className="flex gap-3 text-sm leading-5 text-white/68">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
+                <span>{item.message || item.limitation_title}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onChoose}
+          disabled={loading}
+          className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition disabled:cursor-wait disabled:opacity-70', featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+          {loading ? 'Preparing...' : 'Choose Service'}
+        </button>
       </div>
-
-      {limitations.length > 0 ? (
-        <ul className="mt-6 grid gap-3">
-          {limitations.map((item, index) => (
-            <li key={String(item.id ?? item.slug ?? item.message ?? index)} className="flex gap-3 text-sm leading-5 text-white/68">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a843]" />
-              <span>{item.message || item.limitation_title}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <button
-        type="button"
-        onClick={onChoose}
-        disabled={loading}
-        className={['mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-black transition disabled:cursor-wait disabled:opacity-70', featured ? 'bg-[#d4a843] text-black hover:bg-[#efc955]' : 'bg-white text-black hover:bg-white/84'].join(' ')}
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-        {loading ? 'Preparing...' : 'Choose Service'}
-      </button>
     </article>
   )
 }
