@@ -869,7 +869,7 @@ function ChannelServiceCard({
   const limitations = (plan.plan_type ?? []).filter((item) => item.message || item.limitation_title).slice(0, 5)
 
   return (
-    <article className={['rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
+    <article className={['grid h-full grid-rows-[auto_1fr_auto] rounded-md border p-5 shadow-2xl shadow-black/20', featured ? 'border-[#d4a843]/60 bg-[#d4a843]/10' : 'border-white/10 bg-white/[0.045]'].join(' ')}>
       <div className="flex items-start justify-between gap-3">
         <span className="rounded-sm bg-[#d4a843] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-black">
           {plan.category_name || 'TV Package'}
@@ -877,10 +877,12 @@ function ChannelServiceCard({
         <ShoppingCart className="h-7 w-7 shrink-0 text-[#d4a843]" />
       </div>
 
-      <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{plan.name}</h3>
-      {plan.description ? <p className="mt-3 min-h-12 whitespace-pre-line text-sm leading-6 text-white/58">{plan.description}</p> : null}
+      <div>
+        <h3 className="mt-5 min-h-14 text-2xl font-black leading-tight">{plan.name}</h3>
+        {plan.description ? <p className="mt-3 min-h-12 whitespace-pre-line text-sm leading-6 text-white/58">{plan.description}</p> : null}
+      </div>
 
-      <div className="mt-auto pt-6">
+      <div className="pt-6">
         <div className="flex items-end gap-2">
           <span className="text-4xl font-black">${formatMoney(price)}</span>
           <span className="pb-1 text-sm font-bold text-white/48">/ {durationLabel(plan)}</span>
