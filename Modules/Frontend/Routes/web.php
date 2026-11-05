@@ -209,7 +209,7 @@ Route::view('/search', 'react-modernization')->name('search');
 
 
 Route::view('/watch-list', 'react-modernization')->name('watchList');
-Route::view('/subscription-plan', 'react-modernization')->name('subscriptionPlan');
+Route::view('/subscription-plan', 'react-modernization')->middleware('auth')->name('subscriptionPlan');
 
 Route::view('/faq', 'react-modernization')->name('faq');
 
