@@ -370,11 +370,13 @@ function Hero({
   const heroBackground = backgroundUrl ?? activeChannel?.hero_background_url ?? defaultHomeHeroBackground
   const isEzwayMovies = isEzwayMovieChannel(activeChannel)
   const channelDescription = isEzwayMovies
-    ? 'Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movie Channel.'
+    ? 'Watch live TV and stay up to date on our newest uploads.'
     : activeChannel?.description ?? activeChannel?.short_desc ?? activeChannel?.details?.description
 
   useEffect(() => {
-    setActiveSlideDurationMs(isEzwayMovies ? null : homeHeroSlideDurationMs)
+    if (!isEzwayMovies) {
+      setActiveSlideDurationMs(homeHeroSlideDurationMs)
+    }
   }, [isEzwayMovies])
 
   if (!hasActiveChannel) {
@@ -434,22 +436,6 @@ function Hero({
             watchHref={contentHref(activeChannel)}
             onVideoDurationChange={isEzwayMovies ? (duration) => setActiveSlideDurationMs(duration * 1000) : undefined}
           />
-          {isEzwayMovies ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-l-2 border-[#f3c74d] bg-black/55 px-3 py-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-white/75">Featured Live Event</p>
-                <p className="mt-1 text-base font-extrabold uppercase tracking-normal text-[#f7d65b]">
-                  Watch Top Talent Film Week Oct. 26 - 31 on the eZWay Movie Channel
-                </p>
-              </div>
-              <Button asChild size="sm" className="hidden min-h-9 rounded-md font-black text-black sm:inline-flex">
-                <a href={contentHref(activeChannel)}>
-                  <Play className="h-4 w-4 fill-current" />
-                  Watch Live
-                </a>
-              </Button>
-            </div>
-          ) : null}
         </div>
       </div>
     </section>
@@ -494,7 +480,7 @@ function HomeHeroPromoEmbed({
   const channelSlug = (channel?.details?.slug ?? channel?.slug ?? '').toLowerCase()
   const channelVideo = channelSlug ? homeHeroChannelVideos[channelSlug] : undefined
   const channelPoster = channel?.thumbnail_url ?? channel?.details?.thumbnail_image ?? channel?.poster_tv_image ?? channel?.poster_image
-  const showMovieWatchOverlay = isEzwayMovieChannel(channel) && Boolean(channelVideo)
+  const showWatchOverlay = Boolean(channel)
 
   useEffect(() => {
     if (!channelVideo || !videoRef.current) return
@@ -544,7 +530,7 @@ function HomeHeroPromoEmbed({
         )}
       </div>
 
-      {showMovieWatchOverlay ? (
+      {showWatchOverlay ? (
         <a
           href={watchHref}
           className="group absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition-colors duration-200 hover:bg-black/30 focus-visible:bg-black/30 focus-visible:outline-none"
