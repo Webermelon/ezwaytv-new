@@ -67,64 +67,6 @@ Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallbac
 
 Route::get('language/{language}', [LanguageController::class, 'switch'])->name('frontend.language.switch');
 
-Route::post('/core/checkouts', function (Request $request) {
-    $user = auth()->user();
-    if (! $user) {
-        return response()->json(['message' => 'Please sign in before choosing a plan.'], 401);
-    }
-
-    $data = $request->validate([
-        'package_slug' => ['required', 'string', 'max:255'],
-    ]);
-
-    $baseUrl = rtrim((string) config('services.core_api.base_url'), '/');
-    $token = (string) config('services.core_api.token');
-
-    if ($baseUrl === '' || $token === '') {
-        return response()->json(['message' => 'Core API is not configured.'], 503);
-    }
-
-    $client = Http::withToken($token)->acceptJson()->timeout(20);
-    $host = trim((string) config('services.core_api.host'));
-    if ($host !== '') {
-        $client = $client->withHeaders(['Host' => $host]);
-    }
-
-    $name = trim((string) (($user->first_name ?? '').' '.($user->last_name ?? '')));
-    $checkoutReturnUrl = rtrim((string) config('services.core_api.checkout_return_url', config('app.url')), '/');
-    $checkoutReturnPath = '/'.ltrim((string) config('services.core_api.checkout_return_path', '/subscription-plan'), '/');
-    $checkoutStatusUrl = fn (string $status) => $checkoutReturnUrl.$checkoutReturnPath.'?'.http_build_query(['checkout_status' => $status]);
-
-    try {
-        $response = $client->post($baseUrl.'/api/checkouts', [
-            'package_slugs' => [$data['package_slug']],
-            'user_id' => (int) ($user->network_user_id ?: $user->id),
-            'customer' => [
-                'name' => $name !== '' ? $name : ($user->name ?? $user->email),
-                'email' => $user->email,
-                'phone' => $user->mobile ?? null,
-            ],
-            'platform' => ['slug' => 'ezway-tv'],
-            'subject_type' => 'tv_subscription',
-            'subject_id' => (string) ($user->network_user_id ?: $user->id),
-            'success_url' => $checkoutStatusUrl('success'),
-            'cancel_url' => $checkoutStatusUrl('cancelled'),
-            'failed_url' => $checkoutStatusUrl('failed'),
-            'checkout_mode' => 'auto',
-            'metadata' => [
-                'source_app' => 'ezway_tv',
-                'tv_user_id' => (string) $user->id,
-                'network_user_id' => (string) ($user->network_user_id ?: ''),
-            ],
-        ]);
-    } catch (\Throwable $exception) {
-        report($exception);
-        return response()->json(['message' => 'Core checkout could not be reached.'], 502);
-    }
-
-    return response($response->body(), $response->status())
-        ->header('Content-Type', $response->header('Content-Type', 'application/json'));
-});
 Route::view('/login-page', 'react-modernization')->name('login-page');
 Route::get('/sso/wp/login', [WordPressSsoController::class, 'login'])->name('wordpress-sso.login');
 Route::post('/store-user', [AuthController::class, 'store'])->name('store-user');

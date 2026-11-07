@@ -156,15 +156,7 @@ export function SubscriptionPlanPage() {
     setCheckoutError('')
 
     if (plan.source === 'core') {
-      setPreviewPlan(plan)
-      setSelectedPaymentMethodId('')
-      setPaymentMethods([])
-
-      if (checkoutSignedIn || window.isAuthenticated !== false) {
-        await loadCheckoutPaymentMethods()
-      } else {
-        setPaymentMethodsLoading(false)
-      }
+      await startCheckout(plan, '')
       return
     }
 
@@ -233,12 +225,13 @@ export function SubscriptionPlanPage() {
 
       window.location.href = response.redirect_url
     } catch (checkoutError) {
-      const message = checkoutErrorMessage(checkoutError)
-      if (plan.source === 'core') {
-        setCheckoutError(message)
-      } else {
-        setError(message)
+      if (checkoutError instanceof ApiError && checkoutError.status === 401) {
+        window.location.href = `/login?redirect=${encodeURIComponent('/subscription-plan')}`
+        return
       }
+
+      const message = checkoutErrorMessage(checkoutError)
+      setError(message)
       setCheckoutPlanId(null)
     }
   }
