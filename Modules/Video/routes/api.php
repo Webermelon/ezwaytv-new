@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Middleware\VerifyVideoApiKey;
 use Illuminate\Support\Facades\Route;
 use Modules\Video\Http\Controllers\API\VideosController;
 use Modules\Video\Http\Controllers\API\CreatorChannelController;
 
-Route::get('video-list', [VideosController::class, 'videoList']);
-Route::get('video-details', [VideosController::class, 'videoDetails']);
-Route::prefix('v3')->group(function () {
-	Route::get('video-list', [VideosController::class, 'videoListV3']);
+Route::middleware(VerifyVideoApiKey::class)->group(function () {
+    Route::get('video-list', [VideosController::class, 'videoList']);
+    Route::get('video-details', [VideosController::class, 'videoDetails']);
+    Route::prefix('v3')->group(function () {
+        Route::get('video-list', [VideosController::class, 'videoListV3']);
+    });
 });
 
 // -----------------------------------------------------------------------

@@ -55,6 +55,7 @@
         let isLoading = false;
         let hasMore = true;
         let per_page = 12;
+        const csrf_token = '{{ csrf_token() }}';
         const baseUrl = document.querySelector('meta[name="baseUrl"]').getAttribute('content');
         const categorySlug = '{{ $category->slug }}';
         const apiUrl = `${baseUrl}/api/v3/video-list?is_ajax=1&per_page=${per_page}&category_slug=${encodeURIComponent(categorySlug)}`;
@@ -74,7 +75,10 @@
             isLoading = true;
             shimmerContainer.style.display = '';
             try {
-                const response = await fetch(`${apiUrl}&page=${currentPage}`);
+                const response = await fetch(`${apiUrl}&page=${currentPage}`, {
+                    headers: { 'X-CSRF-TOKEN': csrf_token },
+                    credentials: 'same-origin',
+                });
                 const data = await response.json();
                 if (data?.html) {
                     EntertainmentList.insertAdjacentHTML(currentPage === 1 ? 'afterbegin' : 'beforeend', data.html);

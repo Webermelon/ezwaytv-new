@@ -225,7 +225,10 @@
             isLoading = true;
             shimmerContainer.style.display = '';
             try {
-                const response = await fetch(`${apiUrl}&page=${currentPage}`);
+                const response = await fetch(`${apiUrl}&page=${currentPage}`, {
+                    headers: { 'X-CSRF-TOKEN': csrf_token },
+                    credentials: 'same-origin',
+                });
                 const data = await response.json();
                 if (data?.html) {
                     EntertainmentList.insertAdjacentHTML(currentPage === 1 ? 'afterbegin' : 'beforeend', data.html);

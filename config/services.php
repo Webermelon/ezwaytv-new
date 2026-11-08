@@ -78,6 +78,10 @@ return [
         'secret' => env('CORE_PRIVATE_API_SECRET'),
     ],
 
+    'video_api' => [
+        'key' => env('VIDEO_API_KEY'),
+    ],
+
     'core_api' => [
         'base_url' => env('CORE_API_URL', 'https://ezwaycore.webermelon.dev'),
         'token' => env('CORE_API_TOKEN'),
