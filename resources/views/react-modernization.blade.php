@@ -54,6 +54,7 @@
         <meta name="keywords" content="{{ $keywords }}">
     @endif
     <link rel="canonical" href="{{ $canonical }}">
+    <link rel="alternate" type="application/rss+xml" title="eZWay TV" href="{{ url('/feed/rss') }}">
     <meta property="og:type" content="{{ $ogType }}">
     <meta property="og:site_name" content="{{ $siteName }}">
     <meta property="og:title" content="{{ $title }}">

@@ -23,6 +23,7 @@ use Modules\Frontend\Http\Controllers\API\FooterController;
 use Modules\Frontend\Http\Controllers\API\NavigationMenuController;
 use App\Http\Controllers\Api\Private\CoreTvAccessController;
 use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
+use App\Http\Controllers\TvContentFeedController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -175,6 +176,7 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
 });
 
 Route::prefix('v3')->middleware(['throttle:api'])->group(function () {
+    Route::get('tv-content-feed', [TvContentFeedController::class, 'index'])->name('api.v3.tv-content-feed');
     Route::get('/payment-methods', [APISettingController::class, 'getPaymentMethods'])->name('payment.methods');
     Route::get('app-configuration', [APISettingController::class, 'appConfiguratonV3']);
     Route::get('content-details', [EntertainmentsController::class, 'contentDetailsV3']);
