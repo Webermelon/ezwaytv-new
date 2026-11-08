@@ -48,6 +48,17 @@ export async function loadVideoDetail(slug: string, ondemandChannel?: string | n
   return response.data
 }
 
+export async function loadEmbeddedVideoDetail(slug: string, ondemandChannel?: string | null) {
+  const embedApiUrl = (window as Window & { ezwayEmbedApiUrl?: string | null }).ezwayEmbedApiUrl
+
+  if (embedApiUrl) {
+    const response = await api.get<ApiEnvelope<MediaItem>>(embedApiUrl)
+    return response.data
+  }
+
+  return loadVideoDetail(slug, ondemandChannel)
+}
+
 export async function loadMovieDetail(movieId: string) {
   const params = new URLSearchParams({ movie_id: movieId })
   const response = await api.get<ApiEnvelope<MediaItem>>(`/api/movie-details?${params.toString()}`)

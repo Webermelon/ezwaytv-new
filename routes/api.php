@@ -24,6 +24,7 @@ use Modules\Frontend\Http\Controllers\API\NavigationMenuController;
 use App\Http\Controllers\Api\Private\CoreTvAccessController;
 use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
 use App\Http\Controllers\TvContentFeedController;
+use Modules\Video\Http\Controllers\API\VideosController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -38,6 +39,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('user-detail', [AuthController::class, 'userDetails']);
+
+Route::get('video-embed-details/{slug}', function (Request $request, VideosController $videos, string $slug) {
+    $request->merge(['slug' => $slug]);
+
+    return $videos->videoDetails($request);
+})->middleware('signed')->name('video-embed-details');
 
 Route::prefix('private/core')->middleware([\App\Http\Middleware\VerifyCorePrivateApi::class])->group(function () {
     Route::post('users/sync', [CoreTvAccessController::class, 'syncUser']);

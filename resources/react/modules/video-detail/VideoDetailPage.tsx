@@ -14,7 +14,7 @@ import type { MediaItem } from '@/modules/home/types'
 import { loadOnDemandProfile } from '@/modules/ondemand/ondemandApi'
 import { PublicPage } from '@/modules/public/PublicPage'
 import { VideoJsPlayer } from './VideoJsPlayer'
-import { loadContentStats, loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type ContentStats, type VideoAd } from './videoDetailApi'
+import { loadContentStats, loadEmbeddedVideoDetail, loadVideoAds, loadVideoDetail, trackVideoPlay, trackVideoView, updateWatchTime, type ContentStats, type VideoAd } from './videoDetailApi'
 
 type AuthorChannel = {
   id?: number | string
@@ -430,7 +430,7 @@ export function VideoEmbedPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const videoQuery = useQuery({
     queryKey: ['video-embed', slug, ondemandChannel],
-    queryFn: () => loadVideoDetail(slug, ondemandChannel),
+    queryFn: () => loadEmbeddedVideoDetail(slug, ondemandChannel),
     enabled: Boolean(slug),
   })
   const video = videoQuery.data as VideoDetail | null | undefined

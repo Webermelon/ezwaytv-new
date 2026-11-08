@@ -54,7 +54,6 @@
         <meta name="keywords" content="{{ $keywords }}">
     @endif
     <link rel="canonical" href="{{ $canonical }}">
-    <link rel="alternate" type="application/rss+xml" title="eZWay TV" href="{{ url('/feed/rss') }}">
     <meta property="og:type" content="{{ $ogType }}">
     <meta property="og:site_name" content="{{ $siteName }}">
     <meta property="og:title" content="{{ $title }}">
@@ -139,6 +138,7 @@
         window.ezwayAuth = @json($authPayload);
         window.ezwayVisibleMenuKeys = @json($visibleMenuKeys);
         window.ezwayIosRestrictionsEnabled = @json((bool) setting('ios_app_restrictions_enabled', true));
+        window.ezwayEmbedApiUrl = @json($embedApiUrl ?? null);
     </script>
     <script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
     @vite('resources/react/main.tsx')
