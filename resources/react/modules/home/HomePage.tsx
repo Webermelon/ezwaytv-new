@@ -59,7 +59,7 @@ export function HomePage() {
     [railLimit, state.liveTv],
   )
   const heroLiveChannels = useMemo(
-    () => ensureEzwayMovieChannel(
+    () => ensureEzwayTvChannel(
       state.dashboard.hero_banner_slider_livetv?.data?.length ? state.dashboard.hero_banner_slider_livetv.data : liveChannels,
       liveChannels,
     ),
@@ -388,7 +388,7 @@ function Hero({
       <img src={heroBackground} alt="" className="ez-home-hero-image absolute inset-0 h-full w-full object-cover" />
       <div className="ez-home-hero-shade absolute inset-0" />
 
-      <div className="relative z-10 mx-auto grid min-h-[560px] max-w-[1800px] items-center gap-8 px-4 pb-8 pt-16 sm:px-8 lg:grid-cols-[minmax(360px,0.9fr)_minmax(500px,1.1fr)] lg:gap-12 lg:px-12 xl:px-16">
+      <div className="relative z-10 grid min-h-[560px] w-full items-center gap-8 px-4 pb-8 pt-16 sm:px-8 lg:grid-cols-[minmax(360px,0.9fr)_minmax(500px,1.1fr)] lg:gap-12 lg:px-12">
         <div className="relative self-end pb-1 lg:self-center">
           <div className="ez-home-hero-copy max-w-[590px]">
             <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -909,12 +909,18 @@ function isEzwayMovieChannel(channel?: MediaItem) {
   return slug === 'ezway-movies' || slug === 'ezway-movie-channel'
 }
 
-function ensureEzwayMovieChannel(channels: MediaItem[], availableChannels: MediaItem[]) {
-  const movieChannel = availableChannels.find(isEzwayMovieChannel)
+function isEzwayTvChannel(channel?: MediaItem) {
+  const slug = (channel?.details?.slug ?? channel?.slug ?? '').toLowerCase()
 
-  if (!movieChannel) return channels
+  return slug === 'ezway-tv'
+}
 
-  return [movieChannel, ...channels.filter((channel) => String(channel.id) !== String(movieChannel.id))]
+function ensureEzwayTvChannel(channels: MediaItem[], availableChannels: MediaItem[]) {
+  const ezwayTvChannel = availableChannels.find(isEzwayTvChannel)
+
+  if (!ezwayTvChannel) return channels
+
+  return [ezwayTvChannel, ...channels.filter((channel) => String(channel.id) !== String(ezwayTvChannel.id))]
 }
 
 function resolveMostWatchedRail(dashboard: DashboardData) {
@@ -931,8 +937,8 @@ function resolveMostWatchedRail(dashboard: DashboardData) {
 
 function sortByDashboardOrder(channels: MediaItem[]) {
   return [...channels].sort((a, b) => {
-    if (isEzwayMovieChannel(a) !== isEzwayMovieChannel(b)) {
-      return isEzwayMovieChannel(a) ? -1 : 1
+    if (isEzwayTvChannel(a) !== isEzwayTvChannel(b)) {
+      return isEzwayTvChannel(a) ? -1 : 1
     }
 
     const aOrder = typeof a.dashboard_order === 'number' ? a.dashboard_order : Number.MAX_SAFE_INTEGER
