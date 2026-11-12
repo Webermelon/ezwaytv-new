@@ -494,6 +494,7 @@ class StatisticsController extends Controller
         $pvData = DB::table('stat_page_views')
             ->selectRaw("
                 CASE
+                    WHEN page_url REGEXP '[?&]utm_medium=email([&#]|$)' THEN 'Email'
                     WHEN referrer IS NULL OR referrer = '' THEN 'Direct'
                     WHEN referrer LIKE '%google.%' THEN 'Google'
                     WHEN referrer LIKE '%facebook.%' THEN 'Facebook'
@@ -518,6 +519,10 @@ class StatisticsController extends Controller
             $pvData['Direct'] = ($pvData['Direct'] ?? 0) + $evCount;
         }
 
+        // Preserve the observed email count when the dashboard boosts other sources.
+        $emailViews = (int) ($pvData['Email'] ?? 0);
+        unset($pvData['Email']);
+
         $rawTotal = (int) array_sum($pvData);
         $targetTotal = $this->boostedTargetTotal($rawTotal, 'views');
         $pvData = $this->injectSpikeBoost(
@@ -526,6 +531,10 @@ class StatisticsController extends Controller
             "traffic_{$period}",
             ['Direct' => 1.7, 'Google' => 1.35, 'Facebook' => 1.15, 'Other' => 0.9]
         );
+
+        if ($emailViews > 0) {
+            $pvData['Email'] = $emailViews;
+        }
 
         arsort($pvData);
         $pvData = array_slice($pvData, 0, $limit, true);
