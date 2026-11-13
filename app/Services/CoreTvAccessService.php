@@ -45,6 +45,10 @@ class CoreTvAccessService
             'email_verified_at' => $user?->email_verified_at ?? now(),
         ];
 
+        if ($connectUserId > 0) {
+            $values['connect_user_id'] = $connectUserId;
+        }
+
         if ($user) {
             if ($user->trashed()) {
                 $user->restore();

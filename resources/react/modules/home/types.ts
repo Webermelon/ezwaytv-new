@@ -104,6 +104,8 @@ export type MediaItem = {
     description?: string | null
     thumbnail_image?: string | null
     server_url?: string | null
+    embedded?: string | null
+    stream_type?: string | null
     vod_channel?: {
       id?: number | string
       name?: string | null
