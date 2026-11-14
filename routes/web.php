@@ -23,6 +23,7 @@ use App\Http\Controllers\CoreCheckoutBridgeController;
 use App\Http\Controllers\MediaCompressorWebhookController;
 use App\Http\Controllers\Auth\ConnectSsoController;
 use App\Http\Controllers\VideoEmbedController;
+use App\Http\Controllers\LiveTvEmbedController;
 use Illuminate\Http\Request;
 
 /*
@@ -84,6 +85,7 @@ Route::view('/payment-history', 'react-modernization')->name('payment-history');
 Route::view('/orders', 'react-modernization')->name('orders');
 Route::view('/music', 'react-modernization')->name('music');
 Route::get('/video-embed/{slug}', [VideoEmbedController::class, 'show'])->name('video-embed');
+Route::get('/live-embed/{slug}', [LiveTvEmbedController::class, 'show'])->name('live-embed');
 Route::get('/upload-your-videoes', fn () => redirect()->route('upload-your-videoes', ['channel' => 'ezway-music']))->name('upload-your-videoes.default');
 Route::view('/upload-your-videoes/{channel}', 'react-modernization')->name('upload-your-videoes');
 Route::get('/stream-your-music/{channel?}', fn ($channel = 'ezway-music') => redirect()->route('upload-your-videoes', ['channel' => $channel]))->name('stream-your-music');

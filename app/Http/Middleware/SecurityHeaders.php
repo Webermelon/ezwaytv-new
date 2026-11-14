@@ -53,7 +53,7 @@ class SecurityHeaders
         // $response->headers->set('Cross-Origin-Embedder-Policy', 'credentialless');
         // $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
         // $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
-        if ($request->is('video-embed') || $request->is('video-embed/*')) {
+        if ($request->is('video-embed') || $request->is('video-embed/*') || $request->is('live-embed') || $request->is('live-embed/*')) {
             $response->headers->remove('X-Frame-Options');
             $response->headers->set('Content-Security-Policy', "frame-ancestors *");
         } else {

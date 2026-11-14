@@ -419,49 +419,42 @@ function LiveTvDetailPage({
                   label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
                 />
               ) : stream && playerStarted ? (
-                stream.kind === 'iframe' ? (
-                  <LiveTvEmbeddedPlayer source={stream.url} title={title} />
-                ) : (
-                  <VideoJsPlayer
-                    source={stream.url}
-                    poster={image}
-                    autoplay={false}
-                    muted={false}
-                    playTrigger={playTrigger}
-                    vastAds={ads.vast}
-                    isLive
-                    onPlay={() => {
-                      if (!channel || playIdRef.current) return
-                      trackPlayMutation.mutate(channel)
-                    }}
-                    onTimeUpdate={(seconds) => {
-                      if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
-                        lastWatchUpdateRef.current = seconds
-                        updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                      }
-                    }}
-                    onPause={(seconds) => {
-                      if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
-
+                <VideoJsPlayer
+                  source={stream.url}
+                  poster={image}
+                  autoplay={false}
+                  muted={false}
+                  playTrigger={playTrigger}
+                  vastAds={ads.vast}
+                  isLive
+                  onPlay={() => {
+                    if (!channel || playIdRef.current) return
+                    trackPlayMutation.mutate(channel)
+                  }}
+                  onTimeUpdate={(seconds) => {
+                    if (playIdRef.current && seconds - lastWatchUpdateRef.current >= 15) {
                       lastWatchUpdateRef.current = seconds
                       updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
-                    }}
-                    onEnded={(seconds) => {
-                      if (!playIdRef.current) return
+                    }
+                  }}
+                  onPause={(seconds) => {
+                    if (!playIdRef.current || seconds <= lastWatchUpdateRef.current) return
 
-                      const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
-                      lastWatchUpdateRef.current = finalSeconds
-                      updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
-                    }}
-                  />
-                )
+                    lastWatchUpdateRef.current = seconds
+                    updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds })
+                  }}
+                  onEnded={(seconds) => {
+                    if (!playIdRef.current) return
+
+                    const finalSeconds = Math.max(seconds, lastWatchUpdateRef.current)
+                    lastWatchUpdateRef.current = finalSeconds
+                    updateWatchTimeMutation.mutate({ nextPlayId: playIdRef.current, seconds: finalSeconds })
+                  }}
+                />
               ) : stream ? (
                 <LiveTvStartScreen image={image} title={title} onStart={() => {
                   setPlayerStarted(true)
                   setPlayTrigger((value) => value + 1)
-                  if (stream.kind === 'iframe' && channel && !playIdRef.current) {
-                    trackPlayMutation.mutate(channel)
-                  }
                 }} />
               ) : loading ? (
                 <LiveTvPlayerPreparing image={image} title={title} />
@@ -1271,21 +1264,17 @@ function LiveTvGuideHeroPlayer({
             label={`${requiredPlanLabel(channel)} is required to watch this live channel.`}
           />
         ) : stream ? (
-          stream.kind === 'iframe' ? (
-            <LiveTvEmbeddedPlayer source={stream.url} title={title} />
-          ) : (
-            <VideoJsPlayer
-              key={`${channel.id}-${stream.url}`}
-              source={stream.url}
-              poster={image}
-              autoplay
-              muted
-              playTrigger={playTrigger}
-              vastAds={[]}
-              isLive
-              onPlay={() => onPlay(channel)}
-            />
-          )
+          <VideoJsPlayer
+            key={`${channel.id}-${stream.url}`}
+            source={stream.url}
+            poster={image}
+            autoplay
+            muted
+            playTrigger={playTrigger}
+            vastAds={[]}
+            isLive
+            onPlay={() => onPlay(channel)}
+          />
         ) : isPreview ? (
           <HeroVideoPreview image={image} title={title} href={liveTvSpaHref(previewChannel)} />
         ) : (
@@ -2060,55 +2049,17 @@ function resolveLiveTvStream(channel?: MediaItem) {
   const qualities = channel?.video_qualities ?? []
   const stream = qualities.find((item) => item.url && item.url_type !== 'Embedded') ?? qualities.find((item) => item.url)
   const url = stream?.url ?? channel?.details?.server_url
-  const iframeUrl = liveTvPlayerIframeUrl(channel, stream?.url_type === 'Embedded' ? stream.url : url)
-
-  if (iframeUrl) return { url: iframeUrl, type: 'Embedded', kind: 'iframe' as const }
 
   if (!url || stream?.url_type === 'Embedded') return null
 
   return { url, type: stream?.url_type ?? 'HLS', kind: 'video' as const }
 }
 
-function liveTvPlayerIframeUrl(channel?: MediaItem, value?: string | null) {
-  const slug = String(channel?.slug ?? channel?.details?.slug ?? '').toLowerCase()
-  if (slug === 'bill-duke-live-tv') return 'https://stream.ezway.tv/player/58A9iwSyJlO6'
-  if (!value) return null
-
-  const source = value.match(/<iframe[^>]+\bsrc=["']([^"']+)["']/i)?.[1] ?? value.trim()
-
-  try {
-    const url = new URL(source)
-    if (url.protocol !== 'https:' || url.hostname.toLowerCase() !== 'stream.ezway.tv') return null
-    if (url.pathname.startsWith('/player/')) return url.toString()
-
-    const pathParts = url.pathname.split('/').filter(Boolean)
-    const hlsIndex = pathParts.findIndex((part) => part.toLowerCase() === 'hls')
-    const streamId = hlsIndex >= 0 ? pathParts[hlsIndex + 1]?.replace(/\.m3u8$/i, '') : null
-
-    return streamId ? `https://stream.ezway.tv/player/${encodeURIComponent(streamId)}` : null
-  } catch {
-    return null
-  }
-}
-
-function LiveTvEmbeddedPlayer({ source, title }: { source: string; title: string }) {
-  return (
-    <iframe
-      src={source}
-      title={`${title} live player`}
-      className="h-full min-h-0 w-full border-0 bg-black"
-      allow="autoplay; encrypted-media; picture-in-picture"
-      allowFullScreen
-      referrerPolicy="no-referrer-when-downgrade"
-    />
-  )
-}
-
 function liveTvIframeEmbedCode(streamUrl?: string | null, channel?: MediaItem) {
-  const playerUrl = liveTvPlayerIframeUrl(channel, streamUrl)
-  return playerUrl
-    ? `<iframe src="${playerUrl}" style="width: 100%; aspect-ratio: 16/9; min-height: 400px; border: none;" allowfullscreen allow="autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>`
-    : null
+  if (!streamUrl || !channel?.slug) return null
+
+  const embedUrl = new URL(`/live-embed/${encodeURIComponent(String(channel.slug))}`, window.location.origin).toString()
+  return `<iframe src="${embedUrl}" style="width: 100%; aspect-ratio: 16/9; min-height: 400px; border: none;" allowfullscreen allow="autoplay" referrerpolicy="no-referrer-when-downgrade"></iframe>`
 }
 
 function isPremiumMediaLocked(item?: MediaItem | null) {
