@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AppAnalyticsInstallation extends Model
 {
+    use \App\Services\UsesTvAnalyticsStorage;
+
     protected $table = 'app_analytics_installations';
 
     protected $fillable = [

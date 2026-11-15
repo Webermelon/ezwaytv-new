@@ -4,6 +4,7 @@ namespace Modules\Frontend\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\TvLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -21,12 +22,14 @@ class WordPressSsoController extends Controller
         $token = (string) $request->query('token', '');
 
         if ($token === '') {
+            TvLog::auth($request, 'login_failed', 'failed', null, 'missing_token', 'sso', 'wordpress');
             return $this->redirectWithError('Missing SSO token.');
         }
 
         $payload = $this->decodeAndValidateToken($token);
 
         if (! $payload) {
+            TvLog::auth($request, 'login_failed', 'failed', null, 'invalid_or_expired_token', 'sso', 'wordpress');
             return $this->redirectWithError('Invalid or expired SSO token.');
         }
 
@@ -35,6 +38,8 @@ class WordPressSsoController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
         $this->setDevice($user, $request);
+
+        TvLog::auth($request, 'login_succeeded', 'success', $user->id, 'session_issued', 'sso', 'wordpress');
 
         return redirect()->intended('/');
     }

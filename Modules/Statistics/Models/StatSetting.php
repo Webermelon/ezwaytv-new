@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class StatSetting extends Model
 {
+    use \App\Services\UsesTvAnalyticsStorage;
+
     protected $table = 'stat_settings';
 
     protected $fillable = ['key', 'value'];

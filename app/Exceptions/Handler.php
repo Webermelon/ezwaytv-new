@@ -38,6 +38,10 @@ class Handler extends ExceptionHandler
      */
     public function register()
     {
+        $this->reportable(function (Throwable $exception): void {
+            \App\Services\TvLog::exception($exception);
+        });
+
         // When CSRF token mismatch (e.g. session was invalidated / demo_admin logged out remotely),
         // redirect to login instead of showing 419 error page.
         $this->renderable(function (TokenMismatchException $e, $request) {

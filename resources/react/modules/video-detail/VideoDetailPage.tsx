@@ -156,7 +156,7 @@ export function VideoDetailPage() {
   const ads = adsQuery.data ?? { vast: [], custom: [] }
   const trackViewMutation = useMutation({
     mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
-      trackVideoView(nextVideo, nextChannelId)
+      trackVideoView(nextVideo, nextChannelId, { surface: 'watch', watchedChannelId: ondemandChannel })
     ),
     onSuccess: () => {
       statsQuery.refetch().catch(() => undefined)
@@ -164,7 +164,7 @@ export function VideoDetailPage() {
   })
   const trackPlayMutation = useMutation({
     mutationFn: ({ nextVideo, nextChannelId }: { nextVideo: VideoDetail; nextChannelId?: string | number | null }) => (
-      trackVideoPlay(nextVideo, nextChannelId)
+      trackVideoPlay(nextVideo, nextChannelId, { surface: 'watch', watchedChannelId: ondemandChannel })
     ),
     onSuccess: (result) => {
       if (result?.play_id) setPlayId(result.play_id)
@@ -212,6 +212,7 @@ export function VideoDetailPage() {
         ) : (
           <VideoJsPlayer
             source={playerUrl}
+            telemetry={video?.id ? { content_type: 'video', content_id: video.id, player_surface: 'watch', watched_channel_id: ondemandChannel } : undefined}
             poster={playerPoster}
             autoplay={autoplay}
             playTrigger={playTrigger}
@@ -428,6 +429,8 @@ export function VideoEmbedPage() {
   const muted = autoplay || getQueryValue('muted') === '1'
   const isHeroPromo = getQueryValue('hero') === '1'
   const [isPlaying, setIsPlaying] = useState(false)
+  const embedViewRef = useRef<string | null>(null)
+  const embedPlayRef = useRef<string | null>(null)
   const videoQuery = useQuery({
     queryKey: ['video-embed', slug, ondemandChannel],
     queryFn: () => loadEmbeddedVideoDetail(slug, ondemandChannel),
@@ -463,6 +466,14 @@ export function VideoEmbedPage() {
   const playerPoster = video ? resolvePreviewImage(video) : null
   const isPayPerViewLocked = video?.access === 'pay-per-view' && !video.is_purchased
   const isSubscriptionLocked = Boolean(video && video.access === 'paid' && !hasVideoAccess(video))
+  const embedTrackingKey = videoId ? String(videoId) + ':' + (ondemandChannel ?? '') : null
+
+  useEffect(() => {
+    if (!video || !embedTrackingKey || embedViewRef.current === embedTrackingKey) return
+
+    embedViewRef.current = embedTrackingKey
+    trackVideoView(video, channelId, { surface: 'embed', watchedChannelId: ondemandChannel }).catch(() => undefined)
+  }, [channelId, embedTrackingKey, ondemandChannel, video])
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-black text-white">
@@ -488,12 +499,19 @@ export function VideoEmbedPage() {
           ) : (
             <VideoJsPlayer
               source={playerUrl}
+              telemetry={video?.id ? { content_type: 'video', content_id: video.id, player_surface: 'embed', watched_channel_id: ondemandChannel } : undefined}
               poster={playerPoster}
               autoplay={autoplay}
               muted={muted}
               pausedOverlay={<EmbedPausedIdentity video={video} />}
               vastAds={isHeroPromo ? [] : (adsQuery.data?.vast ?? [])}
-              onPlay={() => setIsPlaying(true)}
+              onPlay={() => {
+                setIsPlaying(true)
+                if (!embedTrackingKey || embedPlayRef.current === embedTrackingKey) return
+
+                embedPlayRef.current = embedTrackingKey
+                trackVideoPlay(video, channelId, { surface: 'embed', watchedChannelId: ondemandChannel }).catch(() => undefined)
+              }}
               onPause={() => setIsPlaying(false)}
               onEnded={() => {
                 setIsPlaying(false)

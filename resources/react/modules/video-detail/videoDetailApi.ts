@@ -97,21 +97,32 @@ export async function loadVideoAds(videoId: string | number) {
   }
 }
 
-export async function trackVideoView(video: MediaItem, channelId?: string | number | null) {
+type VideoTrackingContext = {
+  watchedChannelId?: string | number | null
+  surface?: 'watch' | 'embed'
+}
+
+export async function trackVideoView(video: MediaItem, channelId?: string | number | null, context: VideoTrackingContext = {}) {
   return trackView({
     content_type: 'video',
     content_id: video.id,
     channel_id: channelId,
     page_name: video.name,
-    route_name: 'video-details',
+    watched_channel_id: context.watchedChannelId,
+    player_surface: context.surface,
+    route_name: context.surface === 'embed' ? 'video-embed' : 'video-details',
+    page_url: context.surface === 'embed' ? window.location.origin + window.location.pathname : undefined,
+    referrer: context.surface === 'embed' && document.referrer ? new URL(document.referrer).origin : undefined,
   })
 }
 
-export async function trackVideoPlay(video: MediaItem, channelId?: string | number | null) {
+export async function trackVideoPlay(video: MediaItem, channelId?: string | number | null, context: VideoTrackingContext = {}) {
   return trackPlay({
     content_type: 'video',
     content_id: video.id,
     channel_id: channelId,
+    watched_channel_id: context.watchedChannelId,
+    player_surface: context.surface,
     quality: 'auto',
   })
 }

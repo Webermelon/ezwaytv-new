@@ -12,6 +12,31 @@ use Modules\Video\Models\Video;
 
 class NavigationMenuController extends Controller
 {
+    private const CATALOG_KEY = 'tv-public:navigation-catalog:v1';
+
+    public function refreshCatalog(): void
+    {
+        if (!Cache::forever(self::CATALOG_KEY, $this->catalog())) {
+            throw new \RuntimeException('Navigation catalog cache write failed.');
+        }
+
+        Cache::forget('api:v3:navigation-menu:v5');
+    }
+
+    private function catalog(): array
+    {
+        return [
+            'videos' => Video::query()
+                ->where('status', 1)->orderByDesc('updated_at')->limit(14)
+                ->get(['id', 'name', 'slug', 'poster_url', 'poster_tv_url', 'duration', 'access']),
+            'onDemand' => AuthorChannel::query()
+                ->select(['id', 'name', 'username', 'banner', 'avatar'])
+                ->withCount('videos')->where('is_active', 1)->orderByDesc('updated_at')->limit(14)->get(),
+            'hasMovies' => Entertainment::query()->where('status', 1)->where('type', 'movie')->exists(),
+            'hasTvShows' => Entertainment::query()->where('status', 1)->whereIn('type', ['tv_show', 'tvshow'])->exists(),
+        ];
+    }
+
     public function show()
     {
         $data = Cache::remember('api:v3:navigation-menu:v5', 300, function () {
@@ -23,13 +48,9 @@ class NavigationMenuController extends Controller
             $showDistributionMenu = isFrontendMenuVisible('show_distribution_menu');
             $showStreamMusicMenu = isFrontendMenuVisible('show_stream_music_menu');
 
-            $videos = Video::query()
-                ->where('status', 1)
-                ->orderByDesc('updated_at')
-                ->limit(14)
-                ->get()
-                ->map(fn (Video $video) => $this->videoItem($video))
-                ->values();
+            $catalog = Cache::rememberForever(self::CATALOG_KEY, fn () => $this->catalog());
+            $videos = $catalog['videos']->map(fn (Video $video) => $this->videoItem($video))->values();
+            $onDemand = $catalog['onDemand']->map(fn (AuthorChannel $channel) => $this->onDemandItem($channel))->values();
 
             $liveTv = LiveTvChannel::query()
                 ->with('TvCategory')
@@ -41,25 +62,6 @@ class NavigationMenuController extends Controller
                 ->map(fn (LiveTvChannel $channel) => $this->liveTvItem($channel))
                 ->values();
 
-            $onDemand = AuthorChannel::query()
-                ->withCount('videos')
-                ->where('is_active', 1)
-                ->orderByDesc('updated_at')
-                ->limit(14)
-                ->get()
-                ->map(fn (AuthorChannel $channel) => $this->onDemandItem($channel))
-                ->values();
-
-            $hasMovies = Entertainment::query()
-                ->where('status', 1)
-                ->where('type', 'movie')
-                ->exists();
-
-            $hasTvShows = Entertainment::query()
-                ->where('status', 1)
-                ->whereIn('type', ['tv_show', 'tvshow'])
-                ->exists();
-
             $bottomNav = [
                 $this->menuItem('home', 'Home', '/', 'home', ['visible' => $showHomeMenu]),
                 $this->menuItem('search', 'Search', '/search', 'search'),
@@ -70,8 +72,8 @@ class NavigationMenuController extends Controller
 
             $burgerMenu = [
                 $this->menuItem('home', 'Home', '/', 'home', ['visible' => $showHomeMenu]),
-                $this->menuItem('movies', 'Movies', '/movies', 'film', ['visible' => $showAllContentMenu && $hasMovies]),
-                $this->menuItem('tvshows', 'TV Shows', '/tv-shows', 'tv', ['visible' => $showAllContentMenu && $hasTvShows]),
+                $this->menuItem('movies', 'Movies', '/movies', 'film', ['visible' => $showAllContentMenu && $catalog['hasMovies']]),
+                $this->menuItem('tvshows', 'TV Shows', '/tv-shows', 'tv', ['visible' => $showAllContentMenu && $catalog['hasTvShows']]),
                 $this->menuItem('videos', 'Videos', '/videos', 'video', ['dropdown' => 'videos', 'visible' => $showVideoMenu]),
                 $this->menuItem('on-demand', 'On Demand', '/on-demand', 'film', ['dropdown' => 'ondemand', 'visible' => $showOnDemandMenu]),
                 $this->menuItem('livetv', 'Live TV', '/livetv', 'radio', ['dropdown' => 'livetv', 'visible' => $showLiveTvMenu]),

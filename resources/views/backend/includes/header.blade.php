@@ -12,8 +12,9 @@ if (!empty($headerNavbarShow)) {
 }
 $navbarClass = $navbarHide ? 'd-none' : (!empty(getCustomizationSetting('navbar_show')) ? getCustomizationSetting('navbar_show') : '');
 $backendUser = auth()->user();
-$backendUserName = trim((string) ($backendUser?->full_name ?? '')) ?: default_user_name();
-$backendUserEmail = (string) ($backendUser?->email ?? 'abc@email.com');
+$backofficeProfile = session('tv_admin_backoffice_profile', []);
+$backendUserName = ($backofficeProfile['name'] ?? '') ?: (trim((string) ($backendUser?->full_name ?? '')) ?: default_user_name());
+$backendUserEmail = ($backofficeProfile['email'] ?? '') ?: (string) ($backendUser?->email ?? '');
 $backendAvatarFallback = '/img/avatar/avatar.webp';
 $backendAvatarUrl = $backendAvatarFallback;
 
@@ -59,6 +60,13 @@ if (!empty($backendUser?->file_url)) {
         </div>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav ms-auto align-items-center navbar-list gap-3">
+                <li class="nav-item">
+                    <a class="btn btn-outline-primary d-inline-flex align-items-center gap-2 text-nowrap"
+                        href="https://analytics.ezway.tv/">
+                        <i class="ph ph-chart-bar" aria-hidden="true"></i>
+                        <span>TV Analytics</span>
+                    </a>
+                </li>
                 <li class="nav-item dropdown iq-dropdown">
                     <a class="nav-link" data-bs-toggle="dropdown" href="#">
                         <div class="d-flex align-items-center gap-3 btn btn-warning px-2 py-2">
@@ -222,6 +230,7 @@ if (!empty($backendUser?->file_url)) {
                                 </a>
                             </li>
                         @endrole
+
 
                         <li>
                             <a class="dropdown-item d-flex justify-content-between align-items-center"

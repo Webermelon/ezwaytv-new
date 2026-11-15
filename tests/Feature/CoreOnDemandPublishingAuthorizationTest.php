@@ -222,6 +222,79 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
             ->assertJsonPath('data.0.name', 'Visible Channel');
     }
 
+    public function test_creators_log_channel_and_first_publication_under_connect_identity(): void
+    {
+        $spool = sys_get_temp_dir().'/tv-creator-test-'.bin2hex(random_bytes(8));
+        mkdir($spool.'/critical', 0700, true);
+        config(['tv-logs.enabled' => true, 'tv-logs.spool' => $spool]);
+
+        try {
+            $user = $this->user(101);
+            $identity = ['core_user_id' => 101, 'connect_user_id' => 501];
+            $base = '/api/private/core/on-demand/channels';
+            $channel = $this->coreJson('post', $base, $identity + ['name' => 'Publishing Channel'])
+                ->assertCreated()->json('data.id');
+            $otherChannel = $this->channel($user, 'Second Channel');
+
+            $videoId = $this->coreJson('post', "$base/$channel/videos", $identity + [
+                'title' => 'Creator Test Video',
+                'status' => 'draft',
+            ])->assertCreated()->json('data.id');
+            $this->assertCount(1, glob($spool.'/critical/*.json'));
+
+            $otherChannel->videos()->attach($videoId);
+            $payload = $identity + ['status' => 'published', 'video_url' => 'https://example.test/video.mp4'];
+            $this->coreJson('put', "$base/{$otherChannel->id}/videos/$videoId", $payload)->assertOk();
+            $this->coreJson('put', "$base/{$otherChannel->id}/videos/$videoId", $payload)->assertOk();
+
+            $rows = collect(glob($spool.'/critical/*.json'))
+                ->map(fn ($path) => json_decode(file_get_contents($path), true)['row'])
+                ->keyBy('event_name');
+            $this->assertCount(2, $rows);
+            $this->assertSame(501, (int) $rows['creator.channel_created']['connect_user_id']);
+            $this->assertSame(501, (int) $rows['creator.video_published']['connect_user_id']);
+            $this->assertEquals($channel, $rows['creator.video_published']['publishing_channel_id']);
+            $this->assertEquals($videoId, $rows['creator.video_published']['video_id']);
+            $this->assertEquals($user->id, $rows['creator.video_published']['tv_user_id']);
+
+            $context = \App\Services\TvCreatorEvents::viewingContext('video', [
+                'content_id' => $videoId, 'watched_channel_id' => $otherChannel->id, 'player_surface' => 'embed',
+            ]);
+            $this->assertEquals([
+                'player_surface' => 'embed', 'publishing_channel_id' => $channel, 'watched_channel_id' => $otherChannel->id,
+            ], $context);
+            $direct = \App\Services\TvCreatorEvents::viewingContext('video', ['content_id' => $videoId, 'player_surface' => 'watch']);
+            $this->assertArrayNotHasKey('watched_channel_id', $direct);
+
+            foreach (['2026_04_04_000001_create_page_views_table.php', '2026_04_04_000002_create_play_events_table.php',
+                '2026_04_04_000003_create_stat_settings_table.php', '2026_04_04_122049_add_page_name_to_stat_page_views.php'] as $migration) {
+                (require base_path('Modules/Statistics/database/migrations/'.$migration))->up();
+            }
+            foreach (['stat_page_views', 'stat_play_events'] as $table) {
+                Schema::table($table, fn (Blueprint $table) => $table->unsignedBigInteger('channel_id')->nullable());
+            }
+            mkdir($spool.'/analytics', 0700);
+            $tracking = [
+                'content_type' => 'video', 'content_id' => $videoId,
+                'player_surface' => 'embed', 'watched_channel_id' => $otherChannel->id,
+                'channel_id' => $otherChannel->id,
+            ];
+            $this->postJson('/api/statistics/track-view', $tracking)->assertOk()->assertJsonPath('status', 'ok');
+            $this->postJson('/api/statistics/track-play', $tracking)->assertOk()->assertJsonPath('status', 'ok');
+
+            $analytics = glob($spool.'/analytics/*.json');
+            $this->assertCount(2, $analytics);
+            foreach ($analytics as $path) {
+                $row = json_decode(file_get_contents($path), true)['row'];
+                $this->assertSame('embed', $row['player_surface']);
+                $this->assertEquals($channel, $row['publishing_channel_id']);
+                $this->assertEquals($otherChannel->id, $row['watched_channel_id']);
+            }
+        } finally {
+            \Illuminate\Support\Facades\File::deleteDirectory($spool);
+        }
+    }
+
     private function coreJson(string $method, string $uri, array $payload = [])
     {
         return $this->withToken('test-core-token')->json($method, $uri, $payload);
@@ -296,6 +369,7 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
         Schema::create('users', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('network_user_id')->nullable()->index();
+            $table->unsignedBigInteger('connect_user_id')->nullable();
             $table->boolean('is_network_user')->default(false);
             $table->string('username')->nullable();
             $table->string('first_name')->nullable();
@@ -341,6 +415,7 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
             $table->string('type')->nullable();
             $table->unsignedBigInteger('plan_id')->nullable();
             $table->unsignedBigInteger('creator_channel_id')->nullable();
+            $table->unsignedBigInteger('publishing_channel_id')->nullable();
             $table->string('duration')->nullable();
             $table->date('release_date')->nullable();
             $table->longText('short_desc')->nullable();

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }}</title>
+    @vite('resources/react/live-embed-telemetry.mjs')
     <style>
         html, body { width: 100%; height: 100%; margin: 0; background: #000; }
         .live-embed { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
@@ -36,7 +37,7 @@
 </head>
 <body>
     <div class="live-embed">
-        <video id="live-player" controls playsinline preload="metadata" @if($posterUrl) poster="{{ $posterUrl }}" @endif></video>
+        <video id="live-player" data-channel-id="{{ $channelId }}" controls playsinline preload="metadata" @if($posterUrl) poster="{{ $posterUrl }}" @endif></video>
         <div class="live-brand" aria-label="eZWay TV live">
             <img src="https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/ezwaytv_white_6a26f75c71a3d.png" alt="eZWay TV">
             <span class="live-badge">LIVE</span>
@@ -52,6 +53,13 @@
                 player.src = source;
             } else if (window.Hls && Hls.isSupported()) {
                 const hls = new Hls();
+                hls.on(Hls.Events.ERROR, (_event, data) => {
+                    if (!data.fatal) return;
+
+                    const code = data.type === Hls.ErrorTypes.NETWORK_ERROR ? 2
+                        : data.type === Hls.ErrorTypes.MEDIA_ERROR ? 3 : 4;
+                    player.dispatchEvent(new CustomEvent('ezway:hls-error', { detail: code }));
+                });
                 hls.loadSource(source);
                 hls.attachMedia(player);
             }

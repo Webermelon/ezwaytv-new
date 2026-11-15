@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Play, Radio } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -46,9 +46,10 @@ const homeHeroChannelVideos: Record<string, string> = {
   'ezway-movie-channel': 'https://ezwayott.sfo3.digitaloceanspaces.com/test/videos/whatsapp_video_2026-10-26_at_11_36_20_pm-360p.mp4',
 }
 export function HomePage() {
+  const queryClient = useQueryClient()
   const homeQuery = useQuery({
     queryKey: ['home-module'],
-    queryFn: loadHomeModule,
+    queryFn: () => loadHomeModule(queryClient),
     staleTime: 60_000,
   })
   const state = homeQuery.data ?? emptyState

@@ -1,17 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
-import { api } from './api'
-
-type AppConfiguration = {
-  app_name?: string | null
-  app_logo?: string | null
-  app_light_logo?: string | null
-  app_mini_logo?: string | null
-  app_favicon?: string | null
-  theme_color?: string | null
-  root_colors?: string | null | Record<string, string>
-}
+import { appConfigurationQuery, type AppConfiguration } from './app-configuration'
 
 type BrandingState = {
   appName: string
@@ -44,11 +34,7 @@ const presetPrimaryColors: Record<string, string> = {
 const BrandingContext = createContext<BrandingState>(fallbackBranding)
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
-  const brandingQuery = useQuery({
-    queryKey: ['app-configuration'],
-    queryFn: () => api.get<AppConfiguration>('/api/v3/app-configuration'),
-    staleTime: 10 * 60_000,
-  })
+  const brandingQuery = useQuery(appConfigurationQuery)
   const settings = brandingQuery.data
 
   useEffect(() => {

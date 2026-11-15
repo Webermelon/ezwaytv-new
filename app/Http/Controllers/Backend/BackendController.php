@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Setting;
+use App\Services\DashboardContentStats;
 use Carbon\Carbon;
 use Modules\Entertainment\Models\EntertainmentDownload;
-use Modules\Entertainment\Models\EntertainmentView;
 use Modules\Subscriptions\Models\SubscriptionTransactions;
 use Modules\Entertainment\Models\Entertainment;
 use Modules\Video\Models\Video;
@@ -16,10 +16,10 @@ use Modules\Subscriptions\Models\Subscription;
 use Modules\Genres\Models\Genres;
 use Modules\Entertainment\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Modules\Frontend\Models\PayperviewTransaction;
 use Modules\Episode\Models\Episode;
-use Illuminate\Support\Facades\Storage;
 
 
 class BackendController extends Controller
@@ -100,7 +100,7 @@ class BackendController extends Controller
 
         // Optimize: Use single query for basic counts
         $basicCounts = $this->getBasicCounts();
-        $contentInventoryCounts = $this->getContentInventoryCounts();
+        $contentInventoryCounts = app(DashboardContentStats::class)->inventory();
 
         // Optimize: Use single query for entertainment data
     
@@ -120,11 +120,6 @@ class BackendController extends Controller
         // Optimize: Use single query for transactions
         $transactions = SubscriptionTransactions::orderBy('created_at', 'desc')->take(4)->get();
         
-        // Optimize: Use single query for most viewed entertainments
-        $entertainments = $this->getMostViewedEntertainments();
-        
-        // Extract values from optimized queries
-        $allUsers = $userCounts['allUsers'];
         $newUsersCount = $userCounts['newUsersCount'];
         $totalusers = $userCounts['totalusers'];
         $usersCurrent = $userCounts['usersCurrent'];
@@ -151,16 +146,13 @@ class BackendController extends Controller
 
         $totalDownloads = $basicCounts['totalDownloads'];
         $totalTransactions = $basicCounts['totalTransactions'];
-        $totalOnDemandChannels = $contentInventoryCounts['totalOnDemandChannels'];
-        $totalOnDemandVideos = $contentInventoryCounts['totalOnDemandVideos'];
-        $totalTvChannels = $contentInventoryCounts['totalTvChannels'];
-
-        // $entertainments = $entertainmentData['entertainments'];
+        $totalOnDemandChannels = $contentInventoryCounts['totalOnDemandChannels'] ?? null;
+        $totalOnDemandVideos = $contentInventoryCounts['totalOnDemandVideos'] ?? null;
+        $totalTvChannels = $contentInventoryCounts['totalTvChannels'] ?? null;
 
         $totalmovies = $entertainmentData['totalmovies'];
         $totaltvshow = $entertainmentData['totaltvshow'];
         $totalvideo = $entertainmentData['totalvideo'];
-        // Use most viewed entertainments for the view (set below)
 
         $subscriptionData = $subscriptionData['subscriptionData'];
 
@@ -198,17 +190,13 @@ class BackendController extends Controller
 
 
         $diskType = env('ACTIVE_STORAGE', 'local');
-        if ($diskType == 'local') {
-            // Use local storage disk
-            $totalUsageInBytes = $this->getTotalStorageUsage($diskType);
-        } else {
-            // Use DigitalOcean Spaces for production
-            $totalUsageInBytes = $this->getTotalStorageUsage($diskType);
-        }
-        // Format the storage usage into a readable format
-        $totalUsageFormatted = $this->formatBytes($totalUsageInBytes);
+        $totalUsageInBytes = Cache::get('admin-dashboard:storage-bytes:'.$diskType);
+        $totalUsageFormatted = $totalUsageInBytes === null
+            ? '—'
+            : $this->formatBytes($totalUsageInBytes);
+
         return view('backend.dashboard.index', compact(
-            'defaultFormat','dateRange','totalUsageFormatted','count_of_rent_movie','count_of_rent_episode','rent_revenue','subscription_revenue','totalreview','totalsoontoexpire','total_revenue','allUsers', 'newUsersCount', 'totalDownloads', 'totalTransactions', 'transactions', 'entertainments','totalusers','activeusers','totalSubscribers','totalmovies','totaltvshow','totalvideo','reviewData','subscriptionData','count_of_rent_video',
+            'defaultFormat','dateRange','totalUsageFormatted','count_of_rent_movie','count_of_rent_episode','rent_revenue','subscription_revenue','totalreview','totalsoontoexpire','total_revenue','newUsersCount', 'totalDownloads', 'totalTransactions', 'transactions', 'totalusers','activeusers','totalSubscribers','totalmovies','totaltvshow','totalvideo','reviewData','subscriptionData','count_of_rent_video',
             'usersChangePercent','usersChangeUp',
             'subsChangePercent','subsChangeUp',
             'soonExpireChangePercent','soonExpireChangeUp',
@@ -228,23 +216,6 @@ class BackendController extends Controller
     /**
      * Get the real content inventory totals shown on the dashboard.
      */
-    private function getContentInventoryCounts(): array
-    {
-        return [
-            'totalOnDemandChannels' => DB::table('author_channels')
-                ->whereNull('deleted_at')
-                ->count(),
-            'totalOnDemandVideos' => DB::table('author_channel_video')
-                ->join('videos', 'videos.id', '=', 'author_channel_video.video_id')
-                ->whereNull('videos.deleted_at')
-                ->distinct('author_channel_video.video_id')
-                ->count('author_channel_video.video_id'),
-            'totalTvChannels' => DB::table('live_tv_channel')
-                ->whereNull('deleted_at')
-                ->count(),
-        ];
-    }
-
     /**
      * Get optimized user counts with single query
      */
@@ -255,15 +226,17 @@ class BackendController extends Controller
         if ($startDate && $endDate) {
             $allUsersQuery->whereBetween('created_at', [$startDate, $endDate]);
         }
-        $allUsers = $allUsersQuery->get();
+        $counts = (clone $allUsersQuery)->selectRaw(
+            'COUNT(*) AS total, COALESCE(SUM(status = 1), 0) AS active, COALESCE(SUM(is_subscribe = 1), 0) AS subscribers'
+        )->first();
 
         // Calculate user metrics
         $newUsersCount = User::where('user_type', 'user')
             ->whereDate('created_at', '>=', $startOfMonth)
             ->count();
-        $totalusers = $allUsers->count();
-        $activeusers = $allUsers->where('status', 1)->count();
-        $totalSubscribers = $allUsers->where('is_subscribe', 1)->count();
+        $totalusers = (int) $counts->total;
+        $activeusers = (int) $counts->active;
+        $totalSubscribers = (int) $counts->subscribers;
 
         // Current and previous period counts
         $usersCurrent = User::where('user_type', 'user')
@@ -282,17 +255,17 @@ class BackendController extends Controller
         // Soon to expire calculations
         $currentDate = Carbon::now();
         $expiryThreshold = $currentDate->copy()->addDays(7);
-        $soonExpireUserIds = Subscription::where('status', 'active')
+        $soonExpireUsers = Subscription::where('status', 'active')
             ->whereDate('end_date', '<=', $expiryThreshold)
-            ->pluck('user_id');
-        $totalsoontoexpire = $allUsers->whereIn('id', $soonExpireUserIds)->where('status', 1)->count();
+            ->select('user_id');
+        $totalsoontoexpire = (clone $allUsersQuery)->whereIn('id', $soonExpireUsers)->where('status', 1)->count();
 
         $soonExpireCurrent = User::where('user_type', 'user')
             ->whereBetween('created_at', [$currentStart, $currentEnd])
-            ->whereIn('id', $soonExpireUserIds)->count();
+            ->whereIn('id', $soonExpireUsers)->count();
         $soonExpirePrevious = User::where('user_type', 'user')
             ->whereBetween('created_at', [$previousStart, $previousEnd])
-            ->whereIn('id', $soonExpireUserIds)->count();
+            ->whereIn('id', $soonExpireUsers)->count();
 
         // Calculate percentage changes and trends
         [$usersChangePercent, $usersChangeUp] = $this->computePercentageChange($usersCurrent, $usersPrevious);
@@ -307,7 +280,7 @@ class BackendController extends Controller
         $soonExpireTrend = [$soonExpirePrevious, $soonExpireCurrent];
         $soonExpireTrendDates = $this->generateTrendDates($previousStart, $previousEnd, $currentStart, $currentEnd);
 
-        return compact('allUsers', 'newUsersCount', 'totalusers', 'activeusers', 'totalSubscribers',
+        return compact('newUsersCount', 'totalusers', 'activeusers', 'totalSubscribers',
                       'usersCurrent', 'usersPrevious', 'usersChangePercent', 'usersChangeUp', 'usersTrend', 'usersTrendDates',
                       'subsCurrent', 'subsPrevious', 'subsChangePercent', 'subsChangeUp', 'subsTrend', 'subsTrendDates',
                       'totalsoontoexpire', 'soonExpireCurrent', 'soonExpirePrevious', 'soonExpireChangePercent',
@@ -339,14 +312,7 @@ class BackendController extends Controller
         $totaltvshow = Entertainment::where('status', 1)->where('type', 'tvshow')->count();
         $totalvideo = Video::where('status', 1)->count();
 
-        // Return empty collection for $entertainments since it's not used in the view
-        // (the actual $entertainments used in view comes from getMostViewedEntertainments())
-        $entertainments = collect();
-
-       
-
-        // Return empty array for entertainments as most viewed are loaded separately
-        return compact('entertainments', 'totalmovies', 'totaltvshow', 'totalvideo');
+        return compact('totalmovies', 'totaltvshow', 'totalvideo');
     }
 
     /**
@@ -490,48 +456,6 @@ class BackendController extends Controller
 
         return compact('totalreview', 'reviewsChangePercent', 'reviewsChangeUp', 'reviewsTrend',
                       'reviewsTrendDates', 'reviewData');
-    }
-
-    /**
-     * Get most viewed entertainments with optimized query
-     */
-    private function getMostViewedEntertainments()
-    {
-        $mostFrequentIds = EntertainmentView::select('entertainment_id')
-            ->groupBy('entertainment_id')
-            ->orderByRaw('COUNT(*) DESC')
-            ->limit(4)
-            ->pluck('entertainment_id')
-            ->toArray();
-
-        return Entertainment::whereIn('id', $mostFrequentIds)->get();
-    }
-
-    /**
-     * Get total storage usage in bytes for the configured disk.
-     * The MB amount shown on the dashboard is the sum of all file sizes
-     * on the disk (env ACTIVE_STORAGE, default 'local') — includes uploads, media, and app files.
-     */
-    private function getTotalStorageUsage($disk)
-    {
-        try {
-            $totalSize = 0;
-            $files = Storage::disk($disk)->allFiles();
-
-            foreach ($files as $file) {
-                $fileSize = Storage::disk($disk)->size($file);
-                $totalSize += $fileSize;
-            }
-
-            return $totalSize;
-        } catch (\Throwable $exception) {
-            \Log::warning('Storage usage calculation failed', [
-                'disk' => $disk,
-                'message' => $exception->getMessage(),
-            ]);
-
-            return 0;
-        }
     }
 
     private function formatBytes($bytes, $precision = 2)
@@ -922,8 +846,7 @@ class BackendController extends Controller
     {
        [$startDate, $endDate] = $this->parseDateRange($request->get('date_range'));
 
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
+        $now = Carbon::now();
 
         $entertainmentTypes = [];
 
@@ -938,15 +861,7 @@ class BackendController extends Controller
 
 
         if ($type == 'Year') {
-            $monthlyTotalsQuery = EntertainmentView::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, entertainment_id')
-                ->selectRaw('COUNT(*) as total_views')
-                ->whereYear('created_at', $currentYear)
-                ->groupByRaw('YEAR(created_at), MONTH(created_at), entertainment_id')
-                ->orderByRaw('YEAR(created_at), MONTH(created_at), entertainment_id');
-            if ($startDate && $endDate) {
-                $monthlyTotalsQuery->whereBetween('created_at', [$startDate, $endDate]);
-            }
-            $monthlyTotals = $monthlyTotalsQuery->get()->groupBy('entertainment_id');
+            [$monthlyTotals, $types] = app(DashboardContentStats::class)->viewing('Year', $startDate, $endDate, $now);
 
             $chartData = [];
 
@@ -956,8 +871,7 @@ class BackendController extends Controller
                 for ($month = 1; $month <= 12; $month++) {
                     $totalViews = 0;
                     foreach ($monthlyTotals as $entertainmentId => $totals) {
-                        $entertainment = Entertainment::find($entertainmentId);
-                        if ($entertainment && $entertainment->type === $type) {
+                        if ($types->get($entertainmentId) === $type) {
                             foreach ($totals as $total) {
                                 if ((int)$total->month === $month) {
                                     $totalViews += $total->total_views;
@@ -984,18 +898,7 @@ class BackendController extends Controller
             $firstWeek = Carbon::now()->startOfMonth()->week;
             $lastWeek = Carbon::now()->endOfMonth()->week;
 
-            $monthlyWeekTotalsQuery = EntertainmentView::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, WEEK(created_at, 1) as week, entertainment_id')
-                ->selectRaw('COUNT(*) as total_views')
-                ->whereYear('created_at', $currentYear)
-                ->whereMonth('created_at', $currentMonth)
-                ->groupBy('year', 'month', 'week', 'entertainment_id')
-                ->orderBy('year')
-                ->orderBy('month')
-                ->orderBy('week');
-            if ($startDate && $endDate) {
-                $monthlyWeekTotalsQuery->whereBetween('created_at', [$startDate, $endDate]);
-            }
-            $monthlyWeekTotals = $monthlyWeekTotalsQuery->get()->groupBy('entertainment_id');
+            [$monthlyWeekTotals, $types] = app(DashboardContentStats::class)->viewing('Month', $startDate, $endDate, $now);
 
             $chartData = [];
 
@@ -1005,8 +908,7 @@ class BackendController extends Controller
                 for ($week = $firstWeek; $week <= $lastWeek; $week++) {
                     $totalViews = 0;
                     foreach ($monthlyWeekTotals as $entertainmentId => $totals) {
-                        $entertainment = Entertainment::find($entertainmentId);
-                        if ($entertainment && $entertainment->type === $type) {
+                        if ($types->get($entertainmentId) === $type) {
                             foreach ($totals as $total) {
                                 if ((int)$total->week === $week) {
                                     $totalViews += $total->total_views;
@@ -1029,21 +931,7 @@ class BackendController extends Controller
                 $category[] = __('dashboard.week') . " " . ($week - $firstWeek + 1);
             }
         } elseif ($type == 'Week') {
-            $startOfWeek = Carbon::now()->startOfWeek();
-            $endOfWeek = Carbon::now()->endOfWeek();
-
-            $weeklyDayTotalsQuery = EntertainmentView::selectRaw('YEAR(created_at) as year, MONTH(created_at) as month, DAY(created_at) as day, entertainment_id')
-                ->selectRaw('COUNT(*) as total_views')
-                ->groupBy('year', 'month', 'day', 'entertainment_id')
-                ->orderBy('year')
-                ->orderBy('month')
-                ->orderBy('day');
-            if ($startDate && $endDate) {
-                $weeklyDayTotalsQuery->whereBetween('created_at', [$startDate, $endDate]);
-            } else {
-                $weeklyDayTotalsQuery->whereBetween('created_at', [$startOfWeek, $endOfWeek]);
-            }
-            $weeklyDayTotals = $weeklyDayTotalsQuery->get()->groupBy('entertainment_id');
+            [$weeklyDayTotals, $types] = app(DashboardContentStats::class)->viewing('Week', $startDate, $endDate, $now);
 
             $chartData = [];
 
@@ -1054,8 +942,7 @@ class BackendController extends Controller
                     $date = Carbon::now()->startOfWeek()->addDays($day);
                     $totalViews = 0;
                     foreach ($weeklyDayTotals as $entertainmentId => $totals) {
-                        $entertainment = Entertainment::find($entertainmentId);
-                        if ($entertainment && $entertainment->type === $type) {
+                        if ($types->get($entertainmentId) === $type) {
                             foreach ($totals as $total) {
                                 if ($total->day == $date->day) {
                                     $totalViews += $total->total_views;

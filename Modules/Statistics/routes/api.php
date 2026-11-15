@@ -5,6 +5,8 @@ use Modules\Statistics\Http\Controllers\API\StatisticsController;
 
 // Public stats tracking (auth optional)
 Route::prefix('statistics')->group(function () {
+    Route::post('playback-telemetry', \Modules\Statistics\Http\Controllers\API\PlaybackTelemetryController::class)
+        ->middleware('throttle:120,1');
     Route::post('track-view',        [StatisticsController::class, 'trackView'])->middleware('throttle:120,1');
     Route::post('track-play',        [StatisticsController::class, 'trackPlay'])->middleware('throttle:120,1');
     Route::post('update-watch-time', [StatisticsController::class, 'updateWatchTime'])->middleware('throttle:240,1');

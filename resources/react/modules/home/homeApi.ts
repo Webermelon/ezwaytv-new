@@ -1,17 +1,25 @@
+import type { QueryClient } from '@tanstack/react-query'
+
+import { appConfigurationQuery, type AppConfiguration } from '@/lib/app-configuration'
 import { api } from '@/lib/api'
-import type { ApiEnvelope, AppConfiguration, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from './types'
+import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from './types'
 
 const DEFAULT_HOME_RAIL_LIMIT = 15
 
-export async function loadHomeModule() {
-  const appConfig = await api.get<AppConfiguration>('/api/v3/app-configuration').catch(() => null)
-  const railLimit = normalizeRailLimit(appConfig?.homepage_rail_item_limit)
-  const [dashboard, genres, videos, liveTv, ondemand] = await Promise.allSettled([
+export async function loadHomeModule(queryClient: QueryClient) {
+  const catalog = Promise.allSettled([
     api.get<ApiEnvelope<DashboardData>>('/api/v3/dashboard-detail'),
     api.get<ApiEnvelope<MediaItem[]>>('/api/genre-list'),
-    api.get<ApiEnvelope<MediaItem[]>>(`/api/v3/video-list?is_ajax=1&per_page=${railLimit}`),
     api.get<ApiEnvelope<LiveTvDashboard>>('/api/v3/livetv-dashboard'),
-    api.get<ApiEnvelope<PaginatedData<MediaItem>>>(`/api/v3/ondemand?per_page=${railLimit}`),
+  ])
+  const appConfig = await queryClient.fetchQuery(appConfigurationQuery).catch(() => null)
+  const railLimit = normalizeRailLimit(appConfig?.homepage_rail_item_limit)
+  const [[dashboard, genres, liveTv], [videos, ondemand]] = await Promise.all([
+    catalog,
+    Promise.allSettled([
+      api.get<ApiEnvelope<MediaItem[]>>(`/api/v3/video-list?is_ajax=1&per_page=${railLimit}`),
+      api.get<ApiEnvelope<PaginatedData<MediaItem>>>(`/api/v3/ondemand?per_page=${railLimit}`),
+    ]),
   ])
 
   return {

@@ -2,6 +2,9 @@
 
 namespace Modules\Statistics\Http\Controllers\Backend;
 
+use App\Services\AdminAudienceHistory;
+use App\Services\TvAnalyticsStorage;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,13 +68,13 @@ class StatisticsController extends Controller
         $watchHours    = round($watchSeconds / 3600, 1);
 
         // Content views (stat_page_views, web/app tracking)
-        $totalPageViews = DB::table('stat_page_views')
+        $totalPageViews = TvAnalyticsStorage::table('stat_page_views')
             ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->where('view_date', '<=', $endDate))
             ->count();
 
         // Unique visitors from page views
-        $uniqueVisitors = DB::table('stat_page_views')
+        $uniqueVisitors = TvAnalyticsStorage::table('stat_page_views')
             ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->where('view_date', '<=', $endDate))
             ->distinct('ip_address')->count('ip_address');
@@ -82,7 +85,7 @@ class StatisticsController extends Controller
         if ($startDate && $period !== 'all') {
             [$prevStart, $prevEnd] = $this->resolvePreviousPeriod($period, $startDate);
             $prevPlays = $this->playsQuery($prevStart, $prevEnd)->count();
-            $prevViews = DB::table('stat_page_views')
+            $prevViews = TvAnalyticsStorage::table('stat_page_views')
                 ->whereBetween('view_date', [$prevStart, $prevEnd])->count();
         }
 
@@ -170,32 +173,12 @@ class StatisticsController extends Controller
         $type        = $request->input('type', 'both');
         [$startDate] = $this->resolvePeriod($period);
 
-        $groupFormat  = $period === 'year' ? '%Y-%m' : '%Y-%m-%d';
-        $viewData     = [];
-        $playData     = [];
+        $history = app(AdminAudienceHistory::class)->data($period, $startDate, 'series');
+        $viewData = [];
+        $playData = [];
 
         if ($type !== 'plays') {
-            // Page views from stat_page_views
-            $pvRows = DB::table('stat_page_views')
-                ->selectRaw("DATE_FORMAT(view_date, '{$groupFormat}') as label, COUNT(*) as total")
-                ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
-                ->groupBy('label')->orderBy('label')
-                ->pluck('total', 'label')->toArray();
-
-            // Also include entertainment_views as content views (primary data source)
-            $evViewRows = DB::table('entertainment_views')
-                ->selectRaw("DATE_FORMAT(DATE(created_at), '{$groupFormat}') as label, COUNT(*) as total")
-                ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-                ->whereNull('deleted_at')
-                ->groupBy('label')->orderBy('label')
-                ->pluck('total', 'label')->toArray();
-
-            foreach ($evViewRows as $label => $count) {
-                $pvRows[$label] = ($pvRows[$label] ?? 0) + $count;
-            }
-            ksort($pvRows);
-            $viewData = $pvRows;
-
+            $viewData = $history['viewSeries'] ?? [];
             $rawViewsTotal = (int) array_sum($viewData);
             $targetViewsTotal = $this->boostedTargetTotal($rawViewsTotal, 'views');
             $viewData = $this->injectSpikeBoost(
@@ -206,27 +189,7 @@ class StatisticsController extends Controller
         }
 
         if ($type !== 'views') {
-            // Plays: entertainment_views (created_at) + stat_play_events (play_date)
-            $evRows = DB::table('entertainment_views')
-                ->selectRaw("DATE_FORMAT(DATE(created_at), '{$groupFormat}') as label, COUNT(*) as total")
-                ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-                ->whereNull('deleted_at')
-                ->groupBy('label')->orderBy('label')
-                ->pluck('total', 'label')->toArray();
-
-            $spRows = DB::table('stat_play_events')
-                ->selectRaw("DATE_FORMAT(play_date, '{$groupFormat}') as label, COUNT(*) as total")
-                ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
-                ->groupBy('label')->orderBy('label')
-                ->pluck('total', 'label')->toArray();
-
-            // Merge both sources
-            foreach ($spRows as $label => $count) {
-                $evRows[$label] = ($evRows[$label] ?? 0) + $count;
-            }
-            ksort($evRows);
-            $playData = $evRows;
-
+            $playData = $history['playSeries'] ?? [];
             $rawPlaysTotal = (int) array_sum($playData);
             $targetPlaysTotal = $this->boostedTargetTotal($rawPlaysTotal, 'plays');
             $playData = $this->injectSpikeBoost(
@@ -256,14 +219,14 @@ class StatisticsController extends Controller
         [$startDate] = $this->resolvePeriod($period);
 
         // entertainment_views: all content_type treated as 'entertainment'
-        $evQuery = DB::table('entertainment_views as ev')
+        $evQuery = TvAnalyticsStorage::table('entertainment_views as ev')
             ->selectRaw('"entertainment" as content_type, ev.entertainment_id as content_id, COUNT(*) as total')
             ->when($startDate, fn($q) => $q->whereDate('ev.created_at', '>=', $startDate))
             ->whereNull('ev.deleted_at')
             ->groupBy('ev.entertainment_id');
 
         // stat_play_events: has explicit content_type
-        $spQuery = DB::table('stat_play_events')
+        $spQuery = TvAnalyticsStorage::table('stat_play_events')
             ->selectRaw('content_type, content_id, COUNT(*) as total')
             ->whereNotNull('content_id')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
@@ -291,7 +254,7 @@ class StatisticsController extends Controller
 
             // real plays and real views
             $realPlays = (int) $row->total;
-            $realViews = DB::table('stat_page_views')
+            $realViews = TvAnalyticsStorage::table('stat_page_views')
                 ->where('content_type', $row->content_type)
                 ->where('content_id', $row->content_id)
                 ->count();
@@ -326,7 +289,7 @@ class StatisticsController extends Controller
             if (!$results->has($key)) {
                 [$name, $url] = $this->resolveContentInfo($boost->content_type, $boost->content_id);
                 $boostPlays = (int) $boost->total_plays;
-                $realViews = DB::table('stat_page_views')
+                $realViews = TvAnalyticsStorage::table('stat_page_views')
                     ->where('content_type', $boost->content_type)
                     ->where('content_id', $boost->content_id)
                     ->count();
@@ -360,20 +323,7 @@ class StatisticsController extends Controller
         $period = $request->input('period', 'month');
         [$startDate] = $this->resolvePeriod($period);
 
-        $spData = DB::table('stat_play_events')
-            ->selectRaw('COALESCE(device_type, "unknown") as device, COUNT(*) as total')
-            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
-            ->groupBy('device')
-            ->orderByDesc('total')
-            ->pluck('total', 'device')->toArray();
-
-        // Merge entertainment_views (no device info → count as 'web')
-        $evCount = DB::table('entertainment_views')
-            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-            ->whereNull('deleted_at')->count();
-        if ($evCount > 0) {
-            $spData['web'] = ($spData['web'] ?? 0) + $evCount;
-        }
+        $spData = app(AdminAudienceHistory::class)->data($period, $startDate, 'devices')['devices'] ?? [];
 
         $rawTotal = (int) array_sum($spData);
         $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
@@ -401,20 +351,7 @@ class StatisticsController extends Controller
         $limit  = min((int) $request->input('limit', 10), 50);
         [$startDate] = $this->resolvePeriod($period);
 
-        $spData = DB::table('stat_play_events')
-            ->selectRaw('COALESCE(country_code, "Unknown") as country, COUNT(*) as total')
-            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
-            ->groupBy('country')
-            ->orderByDesc('total')
-            ->pluck('total', 'country')->toArray();
-
-        // Merge entertainment_views without country info as 'Unknown'
-        $evCount = DB::table('entertainment_views')
-            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-            ->whereNull('deleted_at')->count();
-        if ($evCount > 0) {
-            $spData['Unknown'] = ($spData['Unknown'] ?? 0) + $evCount;
-        }
+        $spData = app(AdminAudienceHistory::class)->data($period, $startDate, 'countries')['countries'] ?? [];
 
         $rawTotal = (int) array_sum($spData);
         $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
@@ -450,20 +387,7 @@ class StatisticsController extends Controller
         $period = $request->input('period', 'month');
         [$startDate] = $this->resolvePeriod($period);
 
-        $spData = DB::table('stat_play_events')
-            ->selectRaw('COALESCE(platform, "web") as platform, COUNT(*) as total')
-            ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
-            ->groupBy('platform')
-            ->orderByDesc('total')
-            ->pluck('total', 'platform')->toArray();
-
-        // Merge entertainment_views without platform info as 'web'
-        $evCount = DB::table('entertainment_views')
-            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-            ->whereNull('deleted_at')->count();
-        if ($evCount > 0) {
-            $spData['web'] = ($spData['web'] ?? 0) + $evCount;
-        }
+        $spData = app(AdminAudienceHistory::class)->data($period, $startDate, 'platforms')['platforms'] ?? [];
 
         $rawTotal = (int) array_sum($spData);
         $targetTotal = $this->boostedTargetTotal($rawTotal, 'plays');
@@ -491,33 +415,7 @@ class StatisticsController extends Controller
         $limit  = min((int) $request->input('limit', 10), 50);
         [$startDate] = $this->resolvePeriod($period);
 
-        $pvData = DB::table('stat_page_views')
-            ->selectRaw("
-                CASE
-                    WHEN page_url REGEXP '[?&]utm_medium=email([&#]|$)' THEN 'Email'
-                    WHEN referrer IS NULL OR referrer = '' THEN 'Direct'
-                    WHEN referrer LIKE '%google.%' THEN 'Google'
-                    WHEN referrer LIKE '%facebook.%' THEN 'Facebook'
-                    WHEN referrer LIKE '%twitter.%' OR referrer LIKE '%x.com%' THEN 'Twitter/X'
-                    WHEN referrer LIKE '%instagram.%' THEN 'Instagram'
-                    WHEN referrer LIKE '%youtube.%' THEN 'YouTube'
-                    WHEN referrer LIKE '%t.me%' OR referrer LIKE '%telegram.%' THEN 'Telegram'
-                    ELSE 'Other'
-                END as source,
-                COUNT(*) as total
-            ")
-            ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
-            ->groupBy('source')
-            ->orderByDesc('total')
-            ->pluck('total', 'source')->toArray();
-
-        // entertainment_views represent direct app plays (no referrer data)
-        $evCount = DB::table('entertainment_views')
-            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
-            ->whereNull('deleted_at')->count();
-        if ($evCount > 0) {
-            $pvData['Direct'] = ($pvData['Direct'] ?? 0) + $evCount;
-        }
+        $pvData = app(AdminAudienceHistory::class)->data($period, $startDate, 'traffic')['traffic'] ?? [];
 
         // Preserve the observed email count when the dashboard boosts other sources.
         $emailViews = (int) ($pvData['Email'] ?? 0);
@@ -556,7 +454,7 @@ class StatisticsController extends Controller
         [$startDate] = $this->resolvePeriod($period);
 
         // Count plays per user from entertainment_views
-        $evData = DB::table('entertainment_views')
+        $evData = TvAnalyticsStorage::table('entertainment_views')
             ->selectRaw('user_id, COUNT(*) as plays')
             ->whereNotNull('user_id')
             ->whereNull('deleted_at')
@@ -566,7 +464,7 @@ class StatisticsController extends Controller
             ->toArray();
 
         // Count plays + watch seconds from stat_play_events
-        $spData = DB::table('stat_play_events')
+        $spData = TvAnalyticsStorage::table('stat_play_events')
             ->selectRaw('user_id, COUNT(*) as plays, SUM(watch_seconds) as watch_seconds')
             ->whereNotNull('user_id')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
@@ -616,7 +514,7 @@ class StatisticsController extends Controller
         $limit = min((int) $request->input('limit', 10), 50);
         [$startDate, $endDate] = $this->resolvePeriod($period);
 
-        if (!Schema::hasColumn('stat_play_events', 'channel_id') || !Schema::hasColumn('stat_page_views', 'channel_id')) {
+        if (!Schema::hasColumn(TvAnalyticsStorage::name('stat_play_events'), 'channel_id') || !Schema::hasColumn(TvAnalyticsStorage::name('stat_page_views'), 'channel_id')) {
             return response()->json([
                 'totals' => ['views' => 0, 'plays' => 0, 'watch_seconds' => 0, 'watch_hours' => 0],
                 'channels' => [],
@@ -636,7 +534,7 @@ class StatisticsController extends Controller
 
         $assignedVideoIds = $assignedVideos->pluck('content_id')->unique()->values();
 
-        $playRows = DB::table('stat_play_events')
+        $playRows = TvAnalyticsStorage::table('stat_play_events')
             ->selectRaw('channel_id, content_id, COUNT(*) as plays, SUM(watch_seconds) as watch_seconds')
             ->where('content_type', 'ondemand_video')
             ->whereNotNull('channel_id')
@@ -645,7 +543,7 @@ class StatisticsController extends Controller
             ->groupBy('channel_id', 'content_id')
             ->get();
 
-        $generalPlayRows = DB::table('stat_play_events')
+        $generalPlayRows = TvAnalyticsStorage::table('stat_play_events')
             ->selectRaw('content_id, COUNT(*) as plays, SUM(watch_seconds) as watch_seconds')
             ->where('content_type', 'video')
             ->whereIn('content_id', $assignedVideoIds)
@@ -655,7 +553,7 @@ class StatisticsController extends Controller
             ->get()
             ->keyBy('content_id');
 
-        $legacyPlayRows = DB::table('entertainment_views')
+        $legacyPlayRows = TvAnalyticsStorage::table('entertainment_views')
             ->selectRaw('entertainment_id as content_id, COUNT(*) as plays')
             ->whereIn('entertainment_id', $assignedVideoIds)
             ->whereNull('deleted_at')
@@ -665,7 +563,7 @@ class StatisticsController extends Controller
             ->get()
             ->keyBy('content_id');
 
-        $viewRows = DB::table('stat_page_views')
+        $viewRows = TvAnalyticsStorage::table('stat_page_views')
             ->selectRaw('channel_id, content_id, COUNT(*) as views, COUNT(DISTINCT ip_address) as unique_visitors')
             ->where('content_type', 'ondemand_video')
             ->whereNotNull('channel_id')
@@ -674,7 +572,7 @@ class StatisticsController extends Controller
             ->groupBy('channel_id', 'content_id')
             ->get();
 
-        $generalViewRows = DB::table('stat_page_views')
+        $generalViewRows = TvAnalyticsStorage::table('stat_page_views')
             ->selectRaw('content_id, COUNT(*) as views, COUNT(DISTINCT ip_address) as unique_visitors')
             ->where('content_type', 'video')
             ->whereIn('content_id', $assignedVideoIds)
@@ -684,7 +582,7 @@ class StatisticsController extends Controller
             ->get()
             ->keyBy('content_id');
 
-        $profileViewRows = DB::table('stat_page_views')
+        $profileViewRows = TvAnalyticsStorage::table('stat_page_views')
             ->selectRaw('COALESCE(channel_id, content_id) as channel_id, COUNT(*) as profile_views')
             ->where('content_type', 'ondemand_channel')
             ->where(function ($q) {
@@ -948,11 +846,11 @@ class StatisticsController extends Controller
         $offset = (int) $request->input('offset', 0);
         [$startDate, $endDate] = $this->resolvePeriod($period);
 
-        $rows = DB::table('stat_page_views as pv')
+        $rows = TvAnalyticsStorage::table('stat_page_views as pv')
             ->leftJoin('users as u', 'u.id', '=', 'pv.user_id')
             ->select([
                 'pv.id', 'pv.content_type', 'pv.content_id',
-                Schema::hasColumn('stat_page_views', 'channel_id') ? 'pv.channel_id' : DB::raw('NULL as channel_id'),
+                Schema::hasColumn(TvAnalyticsStorage::name('stat_page_views'), 'channel_id') ? 'pv.channel_id' : DB::raw('NULL as channel_id'),
                 'pv.page_url',
                 DB::raw('NULL as page_name'), DB::raw('NULL as route_name'),
                 'pv.device_type', 'pv.browser', 'pv.os', 'pv.platform',
@@ -966,7 +864,7 @@ class StatisticsController extends Controller
             ->limit($limit)->offset($offset)
             ->get();
 
-        $total = DB::table('stat_page_views')
+        $total = TvAnalyticsStorage::table('stat_page_views')
             ->when($startDate, fn($q) => $q->where('view_date', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->where('view_date', '<=', $endDate))
             ->count();
@@ -991,11 +889,11 @@ class StatisticsController extends Controller
         $offset = (int) $request->input('offset', 0);
         [$startDate, $endDate] = $this->resolvePeriod($period);
 
-        $rows = DB::table('stat_play_events as pe')
+        $rows = TvAnalyticsStorage::table('stat_play_events as pe')
             ->leftJoin('users as u', 'u.id', '=', 'pe.user_id')
             ->select([
                 'pe.id', 'pe.content_type', 'pe.content_id',
-                Schema::hasColumn('stat_play_events', 'channel_id') ? 'pe.channel_id' : DB::raw('NULL as channel_id'),
+                Schema::hasColumn(TvAnalyticsStorage::name('stat_play_events'), 'channel_id') ? 'pe.channel_id' : DB::raw('NULL as channel_id'),
                 'pe.device_type', 'pe.platform', 'pe.country_code',
                 'pe.ip_address', 'pe.watch_seconds', 'pe.quality',
                 'pe.play_date', 'pe.created_at',
@@ -1008,7 +906,7 @@ class StatisticsController extends Controller
             ->limit($limit)->offset($offset)
             ->get();
 
-        $total = DB::table('stat_play_events')
+        $total = TvAnalyticsStorage::table('stat_play_events')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->where('play_date', '<=', $endDate))
             ->count();
@@ -1321,7 +1219,7 @@ class StatisticsController extends Controller
      */
     private function playsQuery(?string $startDate, ?string $endDate)
     {
-        return DB::table('entertainment_views')
+        return TvAnalyticsStorage::table('entertainment_views')
             ->whereNull('deleted_at')
             ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->whereDate('created_at', '<=', $endDate));
@@ -1329,7 +1227,7 @@ class StatisticsController extends Controller
 
     private function statPlaysQuery(?string $startDate, ?string $endDate)
     {
-        return DB::table('stat_play_events')
+        return TvAnalyticsStorage::table('stat_play_events')
             ->when($startDate, fn($q) => $q->where('play_date', '>=', $startDate))
             ->when($endDate,   fn($q) => $q->where('play_date', '<=', $endDate));
     }

@@ -652,17 +652,14 @@ private function sanitizeUploadBaseName(string $baseName): string
             } else {
                 // Remote storage (Bunny, S3, DO Spaces, etc.)
                 $disk = Storage::disk($activeDisk);
-                $directories = $disk->directories($folder);
-
-                foreach ($directories as $dir) {
-                    $allItems[] = $this->formatItem(basename($dir), $dir, $folder, $activeDisk, true, trim($dir, '/'));
-                }
-
                 // Use listContents to fetch file metadata (including lastModified) in one request
                 try {
                     $fsDriver = $disk->getDriver();
                     foreach ($fsDriver->listContents($folder ?: '', false) as $fsItem) {
-                        if ($fsItem instanceof \League\Flysystem\FileAttributes) {
+                        if ($fsItem->isDir()) {
+                            $dir = $fsItem->path();
+                            $allItems[] = $this->formatItem(basename($dir), $dir, $folder, $activeDisk, true, trim($dir, '/'));
+                        } elseif ($fsItem instanceof \League\Flysystem\FileAttributes) {
                             $filePath = $fsItem->path();
                             $modified = $fsItem->lastModified() ?? 0;
                             $size = $fsItem->fileSize() ?? 0;
@@ -699,6 +696,12 @@ private function sanitizeUploadBaseName(string $baseName): string
                         }
                     }
                 } catch (\Exception $e) {
+                    // Discard partial results before retrying with the adapter's listing methods.
+                    $allItems = [];
+                    $directories = $disk->directories($folder);
+                    foreach ($directories as $dir) {
+                        $allItems[] = $this->formatItem(basename($dir), $dir, $folder, $activeDisk, true, trim($dir, '/'));
+                    }
                     // Fallback: individual file listing
                     $files = $disk->files($folder);
                     foreach ($files as $file) {

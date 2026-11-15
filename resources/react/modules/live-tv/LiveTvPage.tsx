@@ -421,6 +421,7 @@ function LiveTvDetailPage({
               ) : stream && playerStarted ? (
                 <VideoJsPlayer
                   source={stream.url}
+                  telemetry={channelId ? { content_type: 'livetv', content_id: channelId, player_surface: 'watch' } : undefined}
                   poster={image}
                   autoplay={false}
                   muted={false}
@@ -1267,6 +1268,7 @@ function LiveTvGuideHeroPlayer({
           <VideoJsPlayer
             key={`${channel.id}-${stream.url}`}
             source={stream.url}
+            telemetry={{ content_type: 'livetv', content_id: channel.id, player_surface: 'watch' }}
             poster={image}
             autoplay
             muted

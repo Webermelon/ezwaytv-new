@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EntertainmentView extends BaseModel
 {
+    use \App\Services\UsesTvAnalyticsStorage;
+
     use HasFactory;
     use SoftDeletes;
 

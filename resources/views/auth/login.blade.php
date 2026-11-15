@@ -70,6 +70,12 @@
             </div>
 
         </form>
+
+        @if (request()->routeIs('admin-login'))
+            <a class="btn btn-outline-primary w-100 mt-3" href="{{ route('tv-admin.backoffice.start') }}">
+                Sign in with Backoffice
+            </a>
+        @endif
    
       
 

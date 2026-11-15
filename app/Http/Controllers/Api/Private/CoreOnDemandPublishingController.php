@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\AuthorChannel;
 use App\Models\AuthorChannelPlaylist;
 use App\Services\CoreTvAccessService;
+use App\Services\TvCreatorEvents;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Video\Models\Video;
 
@@ -45,7 +45,6 @@ class CoreOnDemandPublishingController extends Controller
     {
         $data = $request->validate($this->channelRules(true));
         $user = $this->access->syncUser($data);
-        Log::info('Creating On Demand Channel for user_id: '.$user->id.' with data: '.print_r($data, true));
         $channel_data = [
             'user_id' => $user->id,
             'name' => $data['name'],
@@ -58,11 +57,8 @@ class CoreOnDemandPublishingController extends Controller
             'plan_id' => null,
         ];
 
-        Log::info('Creating On Demand Channel: '.print_r($channel_data, true));
-
         $channel = AuthorChannel::query()->create($channel_data);
-
-        error_log('Created On Demand Channel: '.print_r($channel->toArray(), true));
+        TvCreatorEvents::record('creator.channel_created', $request, $user, $channel->id);
 
         return response()->json(['success' => true, 'data' => $this->formatChannel($channel), 'message' => 'Channel created.'], 201);
     }
@@ -90,7 +86,7 @@ class CoreOnDemandPublishingController extends Controller
         ]);
         $user = $this->access->syncUser($data);
         $model = $this->ownedChannel($channel, $user->id);
-        $this->reconcileProcessingVideos($model);
+        $this->reconcileProcessingVideos($model, $request);
 
         $videos = $model->videos()
             ->whereNull('videos.deleted_at')
@@ -107,8 +103,12 @@ class CoreOnDemandPublishingController extends Controller
         $user = $this->access->syncUser($data);
         $channelModel = $this->ownedChannel($channel, $user->id);
 
-        $video = Video::query()->create($this->videoPayload($data, $channelModel->id, $user->id));
+        $video = new Video($this->videoPayload($data, $user->id));
+        $video->forceFill(['publishing_channel_id' => $channelModel->id])->save();
         $channelModel->videos()->syncWithoutDetaching([$video->id]);
+        if (TvCreatorEvents::isPublished($video)) {
+            TvCreatorEvents::published($request, $video);
+        }
 
         return response()->json(['success' => true, 'data' => $this->formatVideo($video), 'message' => 'Video saved.'], 201);
     }
@@ -120,8 +120,12 @@ class CoreOnDemandPublishingController extends Controller
         $channelModel = $this->ownedChannel($channel, $user->id);
         $videoModel = $this->channelVideo($channelModel, $video);
 
-        $videoModel->fill($this->videoPayload($data, $channelModel->id, $user->id, false))->save();
+        $wasPublished = TvCreatorEvents::isPublished($videoModel);
+        $videoModel->fill($this->videoPayload($data, $user->id, false))->save();
         $channelModel->videos()->syncWithoutDetaching([$videoModel->id]);
+        if (!$wasPublished && TvCreatorEvents::isPublished($videoModel)) {
+            TvCreatorEvents::published($request, $videoModel);
+        }
 
         return response()->json(['success' => true, 'data' => $this->formatVideo($videoModel->refresh()), 'message' => 'Video updated.']);
     }
@@ -435,10 +439,9 @@ class CoreOnDemandPublishingController extends Controller
         ]);
     }
 
-    private function videoPayload(array $data, int $channelId, int $userId, bool $creating = true): array
+    private function videoPayload(array $data, int $userId, bool $creating = true): array
     {
         $payload = [
-            'created_by' => $creating ? $userId : null,
             'updated_by' => $userId,
             'type' => 'video',
             'access' => 'free',
@@ -543,7 +546,7 @@ class CoreOnDemandPublishingController extends Controller
         ])));
     }
 
-    private function reconcileProcessingVideos(AuthorChannel $channel): void
+    private function reconcileProcessingVideos(AuthorChannel $channel, Request $request): void
     {
         $videoIds = $channel->videos()->pluck('videos.id');
         if ($videoIds->isEmpty()) {
@@ -560,11 +563,19 @@ class CoreOnDemandPublishingController extends Controller
             })
             ->update(['processing_status' => 'published']);
 
-        Video::query()
+        $ready = Video::query()
             ->whereIn('id', $videoIds)
             ->where('processing_status', 'processing')
-            ->whereNotNull('video_url_input')
-            ->update(['processing_status' => 'published', 'status' => 1]);
+            ->whereNotNull('video_url_input');
+
+        foreach ($ready->get() as $video) {
+            $updated = (clone $ready)->whereKey($video->id)
+                ->update(['processing_status' => 'published', 'status' => 1]);
+
+            if ($updated && filled($video->video_url_input)) {
+                TvCreatorEvents::published($request, $video);
+            }
+        }
 
         Video::query()
             ->whereIn('id', $videoIds)

@@ -2,7 +2,11 @@
 
 namespace Modules\Statistics\Http\Controllers\API;
 
+use App\Services\TvAnalyticsStorage;
+
 use App\Http\Controllers\Controller;
+use App\Services\TvLog;
+use App\Services\TvCreatorEvents;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +29,8 @@ class StatisticsController extends Controller
             'content_type' => 'nullable|string|max:50',
             'content_id'   => 'nullable|integer|min:1',
             'channel_id'   => 'nullable|integer|min:1',
+            'watched_channel_id' => 'nullable|integer|min:1',
+            'player_surface' => 'nullable|in:watch,embed',
             'platform'     => 'nullable|string|max:50',
             'session_id'   => 'nullable|string|max:100',
             'page_url'     => 'nullable|string|max:500',
@@ -61,7 +67,7 @@ class StatisticsController extends Controller
 
         $ua = $this->parseUserAgent($request->userAgent() ?? '');
 
-        PageView::create([
+        $view = PageView::create([
             'content_type' => $contentType,
             'content_id'   => $validated['content_id'] ?? null,
             'channel_id'   => $validated['channel_id'] ?? null,
@@ -80,6 +86,29 @@ class StatisticsController extends Controller
             'view_date'    => now()->toDateString(),
         ]);
 
+        if (config('tv-logs.enabled')) {
+            $campaign = [];
+            parse_str((string) parse_url($view->page_url ?? '', PHP_URL_QUERY), $campaign);
+            TvLog::record('viewer_events', 'viewer.page_view', [
+                'analytics_session_id' => TvLog::label($view->session_id, 96),
+                'tv_user_id' => $view->user_id,
+                'content_type' => $view->content_type,
+                'content_id' => $view->content_id,
+                'channel_id' => $view->channel_id,
+                'route_name' => TvLog::label($view->route_name, 128),
+                'referrer_domain' => TvLog::label(parse_url($view->referrer ?? '', PHP_URL_HOST), 253),
+                'utm_source' => TvLog::label($campaign['utm_source'] ?? null, 128),
+                'utm_medium' => TvLog::label($campaign['utm_medium'] ?? null, 96),
+                'utm_campaign' => TvLog::label($campaign['utm_campaign'] ?? null, 160),
+                'platform' => TvLog::label($view->platform, 32),
+                'device_type' => TvLog::label($view->device_type, 32),
+                'browser' => TvLog::label($view->browser, 64),
+                'os' => TvLog::label($view->os, 64),
+                'country' => $view->country_code,
+                'details' => ['legacy_view_id' => $view->id],
+            ] + TvCreatorEvents::viewingContext($contentType, $validated), $request, TvLog::legacyId('view', $view->id));
+        }
+
         return response()->json(['status' => 'ok']);
     }
 
@@ -95,6 +124,8 @@ class StatisticsController extends Controller
             'content_type' => 'required|string|max:50',
             'content_id'   => 'required|integer|min:1',
             'channel_id'   => 'nullable|integer|min:1',
+            'watched_channel_id' => 'nullable|integer|min:1',
+            'player_surface' => 'nullable|in:watch,embed',
             'platform'     => 'nullable|string|max:50',
             'quality'      => 'nullable|string|max:20',
             'session_id'   => 'nullable|string|max:100',
@@ -121,6 +152,7 @@ class StatisticsController extends Controller
 
         $ua = $this->parseUserAgent($request->userAgent() ?? '');
 
+        $request->attributes->set('tv_viewing_context', TvCreatorEvents::viewingContext($contentType, $validated));
         $event = PlayEvent::create([
             'content_type' => $contentType,
             'content_id'   => $validated['content_id'],
@@ -173,6 +205,15 @@ class StatisticsController extends Controller
         }
 
         $updated = $query->update(['watch_seconds' => $seconds]);
+
+        if ($updated) {
+            TvLog::record('playback_events', 'playback.legacy_position', [
+                'playback_id' => TvLog::legacyId('playback', $playId),
+                'sequence_no' => $seconds,
+                'media_position_ms' => $seconds * 1000,
+                'details' => ['legacy_play_id' => $playId],
+            ], $request, TvLog::legacyId('position:'.$playId, $seconds));
+        }
 
         return response()->json(['status' => $updated ? 'ok' : 'not_found']);
     }
@@ -336,18 +377,18 @@ class StatisticsController extends Controller
 
         // Real counts
         $realPlays = in_array($type, ['entertainment', 'video', 'movie', 'tvshow'], true)
-            ? DB::table('entertainment_views')
+            ? TvAnalyticsStorage::table('entertainment_views')
                 ->where('entertainment_id', $id)
                 ->whereNull('deleted_at')
                 ->count()
             : 0;
 
-        $realPlays += DB::table('stat_play_events')
+        $realPlays += TvAnalyticsStorage::table('stat_play_events')
             ->where('content_type', $type)
             ->where('content_id', $id)
             ->count();
 
-        $realViews = DB::table('stat_page_views')
+        $realViews = TvAnalyticsStorage::table('stat_page_views')
             ->where('content_type', $type)
             ->where('content_id', $id)
             ->count();

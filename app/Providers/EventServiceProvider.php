@@ -56,7 +56,33 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Queue\Events\JobFailed::class,
+            static function (\Illuminate\Queue\Events\JobFailed $event): void {
+                $job = $event->job;
+                \App\Services\TvLog::record('operation_events', 'system.job_failed', [
+                    'run_id' => (string) ($job->getJobId() ?? \Illuminate\Support\Str::uuid()),
+                    'operation_type' => 'queue',
+                    'operation_name' => substr($job->resolveName(), 0, 96),
+                    'attempt_no' => $job->attempts(),
+                    'outcome' => 'failed',
+                    'error_code' => substr(get_class($event->exception), 0, 96),
+                ]);
+            }
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Console\Events\ScheduledTaskFailed::class,
+            static function (\Illuminate\Console\Events\ScheduledTaskFailed $event): void {
+                // Do not store the scheduler command line, which can contain arguments.
+                \App\Services\TvLog::record('operation_events', 'system.scheduled_task_failed', [
+                    'run_id' => (string) \Illuminate\Support\Str::uuid(),
+                    'operation_type' => 'scheduler',
+                    'operation_name' => 'task',
+                    'outcome' => 'failed',
+                    'error_code' => substr(get_class($event->exception), 0, 96),
+                ]);
+            }
+        );
     }
 
     /**

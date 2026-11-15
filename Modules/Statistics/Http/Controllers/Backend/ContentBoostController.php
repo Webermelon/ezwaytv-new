@@ -2,6 +2,8 @@
 
 namespace Modules\Statistics\Http\Controllers\Backend;
 
+use App\Services\TvAnalyticsStorage;
+
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -102,7 +104,7 @@ class ContentBoostController extends Controller
 
             foreach ($rows as $row) {
                 // Get real play count
-                $realPlays = in_array($ctype, ['ondemand_video', 'ondemand_channel'], true) ? 0 : DB::table('entertainment_views')
+                $realPlays = in_array($ctype, ['ondemand_video', 'ondemand_channel'], true) ? 0 : TvAnalyticsStorage::table('entertainment_views')
                     ->where('entertainment_id', $row->id)
                     ->whereNull('deleted_at')
                     ->count();
@@ -111,20 +113,20 @@ class ContentBoostController extends Controller
                         ->where('author_channel_id', $row->id)
                         ->pluck('video_id');
 
-                    $realPlays += DB::table('stat_play_events')
+                    $realPlays += TvAnalyticsStorage::table('stat_play_events')
                         ->where('content_type', 'video')
                         ->whereIn('content_id', $videoIds)
                         ->count();
-                    $realPlays += DB::table('stat_play_events')
+                    $realPlays += TvAnalyticsStorage::table('stat_play_events')
                         ->where('content_type', 'ondemand_video')
                         ->where('channel_id', $row->id)
                         ->count();
-                    $realPlays += DB::table('entertainment_views')
+                    $realPlays += TvAnalyticsStorage::table('entertainment_views')
                         ->whereIn('entertainment_id', $videoIds)
                         ->whereNull('deleted_at')
                         ->count();
                 } else {
-                    $realPlays += DB::table('stat_play_events')
+                    $realPlays += TvAnalyticsStorage::table('stat_play_events')
                         ->where('content_id', $row->id)
                         ->where('content_type', $ctype)
                         ->count();
@@ -174,21 +176,21 @@ class ContentBoostController extends Controller
         $hasVisitorBoostColumn = $this->hasVisitorBoostColumn();
 
         // Real counts
-        $realPlays = in_array($type, ['ondemand_video', 'ondemand_channel'], true) ? 0 : DB::table('entertainment_views')
+        $realPlays = in_array($type, ['ondemand_video', 'ondemand_channel'], true) ? 0 : TvAnalyticsStorage::table('entertainment_views')
             ->where('entertainment_id', $id)
             ->whereNull('deleted_at')
             ->count();
         if ($type === 'ondemand_channel') {
             $videoIds = DB::table('author_channel_video')->where('author_channel_id', $id)->pluck('video_id');
-            $realPlays += DB::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
-            $realPlays += DB::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
-            $realPlays += DB::table('entertainment_views')->whereIn('entertainment_id', $videoIds)->whereNull('deleted_at')->count();
+            $realPlays += TvAnalyticsStorage::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
+            $realPlays += TvAnalyticsStorage::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
+            $realPlays += TvAnalyticsStorage::table('entertainment_views')->whereIn('entertainment_id', $videoIds)->whereNull('deleted_at')->count();
 
-            $realViews = DB::table('stat_page_views')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
-            $realViews += DB::table('stat_page_views')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
-            $realViews += DB::table('stat_page_views')->where('content_type', 'ondemand_channel')->where(fn($q) => $q->where('content_id', $id)->orWhere('channel_id', $id))->count();
+            $realViews = TvAnalyticsStorage::table('stat_page_views')->where('content_type', 'video')->whereIn('content_id', $videoIds)->count();
+            $realViews += TvAnalyticsStorage::table('stat_page_views')->where('content_type', 'ondemand_video')->where('channel_id', $id)->count();
+            $realViews += TvAnalyticsStorage::table('stat_page_views')->where('content_type', 'ondemand_channel')->where(fn($q) => $q->where('content_id', $id)->orWhere('channel_id', $id))->count();
 
-            $realUniqueVisitors = (int) DB::table('stat_page_views')
+            $realUniqueVisitors = (int) TvAnalyticsStorage::table('stat_page_views')
                 ->where(function ($q) use ($videoIds, $id) {
                     $q->where(fn($sub) => $sub->where('content_type', 'video')->whereIn('content_id', $videoIds))
                         ->orWhere(fn($sub) => $sub->where('content_type', 'ondemand_video')->where('channel_id', $id))
@@ -197,26 +199,26 @@ class ContentBoostController extends Controller
                 ->distinct('ip_address')
                 ->count('ip_address');
 
-            $realWatchSeconds = (int) DB::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->sum('watch_seconds');
-            $realWatchSeconds += (int) DB::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->sum('watch_seconds');
+            $realWatchSeconds = (int) TvAnalyticsStorage::table('stat_play_events')->where('content_type', 'video')->whereIn('content_id', $videoIds)->sum('watch_seconds');
+            $realWatchSeconds += (int) TvAnalyticsStorage::table('stat_play_events')->where('content_type', 'ondemand_video')->where('channel_id', $id)->sum('watch_seconds');
         } else {
-            $realPlays += DB::table('stat_play_events')
+            $realPlays += TvAnalyticsStorage::table('stat_play_events')
                 ->where('content_id', $id)
                 ->where('content_type', $type)
                 ->count();
 
-            $realViews = DB::table('stat_page_views')
+            $realViews = TvAnalyticsStorage::table('stat_page_views')
                 ->where('content_id', $id)
                 ->where('content_type', $type)
                 ->count();
 
-            $realUniqueVisitors = (int) DB::table('stat_page_views')
+            $realUniqueVisitors = (int) TvAnalyticsStorage::table('stat_page_views')
                 ->where('content_id', $id)
                 ->where('content_type', $type)
                 ->distinct('ip_address')
                 ->count('ip_address');
 
-            $realWatchSeconds = (int) DB::table('stat_play_events')
+            $realWatchSeconds = (int) TvAnalyticsStorage::table('stat_play_events')
                 ->where('content_id', $id)
                 ->where('content_type', $type)
                 ->sum('watch_seconds');

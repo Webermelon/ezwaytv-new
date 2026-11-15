@@ -6,8 +6,8 @@ use App\Http\Controllers\Auth\Trait\AuthTrait;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\Request;
+use App\Services\TvLog;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Artisan;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -32,6 +32,16 @@ class AuthenticatedSessionController extends Controller
     {
 
         $isLogin = $this->loginTrait($request);
+        $status = $isLogin['status'] ?? null;
+        $authorized = $status === 200;
+        $reason = match ($status) {
+            200 => 'session_issued',
+            403 => 'demo_login_disabled',
+            406 => 'role_denied',
+            default => 'invalid_credentials',
+        };
+        TvLog::auth($request, $authorized ? 'login_succeeded' : 'login_failed',
+            $authorized ? 'success' : 'failed', $authorized ? Auth::id() : null, $reason, 'admin_password');
         if ($isLogin) {
 
             if (isset($isLogin['error'])) {
@@ -54,15 +64,7 @@ class AuthenticatedSessionController extends Controller
 
                 $request->session()->regenerate();
 
-                Artisan::call('cache:clear');
-                Artisan::call('config:clear');
-                Artisan::call('view:clear');
-                Artisan::call('config:cache');
-                Artisan::call('route:clear');
-
-
-
-            return redirect('app/dashboard');
+                return redirect()->route('backend.home');
             }
         }
 
@@ -78,11 +80,15 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request)
     {
+        $userId = Auth::id();
+        $method = $request->session()->get('tv_admin_login_method', 'admin_password');
         Auth::logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        TvLog::auth($request, 'logout', 'success', $userId, 'session_invalidated', $method);
 
         return redirect('/admin/login');
     }

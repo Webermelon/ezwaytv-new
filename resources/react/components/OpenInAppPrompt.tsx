@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, MonitorPlay, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { api } from '@/lib/api'
+import { appConfigurationQuery } from '@/lib/app-configuration'
 import { isNativeCapacitorApp } from '@/lib/native-platform'
 
 const DISMISS_KEY = 'ezway_tv_continue_in_browser'
@@ -14,25 +14,10 @@ const DEFAULT_ANDROID_STORE = 'https://play.google.com/store/apps/details?id=tv.
 const DEFAULT_IOS_STORE = 'https://apps.apple.com/us/app/ezway-tv/id6446066875'
 const DEFAULT_ICON = 'https://ezwayott.sfo3.digitaloceanspaces.com/logos/image/logo_icon_6a216e0c6cca2.png'
 
-type AppPromptConfiguration = {
-  app_name?: string | null
-  app_mini_logo?: string | null
-  app_logo?: string | null
-  mobile_app?: {
-    playstore_url?: string | null
-    appstore_url?: string | null
-  } | null
-}
-
 export function OpenInAppPrompt() {
   const [visible, setVisible] = useState(() => shouldShowPrompt())
   const [showStoreAction, setShowStoreAction] = useState(false)
-  const configQuery = useQuery({
-    queryKey: ['open-in-app-config'],
-    queryFn: () => api.get<AppPromptConfiguration>('/api/v3/app-configuration'),
-    staleTime: 5 * 60_000,
-    enabled: visible,
-  })
+  const configQuery = useQuery({ ...appConfigurationQuery, enabled: visible })
 
   const currentUrl = useMemo(() => {
     if (typeof window === 'undefined') return ''

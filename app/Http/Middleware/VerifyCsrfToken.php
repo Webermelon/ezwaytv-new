@@ -15,6 +15,7 @@ class VerifyCsrfToken extends Middleware
         'api/statistics/track-view',
         'api/statistics/track-play',
         'api/statistics/update-watch-time',
+        'api/statistics/playback-telemetry',
         'webhooks/media',
     ];
 }

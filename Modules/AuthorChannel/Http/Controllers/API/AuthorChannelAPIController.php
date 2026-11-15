@@ -2,6 +2,8 @@
 
 namespace Modules\AuthorChannel\Http\Controllers\API;
 
+use App\Services\TvAnalyticsStorage;
+
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuthorChannel;
@@ -456,11 +458,11 @@ class AuthorChannelAPIController extends Controller
             ->where('author_channel_id', $channelId)
             ->pluck('video_id');
 
-        $realViews = DB::table('stat_page_views')
+        $realViews = TvAnalyticsStorage::table('stat_page_views')
             ->where('content_type', 'video')
             ->whereIn('content_id', $videoIds)
             ->count();
-        $realViews += DB::table('stat_page_views')
+        $realViews += TvAnalyticsStorage::table('stat_page_views')
             ->where('content_type', 'ondemand_video')
             ->where('channel_id', $channelId)
             ->count();

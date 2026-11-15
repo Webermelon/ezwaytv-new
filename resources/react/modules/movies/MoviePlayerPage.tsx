@@ -69,7 +69,7 @@ function MovieContent({ movie, autoplay }: { movie: MediaItem; autoplay: boolean
     <>
       <div className="relative aspect-video h-auto min-h-0 w-full overflow-hidden bg-black sm:aspect-auto sm:h-[76svh] sm:min-h-[430px]">
         {source ? (
-          <VideoJsPlayer source={source} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} subtitles={subtitles} />
+          <VideoJsPlayer source={source} telemetry={{ content_type: 'movie', content_id: movie.id, player_surface: 'watch' }} poster={poster} autoplay={autoplay} muted={autoplay} vastAds={[]} subtitles={subtitles} />
         ) : (
           <div className="flex h-full items-center justify-center text-white/55">No playable movie source was returned.</div>
         )}

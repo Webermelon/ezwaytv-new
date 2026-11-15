@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth\API;
 
 use App\Http\Controllers\Auth\Trait\AuthTrait;
 use App\Http\Controllers\Controller;
+use App\Services\TvLog;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\LoginResource;
 use App\Http\Resources\RegisterResource;
@@ -73,6 +74,7 @@ class AuthController extends Controller
     $credentialField = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
     
     if (RateLimiter::tooManyAttempts($request->throttleKey(), 6)) {
+        TvLog::auth($request, 'login_blocked', 'denied', null, 'rate_limited', 'password');
         $seconds = RateLimiter::availableIn($request->throttleKey());
         return response()->json([
             'message' => 'Too many login attempts. Please try again in ' . $seconds . ' seconds.',
@@ -97,6 +99,7 @@ class AuthController extends Controller
         if ($user == null) {
             RateLimiter::hit($request->throttleKey());
             Log::info('Login failed: user not found', ['login' => $login, 'ip' => $request->ip()]);
+            TvLog::auth($request, 'login_failed', 'failed', null, 'account_unresolved', 'password');
             return ApiResponse::error(__('messages.register_before_login'), 400);
         }
 
@@ -106,12 +109,14 @@ class AuthController extends Controller
         // Block known demo/super admin seeded credentials
         if ($credentialField === 'email' && $login === 'demo@streamit.com') {
             RateLimiter::hit($request->throttleKey());
+            TvLog::auth($request, 'login_blocked', 'denied', $user->id, 'demo_login_disabled', 'password');
             return ApiResponse::error(__('messages.demo_login_disabled'), 403);
         }
 
         // Also check by user_type if user exists
         if ($user && $user->user_type === 'demo_admin') {
             RateLimiter::hit($request->throttleKey());
+            TvLog::auth($request, 'login_blocked', 'denied', $user->id, 'demo_login_disabled', 'password');
             return ApiResponse::error(__('messages.demo_login_disabled'), 403);
         }
     }
@@ -134,11 +139,13 @@ class AuthController extends Controller
         }
         $response = $this->checkDeviceLimit($user, $device_id, true);
         if ($response) {
+            TvLog::auth($request, 'login_blocked', 'denied', $user->id, 'device_limit', 'password');
             return $response;
         }
 
     
         if ($user->is_banned == 1 || $user->status == 0) {
+            TvLog::auth($request, 'login_blocked', 'denied', $user->id, 'account_restricted', 'password');
             return ApiResponse::error(__('messages.login_error'), 400);
         }
 
@@ -182,6 +189,7 @@ class AuthController extends Controller
         $message = __('messages.user_login');
 
         setCurrentProfileSession();
+        TvLog::auth($request, 'login_succeeded', 'success', $user->id, 'session_issued', 'password');
 
         if ($request->has('is_ajax') && $request->is_ajax == 1) {
 
@@ -191,6 +199,7 @@ class AuthController extends Controller
         return $this->sendResponse($loginResource, $message);
     } else {
         RateLimiter::hit($request->throttleKey());
+        TvLog::auth($request, 'login_failed', 'failed', $user->id, 'invalid_credentials', 'password');
         Log::info('Login failed: invalid credentials', ['email' => $request->input('email'), 'ip' => $request->ip()]);
         return $this->sendError(__('messages.not_matched'), ['error' => __('messages.unauthorised')], 200);
     }
@@ -313,6 +322,7 @@ class AuthController extends Controller
 
     $socialLogin = new SocialLoginResource($user_data);
 
+    TvLog::auth($request, 'login_succeeded', 'success', $user_data->id, 'token_issued', 'social', TvLog::label($request->login_type, 64));
     return $this->sendResponse($socialLogin, $message);
 }
 
@@ -500,6 +510,7 @@ protected function checkDeviceLimit(User $user, string $deviceId = null, bool $i
             Device::where('user_id', $user->id)->delete();
         }
 
+        TvLog::auth($request, 'logout', 'success', $user->id, 'tokens_revoked', 'token');
         if ($request->is('api*')) {
             return ApiResponse::success(null, __('messages.user_logout'), 200);
         }

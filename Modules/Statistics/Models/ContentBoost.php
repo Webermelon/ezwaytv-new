@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContentBoost extends Model
 {
+    use \App\Services\UsesTvAnalyticsStorage;
+
     protected $table = 'stat_content_boosts';
 
     protected $fillable = [

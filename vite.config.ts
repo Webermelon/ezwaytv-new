@@ -15,7 +15,7 @@ export default defineConfig({
     manifest: 'manifest.json',
     outDir: 'public/build',
     rollupOptions: {
-      input: 'resources/react/main.tsx',
+      input: ['resources/react/main.tsx', 'resources/react/live-embed-telemetry.mjs'],
     },
   },
   server: {

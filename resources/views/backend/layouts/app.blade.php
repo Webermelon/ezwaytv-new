@@ -119,11 +119,11 @@
 </head>
 
 <body class="{{ !empty(getCustomizationSetting('card_style')) ? getCustomizationSetting('card_style') : '' }}">
-    <!-- Loader Start -->
-    <div id="loading">
-        <x-partials._body_loader />
-    </div>
-    <!-- Loader End -->
+    @unless($skipPageLoader ?? false)
+        <div id="loading">
+            <x-partials._body_loader />
+        </div>
+    @endunless
     <!-- Sidebar -->
     @if (!isset($noLayout) || !$noLayout)
         @include('backend.includes.sidebar')

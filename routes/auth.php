@@ -28,6 +28,9 @@ Route::middleware('guest')->prefix('admin')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('admin-login');
 
+    Route::get('backoffice', [\App\Http\Controllers\Auth\BackofficeAdminLoginController::class, 'start'])
+        ->middleware('throttle:20,1')->name('tv-admin.backoffice.start');
+
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
@@ -43,6 +46,9 @@ Route::middleware('guest')->prefix('admin')->group(function () {
         ->name('password.update');
 });
 
+
+Route::get('admin/backoffice/callback', [\App\Http\Controllers\Auth\BackofficeAdminLoginController::class, 'callback'])
+    ->middleware('throttle:20,1')->name('tv-admin.backoffice.callback');
 
 Route::middleware('auth')->prefix('admin')->group(function () {
     Route::get('verify-email', [EmailVerificationPromptController::class, '__invoke'])

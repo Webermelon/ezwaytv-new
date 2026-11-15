@@ -3,6 +3,7 @@
 namespace Modules\Statistics\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\TvLog;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\JsonResponse;
@@ -65,6 +66,13 @@ class AppAnalyticsController extends Controller
             }
             $activity->save();
         }
+
+        TvLog::record('viewer_events', 'viewer.app_'.$data['event'], [
+            'tv_user_id' => $user->id,
+            'installation_ref' => $data['installation_id'],
+            'platform' => $data['platform'],
+            'details' => ['engaged_seconds' => $data['engaged_seconds'] ?? null],
+        ], $request);
 
         return response()->json(['status' => 'ok']);
     }

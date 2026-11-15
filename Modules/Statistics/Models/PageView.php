@@ -8,6 +8,8 @@ use App\Models\User;
 
 class PageView extends Model
 {
+    use \App\Services\UsesTvAnalyticsStorage;
+
     use HasFactory;
 
     protected $table = 'stat_page_views';

@@ -7,10 +7,17 @@ import 'videojs-contrib-ads/dist/videojs-contrib-ads.css'
 import 'videojs-ima'
 import 'videojs-ima/dist/videojs.ima.css'
 
+import { observePlayback } from '@/lib/playback-telemetry.mjs'
 import type { VideoAd } from './videoDetailApi'
 
 type VideoJsPlayerProps = {
   source: string
+  telemetry?: {
+    content_type: 'video' | 'movie' | 'episode' | 'livetv'
+    content_id: string | number
+    player_surface: 'watch' | 'embed'
+    watched_channel_id?: string | number | null
+  }
   poster?: string | null
   autoplay?: boolean
   muted?: boolean
@@ -81,6 +88,7 @@ type CustomAdUiState = {
 
 export function VideoJsPlayer({
   source,
+  telemetry,
   poster,
   autoplay = false,
   muted = false,
@@ -96,6 +104,10 @@ export function VideoJsPlayer({
   onPause,
   onEnded,
 }: VideoJsPlayerProps) {
+  const telemetryType = telemetry?.content_type
+  const telemetryId = Number(telemetry?.content_id)
+  const telemetrySurface = telemetry?.player_surface
+  const telemetryChannel = Number(telemetry?.watched_channel_id)
   const videoNodeRef = useRef<HTMLVideoElement | null>(null)
   const playerRef = useRef<VideoJsImaPlayer | null>(null)
   const lastPlayTriggerRef = useRef(0)
@@ -444,7 +456,24 @@ export function VideoJsPlayer({
     player.on('nopreroll', resumeContent)
     player.on('error', retryMediaOnce)
 
+    let stopTelemetry: (() => void) | undefined
+    if (telemetryType && Number.isSafeInteger(telemetryId) && telemetryId > 0
+      && telemetrySurface && typeof window.crypto?.randomUUID === 'function') {
+      stopTelemetry = observePlayback({
+        player,
+        live: isLive,
+        blocked: () => isAdPlayingRef.current || customAdShowingRef.current,
+        metadata: {
+          content_type: telemetryType,
+          content_id: telemetryId,
+          player_surface: telemetrySurface,
+          watched_channel_id: Number.isSafeInteger(telemetryChannel) && telemetryChannel > 0 ? telemetryChannel : undefined,
+        },
+      })
+    }
+
     return () => {
+      stopTelemetry?.()
       player.off('play', handlePlay)
       player.off('timeupdate', handleTimeUpdate)
       player.off('pause', handlePause)
@@ -473,7 +502,7 @@ export function VideoJsPlayer({
         customAdTimerRef.current = null
       }
     }
-  }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd, subtitles])
+  }, [autoplay, hasCustomPlayerAd, hasVastAds, isLive, muted, poster, source, startCustomAd, subtitles, telemetryChannel, telemetryId, telemetrySurface, telemetryType])
 
   useEffect(() => {
     setIsPaused(true)

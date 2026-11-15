@@ -5,8 +5,7 @@ import { Camera, ChevronDown, ChevronRight, CreditCard, Film, Home as HomeIcon, 
 import { BrandLogo } from '@/components/BrandLogo'
 import { api } from '@/lib/api'
 import { useSpaNavigate } from '@/lib/spa-router'
-import type { ApiEnvelope, DashboardData, LiveTvDashboard, MediaItem, PaginatedData } from '@/modules/home/types'
-import { loadVideosPage } from '@/modules/videos/videosApi'
+import type { ApiEnvelope, MediaItem } from '@/modules/home/types'
 import { isNativeIosApp } from '@/lib/native-platform'
 
 type AppHeaderProps = {
@@ -35,13 +34,16 @@ type HeaderNavData = {
   videos: MediaItem[]
   liveTv: MediaItem[]
   ondemand: MediaItem[]
-  hasMovies: boolean
-  hasTvshows: boolean
   visibleMenuKeys: string[] | null
 }
 
 type NavigationMenuResponse = {
   burger_menu?: Array<{ key: string }>
+  dropdowns?: {
+    videos?: MediaItem[]
+    livetv?: Array<MediaItem & { category?: string | null }>
+    ondemand?: MediaItem[]
+  }
 }
 
 declare global {
@@ -93,8 +95,6 @@ export function AppHeader({ active }: AppHeaderProps) {
     videos: [],
     liveTv: [],
     ondemand: [],
-    hasMovies: false,
-    hasTvshows: false,
     visibleMenuKeys: getInitialVisibleMenuKeys(),
   }
   const visibleNavItems = navItems.filter((item) =>
@@ -210,8 +210,6 @@ export function AppHeader({ active }: AppHeaderProps) {
         <MobileMenu
           activeKey={activeKey}
           dropdowns={dropdowns}
-          hasMovies={navData.hasMovies}
-          hasTvshows={navData.hasTvshows}
           visibleMenuKeys={navData.visibleMenuKeys}
           authUser={authUser}
           nativeIos={nativeIos}
@@ -228,8 +226,6 @@ export function AppHeader({ active }: AppHeaderProps) {
 function MobileMenu({
   activeKey,
   dropdowns,
-  hasMovies,
-  hasTvshows,
   visibleMenuKeys,
   authUser,
   nativeIos,
@@ -239,8 +235,6 @@ function MobileMenu({
 }: {
   activeKey: AppHeaderProps['active']
   dropdowns: Record<DropdownKey, MediaItem[]>
-  hasMovies: boolean
-  hasTvshows: boolean
   visibleMenuKeys: string[] | null
   authUser: AuthUser | null
   nativeIos: boolean
@@ -711,44 +705,14 @@ function NavDropdown({
   )
 }
 
-async function loadHeaderNavData() {
-  const [videos, liveTv, ondemand, dashboard, navigationMenu] = await Promise.allSettled([
-    loadVideosPage('', 1, 14),
-    api.get<ApiEnvelope<LiveTvDashboard>>('/api/v3/livetv-dashboard'),
-    api.get<ApiEnvelope<PaginatedData<MediaItem>>>('/api/v3/ondemand?per_page=50'),
-    api.get<ApiEnvelope<DashboardData>>('/api/v3/dashboard-detail'),
-    api.get<ApiEnvelope<NavigationMenuResponse>>('/api/v3/navigation-menu'),
-  ])
-  const dashboardData = dashboard.status === 'fulfilled' ? dashboard.value.data : undefined
-  const navigationMenuData = navigationMenu.status === 'fulfilled' ? navigationMenu.value.data : undefined
-  const movieCount = [
-    dashboardData?.latest_movie?.data,
-    dashboardData?.popular_movie?.data,
-    dashboardData?.free_movie?.data,
-  ].reduce((total, items) => total + (Array.isArray(items) ? items.length : 0), 0)
-  const tvshowCount = Array.isArray(dashboardData?.popular_tvshow?.data) ? dashboardData.popular_tvshow.data.length : 0
-
+async function loadHeaderNavData(): Promise<HeaderNavData> {
+  const { data } = await api.get<ApiEnvelope<NavigationMenuResponse>>('/api/v3/navigation-menu')
   return {
-    videos: videos.status === 'fulfilled' ? videos.value.items : [],
-    liveTv: liveTv.status === 'fulfilled'
-      ? moveAuthorsChannelSecond(liveTvChannelsFromDashboard(liveTv.value.data ?? {})).slice(0, 14)
-      : [],
-    ondemand: ondemand.status === 'fulfilled' ? moveAuthorsChannelSecond(ondemand.value.data?.data ?? []).slice(0, 14) : [],
-    hasMovies: movieCount > 0,
-    hasTvshows: tvshowCount > 0,
-    visibleMenuKeys: navigationMenuData?.burger_menu?.map((item) => item.key) ?? null,
+    videos: data?.dropdowns?.videos ?? [],
+    liveTv: moveAuthorsChannelSecond(data?.dropdowns?.livetv ?? []),
+    ondemand: moveAuthorsChannelSecond(data?.dropdowns?.ondemand ?? []),
+    visibleMenuKeys: data?.burger_menu?.map((item) => item.key) ?? null,
   }
-}
-
-function liveTvChannelsFromDashboard(liveTv: LiveTvDashboard) {
-  const channels = liveTv.channel_data ?? liveTv.category_data?.flatMap((category) => category.channel_data ?? []) ?? []
-
-  return [...channels].sort((a, b) => {
-    const aOrder = typeof a.dashboard_order === 'number' ? a.dashboard_order : Number.MAX_SAFE_INTEGER
-    const bOrder = typeof b.dashboard_order === 'number' ? b.dashboard_order : Number.MAX_SAFE_INTEGER
-
-    return aOrder - bOrder
-  })
 }
 
 function moveAuthorsChannelSecond(items: MediaItem[]) {
@@ -823,10 +787,10 @@ function navItemImage(item: MediaItem) {
     ?? null
 }
 
-function navItemMeta(item: MediaItem, kind: 'videos' | 'livetv' | 'ondemand') {
+function navItemMeta(item: MediaItem & { category?: string | null }, kind: 'videos' | 'livetv' | 'ondemand') {
   const access = isNativeIosApp() && item.access?.toLowerCase() === 'free' ? null : item.access
   if (kind === 'videos') return [item.duration, access].filter(Boolean).join(' - ') || 'Video'
-  if (kind === 'livetv') return item.details?.category ?? 'Live channel'
+  if (kind === 'livetv') return item.details?.category ?? item.category ?? 'Live channel'
 
   return `${item.videos_count ?? 0} videos`
 }

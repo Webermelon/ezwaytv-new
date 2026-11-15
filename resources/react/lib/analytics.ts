@@ -8,6 +8,8 @@ type TrackViewPayload = {
   content_type?: AnalyticsContentType
   content_id?: number | string | null
   channel_id?: number | string | null
+  watched_channel_id?: number | string | null
+  player_surface?: 'watch' | 'embed'
   page_name?: string | null
   route_name?: string | null
   page_url?: string
@@ -18,6 +20,8 @@ type TrackPlayPayload = {
   content_type: Exclude<AnalyticsContentType, 'page'>
   content_id: number | string
   channel_id?: number | string | null
+  watched_channel_id?: number | string | null
+  player_surface?: 'watch' | 'embed'
   quality?: string | null
 }
 
@@ -52,6 +56,7 @@ export async function trackView(payload: TrackViewPayload) {
     ...payload,
     content_id: numericOrUndefined(payload.content_id),
     channel_id: numericOrUndefined(payload.channel_id),
+    watched_channel_id: numericOrUndefined(payload.watched_channel_id),
     page_url: payload.page_url ?? window.location.href,
     referrer: payload.referrer ?? document.referrer ?? undefined,
     platform: 'web',
@@ -64,6 +69,7 @@ export async function trackPlay(payload: TrackPlayPayload) {
     ...payload,
     content_id: Number(payload.content_id),
     channel_id: numericOrUndefined(payload.channel_id),
+    watched_channel_id: numericOrUndefined(payload.watched_channel_id),
     platform: 'web',
     quality: payload.quality ?? 'auto',
     session_id: getStatSessionId(),
@@ -77,16 +83,22 @@ export async function updateWatchTime(playId: number, watchSeconds: number) {
   })
 }
 
+let fallbackSessionId: string | undefined
+
 export function getStatSessionId() {
   const key = 'ezway_stat_session_id'
-  const existing = window.sessionStorage.getItem(key)
+  try {
+    const existing = window.sessionStorage.getItem(key)
+    if (existing) return existing
 
-  if (existing) return existing
-
-  const next = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
-  window.sessionStorage.setItem(key, next)
-
-  return next
+    const next = window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+    window.sessionStorage.setItem(key, next)
+    return next
+  } catch {
+    // Embedded players may be denied storage by the containing browser.
+    fallbackSessionId ??= window.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+    return fallbackSessionId
+  }
 }
 
 function routeAnalyticsMetadata(path: string) {

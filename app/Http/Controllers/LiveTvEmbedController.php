@@ -21,6 +21,7 @@ class LiveTvEmbedController extends Controller
 
         return view('livetv::embed', [
             'title' => $channel->name,
+            'channelId' => (int) $channel->id,
             'streamUrl' => $streamUrl,
             'posterUrl' => $channel->poster_url ? setBaseUrlWithFileName($channel->poster_url, 'image', 'livetv') : null,
         ]);

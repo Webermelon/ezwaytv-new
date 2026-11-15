@@ -33,6 +33,8 @@ return [
     |
     */
 
+    'analytics_schema' => env('TV_ANALYTICS_STORAGE_SCHEMA'),
+
     'connections' => [
 
         'sqlite' => [
@@ -61,6 +63,21 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+        ],
+
+        'tv_logs' => [
+            'driver' => 'mysql',
+            'host' => env('TV_LOG_DB_HOST', '127.0.0.1'),
+            'port' => env('TV_LOG_DB_PORT', '3306'),
+            'database' => env('TV_LOG_DB_DATABASE', 'ezway_tv_logs'),
+            'username' => env('TV_LOG_DB_USERNAME'),
+            'password' => env('TV_LOG_DB_PASSWORD'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_bin',
+            'prefix' => '',
+            'strict' => true,
+            'timezone' => '+00:00',
+            'options' => [PDO::ATTR_TIMEOUT => 2],
         ],
 
         'pgsql' => [

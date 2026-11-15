@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Events\Frontend\UserRegistered;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\TvLog;
 use App\Models\UserProvider;
 use App\Providers\RouteServiceProvider;
 use Exception;
@@ -52,7 +53,9 @@ class SocialLoginController extends Controller
             $authUser = $this->findOrCreateUser($user, $provider);
 
             Auth::login($authUser, true);
+            TvLog::auth(request(), 'login_succeeded', 'success', $authUser->id, 'session_issued', 'social', TvLog::label($provider, 64));
         } catch (Exception $e) {
+            TvLog::auth(request(), 'login_failed', 'failed', null, 'provider_callback_failed', 'social', TvLog::label($provider, 64));
             return redirect('/');
         }
 

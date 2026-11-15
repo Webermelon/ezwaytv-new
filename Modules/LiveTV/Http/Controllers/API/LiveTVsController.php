@@ -2,6 +2,8 @@
 
 namespace Modules\LiveTV\Http\Controllers\API;
 
+use App\Services\TvAnalyticsStorage;
+
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
@@ -742,7 +744,7 @@ class LiveTVsController extends Controller
             DB::table('stat_settings')->where('key', 'views_display_mode')->value('value') ?? 'combined'
         );
 
-        $realViews = DB::table('stat_page_views')
+        $realViews = TvAnalyticsStorage::table('stat_page_views')
             ->select('content_id', DB::raw('COUNT(*) as real_views'))
             ->where('content_type', 'livetv')
             ->groupBy('content_id');
@@ -779,14 +781,14 @@ class LiveTVsController extends Controller
             return;
         }
 
-        $realViews = DB::table('stat_page_views')
+        $realViews = TvAnalyticsStorage::table('stat_page_views')
             ->select('content_id', DB::raw('COUNT(*) as total'))
             ->where('content_type', 'livetv')
             ->whereIn('content_id', $ids)
             ->groupBy('content_id')
             ->pluck('total', 'content_id');
 
-        $realPlays = DB::table('stat_play_events')
+        $realPlays = TvAnalyticsStorage::table('stat_play_events')
             ->select('content_id', DB::raw('COUNT(*) as total'))
             ->where('content_type', 'livetv')
             ->whereIn('content_id', $ids)

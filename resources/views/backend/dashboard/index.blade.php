@@ -1,4 +1,4 @@
-@extends('backend.layouts.app', ['isBanner' => false])
+@extends('backend.layouts.app', ['isBanner' => false, 'skipPageLoader' => true])
 
 
 @section('title')
@@ -7,54 +7,6 @@
 
 @section('content')
 <style>
-    /* Dashboard Loader Styles */
-    #dashboard-loader {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        background-color: var(--bs-body-bg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9998;
-        transition: opacity 0.4s ease, visibility 0.4s ease;
-    }
-
-    /* Adjust for sidebar - loader should cover main content area only */
-    @media (min-width: 992px) {
-        #dashboard-loader {
-            left: var(--sidebar-width); /* Adjust based on sidebar width - typically 280px */
-        }
-    }
-
-    @media (max-width: 991px) {
-        #dashboard-loader {
-            left: 0; /* Full width on mobile when sidebar is hidden */
-        }
-    }
-
-    #dashboard-loader.hidden {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-    }
-
-    #dashboard-loader .loader-wrapper {
-        text-align: center;
-    }
-
-    /* Hide dashboard content initially */
-    #dashboard-content {
-        opacity: 0;
-        transition: opacity 0.4s ease;
-    }
-
-    #dashboard-content.loaded {
-        opacity: 1;
-    }
-
     /* Hide zero value labels in Most Watched chart */
     #chart-most-watch .apexcharts-datalabel[data-value="0"],
     #chart-most-watch .apexcharts-datalabel:has-text("0"),
@@ -119,17 +71,6 @@
         max-height: 2.5rem !important;
     }
 </style>
-
-<div id="dashboard-loader">
-    <div class="loader-wrapper">
-        @php
-            $loader_gif = GetSettingValue('loader_gif') ? setBaseUrlWithFileName(GetSettingValue('loader_gif'), 'image', 'logos') : asset('img/logo/loader.gif');
-        @endphp
-        <img src="{{ $loader_gif }}" alt="Loading..."
-            class="loader-gif" width="100" height="100">
-        {{-- <div class="loader-text">Loading...</div> --}}
-    </div>
-</div>
 
 <div id="dashboard-content" class="container-fluid">
         <div class="d-flex align-items-center justify-content-end">
@@ -214,7 +155,7 @@
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
                                             <p class="mb-2 fs-6">On Demand Channels</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalOnDemandChannels) }}</h1>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalOnDemandChannels === null ? '—' : number_format($totalOnDemandChannels) }}</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -233,7 +174,7 @@
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
                                             <p class="mb-2 fs-6">On Demand Videos</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalOnDemandVideos) }}</h1>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalOnDemandVideos === null ? '—' : number_format($totalOnDemandVideos) }}</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -252,7 +193,7 @@
                                     <div class="d-flex justify-content-between gap-3 mt-3">
                                         <div class="card-data">
                                             <p class="mb-2 fs-6">TV Channels</p>
-                                            <h1 class="m-0 display-6 fw-semibold">{{ number_format($totalTvChannels) }}</h1>
+                                            <h1 class="m-0 display-6 fw-semibold">{{ $totalTvChannels === null ? '—' : number_format($totalTvChannels) }}</h1>
                                         </div>
                                     </div>
                                 </div>
@@ -537,137 +478,42 @@
 
 
 @push('after-scripts')
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script>
-        // Chart loading tracker
-        (function() {
-            const chartLoadTracker = {
-                charts: {
-                    'chart-01': false,
-                    'chart-02': false,
-                    'chart-03': false,
-                    'chart-04': false,
-                    'chart-05': false,
-                    'chart-06': false,
-                    'chart-07': false,
-                    'chart-08': false,
-                    'chart-09': false,
-                    'chart-top-genres': false,
-                    'chart-top-revenue': false,
-                    'chart-new-subscription': false,
-                    'chart-top-rated': false,
-                    'chart-most-watch': false
-                },
+    $(function () {
+        const selectedDateRange = @json($dateRange ?? '');
+        if (typeof flatpickr === 'function') {
+            document.querySelectorAll('.dashboard-date-range').forEach((input) => {
+                flatpickr(input, {
+                    mode: 'range',
+                    dateFormat: 'Y-m-d',
+                    defaultDate: selectedDateRange,
+                });
+            });
+        }
 
-                markChartLoaded: function(chartId) {
-                    if (this.charts.hasOwnProperty(chartId)) {
-                        this.charts[chartId] = true;
-                        this.checkAllLoaded();
-                    }
-                },
+        if (typeof window.ApexCharts === 'function') {
+            initializeDashboardCharts(selectedDateRange);
+            return;
+        }
 
-                checkAllLoaded: function() {
-                    const allLoaded = Object.values(this.charts).every(loaded => loaded === true);
-                    if (allLoaded) {
-                        this.hideLoader();
-                    }
-                },
+        const chartLibrary = document.createElement('script');
+        chartLibrary.src = 'https://cdn.jsdelivr.net/npm/apexcharts';
+        chartLibrary.async = true;
+        chartLibrary.onload = () => initializeDashboardCharts(selectedDateRange);
+        chartLibrary.onerror = () => {
+            document.querySelectorAll('#chart-top-genres, #chart-top-revenue, #chart-new-subscription, #chart-top-rated, #chart-most-watch')
+                .forEach((chart) => { chart.textContent = 'Chart unavailable'; });
+        };
+        document.head.appendChild(chartLibrary);
+    });
 
-                hideLoader: function() {
-                    const loader = document.getElementById('dashboard-loader');
-                    const content = document.getElementById('dashboard-content');
-
-                    if (loader) {
-                        loader.classList.add('hidden');
-                        setTimeout(() => {
-                            if (loader.parentNode) {
-                                loader.remove();
-                            }
-                        }, 400);
-                    }
-
-                    if (content) {
-                        content.classList.add('loaded');
-                    }
-                },
-
-                markMissingChartsLoaded: function() {
-                    Object.keys(this.charts).forEach((chartId) => {
-                        if (!document.getElementById(chartId)) {
-                            this.charts[chartId] = true;
-                        }
-                    });
-                    this.checkAllLoaded();
-                }
-            };
-
-            // Make tracker globally accessible
-            window.chartLoadTracker = chartLoadTracker;
-            chartLoadTracker.markMissingChartsLoaded();
-
-            // Fallback timeout (hide loader after 10 seconds max)
-            setTimeout(function() {
-                if (document.getElementById('dashboard-loader')) {
-                    chartLoadTracker.hideLoader();
-                }
-            }, 10000);
-        })();
-
-        // Debug: log all dynamic dashboard data
-        console.log('Dashboard percentages', {
-            users: {
-                percent: @json($usersChangePercent ?? 0),
-                up: @json($usersChangeUp ?? true)
-            },
-            subscribers: {
-                percent: @json($subsChangePercent ?? 0),
-                up: @json($subsChangeUp ?? true)
-            },
-            soonToExpire: {
-                percent: @json($soonExpireChangePercent ?? 0),
-                up: @json($soonExpireChangeUp ?? false)
-            },
-            reviews: {
-                percent: @json($reviewsChangePercent ?? 0),
-                up: @json($reviewsChangeUp ?? true)
-            },
-            subscriptionRevenue: {
-                percent: @json($subscriptionRevenueChangePercent ?? 0),
-                up: @json($subscriptionRevenueChangeUp ?? true)
-            },
-            rentRevenue: {
-                percent: @json($rentRevenueChangePercent ?? 0),
-                up: @json($rentRevenueChangeUp ?? true)
-            },
-            totalRevenue: {
-                percent: @json($totalRevenueChangePercent ?? 0),
-                up: @json($totalRevenueChangeUp ?? true)
-            },
-            rentContent: {
-                percent: @json($rentContentChangePercent ?? 0),
-                up: @json($rentContentChangeUp ?? true)
-            }
-        });
-
-        console.log('Dashboard trends', {
-            usersTrend: @json($usersTrend ?? [0, 0]),
-            subsTrend: @json($subsTrend ?? [0, 0]),
-            soonExpireTrend: @json($soonExpireTrend ?? [0, 0]),
-            reviewsTrend: @json($reviewsTrend ?? [0, 0]),
-            subscriptionRevenueTrend: @json($subscriptionRevenueTrend ?? [0, 0]),
-            rentRevenueTrend: @json($rentRevenueTrend ?? [0, 0]),
-            totalRevenueTrend: @json($totalRevenueTrend ?? [0, 0]),
-            rentContentTrend: @json($rentContentTrend ?? [0, 0])
-        });
-
+    function initializeDashboardCharts(selectedDateRange) {
         const formatCurrencyvalue = (value) => {
             if (window.currencyFormat !== undefined) {
                 return window.currencyFormat(value)
             }
             return value
         }
-
-        var selectedDateRange = @json($dateRange ?? '');
 
         // Localization mapping for dropdown types
         const typeLocalization = {
@@ -680,22 +526,7 @@
             totalRevenue: '{{ __('dashboard.lbl_tot_revenue') }}'
         };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize flatpickr for date range (Y-m-d format only)
-            const range_flatpicker = document.querySelectorAll('.dashboard-date-range')
-            Array.from(range_flatpicker, (elem) => {
-                if (typeof flatpickr !== typeof undefined) {
-                    flatpickr(elem, {
-                        mode: "range",
-                        dateFormat: "Y-m-d",
-                        defaultDate: selectedDateRange || [
-                            new Date(Date.now() - 2 * 30 * 24 * 60 * 60 * 1000), // 2 months ago
-                            new Date() // today
-                        ],
-                    })
-                }
-            })
-
+        if (document.getElementById('chart-top-genres')) {
             var Base_url = "{{ url('/') }}";
             var url = Base_url + "/app/get_genre_chart_data";
 
@@ -751,17 +582,13 @@
 
                         var chart = new ApexCharts(document.querySelector("#chart-top-genres"),
                             options);
-                        chart.render().then(() => {
-                            if (window.chartLoadTracker) {
-                                window.chartLoadTracker.markChartLoaded('chart-top-genres');
-                            }
-                        });
+                        chart.render();
                     }
                 }
             });
-        });
+        }
 
-        revanue_chart('Year')
+        if (document.getElementById('chart-top-revenue')) revanue_chart('Year');
 
         var chart = null;
         let revenueInstance;
@@ -854,17 +681,10 @@
 
                         if (revenueInstance) {
                             revenueInstance.updateOptions(options);
-                            if (window.chartLoadTracker) {
-                                window.chartLoadTracker.markChartLoaded('chart-top-revenue');
-                            }
                         } else {
                             revenueInstance = new ApexCharts(document.querySelector("#chart-top-revenue"),
                                 options);
-                            revenueInstance.render().then(() => {
-                                if (window.chartLoadTracker) {
-                                    window.chartLoadTracker.markChartLoaded('chart-top-revenue');
-                                }
-                            });
+                            revenueInstance.render();
                         }
                     }
                 }
@@ -877,7 +697,7 @@
         });
 
 
-        subscriber_chart('Year')
+        if (document.getElementById('chart-new-subscription')) subscriber_chart('Year');
         let subscriberInstance;
 
         function subscriber_chart(type) {
@@ -1059,9 +879,6 @@
                             subscriberInstance.updateOptions(options);
                             // Hide zero labels after update
                             setTimeout(hideSubscriberZeroLabels, 100);
-                            if (window.chartLoadTracker) {
-                                window.chartLoadTracker.markChartLoaded('chart-new-subscription');
-                            }
                         } else {
                             subscriberInstance = new ApexCharts(document.querySelector(
                                 "#chart-new-subscription"), options);
@@ -1070,9 +887,6 @@
                                 setTimeout(hideSubscriberZeroLabels, 100);
                                 // Also hide on animation end
                                 setTimeout(hideSubscriberZeroLabels, 500);
-                                if (window.chartLoadTracker) {
-                                    window.chartLoadTracker.markChartLoaded('chart-new-subscription');
-                                }
                             });
                         }
                     }
@@ -1101,7 +915,7 @@
         });
 
 
-        document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('chart-top-rated')) {
             var Base_url = "{{ url('/') }}";
             var url = Base_url + "/app/get_toprated_chart_data";
 
@@ -1112,7 +926,6 @@
                     date_range: selectedDateRange
                 } : {},
                 success: function(response) {
-                    console.log('Top Rated Chart Response:', response);
                     if (document.querySelectorAll('#chart-top-rated').length) {
                         const chartData = response.data.chartData;
 
@@ -1203,9 +1016,6 @@
                         // Create the chart instance
                         var chart = new ApexCharts(document.querySelector("#chart-top-rated"), options);
                         chart.render().then(() => {
-                            if (window.chartLoadTracker) {
-                                window.chartLoadTracker.markChartLoaded('chart-top-rated');
-                            }
                             // Attach click event listener to legend labels
                             const legendItems = document.querySelectorAll(
                                 '#chart-top-rated .apexcharts-legend-series');
@@ -1220,12 +1030,12 @@
                     }
                 }
             });
-        });
+        }
 
 
 
 
-        mostwatch_chart('Year')
+        if (document.getElementById('chart-most-watch')) mostwatch_chart('Year');
         let mostwatchInstance;
 
         function mostwatch_chart(type) {
@@ -1405,9 +1215,6 @@
                             mostwatchInstance.updateOptions(options);
                             // Hide zero labels after update
                             setTimeout(hideZeroLabels, 100);
-                            if (window.chartLoadTracker) {
-                                window.chartLoadTracker.markChartLoaded('chart-most-watch');
-                            }
                         } else {
                             mostwatchInstance = new ApexCharts(document.querySelector("#chart-most-watch"),
                                 options);
@@ -1416,9 +1223,6 @@
                                 setTimeout(hideZeroLabels, 100);
                                 // Also hide on animation end
                                 setTimeout(hideZeroLabels, 500);
-                                if (window.chartLoadTracker) {
-                                    window.chartLoadTracker.markChartLoaded('chart-most-watch');
-                                }
                             });
                         }
                     }
@@ -1445,9 +1249,6 @@
                 }
             }, 600);
         });
-    </script>
-
-    <script>
         /*-------------- Service1 Chart ----------------*/
         if (document.querySelectorAll("#chart-01").length) {
             const options = {
@@ -1483,11 +1284,7 @@
                 document.querySelector("#chart-01"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-01');
-                }
-            });
+            chart.render();
         }
 
         if (document.querySelectorAll("#chart-02").length) {
@@ -1524,11 +1321,7 @@
                 document.querySelector("#chart-02"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-02');
-                }
-            });
+            chart.render();
         }
 
         if (document.querySelectorAll("#chart-03").length) {
@@ -1565,11 +1358,7 @@
                 document.querySelector("#chart-03"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-03');
-                }
-            });
+            chart.render();
         }
 
         if (document.querySelectorAll("#chart-04").length) {
@@ -1606,11 +1395,7 @@
                 document.querySelector("#chart-04"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-04');
-                }
-            });
+            chart.render();
         }
         if (document.querySelectorAll("#chart-05").length) {
             const options = {
@@ -1646,11 +1431,7 @@
                 document.querySelector("#chart-05"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-05');
-                }
-            });
+            chart.render();
         }
         if (document.querySelectorAll("#chart-06").length) {
             const options = {
@@ -1686,11 +1467,7 @@
                 document.querySelector("#chart-06"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-06');
-                }
-            });
+            chart.render();
         }
         if (document.querySelectorAll("#chart-07").length) {
             const options = {
@@ -1726,11 +1503,7 @@
                 document.querySelector("#chart-07"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-07');
-                }
-            });
+            chart.render();
         }
         if (document.querySelectorAll("#chart-08").length) {
             const options = {
@@ -1766,11 +1539,7 @@
                 document.querySelector("#chart-08"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-08');
-                }
-            });
+            chart.render();
         }
         if (document.querySelectorAll("#chart-09").length) {
             const options = {
@@ -1806,11 +1575,8 @@
                 document.querySelector("#chart-09"),
                 options
             );
-            chart.render().then(() => {
-                if (window.chartLoadTracker) {
-                    window.chartLoadTracker.markChartLoaded('chart-09');
-                }
-            });
+            chart.render();
         }
+    }
     </script>
 @endpush
