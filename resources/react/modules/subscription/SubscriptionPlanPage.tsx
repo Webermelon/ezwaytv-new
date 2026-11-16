@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, AtSign, Check, CreditCard, Crown, KeyRound, Loader2, Mail, Phone, RefreshCw, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
+import { AlertTriangle, AtSign, CalendarDays, Check, CreditCard, Crown, KeyRound, Loader2, Mail, Phone, RefreshCw, ShieldCheck, ShoppingCart, UserRound, X } from 'lucide-react'
 
 import { AppHeader } from '@/components/AppHeader'
 import { ApiError, api } from '@/lib/api'
@@ -249,21 +249,15 @@ export function SubscriptionPlanPage() {
 
       <section className="border-b border-white/8 bg-[radial-gradient(circle_at_78%_0%,rgba(212,168,67,0.20),transparent_28%),linear-gradient(180deg,#0b0b0b_0%,#050505_100%)] px-4 py-10 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-[1800px]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">
-                <Crown className="h-4 w-4" />
-                Subscription Plans
-              </span>
-              <h1 className="mt-5 text-4xl font-black leading-none sm:text-5xl">Choose Your Plan</h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-base">
-                Choose the active TV subscription package from eZWay Core. Payment is completed securely through the connected checkout flow.
-              </p>
-            </div>
-
-            <div className="rounded-md border border-[#d4a843]/24 bg-[#d4a843]/10 px-4 py-3 text-sm font-black text-[#edc342]">
-              TV Subscription
-            </div>
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#d4a843]/28 bg-[#d4a843]/12 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[#edc342]">
+              <Crown className="h-4 w-4" />
+              Subscription Plans
+            </span>
+            <h1 className="mt-5 text-4xl font-black leading-none sm:text-5xl">Choose Your Plan</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-base">
+              Choose the active TV subscription package from eZWay Core. Payment is completed securely through the connected checkout flow.
+            </p>
           </div>
         </div>
       </section>
@@ -286,7 +280,8 @@ export function SubscriptionPlanPage() {
           {plansQuery.isLoading ? (
             <PricingPlanSkeletonGrid />
           ) : filteredPlans.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
+              <CustomNetworkCard />
               {filteredPlans.map((plan, index) => (
                 <PlanCard
                   key={plan.plan_id}
@@ -299,8 +294,11 @@ export function SubscriptionPlanPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-white/10 bg-white/[0.035] p-8 text-center text-white/56">
-              No active TV subscription packages found.
+            <div className="grid gap-4 md:grid-cols-2">
+              <CustomNetworkCard />
+              <div className="rounded-md border border-white/10 bg-white/[0.035] p-8 text-center text-white/56">
+                No active TV subscription packages found.
+              </div>
             </div>
           )}
         </div>
@@ -393,6 +391,34 @@ function PricingPlanSkeletonCard({ compact, featured }: { compact: boolean; feat
         ))}
       </div>
       <div className="relative mt-8 h-12 rounded-md bg-white/12" />
+    </article>
+  )
+}
+
+function CustomNetworkCard() {
+  return (
+    <article className="flex h-full flex-col rounded-md border border-[#d4a843]/60 bg-[#d4a843]/10 p-5 shadow-2xl shadow-black/20">
+      <div className="flex min-h-12 items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#edc342]">Custom Service</p>
+          <h2 className="mt-2 text-2xl font-black">Custom Network and TV Channel Creation</h2>
+        </div>
+        <span className="rounded-full bg-[#d4a843] px-3 py-1 text-[11px] font-black uppercase text-black">Consultation</span>
+      </div>
+
+      <p className="mt-6 max-w-xl text-sm leading-6 text-white/62">
+        Meet with the eZWay team to plan a custom network or dedicated channel built around your audience and content goals.
+      </p>
+
+      <a
+        href="https://ezwaycrm.com/booking/ezway-calendar?srv=Custom%20Network%20and%20TV%20Channel%20Creation"
+        target="_blank"
+        rel="noreferrer"
+        className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#d4a843] px-4 text-sm font-black text-black transition hover:bg-[#efc955] focus:outline-none focus:ring-2 focus:ring-[#edc342] focus:ring-offset-2 focus:ring-offset-[#0b0b0b]"
+      >
+        <CalendarDays className="h-5 w-5" />
+        Book an Appointment
+      </a>
     </article>
   )
 }
