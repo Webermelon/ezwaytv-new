@@ -269,6 +269,15 @@ Route::get('/api/distribution', function () {
     if (!file_exists($path)) {
         return response()->json(['error' => 'Data not found'], 404);
     }
-    $json = Cache::remember('spa:distribution:json:' . filemtime($path), 3600, fn () => file_get_contents($path));
+
+    $loadJson = fn () => file_get_contents($path);
+
+    try {
+        $json = Cache::remember('spa:distribution:json:' . filemtime($path), 3600, $loadJson);
+    } catch (\Throwable) {
+        // The public page remains available if a file-cache shard is unavailable.
+        $json = $loadJson();
+    }
+
     return response($json, 200)->header('Content-Type', 'application/json');
 })->name('api.distribution');
