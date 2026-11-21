@@ -24,6 +24,9 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
     {
         parent::setUp();
 
+        $this->assertSame('sqlite', DB::connection()->getDriverName());
+        $this->assertSame(':memory:', DB::connection()->getDatabaseName());
+
         Config::set('services.core_private_api.token', 'test-core-token');
         Config::set('services.core_private_api.secret', '');
         Config::set('app.debug', false);
@@ -201,6 +204,59 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
             ->assertExactJson(self::SAFE_CHANNEL_404);
     }
 
+    public function test_canonical_publishing_channel_allows_reassignment_without_creator_audit_fields(): void
+    {
+        $owner = $this->user(101);
+        $origin = $this->channel($owner, 'Original publishing channel');
+        $destination = $this->channel($owner, 'Second owned channel');
+        $video = $this->video($owner, ['created_by' => null]);
+        $video->forceFill(['publishing_channel_id' => $origin->id])->saveQuietly();
+        $this->assertNull($video->refresh()->created_by);
+        $this->assertNull($video->creator_channel_id);
+        $payload = ['core_user_id' => 101, 'video_id' => $video->id];
+        $url = "/api/private/core/on-demand/channels/{$destination->id}/videos/assign";
+
+        $this->coreJson('post', $url, $payload)->assertCreated()->assertJsonPath('data.added', true);
+        $this->coreJson('post', $url, $payload)->assertOk()->assertJsonPath('data.added', false);
+        $this->assertSame(1, DB::table('author_channel_video')->where('author_channel_id', $destination->id)->where('video_id', $video->id)->count());
+        $this->assertSame($origin->id, $video->refresh()->publishing_channel_id);
+        $this->coreJson('delete', "/api/private/core/on-demand/channels/{$destination->id}/videos/{$video->id}/unassign", ['core_user_id' => 101])->assertOk();
+        $this->coreJson('post', $url, $payload)->assertCreated();
+
+        $foreignOwner = $this->user(202);
+        $foreignChannel = $this->channel($foreignOwner, 'Foreign destination');
+        $this->coreJson('post', "/api/private/core/on-demand/channels/{$foreignChannel->id}/videos/assign", ['core_user_id' => 202, 'video_id' => $video->id])
+            ->assertNotFound()->assertExactJson(self::SAFE_CHANNEL_404);
+        $this->assertDatabaseMissing('author_channel_video', ['author_channel_id' => $foreignChannel->id, 'video_id' => $video->id]);
+    }
+
+    public function test_core_uploaded_video_can_be_unassigned_and_reassigned_to_its_publishing_channel(): void
+    {
+        $user = $this->user(101);
+        $channel = $this->channel($user, 'Original Channel');
+        $base = "/api/private/core/on-demand/channels/{$channel->id}/videos";
+        $videoId = $this->coreJson('post', $base, ['core_user_id' => 101, 'title' => 'Core upload', 'status' => 'draft'])->assertCreated()->json('data.id');
+        $this->assertDatabaseHas('videos', ['id' => $videoId, 'publishing_channel_id' => $channel->id]);
+        $this->coreJson('delete', "$base/$videoId/unassign", ['core_user_id' => 101])->assertOk();
+        $this->coreJson('post', "$base/assign", ['core_user_id' => 101, 'video_id' => $videoId])->assertCreated()->assertJsonPath('data.added', true);
+        $this->assertDatabaseHas('videos', ['id' => $videoId, 'publishing_channel_id' => $channel->id]);
+    }
+
+    public function test_publishing_channel_migration_adds_missing_field_and_preserves_existing_provenance(): void
+    {
+        Schema::table('videos', fn (Blueprint $table) => $table->dropColumn('publishing_channel_id'));
+        $migration = require database_path('migrations/2026_11_20_000001_add_publishing_channel_id_to_videos.php');
+        $migration->up();
+        $this->assertTrue(Schema::hasColumn('videos', 'publishing_channel_id'));
+        $owner = $this->user(101);
+        $channel = $this->channel($owner, 'Publishing Channel');
+        $video = $this->video($owner);
+        $video->forceFill(['publishing_channel_id' => $channel->id])->saveQuietly();
+        $migration->up();
+        $migration->down();
+        $this->assertSame($channel->id, $video->refresh()->publishing_channel_id);
+    }
+
     public function test_model_not_found_exposes_no_internal_details_with_debug_enabled(): void
     {
         Config::set('app.debug', true);
@@ -232,8 +288,16 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
             $user = $this->user(101);
             $identity = ['core_user_id' => 101, 'connect_user_id' => 501];
             $base = '/api/private/core/on-demand/channels';
-            $channel = $this->coreJson('post', $base, $identity + ['name' => 'Publishing Channel'])
-                ->assertCreated()->json('data.id');
+            config(['vod.enabled' => true]);
+            (require database_path('migrations/2026_11_20_010000_create_vod_channel_entitlements.php'))->up();
+            $user->forceFill(['connect_user_id' => 501])->save();
+            $channel = app(\App\Services\VodChannelEntitlements::class)->synchronize([
+                'assignment_id' => (string) Str::uuid(), 'subscription_id' => 1, 'member_id' => 501,
+                'channel_id' => null, 'version' => 1, 'status' => 'active',
+                'starts_at' => now()->subDay()->utc()->format('Y-m-d H:i:s'),
+                'paid_until' => now()->addMonth()->utc()->format('Y-m-d H:i:s'),
+                'create' => ['channel' => ['name' => 'Publishing Channel']],
+            ])['channel_id'];
             $otherChannel = $this->channel($user, 'Second Channel');
 
             $videoId = $this->coreJson('post', "$base/$channel/videos", $identity + [
@@ -334,7 +398,7 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
     {
         $name = $attributes['name'] ?? 'Video '.Str::random(6);
 
-        return Video::query()->create(array_merge([
+        $video = Video::query()->create(array_merge([
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::random(6),
             'type' => 'video',
@@ -345,6 +409,13 @@ class CoreOnDemandPublishingAuthorizationTest extends TestCase
             'updated_by' => $user->id,
             'video_upload_type' => 'URL',
         ], $attributes));
+        // Creator audit fields are server-managed, not mass assignable.
+        $video->forceFill([
+            'created_by' => array_key_exists('created_by', $attributes) ? $attributes['created_by'] : $user->id,
+            'updated_by' => $user->id,
+        ])->saveQuietly();
+
+        return $video;
     }
 
     private function playlist(AuthorChannel $channel, string $name): AuthorChannelPlaylist

@@ -26,6 +26,7 @@ class TvContentFeedTest extends TestCase
             Schema::create($name, function (Blueprint $table): void {
                 $table->id();
                 $table->string('name');
+                $table->string('slug')->nullable();
                 $table->text('description')->nullable();
                 $table->string('poster_url')->nullable();
                 $table->string('access')->nullable();
@@ -38,6 +39,26 @@ class TvContentFeedTest extends TestCase
                 $table->date('release_date')->nullable();
                 $table->timestamps();
                 $table->softDeletes();
+            });
+        }
+        Schema::table('live_tv_channel', function (Blueprint $table): void {
+            $table->unsignedBigInteger('vod_channel_id')->nullable();
+        });
+        Schema::create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('connect_user_id')->nullable();
+        });
+        Schema::create('author_channels', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('name');
+            $table->string('username');
+            $table->softDeletes();
+        });
+        foreach (['author_channel_video' => 'video_id', 'author_channel_entertainment' => 'entertainment_id'] as $name => $contentColumn) {
+            Schema::create($name, function (Blueprint $table) use ($contentColumn): void {
+                $table->unsignedBigInteger('author_channel_id');
+                $table->unsignedBigInteger($contentColumn);
             });
         }
         Schema::create('seasons', function (Blueprint $table): void {
@@ -58,7 +79,7 @@ class TvContentFeedTest extends TestCase
             'video' => '/video-details/1', 'movie' => '/watch-movie/1',
             'tvshow' => '/tv-shows/2', 'episode' => '/tv-shows/2/episodes/1', 'livetv' => '/livetv/1',
         ] as $type => $path) {
-            $this->assertSame(url($path), $items[$type]['url']);
+            $this->assertSame(url($path), $items[$type]['platform_url']);
             $this->assertSame('eZWay TV', $items[$type]['source']);
         }
         $this->assertSame('TV & media', $items['video']['description']);
@@ -88,7 +109,7 @@ class TvContentFeedTest extends TestCase
         $this->catalog();
         $ids = [];
         for ($page = 1; $page <= 3; $page++) {
-            $response = $this->getJson('/api/v3/tv-content-feed?per_page=2&page=' . $page)->assertOk()
+            $response = $this->getJson('/api/v3/tv-content-feed?per_page=2&page='.$page)->assertOk()
                 ->assertJsonPath('hasMore', $page < 3)->assertJsonPath('meta.total', 5);
             $ids = array_merge($ids, array_column($response->json('data'), 'id'));
         }
@@ -109,40 +130,68 @@ class TvContentFeedTest extends TestCase
     {
         $this->catalog();
         foreach (['video', 'movie', 'tvshow', 'episode', 'livetv'] as $type) {
-            $this->getJson('/api/v3/tv-content-feed?content_type=' . $type)->assertOk()
+            $this->getJson('/api/v3/tv-content-feed?content_type='.$type)->assertOk()
                 ->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.content_type', $type)
                 ->assertJsonPath('hasMore', false);
         }
         $this->getJson('/api/v3/tv-content-feed?content_type=invalid')->assertUnprocessable();
     }
 
-    public function test_public_rss_is_valid_xml_and_uses_tv_viewing_links(): void
+    public function test_public_feed_exposes_catalog_metadata_without_playback_sources(): void
     {
         $this->catalog();
-        DB::table('videos')->where('id', 1)->update(['name' => 'TV & <Shows> "Today"']);
-        $response = $this->get('/feed/rss')->assertOk()->assertHeader('Content-Type', 'application/rss+xml; charset=UTF-8');
-        $xml = simplexml_load_string($response->getContent());
-        $this->assertNotFalse($xml);
-        $this->assertSame('eZWay TV', (string) $xml->channel->title);
-        $this->assertCount(5, $xml->channel->item);
-        $this->assertStringNotContainsString('ezwaynetwork.com/feed', $response->getContent());
-        $titles = [];
-        foreach ($xml->channel->item as $item) {
-            $titles[] = (string) $item->title;
-            $this->assertStringStartsWith(url('/'), (string) $item->link);
-        }
-        $this->assertContains('TV & <Shows> "Today"', $titles);
+        Schema::table('videos', function (Blueprint $table): void {
+            $table->text('video_url_input')->nullable();
+        });
+        DB::table('videos')->where('id', 1)->update(['name' => 'TV & <Shows> "Today"', 'video_url_input' => 'https://private.example.test/playback-token']);
+        $response = $this->getJson('/api/v3/tv-content-feed')->assertOk();
+        $items = collect($response->json('data'))->keyBy('content_type');
+        $this->assertSame('TV & <Shows> "Today"', $items['video']['title']);
+        $this->assertSame(url('/video-details/1'), $items['video']['platform_url']);
+        $this->assertArrayHasKey('published_at_iso', $items['video']);
+        $this->assertNull($items['video']['author_id']);
+        $this->assertStringNotContainsString('private.example.test', $response->getContent());
+        $this->assertArrayNotHasKey('video_url_input', $items['video']);
         Http::assertNothingSent();
     }
 
-    public function test_feed_routes_have_no_authentication_requirement(): void
+    public function test_feed_filters_authors_by_connect_identity_and_channel(): void
     {
-        foreach (['tv-content-feed', 'tv-content-feed.rss', 'api.v3.tv-content-feed'] as $name) {
-            $route = Route::getRoutes()->getByName($name);
-            $this->assertNotNull($route);
-            foreach ($route->gatherMiddleware() as $middleware) {
-                $this->assertDoesNotMatchRegularExpression('/^(auth|user|checkApiDevice)(:|$)/', $middleware);
-            }
+        $this->catalog();
+        DB::table('users')->insert([['id' => 7, 'connect_user_id' => 1007], ['id' => 8, 'connect_user_id' => 1008]]);
+        DB::table('author_channels')->insert([
+            ['id' => 10, 'user_id' => 7, 'name' => 'Creator Studio', 'username' => 'creator-studio'],
+            ['id' => 20, 'user_id' => 8, 'name' => 'Live Studio', 'username' => 'live-studio'],
+        ]);
+        DB::table('author_channel_video')->insert(['author_channel_id' => 10, 'video_id' => 1]);
+        DB::table('author_channel_entertainment')->insert(['author_channel_id' => 10, 'entertainment_id' => 1]);
+        DB::table('live_tv_channel')->where('id', 1)->update(['vod_channel_id' => 20]);
+        $response = $this->getJson('/api/v3/tv-content-feed?author_id=1007')->assertOk()->assertJsonPath('meta.total', 2);
+        foreach ($response->json('data') as $item) {
+            $this->assertSame(1007, $item['author_id']);
+            $this->assertSame(10, $item['author_channel_id']);
+            $this->assertSame('Creator Studio', $item['author']);
+        }
+        $this->getJson('/api/v3/tv-content-feed?channel_id=20')->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.content_type', 'livetv')->assertJsonPath('data.0.author_id', 1008);
+        $this->getJson('/api/v3/tv-content-feed?channel_name=Creator')->assertOk()->assertJsonPath('meta.total', 2);
+        $this->getJson('/api/v3/tv-content-feed?author_id=7')->assertOk()->assertJsonPath('meta.total', 0);
+    }
+
+    public function test_feed_date_name_and_access_filters_match_the_published_catalog(): void
+    {
+        $this->catalog();
+        DB::table('videos')->where('id', 1)->update(['name' => 'Creator Interview', 'access' => 'paid', 'created_at' => '2026-02-10 12:00:00']);
+        $this->getJson('/api/v3/tv-content-feed?from=2026-02-01&to=2026-02-28&name=Interview&access=paid')
+            ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', 'video:1');
+        $this->getJson('/api/v3/tv-content-feed?from=2026-03-01&to=2026-02-01')->assertUnprocessable();
+    }
+
+    public function test_feed_route_has_no_authentication_requirement(): void
+    {
+        $route = Route::getRoutes()->getByName('api.v3.tv-content-feed');
+        $this->assertNotNull($route);
+        foreach ($route->gatherMiddleware() as $middleware) {
+            $this->assertDoesNotMatchRegularExpression('/^(auth|user|checkApiDevice)(:|$)/', $middleware);
         }
     }
 
@@ -162,5 +211,30 @@ class TvContentFeedTest extends TestCase
             'name' => 'TV content', 'description' => '<p>TV &amp; media</p>',
             'created_at' => '2026-01-01 12:00:00',
         ], $attributes));
+    }
+
+    public function test_public_feed_hides_cancelled_channel_upload_and_restores_it_on_renewal(): void
+    {
+        config(['vod.enabled' => true]);
+        Schema::table('videos', function (Blueprint $t) {
+            $t->unsignedBigInteger('publishing_channel_id')->nullable();
+            $t->unsignedBigInteger('creator_channel_id')->nullable();
+        });
+        Schema::table('author_channels', fn (Blueprint $t) => $t->boolean('is_active')->default(true));
+        (require database_path('migrations/2026_11_20_010000_create_vod_channel_entitlements.php'))->up();
+        $this->catalog();
+        DB::table('users')->insert(['id' => 7, 'connect_user_id' => 1007]);
+        DB::table('author_channels')->insert(['id' => 10, 'user_id' => 7, 'name' => 'Creator Studio', 'username' => 'creator-studio']);
+        DB::table('videos')->where('id', 1)->update(['publishing_channel_id' => 10]);
+        DB::table('author_channel_video')->insert(['author_channel_id' => 10, 'video_id' => 1]);
+        DB::table('vod_channel_entitlements')->insert(['assignment_id' => '00000000-0000-4000-8000-000000000001',
+            'subscription_id' => 1, 'member_id' => 1007, 'channel_id' => 10, 'status' => 'cancelled',
+            'paid_until' => now()->addMonth(), 'version' => 1, 'payload_hash' => str_repeat('a', 64)]);
+        $this->getJson('/api/v3/tv-content-feed?content_type=video')->assertOk()->assertJsonPath('meta.total', 0);
+        DB::table('vod_channel_entitlements')->where('channel_id', 10)->update(['status' => 'active', 'version' => 2]);
+        $this->getJson('/api/v3/tv-content-feed?content_type=video')->assertOk()->assertJsonPath('meta.total', 1);
+        DB::table('vod_channel_entitlements')->where('channel_id', 10)->update(['paid_until' => now()->subSecond()]);
+        $this->getJson('/api/v3/tv-content-feed?content_type=video')->assertOk()->assertJsonPath('meta.total', 0);
+        $this->assertSame(1, DB::table('videos')->where('id', 1)->value('status'));
     }
 }

@@ -88,7 +88,7 @@ class FrontendController extends Controller
         ]));
 
         // Use Redis cache with 5 minutes TTL
-        $cachedResult = Cache::remember($cacheKey, 1, function () use ($request, $user_id, $profile_id, $device_type) {
+        $cachedResult = \App\Services\VodPublicCache::remember($cacheKey, 1, function () use ($request, $user_id, $profile_id, $device_type) {
             // Get all settings with names and values in one call
             $settings = [
                 'top-10' => MobileSetting::getNameAndValueBySlug('top-10'),
@@ -108,7 +108,7 @@ class FrontendController extends Controller
 
             $responseData = [];
 
-            $sliderList = Cache::remember('home_banners', 300, function () {
+            $sliderList = \App\Services\VodPublicCache::remember('home_banners', 300, function () {
                 return Banner::where('banner_for', 'home')
                     ->where('status', 1)
                     ->orderBy('id', 'asc')

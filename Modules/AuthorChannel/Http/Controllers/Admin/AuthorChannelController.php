@@ -114,34 +114,12 @@ class AuthorChannelController extends Controller
 
     public function create()
     {
-        $plans = Plan::where('status', 1)->orderBy('level')->orderBy('name')->get();
-
-        return view('authorchannel::admin.create', compact('plans'));
+        abort(403, 'Create this channel from its active VOD subscription in Backoffice. One subscription is required per channel.');
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name'        => 'required|string|max:255',
-            'username'    => 'nullable|string|max:100|alpha_dash|unique:author_channels,username',
-            'description' => 'nullable|string',
-            'user_id'     => 'nullable|integer|exists:users,id',
-            'avatar'      => 'nullable|string|max:500',
-            'banner'      => 'nullable|string|max:500',
-            'is_active'   => 'nullable|boolean',
-            'access'      => ['required', Rule::in(['free', 'paid'])],
-            'plan_id'     => 'nullable|required_if:access,paid|integer|exists:plan,id',
-            'movies_enabled' => 'nullable|boolean',
-        ]);
-        if (($data['access'] ?? 'free') === 'free') {
-            $data['plan_id'] = null;
-        }
-        $data['movies_enabled'] = $request->boolean('movies_enabled');
-        if (empty($data['username'])) {
-            $data['username'] = AuthorChannel::generateUsername($data['name']);
-        }
-        AuthorChannel::create($data);
-        return redirect()->route('backend.author_channels.index')->with('success','On Demand Channel created');
+        abort(403, 'Create this channel from its active VOD subscription in Backoffice. One subscription is required per channel.');
     }
 
     public function edit($id)

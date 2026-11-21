@@ -2,20 +2,19 @@
 
 namespace Modules\AuthorChannel\Http\Controllers\API;
 
-use App\Services\TvAnalyticsStorage;
-
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\AuthorChannel;
 use App\Models\MobileSetting;
+use App\Services\TvAnalyticsStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 use Modules\Statistics\Models\ContentBoost;
 use Modules\Statistics\Models\StatSetting;
-use Modules\Entertainment\Transformers\Backend\CommonContentResourceV3;
 
 class AuthorChannelAPIController extends Controller
 {
@@ -33,7 +32,7 @@ class AuthorChannelAPIController extends Controller
         $perPage = min($perPage, 100);
         $selectedChannelIds = $this->onDemandMobileSettingChannelIds();
 
-        $cacheKey = 'spa:ondemand:index:' . md5(json_encode([
+        $cacheKey = 'spa:ondemand:index:'.md5(json_encode([
             'page' => $request->input('page', 1),
             'per_page' => $perPage,
             'search' => $request->input('search'),
@@ -41,7 +40,7 @@ class AuthorChannelAPIController extends Controller
         ]));
 
         try {
-            $channels = Auth::check() ? $this->buildChannelIndex($request, $perPage, $selectedChannelIds) : Cache::remember($cacheKey, 300, function () use ($request, $perPage, $selectedChannelIds) {
+            $channels = Auth::check() ? $this->buildChannelIndex($request, $perPage, $selectedChannelIds) : \App\Services\VodPublicCache::remember($cacheKey, 300, function () use ($request, $perPage, $selectedChannelIds) {
                 return $this->buildChannelIndex($request, $perPage, $selectedChannelIds);
             });
         } catch (\Throwable $e) {
@@ -53,38 +52,38 @@ class AuthorChannelAPIController extends Controller
 
     private function buildChannelIndex(Request $request, int $perPage, array $selectedChannelIds = [])
     {
-            $query = AuthorChannel::where('is_active', 1)
-                ->with('plan:id,name,level')
-                ->withCount([
-                    'videos' => fn ($query) => $query
-                        ->where('videos.status', 1)
-                        ->whereNull('videos.deleted_at'),
-                    'movies' => fn ($query) => $query
-                        ->released()
-                        ->where('entertainments.status', 1)
-                        ->whereNull('entertainments.deleted_at'),
-                ]);
+        $query = AuthorChannel::where('is_active', 1)
+            ->with('plan:id,name,level')
+            ->withCount([
+                'videos' => fn ($query) => $query
+                    ->where('videos.status', 1)
+                    ->whereNull('videos.deleted_at'),
+                'movies' => fn ($query) => $query
+                    ->released()
+                    ->where('entertainments.status', 1)
+                    ->whereNull('entertainments.deleted_at'),
+            ]);
 
-            if ($search = $request->input('search')) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('username', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
-                });
-            }
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
 
-            if (count($selectedChannelIds) > 0) {
-                $ids = implode(',', $selectedChannelIds);
-                $query
-                    ->orderByRaw("CASE WHEN id IN ({$ids}) THEN 0 ELSE 1 END")
-                    ->orderByRaw("FIELD(id, {$ids})");
-            }
+        if (count($selectedChannelIds) > 0) {
+            $ids = implode(',', $selectedChannelIds);
+            $query
+                ->orderByRaw("CASE WHEN id IN ({$ids}) THEN 0 ELSE 1 END")
+                ->orderByRaw("FIELD(id, {$ids})");
+        }
 
-            $channels = $query->orderBy('name')->paginate($perPage);
+        $channels = $query->orderBy('name')->paginate($perPage);
 
-            $channels->getCollection()->transform(fn ($ch) => $this->formatChannel($ch));
+        $channels->getCollection()->transform(fn ($ch) => $this->formatChannel($ch));
 
-            return $channels;
+        return $channels;
     }
 
     /**
@@ -93,15 +92,19 @@ class AuthorChannelAPIController extends Controller
      */
     public function show($username)
     {
+        // Check current entitlement before consulting or building a cached profile.
+        if (! AuthorChannel::where('username', $username)->where('is_active', 1)->exists()) {
+            return ApiResponse::error('Channel not found.', 404);
+        }
         try {
-            $channel = Auth::check() ? $this->buildChannelShow($username) : Cache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
+            $channel = Auth::check() ? $this->buildChannelShow($username) : \App\Services\VodPublicCache::remember("spa:ondemand:show:{$username}", 300, function () use ($username) {
                 return $this->buildChannelShow($username);
             });
         } catch (\Throwable $e) {
             $channel = $this->buildChannelShow($username);
         }
 
-        if (!$channel) {
+        if (! $channel) {
             return ApiResponse::error('Channel not found.', 404);
         }
 
@@ -110,33 +113,33 @@ class AuthorChannelAPIController extends Controller
 
     private function buildChannelShow(string $username): ?array
     {
-            $channel = AuthorChannel::where('username', $username)
-                ->where('is_active', 1)
-                ->with([
-                    'plan:id,name,level',
-                    'movies' => fn ($query) => $query
-                        ->with('plan:id,name,level')
-                        ->released()
-                        ->where('entertainments.status', 1)
-                        ->whereNull('entertainments.deleted_at'),
-                    'playlists' => fn ($query) => $query->where('is_active', 1),
-                    'playlists.videos' => fn ($query) => $query
-                        ->with('plan:id,name,level')
-                        ->whereNull('videos.deleted_at')
-                        ->where('videos.status', 1),
-                ])
-                ->withCount([
-                    'videos' => fn ($query) => $query
-                        ->where('videos.status', 1)
-                        ->whereNull('videos.deleted_at'),
-                    'movies' => fn ($query) => $query
-                        ->released()
-                        ->where('entertainments.status', 1)
-                        ->whereNull('entertainments.deleted_at'),
-                ])
-                ->first();
+        $channel = AuthorChannel::where('username', $username)
+            ->where('is_active', 1)
+            ->with([
+                'plan:id,name,level',
+                'movies' => fn ($query) => $query
+                    ->with('plan:id,name,level')
+                    ->released()
+                    ->where('entertainments.status', 1)
+                    ->whereNull('entertainments.deleted_at'),
+                'playlists' => fn ($query) => $query->where('is_active', 1),
+                'playlists.videos' => fn ($query) => $query
+                    ->with('plan:id,name,level')
+                    ->whereNull('videos.deleted_at')
+                    ->where('videos.status', 1),
+            ])
+            ->withCount([
+                'videos' => fn ($query) => $query
+                    ->where('videos.status', 1)
+                    ->whereNull('videos.deleted_at'),
+                'movies' => fn ($query) => $query
+                    ->released()
+                    ->where('entertainments.status', 1)
+                    ->whereNull('entertainments.deleted_at'),
+            ])
+            ->first();
 
-            return $channel ? $this->formatChannel($channel, true) : null;
+        return $channel ? $this->formatChannel($channel, true) : null;
     }
 
     /**
@@ -150,21 +153,21 @@ class AuthorChannelAPIController extends Controller
             ->with('plan:id,name,level')
             ->first();
 
-        if (!$channel) {
+        if (! $channel) {
             return ApiResponse::error('Channel not found.', 404);
         }
 
         $perPage = (int) $request->input('per_page', 15);
         $perPage = min($perPage, 50);
 
-        $cacheKey = 'spa:ondemand:videos:' . md5(json_encode([
+        $cacheKey = 'spa:ondemand:videos:'.md5(json_encode([
             'username' => $username,
             'page' => $request->input('page', 1),
             'per_page' => $perPage,
         ]));
 
         try {
-            $videos = Auth::check() ? $this->buildChannelVideos($channel, $perPage) : Cache::remember($cacheKey, 300, function () use ($channel, $perPage) {
+            $videos = Auth::check() ? $this->buildChannelVideos($channel, $perPage) : \App\Services\VodPublicCache::remember($cacheKey, 300, function () use ($channel, $perPage) {
                 return $this->buildChannelVideos($channel, $perPage);
             });
         } catch (\Throwable $e) {
@@ -176,33 +179,33 @@ class AuthorChannelAPIController extends Controller
 
     private function buildChannelVideos(AuthorChannel $channel, int $perPage)
     {
-            $videos = $channel->videos()
-                ->with('plan:id,name,level')
-                ->whereNull('videos.deleted_at')
-                ->where('videos.status', 1)
-                ->select(
-                    'videos.id',
-                    'videos.name',
-                    'videos.slug',
-                    'videos.description',
-                    'videos.thumbnail_url',
-                    'videos.poster_url',
-                    'videos.trailer_url',
-                    'videos.trailer_url_type',
-                    'videos.video_url_input',
-                    'videos.video_upload_type',
-                    'videos.access',
-                    'videos.plan_id',
-                    'videos.duration',
-                    'videos.release_date',
-                    'videos.status'
-                )
-                ->orderBy('author_channel_video.created_at', 'desc')
-                ->paginate($perPage);
+        $videos = $channel->videos()
+            ->with('plan:id,name,level')
+            ->whereNull('videos.deleted_at')
+            ->where('videos.status', 1)
+            ->select(
+                'videos.id',
+                'videos.name',
+                'videos.slug',
+                'videos.description',
+                'videos.thumbnail_url',
+                'videos.poster_url',
+                'videos.trailer_url',
+                'videos.trailer_url_type',
+                'videos.video_url_input',
+                'videos.video_upload_type',
+                'videos.access',
+                'videos.plan_id',
+                'videos.duration',
+                'videos.release_date',
+                'videos.status'
+            )
+            ->orderBy('author_channel_video.created_at', 'desc')
+            ->paginate($perPage);
 
-            $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
+        $videos->getCollection()->transform(fn ($v) => $this->formatVideo($v));
 
-            return $videos;
+        return $videos;
     }
 
     // -------------------------------------------------------------------------
@@ -215,7 +218,7 @@ class AuthorChannelAPIController extends Controller
      */
     public function myChannels(Request $request)
     {
-        $userId   = Auth::id();
+        $userId = Auth::id();
         $channels = AuthorChannel::where('user_id', $userId)
             ->with('plan:id,name,level')
             ->withCount([
@@ -240,28 +243,25 @@ class AuthorChannelAPIController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'        => 'required|string|max:255',
-            'username'    => 'nullable|string|max:100|alpha_dash|unique:author_channels,username',
+            'vod_subscription_id' => 'nullable|integer|min:1',
+            'name' => 'required|string|max:255',
+            'username' => 'nullable|string|max:100|alpha_dash|unique:author_channels,username',
             'description' => 'nullable|string|max:2000',
-            'avatar'      => 'nullable|string|max:500',
-            'banner'      => 'nullable|string|max:500',
+            'avatar' => 'nullable|string|max:500',
+            'banner' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
             return ApiResponse::error('Validation failed.', 422, $validator->errors());
         }
 
-        $data              = $validator->validated();
-        $data['user_id']   = Auth::id();
-        $data['is_active'] = true;
-
-        if (empty($data['username'])) {
-            $data['username'] = AuthorChannel::generateUsername($data['name']);
-        }
-
-        $channel = AuthorChannel::create($data);
-
-        return ApiResponse::success($this->formatChannel($channel), 'On Demand created successfully.', 201);
+        $data = $validator->validated();
+        abort_unless(config('vod.enabled'), 503, 'Channel creation is temporarily unavailable.');
+        $input = $data;
+        if (! empty($input['username'])) $input['channel_username'] = $input['username'];
+        unset($input['username']);
+        $id = app(\App\Services\VodCoreCreation::class)->create(Auth::user(), $input);
+        return ApiResponse::success($this->formatChannel(AuthorChannel::query()->findOrFail($id)), 'Your channel is ready.', 201);
     }
 
     /**
@@ -277,11 +277,11 @@ class AuthorChannelAPIController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name'        => 'sometimes|required|string|max:255',
-            'username'    => 'sometimes|nullable|string|max:100|alpha_dash|unique:author_channels,username,' . $id,
+            'name' => 'sometimes|required|string|max:255',
+            'username' => 'sometimes|nullable|string|max:100|alpha_dash|unique:author_channels,username,'.$id,
             'description' => 'sometimes|nullable|string|max:2000',
-            'avatar'      => 'sometimes|nullable|string|max:500',
-            'banner'      => 'sometimes|nullable|string|max:500',
+            'avatar' => 'sometimes|nullable|string|max:500',
+            'banner' => 'sometimes|nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -318,13 +318,13 @@ class AuthorChannelAPIController extends Controller
     {
         $setting = MobileSetting::getNameAndValueBySlug('on-demand-channels');
 
-        if (!$setting || empty($setting['value'])) {
+        if (! $setting || empty($setting['value'])) {
             return [];
         }
 
         $decoded = json_decode($setting['value'], true);
 
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             return [];
         }
 
@@ -349,29 +349,29 @@ class AuthorChannelAPIController extends Controller
         $moviesCount = $moviesEnabled ? (int) ($channel->movies_count ?? $channel->movies()->count()) : 0;
 
         $data = [
-            'id'           => $channel->id,
-            'name'         => $channel->name,
-            'username'     => $channel->username,
+            'id' => $channel->id,
+            'name' => $channel->name,
+            'username' => $channel->username,
             'cover_image_url' => $channel->banner ? setBaseUrlWithFileNameV2($channel->banner) : null,
             'avatar_image_url' => $channel->avatar ? setBaseUrlWithFileNameV2($channel->avatar) : null,
             'videos_count' => $videosCount,
-            'video_count'  => $videosCount,
+            'video_count' => $videosCount,
             'total_videos' => $videosCount,
             'movies_count' => $moviesCount,
             'content_count' => $videosCount + $moviesCount,
             'movies_enabled' => $moviesEnabled,
-            'is_active'    => (bool) $channel->is_active,
-            'profile_url'  => url('/on-demand/' . $channel->username),
-            'access'       => $access,
-            'plan_id'      => $channel->plan_id,
-            'plan_level'   => $requiredPlanLevel,
+            'is_active' => (bool) $channel->is_active,
+            'profile_url' => url('/on-demand/'.$channel->username),
+            'access' => $access,
+            'plan_id' => $channel->plan_id,
+            'plan_level' => $requiredPlanLevel,
             'required_plan_level' => $requiredPlanLevel,
-            'required_plan_name'  => optional($channel->plan)->name,
-            'current_plan_level'  => $currentPlanLevel,
-            'has_content_access'  => $hasContentAccess,
-            'is_premium'          => $access === 'paid',
-            'show_premium_badge'  => $access === 'paid' && ! $hasContentAccess,
-            'stats'               => $this->channelStats($channel),
+            'required_plan_name' => optional($channel->plan)->name,
+            'current_plan_level' => $currentPlanLevel,
+            'has_content_access' => $hasContentAccess,
+            'is_premium' => $access === 'paid',
+            'show_premium_badge' => $access === 'paid' && ! $hasContentAccess,
+            'stats' => $this->channelStats($channel),
         ];
 
         if ($includeDescription) {
@@ -407,32 +407,32 @@ class AuthorChannelAPIController extends Controller
         $hasContentAccess = $access === 'free' || ($access === 'paid' && $currentPlanLevel >= $requiredPlanLevel && $requiredPlanLevel > 0);
 
         return [
-            'id'            => $video->id,
-            'name'          => $video->name,
-            'slug'          => $video->slug,
-            'description'   => $video->description,
+            'id' => $video->id,
+            'name' => $video->name,
+            'slug' => $video->slug,
+            'description' => $video->description,
             'thumbnail_url' => $thumb ? setBaseUrlWithFileNameV2($thumb) : null,
-            'poster_url'    => $video->poster_url ? setBaseUrlWithFileNameV2($video->poster_url) : null,
-            'trailer_url'   => ($video->trailer_url && $video->trailer_url_type === 'Local')
+            'poster_url' => $video->poster_url ? setBaseUrlWithFileNameV2($video->poster_url) : null,
+            'trailer_url' => ($video->trailer_url && $video->trailer_url_type === 'Local')
                                 ? setBaseUrlWithFileName($video->trailer_url, 'video', 'video')
                                 : $video->trailer_url,
-            'video_url'     => ($video->video_upload_type === 'Local')
+            'video_url' => ($video->video_upload_type === 'Local')
                                 ? setBaseUrlWithFileName($video->video_url_input, 'video', 'video')
                                 : $video->video_url_input,
-            'video_type'    => $video->video_upload_type,
-            'access'        => $access,
-            'plan_id'       => $video->plan_id,
-            'plan_level'    => $requiredPlanLevel,
+            'video_type' => $video->video_upload_type,
+            'access' => $access,
+            'plan_id' => $video->plan_id,
+            'plan_level' => $requiredPlanLevel,
             'required_plan_level' => $requiredPlanLevel,
-            'required_plan_name'  => optional($video->plan)->name,
-            'current_plan_level'  => $currentPlanLevel,
-            'has_content_access'  => $hasContentAccess,
-            'is_premium'          => $access === 'paid',
-            'show_premium_badge'  => $access === 'paid' && ! $hasContentAccess,
-            'duration'      => $video->duration,
-            'release_date'  => $video->release_date,
-            'language'      => $video->language,
-            'status'        => $video->status,
+            'required_plan_name' => optional($video->plan)->name,
+            'current_plan_level' => $currentPlanLevel,
+            'has_content_access' => $hasContentAccess,
+            'is_premium' => $access === 'paid',
+            'show_premium_badge' => $access === 'paid' && ! $hasContentAccess,
+            'duration' => $video->duration,
+            'release_date' => $video->release_date,
+            'language' => $video->language,
+            'status' => $video->status,
         ];
     }
 

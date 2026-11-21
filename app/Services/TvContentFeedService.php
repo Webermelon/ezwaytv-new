@@ -12,7 +12,7 @@ class TvContentFeedService
     /**
      * Returns catalog metadata only. Playback and source URLs are deliberately excluded.
      *
-     * @param array{content_type?: string, from?: string, to?: string, author?: string, author_id?: int, channel_id?: int, channel_name?: string, name?: string, slug?: string, id?: int, access?: string} $filters
+     * @param  array{content_type?: string, from?: string, to?: string, author?: string, author_id?: int, channel_id?: int, channel_name?: string, name?: string, slug?: string, id?: int, access?: string}  $filters
      */
     public function page(int $page = 1, int $perPage = 12, bool $childProfile = false, array $filters = []): array
     {
@@ -24,6 +24,8 @@ class TvContentFeedService
             ->selectSub($this->authorSubquery('author_channel_video', 'video_id', 'videos.id', 'connect_user_id'), 'author_id')
             ->selectSub($this->authorSubquery('author_channel_video', 'video_id', 'videos.id', 'channel_id'), 'author_channel_id')
             ->selectRaw("'video' as content_type, NULL as show_id");
+
+        VodPublicVisibility::videos($videos);
 
         $entertainments = $this->published('entertainments', $childProfile)
             ->whereIn('type', ['movie', 'tvshow'])
@@ -65,16 +67,28 @@ class TvContentFeedService
     {
         foreach (['content_type', 'slug', 'id', 'author_id', 'access'] as $key) {
             if (isset($filters[$key]) && $filters[$key] !== '') {
-                $query->where($key, $filters[$key]);
+                $query->where($key, in_array($key, ['id', 'author_id'], true) ? (int) $filters[$key] : $filters[$key]);
             }
         }
 
-        if (! empty($filters['from'])) $query->whereDate('created_at', '>=', $filters['from']);
-        if (! empty($filters['to'])) $query->whereDate('created_at', '<=', $filters['to']);
-        if (! empty($filters['name'])) $query->where('name', 'like', '%' . addcslashes($filters['name'], '%_\\') . '%');
-        if (! empty($filters['author'])) $query->where('author', 'like', '%' . addcslashes($filters['author'], '%_\\') . '%');
-        if (! empty($filters['channel_id'])) $query->where('author_channel_id', $filters['channel_id']);
-        if (! empty($filters['channel_name'])) $query->where('author', 'like', '%' . addcslashes($filters['channel_name'], '%_\\') . '%');
+        if (! empty($filters['from'])) {
+            $query->whereDate('created_at', '>=', $filters['from']);
+        }
+        if (! empty($filters['to'])) {
+            $query->whereDate('created_at', '<=', $filters['to']);
+        }
+        if (! empty($filters['name'])) {
+            $query->where('name', 'like', '%'.addcslashes($filters['name'], '%_\\').'%');
+        }
+        if (! empty($filters['author'])) {
+            $query->where('author', 'like', '%'.addcslashes($filters['author'], '%_\\').'%');
+        }
+        if (! empty($filters['channel_id'])) {
+            $query->where('author_channel_id', (int) $filters['channel_id']);
+        }
+        if (! empty($filters['channel_name'])) {
+            $query->where('author', 'like', '%'.addcslashes($filters['channel_name'], '%_\\').'%');
+        }
     }
 
     private function activeFilters(array $filters): array
@@ -84,10 +98,10 @@ class TvContentFeedService
 
     private function authorSubquery(string $pivotTable, string $contentColumn, string $contentIdColumn, string $field): Builder
     {
-        return DB::table($pivotTable . ' as channel_content')
+        return DB::table($pivotTable.' as channel_content')
             ->join('author_channels as author_channel', 'author_channel.id', '=', 'channel_content.author_channel_id')
             ->leftJoin('users as author_user', 'author_user.id', '=', 'author_channel.user_id')
-            ->whereColumn('channel_content.' . $contentColumn, $contentIdColumn)
+            ->whereColumn('channel_content.'.$contentColumn, $contentIdColumn)
             ->whereNull('author_channel.deleted_at')
             ->orderBy('author_channel.id')
             ->selectRaw($this->authorField($field))
@@ -124,11 +138,11 @@ class TvContentFeedService
     {
         $type = $item->content_type;
         $path = match ($type) {
-            'movie' => '/watch-movie/' . $item->id,
-            'tvshow' => '/tv-shows/' . $item->id,
-            'episode' => '/tv-shows/' . $item->show_id . '/episodes/' . $item->id,
-            'livetv' => '/livetv/' . $item->id,
-            default => '/video-details/' . $item->id,
+            'movie' => '/watch-movie/'.$item->id,
+            'tvshow' => '/tv-shows/'.$item->id,
+            'episode' => '/tv-shows/'.$item->show_id.'/episodes/'.$item->id,
+            'livetv' => '/livetv/'.$item->id,
+            default => '/video-details/'.$item->id,
         };
         $category = match ($type) {
             'movie' => 'Movie',
@@ -144,7 +158,7 @@ class TvContentFeedService
         };
 
         return [
-            'id' => $type . ':' . $item->id,
+            'id' => $type.':'.$item->id,
             'content_id' => $item->id,
             'content_type' => $type,
             'title' => $item->name,

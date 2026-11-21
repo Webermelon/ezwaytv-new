@@ -11,6 +11,21 @@ class AuthorChannel extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('vod_public_visibility', function ($query) {
+            if (\App\Services\VodPublicVisibility::publicRequest()) {
+                $query->publiclyVisible();
+            }
+        });
+    }
+
+    public function scopePubliclyVisible($query)
+    {
+        \App\Services\VodPublicVisibility::channels($query);
+        return $query;
+    }
+
     protected $fillable = [
         'user_id',
         'name',

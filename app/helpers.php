@@ -2161,7 +2161,7 @@ if (! function_exists('cacheApiResponse')) {
     function cacheApiResponse($key, $ttl, $callback) {
         $startTime = microtime(true);
 
-        $data = Cache::remember($key, $ttl, $callback);
+        $data = \App\Services\VodPublicCache::remember($key, $ttl, $callback);
 
         $endTime = microtime(true);
         $responseTimeMs = ($endTime - $startTime) * config('constant.MICROSECOND_TO_SECOND',1000);

@@ -1,30 +1,28 @@
 <?php
 
+use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
+use App\Http\Controllers\Api\Private\CoreTvAccessController;
 use App\Http\Controllers\Auth\API\AuthController;
-use App\Http\Controllers\Backend\API\DashboardController;
-use App\Http\Controllers\Backend\API\NotificationsController;
-use App\Http\Controllers\Backend\API\InvoiceController;
-
-use App\Http\Controllers\Backend\API\SettingController as APISettingController;
-use Modules\Frontend\Http\Controllers\PaymentController;
-use Modules\Frontend\Http\Controllers\PerviewPaymentController;
-use Modules\Frontend\Http\Controllers\QueryOptimizeController;
-
-use Modules\User\Http\Controllers\API\UserController;
-use Modules\Entertainment\Http\Controllers\API\EntertainmentsController;
-use Modules\LiveTV\Http\Controllers\API\LiveTVsController;
-use App\Http\Controllers\TvAuthController;
-use App\Http\Controllers\Backend\SettingController;
 use App\Http\Controllers\Auth\WebQrLoginController;
+use App\Http\Controllers\Backend\API\DashboardController;
+use App\Http\Controllers\Backend\API\InvoiceController;
+use App\Http\Controllers\Backend\API\NotificationsController;
+use App\Http\Controllers\Backend\API\SettingController as APISettingController;
+use App\Http\Controllers\Backend\SettingController;
+use App\Http\Controllers\TvAuthController;
+use App\Http\Controllers\TvContentFeedController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Modules\CastCrew\Http\Controllers\API\CastCrewController;
-use Modules\Frontend\Http\Controllers\Auth\OTPController;
+use Modules\Entertainment\Http\Controllers\API\EntertainmentsController;
 use Modules\Frontend\Http\Controllers\API\DistributionController;
 use Modules\Frontend\Http\Controllers\API\FooterController;
 use Modules\Frontend\Http\Controllers\API\NavigationMenuController;
-use App\Http\Controllers\Api\Private\CoreTvAccessController;
-use App\Http\Controllers\Api\Private\CoreOnDemandPublishingController;
-use App\Http\Controllers\TvContentFeedController;
-use Modules\Video\Http\Controllers\API\VideosController;
+use Modules\Frontend\Http\Controllers\Auth\OTPController;
+use Modules\Frontend\Http\Controllers\PaymentController;
+use Modules\Frontend\Http\Controllers\PerviewPaymentController;
+use Modules\Frontend\Http\Controllers\QueryOptimizeController;
+use Modules\LiveTV\Http\Controllers\API\LiveTVsController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -35,8 +33,8 @@ use Modules\Video\Http\Controllers\API\VideosController;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use Modules\User\Http\Controllers\API\UserController;
+use Modules\Video\Http\Controllers\API\VideosController;
 
 Route::get('user-detail', [AuthController::class, 'userDetails']);
 
@@ -113,6 +111,7 @@ Route::get('core/package-categories/{category}/packages', function (Request $req
         ]);
     } catch (\Throwable $exception) {
         report($exception);
+
         return response()->json(['message' => 'Core API could not be reached.'], 502);
     }
 
@@ -136,9 +135,10 @@ Route::get('v2/pay-per-view-list', [DashboardController::class, 'getPayPerViewUn
 // Episode / TV Show helpers
 Route::get('tvshows/{tvshow}/plan-level', function ($tvshowId) {
     $tvshow = \Modules\Entertainment\Models\Entertainment::with('plan')->find($tvshowId);
-    if (!$tvshow || !$tvshow->plan) {
+    if (! $tvshow || ! $tvshow->plan) {
         return response()->json(['level' => null]);
     }
+
     return response()->json(['level' => (int) $tvshow->plan->level]);
 });
 
@@ -150,7 +150,6 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
 
     Route::get('notification-list', [NotificationsController::class, 'notificationList']);
     Route::get('notification-count', [NotificationsController::class, 'notificationCount']);
-
 
     Route::get('gallery-list', [DashboardController::class, 'globalGallery']);
     Route::get('search-list', [DashboardController::class, 'searchList']);
@@ -164,9 +163,7 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
     Route::get('download-invoice/{id}', [InvoiceController::class, 'download']);
     Route::get('pay-per-view-invoice/{id}', [InvoiceController::class, 'downloadPayPerViewInvoice']);
 
-
-
-    ### v2 api`s
+    // ## v2 api`s
 
     Route::get('v2/profile-details', [UserController::class, 'profileDetailsV2']);
 
@@ -174,7 +171,7 @@ Route::middleware(['auth:sanctum', 'checkApiDevice', 'throttle:api'])->group(fun
 
     Route::get('/send-otp', [AuthController::class, 'sendOtp'])->name('send-otp')->middleware('throttle:1,1'); // 1 request per minute
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify-otp')->middleware('throttle:5,1'); // 5 attempts per minute
-    
+
     Route::post('/verify-pin', [AuthController::class, 'verifyPin'])->name('verify-pin');
 
     Route::post('/update-parental-lock', [AuthController::class, 'changeParentalLock'])->name('update-parental-lock');
@@ -213,7 +210,6 @@ Route::prefix('v3')->middleware(['auth:sanctum', 'throttle:api'])->group(functio
     Route::post('delete-notification', [NotificationsController::class, 'deleteNotification']);
 
 });
-
 
 Route::get('app-configuration', [APISettingController::class, 'appConfiguraton']);
 
@@ -260,6 +256,7 @@ Route::get('core/payment-methods', function (Request $request) use ($coreClient)
         $response = $client->get($baseUrl.'/api/users/'.$coreUser.'/payment-methods');
     } catch (\Throwable $exception) {
         report($exception);
+
         return response()->json(['message' => 'Saved cards could not be loaded right now.', 'data' => []], 502);
     }
 
@@ -316,9 +313,12 @@ Route::post('core/checkouts', function (Request $request) use ($coreClient) {
         ]);
     } catch (\Throwable $exception) {
         report($exception);
+
         return response()->json(['message' => 'Core checkout could not be reached.'], 502);
     }
 
     return response($response->body(), $response->status())
         ->header('Content-Type', $response->header('Content-Type', 'application/json'));
 });
+
+Route::post('private/vod', \App\Http\Controllers\Api\Private\VodSyncController::class)->withoutMiddleware('throttle:api')->middleware([\App\Http\Middleware\VerifyVodRequest::class, 'throttle:300,1']);

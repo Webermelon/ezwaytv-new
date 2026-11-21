@@ -43,24 +43,7 @@ class CoreOnDemandPublishingController extends Controller
 
     public function storeChannel(Request $request): JsonResponse
     {
-        $data = $request->validate($this->channelRules(true));
-        $user = $this->access->syncUser($data);
-        $channel_data = [
-            'user_id' => $user->id,
-            'name' => $data['name'],
-            'username' => $data['channel_username'] ?? AuthorChannel::generateUsername($data['name']),
-            'description' => $data['description'] ?? null,
-            'avatar' => $data['avatar'] ?? null,
-            'banner' => $data['banner'] ?? null,
-            'is_active' => (bool) ($data['is_active'] ?? true),
-            'access' => 'free',
-            'plan_id' => null,
-        ];
-
-        $channel = AuthorChannel::query()->create($channel_data);
-        TvCreatorEvents::record('creator.channel_created', $request, $user, $channel->id);
-
-        return response()->json(['success' => true, 'data' => $this->formatChannel($channel), 'message' => 'Channel created.'], 201);
+        abort(410, 'Channel creation requires an active VOD subscription. Create or assign the channel through Core and Backoffice.');
     }
 
     public function updateChannel(Request $request, int $channel): JsonResponse
@@ -123,7 +106,7 @@ class CoreOnDemandPublishingController extends Controller
         $wasPublished = TvCreatorEvents::isPublished($videoModel);
         $videoModel->fill($this->videoPayload($data, $user->id, false))->save();
         $channelModel->videos()->syncWithoutDetaching([$videoModel->id]);
-        if (!$wasPublished && TvCreatorEvents::isPublished($videoModel)) {
+        if (! $wasPublished && TvCreatorEvents::isPublished($videoModel)) {
             TvCreatorEvents::published($request, $videoModel);
         }
 
@@ -228,7 +211,7 @@ class CoreOnDemandPublishingController extends Controller
         $playlistModel = $this->channelPlaylist($channelModel, $playlist);
         $videoId = (int) $data['video_id'];
 
-        $channelVideo = $channelModel->videos()->where('videos.id', $videoId)->whereNull('videos.deleted_at')->firstOrFail();
+        $channelVideo = $this->channelVideo($channelModel, $videoId);
         $wasAdded = false;
         if (! $playlistModel->videos()->where('videos.id', $videoId)->exists()) {
             $playlistModel->videos()->attach($videoId, ['sort_order' => $playlistModel->videos()->count() + 1]);
@@ -333,9 +316,14 @@ class CoreOnDemandPublishingController extends Controller
             ->where('id', (int) $data['video_id'])
             ->whereNull('deleted_at')
             ->where(function ($query) use ($user, $channelModel) {
-                $query->where('created_by', $user->id)->orWhere('creator_channel_id', $channelModel->id);
+                $query->where('created_by', $user->id)
+                    ->orWhere('creator_channel_id', $channelModel->id)
+                    ->orWhereIn('publishing_channel_id', AuthorChannel::query()->select('id')->where('user_id', $user->id));
             })
-            ->firstOrFail();
+            ->first();
+        if (! $videoModel) {
+            $this->throwChannelNotFound();
+        }
 
         $wasAdded = false;
         if (! $channelModel->videos()->where('video_id', $videoModel->id)->exists()) {
@@ -498,10 +486,15 @@ class CoreOnDemandPublishingController extends Controller
     private function ownedChannel(int $channel, int $tvUserId): AuthorChannel
     {
         try {
-            return AuthorChannel::query()
+            $model = AuthorChannel::query()
                 ->whereKey($channel)
                 ->where('user_id', $tvUserId)
                 ->firstOrFail();
+            if (! in_array(request()->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                app(\App\Services\VodChannelEntitlements::class)->assertWritable($channel);
+            }
+
+            return $model;
         } catch (ModelNotFoundException) {
             $this->throwChannelNotFound();
         }
@@ -548,6 +541,9 @@ class CoreOnDemandPublishingController extends Controller
 
     private function reconcileProcessingVideos(AuthorChannel $channel, Request $request): void
     {
+        if (! app(\App\Services\VodChannelEntitlements::class)->mayPublish($channel->id)) {
+            return;
+        }
         $videoIds = $channel->videos()->pluck('videos.id');
         if ($videoIds->isEmpty()) {
             return;

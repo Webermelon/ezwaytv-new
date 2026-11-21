@@ -20,6 +20,21 @@ class Video extends BaseModel
 
     use SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope('vod_public_visibility', function ($query) {
+            if (\App\Services\VodPublicVisibility::publicRequest()) {
+                $query->publiclyVisible();
+            }
+        });
+    }
+
+    public function scopePubliclyVisible($query)
+    {
+        \App\Services\VodPublicVisibility::videos($query);
+        return $query;
+    }
+
     protected $table = 'videos';
     protected $fillable = [
         'name',
@@ -125,10 +140,6 @@ class Video extends BaseModel
     /**
      * The "booted" method of the model.
      */
-    protected static function booted(): void
-    {
-      //  static::addGlobalScope(new VideoScope);
-    }
 
     public function VideoStreamContentMappings()
     {

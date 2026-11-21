@@ -16,7 +16,7 @@ class NavigationMenuController extends Controller
 
     public function refreshCatalog(): void
     {
-        if (!Cache::forever(self::CATALOG_KEY, $this->catalog())) {
+        if (!Cache::put(\App\Services\VodPublicVisibility::cacheKey(self::CATALOG_KEY), $this->catalog(), now()->addDay())) {
             throw new \RuntimeException('Navigation catalog cache write failed.');
         }
 
@@ -26,10 +26,10 @@ class NavigationMenuController extends Controller
     private function catalog(): array
     {
         return [
-            'videos' => Video::query()
+            'videos' => Video::query()->publiclyVisible()
                 ->where('status', 1)->orderByDesc('updated_at')->limit(14)
                 ->get(['id', 'name', 'slug', 'poster_url', 'poster_tv_url', 'duration', 'access']),
-            'onDemand' => AuthorChannel::query()
+            'onDemand' => AuthorChannel::query()->publiclyVisible()
                 ->select(['id', 'name', 'username', 'banner', 'avatar'])
                 ->withCount('videos')->where('is_active', 1)->orderByDesc('updated_at')->limit(14)->get(),
             'hasMovies' => Entertainment::query()->where('status', 1)->where('type', 'movie')->exists(),
@@ -39,7 +39,7 @@ class NavigationMenuController extends Controller
 
     public function show()
     {
-        $data = Cache::remember('api:v3:navigation-menu:v5', 300, function () {
+        $data = \App\Services\VodPublicCache::remember('api:v3:navigation-menu:v5', 300, function () {
             $showHomeMenu = isFrontendMenuVisible('show_home_menu');
             $showAllContentMenu = isFrontendMenuVisible('show_all_content_menu');
             $showLiveTvMenu = isFrontendMenuVisible('show_livetv_menu');
@@ -48,7 +48,7 @@ class NavigationMenuController extends Controller
             $showDistributionMenu = isFrontendMenuVisible('show_distribution_menu');
             $showStreamMusicMenu = isFrontendMenuVisible('show_stream_music_menu');
 
-            $catalog = Cache::rememberForever(self::CATALOG_KEY, fn () => $this->catalog());
+            $catalog = \App\Services\VodPublicCache::rememberForever(self::CATALOG_KEY, fn () => $this->catalog());
             $videos = $catalog['videos']->map(fn (Video $video) => $this->videoItem($video))->values();
             $onDemand = $catalog['onDemand']->map(fn (AuthorChannel $channel) => $this->onDemandItem($channel))->values();
 
