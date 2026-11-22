@@ -35,6 +35,9 @@ class ConnectSsoTest extends TestCase
         ]);
         $this->withoutMiddleware([CheckInstallation::class, CheckFrontendMaintenance::class]);
         Http::preventStrayRequests();
+        $this->mock(\App\Services\PlatformLinks::class, function ($mock) {
+            $mock->shouldReceive('url')->with('connect')->andReturnUsing(fn() => config('connect_sso.url'));
+        });
 
         (require database_path('migrations/2023_01_01_000010_create_users_table.php'))->up();
         $this->migration()->up();
@@ -500,4 +503,17 @@ class ConnectSsoTest extends TestCase
     {
         return require database_path('migrations/2026_10_22_000001_add_connect_user_id_to_users_table.php');
     }
+    public function test_exchange_keeps_the_core_selected_host_from_the_original_intent(): void
+    {
+        config(['connect_sso.url'=>'https://changed.connect.test']);
+        Http::fake(['https://pinned.connect.test/api/portal/sso/exchange'=>Http::response([],503)]);
+        $this->withSession(['connect_sso'=>[
+            'state'=>self::STATE,'connect_url'=>'https://pinned.connect.test',
+            'destination'=>'/','expires_at'=>now()->addMinutes(5)->timestamp,
+        ]])->get('/auth/connect/callback?'.http_build_query(['state'=>self::STATE,'code'=>self::CODE]))
+            ->assertRedirect('/login?connect_status=failed');
+        Http::assertSent(fn($request)=>$request->url()==='https://pinned.connect.test/api/portal/sso/exchange');
+        Http::assertSentCount(1);
+    }
+
 }

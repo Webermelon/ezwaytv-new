@@ -83,7 +83,7 @@ return [
     ],
 
     'core_api' => [
-        'base_url' => env('CORE_API_URL', 'https://ezwaycore.webermelon.dev'),
+        'base_url' => env('CORE_API_URL', ''),
         'token' => env('CORE_API_TOKEN'),
         'host' => env('CORE_API_HOST'),
         'platform_slug' => env('CORE_PLATFORM_SLUG', 'ezway-tv'),

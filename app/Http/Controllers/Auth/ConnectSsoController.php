@@ -26,6 +26,7 @@ class ConnectSsoController extends Controller
         $state = bin2hex(random_bytes(32));
         $request->session()->put('connect_sso', [
             'state' => $state,
+            'connect_url' => $url,
             'destination' => $this->safeDestination($request->query('redirect_to')),
             'open_profile_editor' => $request->routeIs('connect-sso.profile-editor'),
             'expected_tv_user_id' => $request->routeIs('connect-sso.profile-editor') ? Auth::id() : null,
@@ -66,7 +67,7 @@ class ConnectSsoController extends Controller
 
         $code = $request->query('code');
         $secret = (string) config('connect_sso.secret');
-        $url = $this->connectUrl();
+        $url = $this->connectUrl($intent['connect_url'] ?? null);
         if (! is_string($code) || preg_match('/^[a-f0-9]{64}$/D', $code) !== 1 || $secret === '' || $url === null) {
             return $this->failure();
         }
@@ -131,7 +132,7 @@ class ConnectSsoController extends Controller
         $this->setDevice($user, $request);
 
         if (($intent['open_profile_editor'] ?? false) === true) {
-            return redirect()->away($this->profileEditorUrl());
+            return redirect()->away($this->profileEditorUrl($url));
         }
 
         return redirect()->to($this->safeDestination($intent['destination'] ?? null));
@@ -182,9 +183,9 @@ class ConnectSsoController extends Controller
         ]);
     }
 
-    private function connectUrl(): ?string
+    private function connectUrl(?string $pinned = null): ?string
     {
-        $url = (string) config('connect_sso.url');
+        $url = $pinned ?? app(\App\Services\PlatformLinks::class)->url('connect') ?? '';
         $parts = parse_url($url);
         if (! filter_var($url, FILTER_VALIDATE_URL) || ! is_array($parts)
             || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])
@@ -206,8 +207,8 @@ class ConnectSsoController extends Controller
         return $value;
     }
 
-    private function profileEditorUrl(): string
+    private function profileEditorUrl(string $connectUrl): string
     {
-        return rtrim((string) config('connect_sso.url'), '/').'/profile/edit';
+        return rtrim($connectUrl, '/').'/profile/edit';
     }
 }
